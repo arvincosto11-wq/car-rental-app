@@ -7,7 +7,7 @@ const AdminLayout = ({ children, activePage }) => {
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
-  const handleLogout = () => { logout(); navigate('/'); };
+  const handleLogout = () => { logout(); navigate('/admin/login'); };
 
   const s = {
     page: { minHeight: '100vh', background: isDark ? '#0f172a' : '#f9fafb' },
