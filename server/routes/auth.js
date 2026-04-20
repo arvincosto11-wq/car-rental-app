@@ -55,4 +55,19 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Temporary admin setup route - remove after use
+router.post('/make-admin', async (req, res) => {
+  try {
+    const user = await User.findOneAndUpdate(
+      { email: req.body.email },
+      { role: 'admin' },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ message: 'User is now admin', user });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 export default router;
