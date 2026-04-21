@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 
 const Home = () => {
@@ -9,6 +10,7 @@ const Home = () => {
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const navigate = useNavigate();
+  const { isDark } = useTheme();
 
   useEffect(() => {
     const fetchCars = async () => {
@@ -26,6 +28,162 @@ const Home = () => {
 
   const handleSearch = () => {
     navigate(`/cars?location=${location}&pickup=${pickupDate}&return=${returnDate}`);
+  };
+
+  const styles = {
+    hero: {
+      padding: '60px 32px 40px',
+      textAlign: 'center',
+      background: 'transparent',
+      borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+    },
+    heroTitle: {
+      fontSize: '40px',
+      fontWeight: '700',
+      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      marginBottom: '8px',
+    },
+    heroSubtitle: {
+      fontSize: '16px',
+      color: isDark ? '#94a3b8' : '#6b7280',
+      marginBottom: '32px',
+    },
+    searchBox: {
+      display: 'flex',
+      alignItems: 'flex-end',
+      gap: '0',
+      maxWidth: '700px',
+      margin: '0 auto',
+      background: isDark ? '#1e293b' : '#fff',
+      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      borderRadius: '12px',
+      overflow: 'hidden',
+    },
+    searchField: {
+      flex: 1,
+      padding: '12px 16px',
+      borderRight: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+    },
+    searchLabel: {
+      display: 'block',
+      fontSize: '11px',
+      color: isDark ? '#94a3b8' : '#6b7280',
+      marginBottom: '4px',
+      fontWeight: '500',
+    },
+    searchInput: {
+      width: '100%',
+      border: 'none',
+      outline: 'none',
+      fontSize: '13px',
+      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      background: 'transparent',
+    },
+    searchBtn: {
+      padding: '0 28px',
+      background: '#2563eb',
+      color: '#fff',
+      border: 'none',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+      height: '64px',
+    },
+    section: {
+      padding: '48px 32px',
+      maxWidth: '1200px',
+      margin: '0 auto',
+    },
+    sectionTitle: {
+      fontSize: '28px',
+      fontWeight: '700',
+      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      textAlign: 'center',
+      marginBottom: '8px',
+    },
+    sectionSubtitle: {
+      fontSize: '14px',
+      color: isDark ? '#94a3b8' : '#6b7280',
+      textAlign: 'center',
+      marginBottom: '32px',
+    },
+    grid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, 1fr)',
+      gap: '20px',
+    },
+    card: {
+      background: isDark ? '#1e293b' : '#fff',
+      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      borderRadius: '12px',
+      overflow: 'hidden',
+      cursor: 'pointer',
+      transition: 'transform 0.2s',
+    },
+    imgWrap: {
+      position: 'relative',
+      height: '160px',
+      background: isDark ? '#334155' : '#f3f4f6',
+    },
+    img: { width: '100%', height: '100%', objectFit: 'cover' },
+    noImg: {
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: isDark ? '#64748b' : '#9ca3af',
+      fontSize: '13px',
+    },
+    availBadge: {
+      position: 'absolute',
+      top: '10px',
+      left: '10px',
+      background: '#2563eb',
+      color: '#fff',
+      fontSize: '11px',
+      padding: '3px 10px',
+      borderRadius: '20px',
+    },
+    priceBadge: {
+      position: 'absolute',
+      bottom: '10px',
+      right: '10px',
+      background: 'rgba(0,0,0,0.6)',
+      color: '#fff',
+      fontSize: '12px',
+      padding: '3px 10px',
+      borderRadius: '6px',
+    },
+    cardBody: { padding: '14px 16px' },
+    carName: {
+      fontSize: '16px',
+      fontWeight: '600',
+      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      marginBottom: '4px',
+    },
+    carSub: {
+      fontSize: '13px',
+      color: isDark ? '#94a3b8' : '#6b7280',
+      marginBottom: '10px',
+    },
+    carMeta: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: '4px',
+      fontSize: '12px',
+      color: isDark ? '#94a3b8' : '#6b7280',
+    },
+    viewAllBtn: {
+      padding: '12px 32px',
+      background: '#2563eb',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+    },
   };
 
   return (
@@ -82,9 +240,9 @@ const Home = () => {
         </p>
 
         {loading ? (
-          <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading cars...</p>
+          <p style={{ textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>Loading cars...</p>
         ) : cars.length === 0 ? (
-          <p style={{ textAlign: 'center', color: '#6b7280' }}>No cars available yet.</p>
+          <p style={{ textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>No cars available yet.</p>
         ) : (
           <div style={styles.grid}>
             {cars.map((car) => (
@@ -125,168 +283,6 @@ const Home = () => {
       </div>
     </div>
   );
-};
-
-const styles = {
-  hero: {
-    padding: '60px 32px 40px',
-    textAlign: 'center',
-    background: 'transparent',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  heroTitle: {
-    fontSize: '40px',
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: '8px',
-  },
-  heroSubtitle: {
-    fontSize: '16px',
-    color: '#6b7280',
-    marginBottom: '32px',
-  },
-  searchBox: {
-    display: 'flex',
-    alignItems: 'flex-end',
-    gap: '0',
-    maxWidth: '700px',
-    margin: '0 auto',
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '12px',
-    overflow: 'hidden',
-  },
-  searchField: {
-    flex: 1,
-    padding: '12px 16px',
-    borderRight: '1px solid #e5e7eb',
-  },
-  searchLabel: {
-    display: 'block',
-    fontSize: '11px',
-    color: '#6b7280',
-    marginBottom: '4px',
-    fontWeight: '500',
-  },
-  searchInput: {
-    width: '100%',
-    border: 'none',
-    outline: 'none',
-    fontSize: '13px',
-    color: '#1a1a1a',
-    background: 'transparent',
-  },
-  searchBtn: {
-    padding: '0 28px',
-    background: '#2563eb',
-    color: '#fff',
-    border: 'none',
-    fontSize: '14px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    height: '64px',
-  },
-  section: {
-    padding: '48px 32px',
-    maxWidth: '1200px',
-    margin: '0 auto',
-  },
-  sectionTitle: {
-    fontSize: '28px',
-    fontWeight: '700',
-    color: '#1a1a1a',
-    textAlign: 'center',
-    marginBottom: '8px',
-  },
-  sectionSubtitle: {
-    fontSize: '14px',
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: '32px',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '20px',
-  },
-  card: {
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    cursor: 'pointer',
-    transition: 'transform 0.2s',
-  },
-  imgWrap: {
-    position: 'relative',
-    height: '160px',
-    background: '#f3f4f6',
-  },
-  img: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  noImg: {
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#9ca3af',
-    fontSize: '13px',
-  },
-  availBadge: {
-    position: 'absolute',
-    top: '10px',
-    left: '10px',
-    background: '#2563eb',
-    color: '#fff',
-    fontSize: '11px',
-    padding: '3px 10px',
-    borderRadius: '20px',
-  },
-  priceBadge: {
-    position: 'absolute',
-    bottom: '10px',
-    right: '10px',
-    background: 'rgba(0,0,0,0.6)',
-    color: '#fff',
-    fontSize: '12px',
-    padding: '3px 10px',
-    borderRadius: '6px',
-  },
-  cardBody: {
-    padding: '14px 16px',
-  },
-  carName: {
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: '4px',
-  },
-  carSub: {
-    fontSize: '13px',
-    color: '#6b7280',
-    marginBottom: '10px',
-  },
-  carMeta: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '4px',
-    fontSize: '12px',
-    color: '#6b7280',
-  },
-  viewAllBtn: {
-    padding: '12px 32px',
-    background: '#2563eb',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: '500',
-    cursor: 'pointer',
-  },
 };
 
 export default Home;
