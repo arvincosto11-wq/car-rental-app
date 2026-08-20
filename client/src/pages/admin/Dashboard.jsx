@@ -15,7 +15,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') return navigate('/admin/login');
+    if (!user || user.role !== 'admin') return navigate('/login');
     fetchData();
   }, [user]);
 

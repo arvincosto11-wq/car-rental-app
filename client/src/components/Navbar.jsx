@@ -42,6 +42,9 @@ const Navbar = () => {
             <Link to="/dashboard" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>Dashboard</Link>
           </>
         )}
+        {user && user.role === 'admin' && (
+          <Link to="/admin" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>Admin Dashboard</Link>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
