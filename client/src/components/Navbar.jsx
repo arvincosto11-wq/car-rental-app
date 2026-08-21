@@ -30,7 +30,7 @@ const Navbar = () => {
         textDecoration: 'none',
         color: isDark ? '#f1f5f9' : '#1a1a1a',
       }}>
-        🚗 CarRental
+        🚗 Rent-a-Ride
       </Link>
 
       <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
