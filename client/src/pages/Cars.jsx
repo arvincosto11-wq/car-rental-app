@@ -76,7 +76,9 @@ const Cars = () => {
                 ) : (
                   <div style={styles.noImg}>No Image</div>
                 )}
-                <span style={styles.availBadge}>Available Now</span>
+                <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#2563eb' }}>
+  {car.isAvailable === false ? 'Not Available' : 'Available Now'}
+</span>
                 <span style={styles.priceBadge}>${car.pricePerDay} / day</span>
               </div>
               <div style={styles.cardBody}>

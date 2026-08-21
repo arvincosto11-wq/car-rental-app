@@ -47,6 +47,7 @@ const CarDetail = () => {
     if (!startDate || !endDate) return setError('Please select pickup and return dates');
     if (totalDays <= 0) return setError('Return date must be after pickup date');
     if (!agreedToTerms) return setError('Please agree to the Terms and Conditions');
+    if (car.isAvailable === false) return setError('This car is no longer available.');
 
     setBooking(true);
     setError('');
@@ -206,6 +207,9 @@ const CarDetail = () => {
               <span style={s.perDay}>per day</span>
             </div>
 
+            {car.isAvailable === false && (
+              <div style={s.error}>This car is currently booked and unavailable. Check back later or browse other cars.
+              </div>)}
             {success && <div style={s.success}>{success}</div>}
             {error && <div style={s.error}>{error}</div>}
 
@@ -287,7 +291,7 @@ const CarDetail = () => {
             <button
               style={s.bookBtn}
               onClick={handleBooking}
-              disabled={booking || !agreedToTerms}
+              disabled={booking || !agreedToTerms || car.isAvailable === false}
             >
               {booking ? 'Booking...' : `Book Now — Pay ₱${amountToPay > 0 ? amountToPay.toLocaleString() : car.pricePerDay.toLocaleString()}`}
             </button>
