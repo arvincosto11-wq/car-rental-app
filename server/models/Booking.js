@@ -10,7 +10,7 @@ const bookingSchema = new mongoose.Schema({
   amountPaid: { type: Number, required: true },
   paymentType: { type: String, enum: ['downpayment', 'full'], default: 'downpayment' },
   location: { type: String, required: true },
-  status: { type: String, enum: ['pending', 'confirmed', 'cancelled'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'pending' },
   payment: { type: String, default: 'offline' }
 }, { timestamps: true });
 

@@ -41,6 +41,8 @@ const ManageBookings = () => {
     payBadge: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
     confirmed: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     cancelled: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
+    completed: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
+    returnBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     select: { padding: '5px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#1a1a1a', cursor: 'pointer' },
   };
 
@@ -70,14 +72,18 @@ const ManageBookings = () => {
                     <span>{booking.car?.brand} {booking.car?.model}</span>
                   </div>
                 </td>
-                <td style={s.td}>{new Date(booking.startDate).toLocaleDateString()} to {new Date(booking.endDate).toLocaleDateString()}</td>
-                <td style={s.td}>${booking.totalPrice}</td>
-                <td style={s.td}><span style={s.payBadge}>{booking.payment}</span></td>
-                <td style={s.td}>
+                  <td style={s.td}>
                   {booking.status === 'confirmed' ? (
-                    <span style={s.confirmed}>confirmed</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={s.confirmed}>confirmed</span>
+                      <button style={s.returnBtn} onClick={() => handleStatus(booking._id, 'completed')}>
+                        Mark as Returned
+                      </button>
+                    </div>
                   ) : booking.status === 'cancelled' ? (
                     <span style={s.cancelled}>cancelled</span>
+                  ) : booking.status === 'completed' ? (
+                    <span style={s.completed}>completed</span>
                   ) : (
                     <select style={s.select} value={booking.status} onChange={(e) => handleStatus(booking._id, e.target.value)}>
                       <option value="pending">Pending</option>

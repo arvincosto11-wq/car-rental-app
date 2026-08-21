@@ -92,7 +92,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       );
     }
 
-    if (status === 'cancelled' && previousStatus === 'confirmed') {
+    if ((status === 'cancelled' || status === 'completed') && previousStatus === 'confirmed') {
       // Freeing the car back up
       await Car.findByIdAndUpdate(booking.car, { isAvailable: true });
     }
