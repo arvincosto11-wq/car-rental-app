@@ -102,5 +102,56 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+// Client requests a refund
+router.post('/:id/refund', protect, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      return res.status(400).json({ message: 'This booking is not eligible for a refund.' });
+    }
+    if (booking.refundStatus !== 'none') {
+      return res.status(400).json({ message: 'A refund request already exists for this booking.' });
+    }
 
+    booking.refundStatus = 'requested';
+    booking.refundReason = reason;
+    await booking.save();
+
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin approves or declines a refund request
+router.put('/:id/refund', protect, adminOnly, async (req, res) => {
+  try {
+    const { decision } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.refundStatus !== 'requested') {
+      return res.status(400).json({ message: 'No pending refund request for this booking.' });
+    }
+
+    booking.refundStatus = decision;
+
+    if (decision === 'approved') {
+      const wasConfirmed = booking.status === 'confirmed';
+      booking.status = 'cancelled';
+      if (wasConfirmed) {
+        await Car.findByIdAndUpdate(booking.car, { isAvailable: true });
+      }
+    }
+
+    await booking.save();
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 export default router;

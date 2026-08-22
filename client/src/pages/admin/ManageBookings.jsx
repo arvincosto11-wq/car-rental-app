@@ -30,6 +30,15 @@ const ManageBookings = () => {
     }
   };
 
+  const handleRefundDecision = async (id, decision) => {
+    try {
+      const res = await api.put(`/bookings/${id}/refund`, { decision });
+      setBookings(bookings.map((b) => b._id === id ? { ...b, refundStatus: res.data.refundStatus, status: res.data.status } : b));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const s = {
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
@@ -43,6 +52,10 @@ const ManageBookings = () => {
     cancelled: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     completed: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     returnBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: '500' },
+    acceptBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: '500' },
+    declineBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
+    refundApproved: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
+    refundDeclined: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     select: { padding: '5px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#1a1a1a', cursor: 'pointer' },
   };
 
@@ -58,6 +71,7 @@ const ManageBookings = () => {
               <th style={s.th}>Date Range</th>
               <th style={s.th}>Total</th>
               <th style={s.th}>Payment</th>
+              <th style={s.th}>Refund</th>
               <th style={s.th}>Actions</th>
             </tr>
           </thead>
@@ -72,7 +86,29 @@ const ManageBookings = () => {
                     <span>{booking.car?.brand} {booking.car?.model}</span>
                   </div>
                 </td>
-                  <td style={s.td}>
+                <td style={s.td}>{new Date(booking.startDate).toLocaleDateString()} to {new Date(booking.endDate).toLocaleDateString()}</td>
+                <td style={s.td}>${booking.totalPrice}</td>
+                <td style={s.td}><span style={s.payBadge}>{booking.payment}</span></td>
+                <td style={s.td}>
+                  {booking.refundStatus === 'requested' ? (
+                    <div>
+                      <div style={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px', maxWidth: '160px' }}>
+                        {booking.refundReason}
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button style={s.acceptBtn} onClick={() => handleRefundDecision(booking._id, 'approved')}>Accept</button>
+                        <button style={s.declineBtn} onClick={() => handleRefundDecision(booking._id, 'declined')}>Decline</button>
+                      </div>
+                    </div>
+                  ) : booking.refundStatus === 'approved' ? (
+                    <span style={s.refundApproved}>Refund Approved</span>
+                  ) : booking.refundStatus === 'declined' ? (
+                    <span style={s.refundDeclined}>Refund Declined</span>
+                  ) : (
+                    <span style={{ color: isDark ? '#64748b' : '#9ca3af', fontSize: '12px' }}>—</span>
+                  )}
+                </td>
+                <td style={s.td}>
                   {booking.status === 'confirmed' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={s.confirmed}>confirmed</span>

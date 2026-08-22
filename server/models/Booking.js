@@ -11,6 +11,8 @@ const bookingSchema = new mongoose.Schema({
   paymentType: { type: String, enum: ['downpayment', 'full'], default: 'downpayment' },
   location: { type: String, required: true },
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'pending' },
+  refundStatus: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' }, 
+  refundReason: { type: String, default: '' },
   payment: { type: String, default: 'offline' }
 }, { timestamps: true });
 
