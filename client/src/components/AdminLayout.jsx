@@ -24,11 +24,12 @@ const AdminLayout = ({ children, activePage }) => {
     sideItemActive: { background: isDark ? '#1e40af' : '#eff6ff', color: isDark ? '#fff' : '#1d4ed8', borderLeft: '3px solid #2563eb' },
   };
 
-  const sideLinks = [
+    const sideLinks = [
     { to: '/admin', label: 'Dashboard' },
     { to: '/admin/add-car', label: 'Add car' },
     { to: '/admin/manage-cars', label: 'Manage Cars' },
     { to: '/admin/manage-bookings', label: 'Manage Bookings' },
+    { to: '/admin/manage-clients', label: 'Manage Clients' },
   ];
 
   return (

@@ -13,6 +13,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import AddCar from './pages/admin/AddCar';
 import ManageCars from './pages/admin/ManageCars';
 import ManageBookings from './pages/admin/ManageBookings';
+import ManageClients from './pages/admin/ManageClients';
 import ClientDashboard from './pages/Dashboard';
 
 function App() {
@@ -72,10 +73,10 @@ function App() {
               }
             />
             <Route
-              path="/admin/manage-bookings"
+              path="/admin/manage-clients"
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <ManageBookings />
+                  <ManageClients />
                 </ProtectedRoute>
               }
             />

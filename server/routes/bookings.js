@@ -1,14 +1,21 @@
 import express from 'express';
 import Booking from '../models/Booking.js';
 import Car from '../models/Car.js';
+import User from '../models/User.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Create booking
 router.post('/', protect, async (req, res) => {
-  try {
+    try {
     const { carId, startDate, endDate, location, paymentType, amountPaid, totalPrice } = req.body;
+
+    const currentUser = await User.findById(req.user.id);
+    if (currentUser?.isBlocked) {
+      return res.status(403).json({ message: 'Your account has been blocked from making bookings. Please contact support.' });
+    }
+
     const car = await Car.findById(carId);
     if (!car) return res.status(404).json({ message: 'Car not found' });
 
