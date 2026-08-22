@@ -66,12 +66,13 @@ const CarDetail = () => {
         amountPaid: amountToPay,
         totalPrice,
       });
-            setShowRefundNotice(false);
+                  setShowRefundNotice(false);
       if (paymentType === 'full') {
         setSuccess(`Booking confirmed! Your full payment of ₱${amountToPay.toLocaleString()} has been received.`);
       } else {
         setSuccess(`Booking confirmed! You paid ₱${amountToPay.toLocaleString()} (20% downpayment) now. Remaining ₱${(totalPrice - downPayment).toLocaleString()} due upon pickup.`);
       }
+      setTimeout(() => navigate('/my-bookings'), 2000);
     } catch (err) {
       setShowRefundNotice(false);
       setError(err.response?.data?.message || 'Booking failed');
