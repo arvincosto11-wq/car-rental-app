@@ -38,7 +38,8 @@ router.post('/', protect, async (req, res) => {
       totalPrice,
       amountPaid,
       paymentType,
-      location
+      location,
+      payment: paymentType === 'full' ? 'paid' : 'offline'
     });
 
     res.status(201).json(booking);
@@ -84,7 +85,6 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     await booking.save();
 
     if (status === 'confirmed' && previousStatus !== 'confirmed') {
-      // Car is now booked — mark it unavailable and auto-reject other pending requests for it
       await Car.findByIdAndUpdate(booking.car, { isAvailable: false });
       await Booking.updateMany(
         { car: booking.car, _id: { $ne: booking._id }, status: 'pending' },
@@ -93,7 +93,6 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     }
 
     if ((status === 'cancelled' || status === 'completed') && previousStatus === 'confirmed') {
-      // Freeing the car back up
       await Car.findByIdAndUpdate(booking.car, { isAvailable: true });
     }
 
@@ -102,6 +101,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
 // Client requests a refund
 router.post('/:id/refund', protect, async (req, res) => {
   try {
@@ -154,4 +154,5 @@ router.put('/:id/refund', protect, adminOnly, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
 export default router;

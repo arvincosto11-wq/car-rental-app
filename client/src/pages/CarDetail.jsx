@@ -66,8 +66,12 @@ const CarDetail = () => {
         amountPaid: amountToPay,
         totalPrice,
       });
-      setShowRefundNotice(false);
-      setSuccess(`Booking confirmed! You will pay ₱${amountToPay.toLocaleString()} ${paymentType === 'downpayment' ? '(20% downpayment)' : '(full payment)'} upon pickup.`);
+            setShowRefundNotice(false);
+      if (paymentType === 'full') {
+        setSuccess(`Booking confirmed! Your full payment of ₱${amountToPay.toLocaleString()} has been received.`);
+      } else {
+        setSuccess(`Booking confirmed! You paid ₱${amountToPay.toLocaleString()} (20% downpayment) now. Remaining ₱${(totalPrice - downPayment).toLocaleString()} due upon pickup.`);
+      }
     } catch (err) {
       setShowRefundNotice(false);
       setError(err.response?.data?.message || 'Booking failed');
@@ -328,7 +332,9 @@ const CarDetail = () => {
             >
               {booking ? 'Booking...' : `Book Now — Pay ₱${amountToPay > 0 ? amountToPay.toLocaleString() : car.pricePerDay.toLocaleString()}`}
             </button>
-            <p style={s.noCC}>Payment upon vehicle pickup · Cash or GCash accepted</p>
+                        <p style={s.noCC}>
+              {paymentType === 'full' ? 'Full payment due now' : 'Remaining balance due upon vehicle pickup'} · Cash or GCash accepted
+            </p>
           </div>
         </div>
       </div>
