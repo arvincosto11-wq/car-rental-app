@@ -16,6 +16,7 @@ const CarDetail = () => {
   const [paymentType, setPaymentType] = useState('downpayment');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [showRefundNotice, setShowRefundNotice] = useState(false);
   const [booking, setBooking] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -42,13 +43,17 @@ const CarDetail = () => {
   const downPayment = Math.ceil(totalPrice * 0.20);
   const amountToPay = paymentType === 'downpayment' ? downPayment : totalPrice;
 
-  const handleBooking = async () => {
+  const openRefundNotice = () => {
     if (!user) return navigate('/login');
     if (!startDate || !endDate) return setError('Please select pickup and return dates');
     if (totalDays <= 0) return setError('Return date must be after pickup date');
     if (!agreedToTerms) return setError('Please agree to the Terms and Conditions');
     if (car.isAvailable === false) return setError('This car is no longer available.');
+    setError('');
+    setShowRefundNotice(true);
+  };
 
+  const confirmBooking = async () => {
     setBooking(true);
     setError('');
     try {
@@ -61,8 +66,10 @@ const CarDetail = () => {
         amountPaid: amountToPay,
         totalPrice,
       });
+      setShowRefundNotice(false);
       setSuccess(`Booking confirmed! You will pay ₱${amountToPay.toLocaleString()} ${paymentType === 'downpayment' ? '(20% downpayment)' : '(full payment)'} upon pickup.`);
     } catch (err) {
+      setShowRefundNotice(false);
       setError(err.response?.data?.message || 'Booking failed');
     } finally {
       setBooking(false);
@@ -117,6 +124,9 @@ const CarDetail = () => {
     modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '16px' },
     modalText: { fontSize: '13px', color: isDark ? '#94a3b8' : '#4b5563', lineHeight: '1.8' },
     closeBtn: { marginTop: '16px', padding: '10px 24px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', width: '100%' },
+    refundNoticeActions: { display: 'flex', gap: '10px', marginTop: '20px' },
+    refundNoticeCancel: { flex: 1, padding: '10px', background: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
+    refundNoticeConfirm: { flex: 1, padding: '10px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
   };
 
   if (loading) return <div style={s.page}><p style={{ textAlign: 'center', padding: '40px', color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p></div>;
@@ -154,6 +164,29 @@ const CarDetail = () => {
             <button style={s.closeBtn} onClick={() => setShowTerms(false)}>
               I Understand — Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Refund Notice Modal */}
+      {showRefundNotice && (
+        <div style={s.modal}>
+          <div style={s.modalContent}>
+            <h2 style={s.modalTitle}>Before You Confirm</h2>
+            <div style={s.modalText}>
+              <p>⚠️ <strong>Refund Policy:</strong> If you need to cancel this booking later, refunds deduct 50% of the amount you paid as a processing fee.</p>
+              <p style={{ marginTop: '10px' }}>
+                For example, if you pay ₱{amountToPay.toLocaleString()} now, you would receive approximately ₱{Math.round(amountToPay * 0.5).toLocaleString()} back if your refund request is later approved.
+              </p>
+            </div>
+            <div style={s.refundNoticeActions}>
+              <button style={s.refundNoticeCancel} onClick={() => setShowRefundNotice(false)} disabled={booking}>
+                Cancel
+              </button>
+              <button style={s.refundNoticeConfirm} onClick={confirmBooking} disabled={booking}>
+                {booking ? 'Booking...' : 'Confirm Booking'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -290,7 +323,7 @@ const CarDetail = () => {
 
             <button
               style={s.bookBtn}
-              onClick={handleBooking}
+              onClick={openRefundNotice}
               disabled={booking || !agreedToTerms || car.isAvailable === false}
             >
               {booking ? 'Booking...' : `Book Now — Pay ₱${amountToPay > 0 ? amountToPay.toLocaleString() : car.pricePerDay.toLocaleString()}`}
