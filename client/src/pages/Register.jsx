@@ -28,7 +28,7 @@ const Register = () => {
   };
 
   const uploadToImageKit = async (file) => {
-    const authRes = await api.get('/imagekit/auth');
+    const authRes = await api.get('/imagekit/public-auth');
     const { token, expire, signature, publicKey } = authRes.data;
     const formData = new FormData();
     formData.append('file', file);
@@ -50,14 +50,12 @@ const Register = () => {
       setError('Please enter a valid Philippine phone number (e.g. 09171234567 or +639171234567)');
       return;
     }
-    if (!validIdImage) {
-      setError('Please upload a photo of a valid ID');
-      return;
-    }
-
     setLoading(true);
     try {
-      const uploaded = await uploadToImageKit(validIdImage);
+      let uploaded = { url: '', fileId: '' };
+      if (validIdImage) {
+        uploaded = await uploadToImageKit(validIdImage);
+      }
 
       const res = await api.post('/auth/register', {
         ...form,
@@ -141,7 +139,7 @@ const Register = () => {
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>Valid ID (Driver's License, National ID, etc.)</label>
+            <label style={styles.label}>Valid ID (Driver's License, National ID, etc.) — optional for now</label>
             <div style={styles.idUpload}>
               {validIdPreview ? (
                 <img src={validIdPreview} alt="ID preview" style={styles.idPreview} />
