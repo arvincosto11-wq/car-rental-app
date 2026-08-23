@@ -1,13 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import api from '../../api';
 
 const ManageCars = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingCar, setEditingCar] = useState(null);
@@ -122,26 +117,9 @@ const ManageCars = () => {
     }
   };
 
-  const handleLogout = () => { logout(); navigate('/'); };
-
   return (
-    <div style={styles.page}>
-      <div style={styles.topbar}>
-        <span style={styles.welcome}>Welcome, {user?.name}</span>
-        <button style={styles.logoutBtn} onClick={handleLogout}>Logout</button>
-      </div>
-      <div style={styles.layout}>
-        <div style={styles.sidebar}>
-          <div style={styles.avatar}>{user?.name?.charAt(0).toUpperCase()}</div>
-          <div style={styles.adminName}>{user?.name}</div>
-          <nav>
-            <Link to="/admin" style={styles.sideItem}>Dashboard</Link>
-            <Link to="/admin/add-car" style={styles.sideItem}>Add car</Link>
-            <Link to="/admin/manage-cars" style={{...styles.sideItem, ...styles.sideItemActive}}>Manage Cars</Link>
-            <Link to="/admin/manage-bookings" style={styles.sideItem}>Manage Bookings</Link>
-          </nav>
-        </div>
-        <div style={styles.main}>
+    <AdminLayout activePage="Manage Cars">
+      <div style={styles.main}>
           <h1 style={styles.title}>Manage Cars</h1>
           <p style={styles.subtitle}>View all listed cars, update or remove them.</p>
           {loading ? <p>Loading...</p> : (
@@ -284,24 +262,13 @@ const ManageCars = () => {
               ))}
             </div>
           )}
-        </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 
 const styles = {
-  page: { minHeight: '100vh', background: '#f9fafb' },
-  topbar: { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '12px 32px', background: '#fff', borderBottom: '1px solid #e5e7eb', gap: '16px' },
-  welcome: { fontSize: '13px', color: '#6b7280' },
-  logoutBtn: { padding: '7px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
-  layout: { display: 'grid', gridTemplateColumns: '180px 1fr' },
-  sidebar: { background: '#fff', borderRight: '1px solid #e5e7eb', padding: '24px 0', minHeight: 'calc(100vh - 45px)' },
-  avatar: { width: '48px', height: '48px', borderRadius: '50%', background: '#dbeafe', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '600', margin: '0 auto 8px' },
-  adminName: { textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#1a1a1a', marginBottom: '24px' },
-  sideItem: { display: 'block', padding: '10px 20px', fontSize: '13px', color: '#4b5563', textDecoration: 'none' },
-  sideItemActive: { background: '#eff6ff', color: '#1d4ed8', borderLeft: '3px solid #2563eb' },
-  main: { padding: '28px 32px' },
+  main: {},
   title: { fontSize: '22px', fontWeight: '700', color: '#1a1a1a', marginBottom: '4px' },
   subtitle: { fontSize: '13px', color: '#6b7280', marginBottom: '24px' },
   carCard: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', marginBottom: '12px', overflow: 'hidden' },

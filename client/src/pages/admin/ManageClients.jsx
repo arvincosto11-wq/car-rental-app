@@ -71,7 +71,8 @@ const ManageClients = () => {
     blocked: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     viewBtn: { padding: '5px 12px', fontSize: '12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', background: 'none', color: isDark ? '#f1f5f9' : '#1a1a1a', cursor: 'pointer' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
-    modalContent: { background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '600px', width: '100%', maxHeight: '85vh', overflow: 'auto' },
+    modalContent: { background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '600px', width: '100%', maxHeight: '85vh', overflow: 'auto', position: 'relative' },
+    closeX: { position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '22px', lineHeight: 1, cursor: 'pointer', color: isDark ? '#94a3b8' : '#6b7280', padding: '4px' },
     modalTitle: { fontSize: '20px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     modalSub: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '18px' },
     badgeRow: { display: 'flex', gap: '8px', marginBottom: '18px' },
@@ -153,6 +154,7 @@ const ManageClients = () => {
       {selectedClient && (
         <div style={s.modalOverlay}>
           <div style={s.modalContent}>
+            <button style={s.closeX} onClick={() => setSelectedClientId(null)}>×</button>
             <h2 style={s.modalTitle}>{selectedClient.name}</h2>
             <p style={s.modalSub}>{selectedClient.email}</p>
 
