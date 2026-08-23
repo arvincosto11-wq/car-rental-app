@@ -51,6 +51,8 @@ const ManageBookings = () => {
     th: { textAlign: 'left', padding: '12px 16px', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, fontWeight: '500' },
     td: { padding: '12px 16px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}`, verticalAlign: 'middle' },
     carCell: { display: 'flex', alignItems: 'center', gap: '10px' },
+    clientName: { fontWeight: '600', fontSize: '13px' },
+    clientMeta: { fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280' },
     carThumb: { width: '44px', height: '32px', background: isDark ? '#334155' : '#f3f4f6', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 },
     payBadge: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
     confirmed: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
@@ -72,6 +74,7 @@ const ManageBookings = () => {
         <table style={s.table}>
           <thead>
             <tr>
+              <th style={s.th}>Client</th>
               <th style={s.th}>Car</th>
               <th style={s.th}>Date Range</th>
               <th style={s.th}>Total</th>
@@ -83,6 +86,11 @@ const ManageBookings = () => {
           <tbody>
             {bookings.map((booking) => (
               <tr key={booking._id}>
+                <td style={s.td}>
+                  <div style={s.clientName}>{booking.user?.name || 'Unknown'}</div>
+                  <div style={s.clientMeta}>{booking.user?.email}</div>
+                  <div style={s.clientMeta}>ID: {booking.user?._id?.slice(-6) || '—'}</div>
+                </td>
                 <td style={s.td}>
                   <div style={s.carCell}>
                     <div style={s.carThumb}>
