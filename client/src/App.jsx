@@ -73,6 +73,14 @@ function App() {
               }
             />
             <Route
+              path="/admin/manage-bookings"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ManageBookings />
+                </ProtectedRoute>
+              }
+            />
+              <Route
               path="/admin/manage-clients"
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
