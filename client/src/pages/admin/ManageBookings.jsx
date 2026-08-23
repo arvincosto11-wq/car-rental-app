@@ -24,18 +24,23 @@ const ManageBookings = () => {
   const handleStatus = async (id, status) => {
     try {
       const res = await api.put(`/bookings/${id}`, { status });
-      setBookings(bookings.map((b) => b._id === id ? { ...b, status: res.data.status } : b));
+      if (res.data.autoRefunded) {
+        alert(res.data.message);
+      }
+      await fetchBookings();
     } catch (err) {
       console.error(err);
+      alert(err.response?.data?.message || 'Something went wrong updating this booking.');
     }
   };
 
   const handleRefundDecision = async (id, decision) => {
     try {
-      const res = await api.put(`/bookings/${id}/refund`, { decision });
-      setBookings(bookings.map((b) => b._id === id ? { ...b, refundStatus: res.data.refundStatus, status: res.data.status } : b));
+      await api.put(`/bookings/${id}/refund`, { decision });
+      await fetchBookings();
     } catch (err) {
       console.error(err);
+      alert(err.response?.data?.message || 'Something went wrong updating this refund.');
     }
   };
 

@@ -88,16 +88,49 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
     const previousStatus = booking.status;
-    booking.status = status;
-    await booking.save();
 
     if (status === 'confirmed' && previousStatus !== 'confirmed') {
-      await Car.findByIdAndUpdate(booking.car, { isAvailable: false });
+      // Atomically claim the car only if it's still available. This prevents two
+      // bookings for the same car both being confirmed (e.g. admin approving
+      // both before the page refreshes, or two near-simultaneous requests).
+      const car = await Car.findOneAndUpdate(
+        { _id: booking.car, isAvailable: true },
+        { isAvailable: false },
+        { new: true }
+      );
+
+      if (!car) {
+        // Car was already taken by another confirmed booking. Don't allow this
+        // one to be confirmed too — send it straight to an approved refund instead.
+        booking.status = 'cancelled';
+        booking.refundStatus = 'approved';
+        booking.refundReason = 'Automatically refunded: this car was already booked by another confirmed reservation.';
+        await booking.save();
+
+        return res.json({
+          ...booking.toObject(),
+          autoRefunded: true,
+          message: 'This car was already booked by another client. The request has been cancelled and automatically approved for refund.'
+        });
+      }
+
+      booking.status = status;
+      await booking.save();
+
       await Booking.updateMany(
         { car: booking.car, _id: { $ne: booking._id }, status: 'pending' },
-        { status: 'cancelled' }
+        {
+          status: 'cancelled',
+          refundStatus: 'approved',
+          refundReason: 'Automatically refunded: another booking for this car was confirmed first.'
+        }
       );
+
+      return res.json(booking);
     }
+
+    booking.status = status;
+    await booking.save();
 
     if ((status === 'cancelled' || status === 'completed') && previousStatus === 'confirmed') {
       await Car.findByIdAndUpdate(booking.car, { isAvailable: true });

@@ -151,7 +151,7 @@ const MyBookings = () => {
                       Request Refund
                     </button>
                 )}
-                {booking.refundStatus === 'requested' && (
+                {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved') && booking.refundReason && (
                   <p style={styles.refundNote}>Reason: {booking.refundReason}</p>
                 )}
               </div>
