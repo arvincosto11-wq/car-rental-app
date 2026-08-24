@@ -17,7 +17,8 @@ const Login = () => {
     try {
       const res = await api.post('/auth/login', form);
       login(res.data.user, res.data.token);
-      navigate(res.data.user.role === 'admin' ? '/admin' : '/dashboard');
+      const role = res.data.user.role;
+      navigate(role === 'admin' ? '/admin' : role === 'consignor' ? '/consignor' : '/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
     } finally {

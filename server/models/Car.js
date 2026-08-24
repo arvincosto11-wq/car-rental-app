@@ -13,7 +13,8 @@ const carSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   image: { type: String, default: '' },
   imageFileId: { type: String, default: '' },
-  isAvailable: { type: Boolean, default: true }
+  isAvailable: { type: Boolean, default: true },
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
 }, { timestamps: true });
 
 export default mongoose.model('Car', carSchema);

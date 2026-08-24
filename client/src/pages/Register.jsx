@@ -77,6 +77,10 @@ const Register = () => {
         <h1 style={styles.title}>Create account</h1>
         <p style={styles.subtitle}>Sign up to get started</p>
 
+        <div style={styles.consignmentNotice}>
+          🚗 Have a car to rent out? <Link to="/consignment/register" style={styles.consignmentLink}>Apply for consignment</Link> instead.
+        </div>
+
         {error && <div style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
@@ -243,6 +247,20 @@ const styles = {
     fontSize: '14px',
     color: '#6b7280',
     marginBottom: '24px',
+  },
+  consignmentNotice: {
+    background: '#eff6ff',
+    border: '1px solid #bfdbfe',
+    color: '#1e40af',
+    padding: '10px 14px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    marginBottom: '16px',
+  },
+  consignmentLink: {
+    color: '#1d4ed8',
+    fontWeight: '600',
+    textDecoration: 'underline',
   },
   error: {
     background: '#fef2f2',

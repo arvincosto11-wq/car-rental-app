@@ -45,6 +45,12 @@ const Navbar = () => {
         {user && user.role === 'admin' && (
           <Link to="/admin" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>Admin Dashboard</Link>
         )}
+        {user && user.role === 'consignor' && (
+          <Link to="/consignor" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>My Vehicles</Link>
+        )}
+        {!user && (
+          <Link to="/consignment/register" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>List Your Car</Link>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

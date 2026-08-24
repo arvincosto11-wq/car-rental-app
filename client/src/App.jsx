@@ -14,7 +14,11 @@ import AddCar from './pages/admin/AddCar';
 import ManageCars from './pages/admin/ManageCars';
 import ManageBookings from './pages/admin/ManageBookings';
 import ManageClients from './pages/admin/ManageClients';
+import ManageConsignments from './pages/admin/ManageConsignments';
 import ClientDashboard from './pages/Dashboard';
+import ConsignmentRegister from './pages/ConsignmentRegister';
+import ConsignorDashboard from './pages/consignor/ConsignorDashboard';
+import AddVehicle from './pages/consignor/AddVehicle';
 
 function App() {
   return (
@@ -28,6 +32,7 @@ function App() {
             <Route path="/cars/:id" element={<><Navbar /><CarDetail /></>} />
             <Route path="/login" element={<><Navbar /><Login /></>} />
             <Route path="/register" element={<><Navbar /><Register /></>} />
+            <Route path="/consignment/register" element={<><Navbar /><ConsignmentRegister /></>} />
 
             {/* Client-only Routes */}
             <Route
@@ -43,6 +48,24 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['user']}>
                   <><Navbar /><ClientDashboard /></>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Consignor-only Routes */}
+            <Route
+              path="/consignor"
+              element={
+                <ProtectedRoute allowedRoles={['consignor']}>
+                  <><Navbar /><ConsignorDashboard /></>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/consignor/add-vehicle"
+              element={
+                <ProtectedRoute allowedRoles={['consignor']}>
+                  <><Navbar /><AddVehicle /></>
                 </ProtectedRoute>
               }
             />
@@ -85,6 +108,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <ManageClients />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/manage-consignments"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ManageConsignments />
                 </ProtectedRoute>
               }
             />
