@@ -9,7 +9,7 @@ const router = express.Router();
 // Create booking
 router.post('/', protect, async (req, res) => {
     try {
-    const { carId, startDate, endDate, location, paymentType, amountPaid, totalPrice } = req.body;
+    const { carId, startDate, endDate, location, paymentType, amountPaid, totalPrice, bookingType, licenseNumber, licenseExpiry } = req.body;
 
     const currentUser = await User.findById(req.user.id);
     if (currentUser?.isBlocked) {
@@ -32,6 +32,23 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({ message: 'You already have an active booking request for this car.' });
     }
 
+    // Self-drive bookings require a valid, unexpired driver's license on file.
+    // If the client just entered one on the booking form, save it to their profile first.
+    if (bookingType === 'self-drive') {
+      if (licenseNumber && licenseExpiry) {
+        currentUser.licenseNumber = licenseNumber;
+        currentUser.licenseExpiry = licenseExpiry;
+        await currentUser.save();
+      }
+
+      if (!currentUser.licenseNumber || !currentUser.licenseExpiry) {
+        return res.status(400).json({ message: "A driver's license is required to book self-drive." });
+      }
+      if (new Date(currentUser.licenseExpiry) < new Date()) {
+        return res.status(400).json({ message: 'Your driver\'s license has expired. Please update it to book self-drive.' });
+      }
+    }
+
     const start = new Date(startDate);
     const end = new Date(endDate);
     const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
@@ -46,6 +63,7 @@ router.post('/', protect, async (req, res) => {
       amountPaid,
       paymentType,
       location,
+      bookingType: bookingType || 'with-driver',
       payment: paymentType === 'full' ? 'paid' : 'offline'
     });
 
