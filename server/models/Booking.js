@@ -10,6 +10,7 @@ const bookingSchema = new mongoose.Schema({
   amountPaid: { type: Number, required: true },
   paymentType: { type: String, enum: ['downpayment', 'full'], default: 'downpayment' },
   location: { type: String, required: true },
+  bookingType: { type: String, enum: ['self-drive', 'with-driver'], default: 'with-driver' },
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'pending' },
   refundStatus: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' }, 
   refundReason: { type: String, default: '' },

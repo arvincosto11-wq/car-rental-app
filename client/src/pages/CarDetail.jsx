@@ -14,6 +14,10 @@ const CarDetail = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [paymentType, setPaymentType] = useState('downpayment');
+  const [bookingType, setBookingType] = useState('with-driver');
+  const [profile, setProfile] = useState(null);
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [licenseExpiry, setLicenseExpiry] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showRefundNotice, setShowRefundNotice] = useState(false);
@@ -35,6 +39,26 @@ const CarDetail = () => {
     fetchCar();
   }, [id]);
 
+  useEffect(() => {
+    if (!user) return;
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get('/auth/me');
+        setProfile(res.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchProfile();
+  }, [user]);
+
+  const hasValidLicense = !!(
+    profile?.licenseNumber &&
+    profile?.licenseExpiry &&
+    new Date(profile.licenseExpiry) >= new Date()
+  );
+  const needsLicenseInput = bookingType === 'self-drive' && !hasValidLicense;
+
   const totalDays = startDate && endDate
     ? Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24))
     : 0;
@@ -49,6 +73,14 @@ const CarDetail = () => {
     if (totalDays <= 0) return setError('Return date must be after pickup date');
     if (!agreedToTerms) return setError('Please agree to the Terms and Conditions');
     if (car.isAvailable === false) return setError('This car is no longer available.');
+    if (needsLicenseInput) {
+      if (!licenseNumber.trim() || !licenseExpiry) {
+        return setError("Please provide your driver's license details to book self-drive.");
+      }
+      if (new Date(licenseExpiry) < new Date()) {
+        return setError('That license expiry date has already passed. Please enter a valid, unexpired license.');
+      }
+    }
     setError('');
     setShowRefundNotice(true);
   };
@@ -65,6 +97,8 @@ const CarDetail = () => {
         paymentType,
         amountPaid: amountToPay,
         totalPrice,
+        bookingType,
+        ...(needsLicenseInput ? { licenseNumber, licenseExpiry } : {}),
       });
                   setShowRefundNotice(false);
       if (paymentType === 'full') {
@@ -116,6 +150,8 @@ const CarDetail = () => {
       textAlign: 'center',
     }),
     priceBreakdown: { background: isDark ? '#0f172a' : '#f9fafb', borderRadius: '8px', padding: '12px', marginBottom: '14px', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
+    licenseBox: { background: isDark ? 'rgba(37,99,235,0.1)' : '#eff6ff', border: `1px solid ${isDark ? '#1e40af' : '#bfdbfe'}`, borderRadius: '8px', padding: '12px', marginBottom: '14px' },
+    licenseNote: { fontSize: '12px', color: isDark ? '#93c5fd' : '#1e40af', marginBottom: '10px', marginTop: 0 },
     breakdownRow: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px' },
     breakdownTotal: { display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', borderTop: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, paddingTop: '8px', marginTop: '8px' },
     termsRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '14px', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
@@ -264,6 +300,45 @@ const CarDetail = () => {
                 onChange={(e) => setEndDate(e.target.value)}
                 min={startDate} />
             </div>
+
+            {/* Booking Type */}
+            {totalDays > 0 && (
+              <>
+                <label style={s.label}>Booking Type</label>
+                <div style={s.paymentOptions}>
+                  <button
+                    style={s.paymentBtn(bookingType === 'with-driver')}
+                    onClick={() => setBookingType('with-driver')}
+                  >
+                    With Driver
+                  </button>
+                  <button
+                    style={s.paymentBtn(bookingType === 'self-drive')}
+                    onClick={() => setBookingType('self-drive')}
+                  >
+                    Self Drive
+                  </button>
+                </div>
+
+                {needsLicenseInput && (
+                  <div style={s.licenseBox}>
+                    <p style={s.licenseNote}>
+                      Self-drive requires a valid driver's license on file. Add yours below to continue.
+                    </p>
+                    <div style={s.field}>
+                      <label style={s.label}>Driver's License Number</label>
+                      <input style={s.input} type="text" placeholder="e.g. N03-12-123456"
+                        value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
+                    </div>
+                    <div style={s.field}>
+                      <label style={s.label}>License Expiry Date</label>
+                      <input style={s.input} type="date" value={licenseExpiry}
+                        onChange={(e) => setLicenseExpiry(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Payment Options */}
             {totalDays > 0 && (
