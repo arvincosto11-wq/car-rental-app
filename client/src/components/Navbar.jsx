@@ -24,7 +24,7 @@ const Navbar = () => {
       top: 0,
       zIndex: 100,
     }}>
-      <Link to="/" style={{
+      <Link to={user && user.role === 'consignor' ? '/consignor' : '/'} style={{
         fontSize: '20px',
         fontWeight: '600',
         textDecoration: 'none',
@@ -34,8 +34,12 @@ const Navbar = () => {
       </Link>
 
       <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-        <Link to="/" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>Home</Link>
-        <Link to="/cars" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>Cars</Link>
+        {(!user || user.role !== 'consignor') && (
+          <>
+            <Link to="/" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>Home</Link>
+            <Link to="/cars" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>Cars</Link>
+          </>
+        )}
         {user && user.role === 'user' && (
           <>
             <Link to="/my-bookings" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>My Bookings</Link>
