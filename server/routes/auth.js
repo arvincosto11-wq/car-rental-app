@@ -17,6 +17,44 @@ router.get('/me', protect, async (req, res) => {
   }
 });
 
+// Update the logged-in user's own basic profile info.
+// Deliberately excludes email, password, role, isBlocked, and idVerified —
+// those are either security-sensitive or admin-controlled.
+router.put('/me', protect, async (req, res) => {
+  try {
+    const {
+      name, phone, address,
+      licenseNumber, licenseExpiry,
+      emergencyContactName, emergencyContactNumber,
+      validIdImage, validIdImageFileId
+    } = req.body;
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (name !== undefined) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) user.address = address;
+    if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
+    if (licenseExpiry !== undefined) user.licenseExpiry = licenseExpiry;
+    if (emergencyContactName !== undefined) user.emergencyContactName = emergencyContactName;
+    if (emergencyContactNumber !== undefined) user.emergencyContactNumber = emergencyContactNumber;
+
+    // If they upload a new ID photo, it needs to be re-verified by admin
+    if (validIdImage && validIdImage !== user.validIdImage) {
+      user.validIdImage = validIdImage;
+      user.validIdImageFileId = validIdImageFileId || '';
+      user.idVerified = false;
+    }
+
+    await user.save();
+    const { password, ...safeUser } = user.toObject();
+    res.json(safeUser);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Register
 router.post('/register', async (req, res) => {
   try {

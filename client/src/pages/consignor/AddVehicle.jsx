@@ -24,7 +24,7 @@ const AddVehicle = () => {
   const [loading, setLoading] = useState(false);
 
   const uploadToImageKit = async (file) => {
-    const authRes = await api.get('/imagekit/auth');
+    const authRes = await api.get('/imagekit/user-auth');
     const { token, expire, signature, publicKey } = authRes.data;
     const formData = new FormData();
     formData.append('file', file);

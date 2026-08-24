@@ -33,4 +33,16 @@ router.get('/public-auth', (req, res) => {
   });
 });
 
+// Auth endpoint for any logged-in user (client or consignor) uploading their own
+// images — e.g. a consignor adding another vehicle's photos, or a client updating
+// their profile ID photo. Not admin-restricted, just requires being logged in.
+router.get('/user-auth', protect, (req, res) => {
+  const result = imagekit.getAuthenticationParameters();
+  res.json({
+    ...result,
+    publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+  });
+});
+
 export default router;
