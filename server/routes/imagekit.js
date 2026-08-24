@@ -22,4 +22,15 @@ router.get('/auth', protect, adminOnly, (req, res) => {
   });
 });
 
+// Public auth endpoint for use during registration, before the user has an account.
+// Only used for uploading the Valid ID photo on the signup form.
+router.get('/public-auth', (req, res) => {
+  const result = imagekit.getAuthenticationParameters();
+  res.json({
+    ...result,
+    publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+  });
+});
+
 export default router;
