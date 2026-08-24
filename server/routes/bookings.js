@@ -2,7 +2,7 @@ import express from 'express';
 import Booking from '../models/Booking.js';
 import Car from '../models/Car.js';
 import User from '../models/User.js';
-import { protect, adminOnly } from '../middleware/auth.js';
+import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -73,6 +73,22 @@ router.get('/all', protect, adminOnly, async (req, res) => {
     const bookings = await Booking.find()
       .populate('car')
       .populate('user', 'name email')
+      .sort({ createdAt: -1 });
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get booking history for cars owned by the logged-in consignor (read-only —
+// consignors can track bookings but cannot approve/decline them)
+router.get('/owner', protect, consignorOnly, async (req, res) => {
+  try {
+    const cars = await Car.find({ owner: req.user.id }).select('_id');
+    const carIds = cars.map((c) => c._id);
+    const bookings = await Booking.find({ car: { $in: carIds } })
+      .populate('car')
+      .populate('user', 'name')
       .sort({ createdAt: -1 });
     res.json(bookings);
   } catch (err) {

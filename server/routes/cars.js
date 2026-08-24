@@ -1,6 +1,6 @@
 import express from 'express';
 import Car from '../models/Car.js';
-import { protect, adminOnly } from '../middleware/auth.js';
+import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -54,6 +54,22 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
   try {
     await Car.findByIdAndDelete(req.params.id);
     res.json({ message: 'Car deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Toggle availability for a car the logged-in consignor owns
+router.put('/:id/toggle', protect, consignorOnly, async (req, res) => {
+  try {
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+    if (!car.owner || car.owner.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'You can only manage your own vehicles' });
+    }
+    car.isAvailable = !car.isAvailable;
+    await car.save();
+    res.json(car);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
