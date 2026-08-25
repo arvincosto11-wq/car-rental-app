@@ -233,6 +233,14 @@ const ManageConsignments = () => {
                 <span style={s.profileLabel}>Suggested Price</span>
                 <span style={s.profileValue}>${selected.suggestedPricePerDay}/day</span>
               </div>
+              <div style={s.profileItem}>
+                <span style={s.profileLabel}>Booking Types Requested</span>
+                <span style={s.profileValue}>
+                  {(selected.availableBookingTypes?.length ? selected.availableBookingTypes : ['self-drive', 'with-driver'])
+                    .map((t) => (t === 'self-drive' ? 'Self Drive' : 'With Driver'))
+                    .join(' + ')}
+                </span>
+              </div>
             </div>
             {selected.description && (
               <div style={{ ...s.profileItem, marginBottom: '18px' }}>

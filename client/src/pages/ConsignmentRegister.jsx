@@ -23,6 +23,16 @@ const ConsignmentRegister = () => {
   const [crPreview, setCrPreview] = useState('');
   const [vehiclePhotos, setVehiclePhotos] = useState([]);
   const [vehiclePreviews, setVehiclePreviews] = useState([]);
+  const [bookingTypes, setBookingTypes] = useState({ 'self-drive': true, 'with-driver': true });
+
+  const handleCategoryChange = (value) => {
+    setForm({ ...form, category: value });
+    setBookingTypes(
+      value === 'Motorcycle'
+        ? { 'self-drive': true, 'with-driver': false }
+        : { 'self-drive': true, 'with-driver': true }
+    );
+  };
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -76,6 +86,11 @@ const ConsignmentRegister = () => {
       setError('Please upload at least one photo of the vehicle.');
       return;
     }
+    const selectedBookingTypes = Object.entries(bookingTypes).filter(([, v]) => v).map(([k]) => k);
+    if (selectedBookingTypes.length === 0) {
+      setError('Please select at least one booking type (Self Drive and/or With Driver).');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -97,6 +112,7 @@ const ConsignmentRegister = () => {
         crImage: uploadedCr.url,
         crImageFileId: uploadedCr.fileId,
         vehiclePhotos: uploadedPhotos,
+        availableBookingTypes: selectedBookingTypes,
       });
 
       login(res.data.user, res.data.token);
@@ -211,10 +227,10 @@ const ConsignmentRegister = () => {
           <div style={styles.row3}>
             <div style={styles.field}>
               <label style={styles.label}>Category</label>
-              <select style={styles.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
+              <select style={styles.input} value={form.category} onChange={(e) => handleCategoryChange(e.target.value)} required>
                 <option value="">Select category</option>
                 <option>Sedan</option><option>SUV</option><option>Hatchback</option>
-                <option>Van</option><option>Truck</option><option>Coupe</option>
+                <option>Van</option><option>Truck</option><option>Coupe</option><option>Motorcycle</option>
               </select>
             </div>
             <div style={styles.field}>
@@ -253,6 +269,23 @@ const ConsignmentRegister = () => {
             <input style={styles.input} type="number" placeholder="e.g. 120"
               value={form.suggestedPricePerDay} onChange={(e) => setForm({ ...form, suggestedPricePerDay: e.target.value })} required />
             <p style={styles.fieldHint}>This is a starting suggestion — our admin may adjust it before listing.</p>
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>Available Booking Types</label>
+            <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+              <label style={styles.checkboxLabel}>
+                <input type="checkbox" checked={bookingTypes['self-drive']}
+                  onChange={(e) => setBookingTypes({ ...bookingTypes, 'self-drive': e.target.checked })} />
+                Self Drive
+              </label>
+              <label style={styles.checkboxLabel}>
+                <input type="checkbox" checked={bookingTypes['with-driver']}
+                  onChange={(e) => setBookingTypes({ ...bookingTypes, 'with-driver': e.target.checked })} />
+                With Driver
+              </label>
+            </div>
+            <p style={styles.fieldHint}>At least one must be checked. Motorcycles default to Self Drive only.</p>
           </div>
 
           <div style={styles.field}>
@@ -367,6 +400,7 @@ const styles = {
   row3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' },
   field: { marginBottom: '16px' },
   fieldHint: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' },
+  checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#374151', cursor: 'pointer' },
   label: { display: 'block', fontSize: '13px', color: '#374151', marginBottom: '6px', fontWeight: '500' },
   input: {
     width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px',

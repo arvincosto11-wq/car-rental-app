@@ -23,6 +23,12 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({ message: 'This car is currently unavailable.' });
     }
 
+    const requestedType = bookingType || 'with-driver';
+    const supportedTypes = car.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver'];
+    if (!supportedTypes.includes(requestedType)) {
+      return res.status(400).json({ message: `This vehicle does not offer ${requestedType === 'self-drive' ? 'self-drive' : 'with-driver'} bookings.` });
+    }
+
     const existing = await Booking.findOne({
       user: req.user.id,
       car: carId,

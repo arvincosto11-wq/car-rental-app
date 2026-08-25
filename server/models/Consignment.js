@@ -12,11 +12,12 @@ const consignmentSchema = new mongoose.Schema({
   plateNumber: { type: String, required: true },
   color: { type: String, default: '' },
   mileage: { type: Number },
-  category: { type: String, enum: ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe'] },
+  category: { type: String, enum: ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe', 'Motorcycle'] },
   transmission: { type: String, enum: ['Automatic', 'Manual', 'Semi-Automatic'] },
   fuelType: { type: String, enum: ['Petrol', 'Diesel', 'Electric', 'Hybrid'] },
   seats: { type: Number, required: true },
   location: { type: String, required: true },
+  availableBookingTypes: { type: [String], enum: ['self-drive', 'with-driver'], default: ['self-drive', 'with-driver'] },
   suggestedPricePerDay: { type: Number, required: true },
   description: { type: String, default: '' },
 

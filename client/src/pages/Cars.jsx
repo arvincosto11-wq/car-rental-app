@@ -55,6 +55,7 @@ const Cars = () => {
           <option value="Van">Van</option>
           <option value="Truck">Truck</option>
           <option value="Coupe">Coupe</option>
+          <option value="Motorcycle">Motorcycle</option>
         </select>
       </div>
 
@@ -89,6 +90,13 @@ const Cars = () => {
                   <span>{car.fuelType}</span>
                   <span>{car.transmission}</span>
                   <span>{car.location}</span>
+                </div>
+                <div style={styles.bookingTypeRow}>
+                  {(car.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver']).map((t) => (
+                    <span key={t} style={styles.bookingTypeTag}>
+                      {t === 'self-drive' ? '🧍 Self Drive' : '🚘 With Driver'}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
@@ -201,6 +209,19 @@ const styles = {
     gap: '4px',
     fontSize: '12px',
     color: '#6b7280',
+  },
+  bookingTypeRow: {
+    display: 'flex',
+    gap: '6px',
+    marginTop: '10px',
+    flexWrap: 'wrap',
+  },
+  bookingTypeTag: {
+    fontSize: '11px',
+    color: '#374151',
+    background: '#f3f4f6',
+    padding: '3px 9px',
+    borderRadius: '20px',
   },
 };
 

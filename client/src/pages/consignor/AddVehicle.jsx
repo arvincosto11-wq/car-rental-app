@@ -19,6 +19,16 @@ const AddVehicle = () => {
   const [crPreview, setCrPreview] = useState('');
   const [vehiclePhotos, setVehiclePhotos] = useState([]);
   const [vehiclePreviews, setVehiclePreviews] = useState([]);
+  const [bookingTypes, setBookingTypes] = useState({ 'self-drive': true, 'with-driver': true });
+
+  const handleCategoryChange = (value) => {
+    setForm({ ...form, category: value });
+    setBookingTypes(
+      value === 'Motorcycle'
+        ? { 'self-drive': true, 'with-driver': false }
+        : { 'self-drive': true, 'with-driver': true }
+    );
+  };
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -62,6 +72,11 @@ const AddVehicle = () => {
       setError('Please upload at least one photo of the vehicle.');
       return;
     }
+    const selectedBookingTypes = Object.entries(bookingTypes).filter(([, v]) => v).map(([k]) => k);
+    if (selectedBookingTypes.length === 0) {
+      setError('Please select at least one booking type (Self Drive and/or With Driver).');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -80,6 +95,7 @@ const AddVehicle = () => {
         crImage: uploadedCr.url,
         crImageFileId: uploadedCr.fileId,
         vehiclePhotos: uploadedPhotos,
+        availableBookingTypes: selectedBookingTypes,
       });
 
       navigate('/consignor');
@@ -102,6 +118,7 @@ const AddVehicle = () => {
     row3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' },
     field: { marginBottom: '16px' },
     fieldHint: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '4px' },
+    checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer' },
     label: { display: 'block', fontSize: '13px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
     input: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#111827' },
     textarea: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', minHeight: '80px', resize: 'vertical', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#111827' },
@@ -161,10 +178,10 @@ const AddVehicle = () => {
           <div style={s.row3}>
             <div style={s.field}>
               <label style={s.label}>Category</label>
-              <select style={s.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
+              <select style={s.input} value={form.category} onChange={(e) => handleCategoryChange(e.target.value)} required>
                 <option value="">Select category</option>
                 <option>Sedan</option><option>SUV</option><option>Hatchback</option>
-                <option>Van</option><option>Truck</option><option>Coupe</option>
+                <option>Van</option><option>Truck</option><option>Coupe</option><option>Motorcycle</option>
               </select>
             </div>
             <div style={s.field}>
@@ -201,6 +218,23 @@ const AddVehicle = () => {
             <label style={s.label}>Suggested Daily Price ($)</label>
             <input style={s.input} type="number" placeholder="e.g. 120" value={form.suggestedPricePerDay} onChange={(e) => setForm({ ...form, suggestedPricePerDay: e.target.value })} required />
             <p style={s.fieldHint}>This is a starting suggestion — our admin may adjust it before listing.</p>
+          </div>
+
+          <div style={s.field}>
+            <label style={s.label}>Available Booking Types</label>
+            <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+              <label style={s.checkboxLabel}>
+                <input type="checkbox" checked={bookingTypes['self-drive']}
+                  onChange={(e) => setBookingTypes({ ...bookingTypes, 'self-drive': e.target.checked })} />
+                Self Drive
+              </label>
+              <label style={s.checkboxLabel}>
+                <input type="checkbox" checked={bookingTypes['with-driver']}
+                  onChange={(e) => setBookingTypes({ ...bookingTypes, 'with-driver': e.target.checked })} />
+                With Driver
+              </label>
+            </div>
+            <p style={s.fieldHint}>At least one must be checked. Motorcycles default to Self Drive only.</p>
           </div>
 
           <div style={s.field}>
