@@ -16,6 +16,7 @@ import ManageBookings from './pages/admin/ManageBookings';
 import ManageClients from './pages/admin/ManageClients';
 import ManageConsignments from './pages/admin/ManageConsignments';
 import ClientDashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
 import ConsignmentRegister from './pages/ConsignmentRegister';
 import ConsignorDashboard from './pages/consignor/ConsignorDashboard';
 import AddVehicle from './pages/consignor/AddVehicle';
@@ -48,6 +49,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['user']}>
                   <><Navbar /><ClientDashboard /></>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <><Navbar /><Profile /></>
                 </ProtectedRoute>
               }
             />
