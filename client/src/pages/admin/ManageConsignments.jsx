@@ -151,7 +151,7 @@ const ManageConsignments = () => {
                     <span>{c.brand} {c.model} ({c.year})</span>
                   </div>
                 </td>
-                <td style={s.td}>${c.suggestedPricePerDay}/day</td>
+                <td style={s.td}>₱{c.suggestedPricePerDay}/day</td>
                 <td style={s.td}><span style={badgeStyle(c.status)}>{c.status}</span></td>
                 <td style={s.td}>{new Date(c.createdAt).toLocaleDateString()}</td>
                 <td style={s.td}>
@@ -226,12 +226,8 @@ const ManageConsignments = () => {
                 <span style={s.profileValue}>{selected.seats}</span>
               </div>
               <div style={s.profileItem}>
-                <span style={s.profileLabel}>Location</span>
-                <span style={s.profileValue}>{selected.location}</span>
-              </div>
-              <div style={s.profileItem}>
                 <span style={s.profileLabel}>Suggested Price</span>
-                <span style={s.profileValue}>${selected.suggestedPricePerDay}/day</span>
+                <span style={s.profileValue}>₱{selected.suggestedPricePerDay}/day</span>
               </div>
               <div style={s.profileItem}>
                 <span style={s.profileLabel}>Booking Types Requested</span>

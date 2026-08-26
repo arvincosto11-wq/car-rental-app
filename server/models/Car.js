@@ -9,7 +9,6 @@ const carSchema = new mongoose.Schema({
   transmission: { type: String, enum: ['Automatic', 'Manual', 'Semi-Automatic'] },
   fuelType: { type: String, enum: ['Petrol', 'Diesel', 'Electric', 'Hybrid'] },
   seats: { type: Number, required: true },
-  location: { type: String, required: true },
   availableBookingTypes: { type: [String], enum: ['self-drive', 'with-driver'], default: ['self-drive', 'with-driver'] },
   description: { type: String, default: '' },
   image: { type: String, default: '' },

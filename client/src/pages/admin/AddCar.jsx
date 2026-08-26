@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import api from '../../api';
-import { CAR_BRANDS_MODELS, MOTO_BRANDS_MODELS, ALL_CATEGORIES } from '../../data/vehicleBrands';
+import { VEHICLE_DATA, ALL_CATEGORIES } from '../../data/vehicleBrands';
 
 const OTHER = '__other__';
+const BRAND_OPTIONS = Object.keys(VEHICLE_DATA).sort();
 
 const AddCar = () => {
   const { isDark } = useTheme();
   const [form, setForm] = useState({
     brand: '', model: '', year: '', pricePerDay: '',
     category: '', transmission: '', fuelType: '',
-    seats: '', location: '', description: '',
+    seats: '', description: '',
   });
   const [brandChoice, setBrandChoice] = useState('');
   const [modelChoice, setModelChoice] = useState('');
@@ -22,33 +23,30 @@ const AddCar = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const isMoto = form.category === 'Motorcycle';
-  const brandModelMap = isMoto ? MOTO_BRANDS_MODELS : CAR_BRANDS_MODELS;
-  const brandOptions = Object.keys(brandModelMap);
-  const modelOptions = brandChoice && brandChoice !== OTHER ? (brandModelMap[brandChoice] || []) : [];
-
-  const handleCategoryChange = (value) => {
-    // Switching between car/motorcycle changes which brand list applies, so reset brand/model
-    setForm({ ...form, category: value, brand: '', model: '' });
-    setBrandChoice('');
-    setModelChoice('');
-    // Motorcycles default to self-drive only; cars default to both
-    if (value === 'Motorcycle') {
-      setBookingTypes({ 'self-drive': true, 'with-driver': false });
-    } else {
-      setBookingTypes({ 'self-drive': true, 'with-driver': true });
-    }
-  };
+  const modelOptions = brandChoice && brandChoice !== OTHER ? (VEHICLE_DATA[brandChoice] || []) : [];
 
   const handleBrandChoiceChange = (value) => {
     setBrandChoice(value);
     setModelChoice('');
-    setForm({ ...form, brand: value === OTHER ? '' : value, model: '' });
+    setForm({ ...form, brand: value === OTHER ? '' : value, model: '', category: '' });
+    setBookingTypes({ 'self-drive': true, 'with-driver': true });
   };
 
   const handleModelChoiceChange = (value) => {
     setModelChoice(value);
-    setForm({ ...form, model: value === OTHER ? '' : value });
+    if (value === OTHER) {
+      setForm({ ...form, model: '' });
+      return;
+    }
+    const match = modelOptions.find((m) => m.model === value);
+    const autoCategory = match?.category || '';
+    setForm({ ...form, model: value, category: autoCategory });
+    // Motorcycles default to self-drive only; everything else defaults to both
+    setBookingTypes(
+      autoCategory === 'Motorcycle'
+        ? { 'self-drive': true, 'with-driver': false }
+        : { 'self-drive': true, 'with-driver': true }
+    );
   };
 
   const handleImageChange = (e) => {
@@ -88,6 +86,10 @@ const AddCar = () => {
       setError('Please select or enter a model.');
       return;
     }
+    if (!form.category) {
+      setError('Please select a category.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -99,15 +101,15 @@ const AddCar = () => {
         imageFileId = uploaded.fileId;
       }
       await api.post('/cars', { ...form, image: imageUrl, imageFileId, availableBookingTypes: selectedBookingTypes });
-      setSuccess('Car added successfully!');
-      setForm({ brand: '', model: '', year: '', pricePerDay: '', category: '', transmission: '', fuelType: '', seats: '', location: '', description: '' });
+      setSuccess('Vehicle added successfully!');
+      setForm({ brand: '', model: '', year: '', pricePerDay: '', category: '', transmission: '', fuelType: '', seats: '', description: '' });
       setBrandChoice('');
       setModelChoice('');
       setBookingTypes({ 'self-drive': true, 'with-driver': true });
       setImage(null);
       setImagePreview('');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add car');
+      setError(err.response?.data?.message || 'Failed to add vehicle');
     } finally {
       setLoading(false);
     }
@@ -123,6 +125,7 @@ const AddCar = () => {
     field: { marginBottom: '16px' },
     label: { display: 'block', fontSize: '13px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
     input: { width: '100%', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#111827' },
+    disabledInput: { width: '100%', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: isDark ? '#1e293b' : '#f3f4f6', color: isDark ? '#64748b' : '#9ca3af' },
     textarea: { width: '100%', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '80px', resize: 'vertical', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#111827' },
     imageUpload: { position: 'relative', width: '200px', height: '140px', border: `2px dashed ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#0f172a' : '#fff' },
     imagePlaceholder: { textAlign: 'center', padding: '16px' },
@@ -135,8 +138,8 @@ const AddCar = () => {
   };
 
   return (
-    <AdminLayout activePage="Add car">
-      <h1 style={s.title}>Add New Car</h1>
+    <AdminLayout activePage="Add Vehicle">
+      <h1 style={s.title}>Add New Vehicle</h1>
       <p style={s.subtitle}>Fill in details to list a new vehicle for booking.</p>
       {error && <div style={s.error}>{error}</div>}
       {success && <div style={s.success}>{success}</div>}
@@ -148,7 +151,7 @@ const AddCar = () => {
               <img src={imagePreview} alt="preview" style={s.imagePreview} />
             ) : (
               <div style={s.imagePlaceholder}>
-                <span style={{ fontSize: '32px' }}>{isMoto ? '🏍️' : '🚗'}</span>
+                <span style={{ fontSize: '32px' }}>{form.category === 'Motorcycle' ? '🏍️' : '🚗'}</span>
                 <p style={{ fontSize: '13px', color: isDark ? '#64748b' : '#6b7280', marginTop: '8px' }}>Click to upload</p>
               </div>
             )}
@@ -156,20 +159,12 @@ const AddCar = () => {
           </div>
         </div>
 
-        <div style={s.field}>
-          <label style={s.label}>Category</label>
-          <select style={s.input} value={form.category} onChange={(e) => handleCategoryChange(e.target.value)} required>
-            <option value="">Select category</option>
-            {ALL_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-          </select>
-        </div>
-
         <div style={s.row}>
           <div style={s.field}>
             <label style={s.label}>Brand</label>
             <select style={s.input} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
               <option value="">Select brand</option>
-              {brandOptions.map((b) => <option key={b} value={b}>{b}</option>)}
+              {BRAND_OPTIONS.map((b) => <option key={b} value={b}>{b}</option>)}
               <option value={OTHER}>Other (type manually)</option>
             </select>
             {brandChoice === OTHER && (
@@ -183,7 +178,7 @@ const AddCar = () => {
               <>
                 <select style={s.input} value={modelChoice} onChange={(e) => handleModelChoiceChange(e.target.value)} required>
                   <option value="">Select model</option>
-                  {modelOptions.map((m) => <option key={m} value={m}>{m}</option>)}
+                  {modelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
                   <option value={OTHER}>Other (type manually)</option>
                 </select>
                 {modelChoice === OTHER && (
@@ -199,10 +194,23 @@ const AddCar = () => {
           </div>
         </div>
 
+        <div style={s.field}>
+          <label style={s.label}>Category</label>
+          <select style={s.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
+            <option value="">Select category</option>
+            {ALL_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+          </select>
+          <p style={s.hint}>
+            {modelChoice && modelChoice !== OTHER
+              ? 'Auto-filled based on the model you picked — change it if it\'s not right.'
+              : 'Pick a listed model to auto-fill this, or choose manually.'}
+          </p>
+        </div>
+
         <div style={s.row}>
           <div style={s.field}><label style={s.label}>Year</label><input style={s.input} type="number" placeholder="e.g. 2022" value={form.year} onChange={(e) => setForm({...form, year: e.target.value})} required /></div>
-          <div style={s.field}><label style={s.label}>Daily Price ($)</label><input style={s.input} type="number" placeholder="e.g. 150" value={form.pricePerDay} onChange={(e) => setForm({...form, pricePerDay: e.target.value})} required /></div>
-          <div style={s.field}><label style={s.label}>Seating Capacity</label><input style={s.input} type="number" placeholder={isMoto ? 'e.g. 2' : 'e.g. 5'} value={form.seats} onChange={(e) => setForm({...form, seats: e.target.value})} required /></div>
+          <div style={s.field}><label style={s.label}>Daily Price (₱)</label><input style={s.input} type="number" placeholder="e.g. 150" value={form.pricePerDay} onChange={(e) => setForm({...form, pricePerDay: e.target.value})} required /></div>
+          <div style={s.field}><label style={s.label}>Seating Capacity</label><input style={s.input} type="number" placeholder={form.category === 'Motorcycle' ? 'e.g. 2' : 'e.g. 5'} value={form.seats} onChange={(e) => setForm({...form, seats: e.target.value})} required /></div>
         </div>
 
         <div style={s.row}>
@@ -220,14 +228,6 @@ const AddCar = () => {
               <option>Petrol</option><option>Diesel</option><option>Electric</option><option>Hybrid</option>
             </select>
           </div>
-        </div>
-
-        <div style={s.field}>
-          <label style={s.label}>Location</label>
-          <select style={s.input} value={form.location} onChange={(e) => setForm({...form, location: e.target.value})} required>
-            <option value="">Select location</option>
-            <option>New York</option><option>Los Angeles</option><option>Chicago</option><option>Houston</option>
-          </select>
         </div>
 
         <div style={s.field}>

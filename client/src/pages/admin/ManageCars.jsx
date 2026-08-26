@@ -58,11 +58,17 @@ const ManageCars = () => {
       transmission: car.transmission,
       fuelType: car.fuelType,
       seats: car.seats,
-      location: car.location,
       description: car.description,
       image: car.image,
       imageFileId: car.imageFileId,
+      availableBookingTypes: car.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver'],
     });
+  };
+
+  const toggleEditBookingType = (type) => {
+    const current = editForm.availableBookingTypes || [];
+    const updated = current.includes(type) ? current.filter((t) => t !== type) : [...current, type];
+    setEditForm({ ...editForm, availableBookingTypes: updated });
   };
 
   const handleEditImageChange = (e) => {
@@ -95,6 +101,10 @@ const ManageCars = () => {
   };
 
   const handleUpdate = async (id) => {
+    if (!editForm.availableBookingTypes || editForm.availableBookingTypes.length === 0) {
+      alert('Please select at least one booking type (Self Drive and/or With Driver).');
+      return;
+    }
     setUpdating(true);
     try {
       let updatedForm = { ...editForm };
@@ -175,7 +185,7 @@ const ManageCars = () => {
                             onChange={(e) => setEditForm({...editForm, year: e.target.value})} />
                         </div>
                         <div style={styles.field}>
-                          <label style={styles.label}>Daily Price ($)</label>
+                          <label style={styles.label}>Daily Price (₱)</label>
                           <input style={styles.input} type="number" value={editForm.pricePerDay}
                             onChange={(e) => setEditForm({...editForm, pricePerDay: e.target.value})} />
                         </div>
@@ -186,6 +196,7 @@ const ManageCars = () => {
                             <option>Sedan</option><option>SUV</option>
                             <option>Hatchback</option><option>Van</option>
                             <option>Truck</option><option>Coupe</option>
+                            <option>Motorcycle</option>
                           </select>
                         </div>
                         <div style={styles.field}>
@@ -209,13 +220,20 @@ const ManageCars = () => {
                           <input style={styles.input} type="number" value={editForm.seats}
                             onChange={(e) => setEditForm({...editForm, seats: e.target.value})} />
                         </div>
-                        <div style={styles.field}>
-                          <label style={styles.label}>Location</label>
-                          <select style={styles.input} value={editForm.location}
-                            onChange={(e) => setEditForm({...editForm, location: e.target.value})}>
-                            <option>New York</option><option>Los Angeles</option>
-                            <option>Chicago</option><option>Houston</option>
-                          </select>
+                      </div>
+                      <div style={styles.field}>
+                        <label style={styles.label}>Available Booking Types</label>
+                        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                          <label style={styles.checkboxLabel}>
+                            <input type="checkbox" checked={(editForm.availableBookingTypes || []).includes('self-drive')}
+                              onChange={() => toggleEditBookingType('self-drive')} />
+                            Self Drive
+                          </label>
+                          <label style={styles.checkboxLabel}>
+                            <input type="checkbox" checked={(editForm.availableBookingTypes || []).includes('with-driver')}
+                              onChange={() => toggleEditBookingType('with-driver')} />
+                            With Driver
+                          </label>
                         </div>
                       </div>
                       <div style={styles.field}>
@@ -245,7 +263,7 @@ const ManageCars = () => {
                         <div style={styles.carName}>{car.brand} {car.model}</div>
                         <div style={styles.carSub}>{car.seats} · {car.transmission} · {car.category}</div>
                       </div>
-                      <div style={styles.carPrice}>${car.pricePerDay}/day</div>
+                      <div style={styles.carPrice}>₱{car.pricePerDay}/day</div>
                       <span style={car.isAvailable ? styles.available : styles.unavailable}>
                         {car.isAvailable ? 'Available' : 'Unavailable'}
                       </span>
@@ -299,6 +317,7 @@ const styles = {
   textarea: { width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '60px', resize: 'vertical', color: '#111827' },
   saveBtn: { padding: '8px 20px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
   cancelBtn: { padding: '8px 20px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
+  checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#374151', cursor: 'pointer' },
 };
 
 export default ManageCars;

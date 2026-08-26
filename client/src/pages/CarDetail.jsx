@@ -96,7 +96,6 @@ const CarDetail = () => {
         carId: id,
         startDate,
         endDate,
-        location: car.location,
         paymentType,
         amountPaid: amountToPay,
         totalPrice,
@@ -266,10 +265,6 @@ const CarDetail = () => {
               <div style={s.metaItem}>
                 <span style={s.metaLabel}>Transmission</span>
                 <span style={s.metaValue}>{car.transmission}</span>
-              </div>
-              <div style={s.metaItem}>
-                <span style={s.metaLabel}>Location</span>
-                <span style={s.metaValue}>{car.location}</span>
               </div>
             </div>
 

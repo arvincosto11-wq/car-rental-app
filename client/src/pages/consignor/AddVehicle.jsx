@@ -9,7 +9,7 @@ const AddVehicle = () => {
 
   const [form, setForm] = useState({
     brand: '', model: '', year: '', plateNumber: '', color: '', mileage: '',
-    category: '', transmission: '', fuelType: '', seats: '', location: '',
+    category: '', transmission: '', fuelType: '', seats: '',
     suggestedPricePerDay: '', description: '',
   });
 
@@ -200,22 +200,13 @@ const AddVehicle = () => {
             </div>
           </div>
 
-          <div style={s.row}>
-            <div style={s.field}>
-              <label style={s.label}>Seating Capacity</label>
-              <input style={s.input} type="number" placeholder="e.g. 5" value={form.seats} onChange={(e) => setForm({ ...form, seats: e.target.value })} required />
-            </div>
-            <div style={s.field}>
-              <label style={s.label}>Location</label>
-              <select style={s.input} value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} required>
-                <option value="">Select location</option>
-                <option>New York</option><option>Los Angeles</option><option>Chicago</option><option>Houston</option>
-              </select>
-            </div>
+          <div style={s.field}>
+            <label style={s.label}>Seating Capacity</label>
+            <input style={s.input} type="number" placeholder="e.g. 5" value={form.seats} onChange={(e) => setForm({ ...form, seats: e.target.value })} required />
           </div>
 
           <div style={s.field}>
-            <label style={s.label}>Suggested Daily Price ($)</label>
+            <label style={s.label}>Suggested Daily Price (₱)</label>
             <input style={s.input} type="number" placeholder="e.g. 120" value={form.suggestedPricePerDay} onChange={(e) => setForm({ ...form, suggestedPricePerDay: e.target.value })} required />
             <p style={s.fieldHint}>This is a starting suggestion — our admin may adjust it before listing.</p>
           </div>

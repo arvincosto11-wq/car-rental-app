@@ -6,7 +6,6 @@ import api from '../api';
 const Home = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [location, setLocation] = useState('');
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const navigate = useNavigate();
@@ -27,7 +26,7 @@ const Home = () => {
   }, []);
 
   const handleSearch = () => {
-    navigate(`/cars?location=${location}&pickup=${pickupDate}&return=${returnDate}`);
+    navigate(`/cars?pickup=${pickupDate}&return=${returnDate}`);
   };
 
   const styles = {
@@ -195,20 +194,6 @@ const Home = () => {
 
         <div style={styles.searchBox}>
           <div style={styles.searchField}>
-            <label style={styles.searchLabel}>Pickup Location</label>
-            <select
-              style={styles.searchInput}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            >
-              <option value="">Please select location</option>
-              <option value="New York">New York</option>
-              <option value="Los Angeles">Los Angeles</option>
-              <option value="Chicago">Chicago</option>
-              <option value="Houston">Houston</option>
-            </select>
-          </div>
-          <div style={styles.searchField}>
             <label style={styles.searchLabel}>Pick-up Date</label>
             <input
               style={styles.searchInput}
@@ -258,7 +243,7 @@ const Home = () => {
                     <div style={styles.noImg}>No Image</div>
                   )}
                   <span style={styles.availBadge}>Available Now</span>
-                  <span style={styles.priceBadge}>${car.pricePerDay} / day</span>
+                  <span style={styles.priceBadge}>₱{car.pricePerDay} / day</span>
                 </div>
                 <div style={styles.cardBody}>
                   <h3 style={styles.carName}>{car.brand} {car.model}</h3>
@@ -267,7 +252,6 @@ const Home = () => {
                     <span>{car.seats} Seats</span>
                     <span>{car.fuelType}</span>
                     <span>{car.transmission}</span>
-                    <span>{car.location}</span>
                   </div>
                 </div>
               </div>

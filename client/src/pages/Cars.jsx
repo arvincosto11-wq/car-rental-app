@@ -80,7 +80,7 @@ const Cars = () => {
                 <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#2563eb' }}>
   {car.isAvailable === false ? 'Not Available' : 'Available Now'}
 </span>
-                <span style={styles.priceBadge}>${car.pricePerDay} / day</span>
+                <span style={styles.priceBadge}>₱{car.pricePerDay} / day</span>
               </div>
               <div style={styles.cardBody}>
                 <h3 style={styles.carName}>{car.brand} {car.model}</h3>
@@ -89,7 +89,6 @@ const Cars = () => {
                   <span>{car.seats} Seats</span>
                   <span>{car.fuelType}</span>
                   <span>{car.transmission}</span>
-                  <span>{car.location}</span>
                 </div>
                 <div style={styles.bookingTypeRow}>
                   {(car.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver']).map((t) => (

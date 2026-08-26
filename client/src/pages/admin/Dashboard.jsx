@@ -87,7 +87,7 @@ const Dashboard = () => {
                     <div style={s.bookingName}>{b.car?.brand} {b.car?.model}</div>
                     <div style={s.bookingDate}>{new Date(b.createdAt).toLocaleDateString()}</div>
                   </div>
-                  <div style={s.bookingPrice}>${b.totalPrice}</div>
+                  <div style={s.bookingPrice}>₱{b.totalPrice}</div>
                   <span style={b.status === 'confirmed' ? s.badgeConfirmed : s.badgePending}>{b.status}</span>
                 </div>
               ))}
@@ -95,7 +95,7 @@ const Dashboard = () => {
             <div style={s.box}>
               <div style={s.boxTitle}>Monthly Revenue</div>
               <div style={s.boxSubtitle}>Revenue for current month</div>
-              <div style={s.revenueNum}>${revenue}</div>
+              <div style={s.revenueNum}>₱{revenue}</div>
             </div>
           </div>
         </>

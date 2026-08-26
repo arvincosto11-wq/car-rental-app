@@ -135,13 +135,10 @@ const MyBookings = () => {
                 <div style={styles.meta}>
                   📅 Rental Period: {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
                 </div>
-                <div style={styles.meta}>
-                  📍 Pick-up Location: {booking.location}
-                </div>
                 <div style={styles.carName}>
                   {booking.car?.brand} {booking.car?.model}
                   <span style={styles.carSub}>
-                    {' '}· {booking.car?.year} · {booking.car?.category} · {booking.car?.location}
+                    {' '}· {booking.car?.year} · {booking.car?.category}
                   </span>
                 </div>
 
@@ -157,7 +154,7 @@ const MyBookings = () => {
               </div>
               <div style={styles.priceCol}>
                 <span style={styles.priceLabel}>Total Price</span>
-                <span style={styles.price}>${booking.totalPrice}</span>
+                <span style={styles.price}>₱{booking.totalPrice}</span>
                 <span style={styles.bookedOn}>
                   Booked on {new Date(booking.createdAt).toLocaleDateString()}
                 </span>
@@ -174,7 +171,7 @@ const MyBookings = () => {
 
             <div style={styles.warningBox}>
               ⚠️ Refunds deduct 50% of the amount you paid as a processing fee.
-              You paid ${activeBooking.amountPaid}, so you would receive approximately ${refundAmount} back if approved.
+              You paid ₱{activeBooking.amountPaid}, so you would receive approximately ₱{refundAmount} back if approved.
             </div>
 
             {refundError && <div style={styles.errorBox}>{refundError}</div>}

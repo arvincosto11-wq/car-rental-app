@@ -85,7 +85,7 @@ const Dashboard = () => {
           </div>
           <div style={s.statCard}>
             <div style={s.statLabel}>Total Spent</div>
-            <div style={s.statNum}>${totalSpent}</div>
+            <div style={s.statNum}>₱{totalSpent}</div>
           </div>
         </div>
 
@@ -114,7 +114,6 @@ const Dashboard = () => {
                   <span style={getStatusStyle(booking.status)}>{booking.status}</span>
                 </div>
                 <div style={s.meta}>📅 {new Date(booking.startDate).toLocaleDateString()} → {new Date(booking.endDate).toLocaleDateString()}</div>
-                <div style={s.meta}>📍 {booking.location}</div>
                 <div style={s.carName}>
                   {booking.car?.brand} {booking.car?.model}
                   <span style={s.carSub}> · {booking.car?.year} · {booking.car?.category}</span>
@@ -122,7 +121,7 @@ const Dashboard = () => {
               </div>
               <div style={s.priceCol}>
                 <span style={s.priceLabel}>Total Price</span>
-                <span style={s.price}>${booking.totalPrice}</span>
+                <span style={s.price}>₱{booking.totalPrice}</span>
                 <span style={s.bookedOn}>Booked on {new Date(booking.createdAt).toLocaleDateString()}</span>
               </div>
             </div>

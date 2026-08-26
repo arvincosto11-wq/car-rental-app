@@ -9,7 +9,7 @@ const router = express.Router();
 // Create booking
 router.post('/', protect, async (req, res) => {
     try {
-    const { carId, startDate, endDate, location, paymentType, amountPaid, totalPrice, bookingType, licenseNumber, licenseExpiry } = req.body;
+    const { carId, startDate, endDate, paymentType, amountPaid, totalPrice, bookingType, licenseNumber, licenseExpiry } = req.body;
 
     const currentUser = await User.findById(req.user.id);
     if (currentUser?.isBlocked) {
@@ -68,7 +68,6 @@ router.post('/', protect, async (req, res) => {
       totalPrice,
       amountPaid,
       paymentType,
-      location,
       bookingType: bookingType || 'with-driver',
       payment: paymentType === 'full' ? 'paid' : 'offline'
     });

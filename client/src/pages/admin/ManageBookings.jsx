@@ -100,7 +100,7 @@ const ManageBookings = () => {
                   </div>
                 </td>
                 <td style={s.td}>{new Date(booking.startDate).toLocaleDateString()} to {new Date(booking.endDate).toLocaleDateString()}</td>
-                <td style={s.td}>${booking.totalPrice}</td>
+                <td style={s.td}>₱{booking.totalPrice}</td>
                 <td style={s.td}><span style={s.payBadge}>{booking.payment}</span></td>
                 <td style={s.td}>
                   {booking.refundStatus === 'requested' ? (

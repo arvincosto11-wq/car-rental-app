@@ -155,8 +155,8 @@ const ConsignorDashboard = () => {
                   <span style={getStatusStyle(c.status)}>{c.status}</span>
                 </div>
                 <div style={s.carName}>{c.brand} {c.model} ({c.year})</div>
-                <div style={s.carSub}>{c.plateNumber} · {c.category} · {c.transmission} · {c.location}</div>
-                <div style={s.price}>Suggested price: ${c.suggestedPricePerDay}/day</div>
+                <div style={s.carSub}>{c.plateNumber} · {c.category} · {c.transmission}</div>
+                <div style={s.price}>Suggested price: ₱{c.suggestedPricePerDay}/day</div>
                 {c.status === 'declined' && c.adminNotes && (
                   <div style={s.notesBox}>Reason: {c.adminNotes}</div>
                 )}
@@ -212,7 +212,7 @@ const ConsignorDashboard = () => {
                     </div>
                   </td>
                   <td style={s.td}>{new Date(b.startDate).toLocaleDateString()} to {new Date(b.endDate).toLocaleDateString()}</td>
-                  <td style={s.td}>${b.totalPrice}</td>
+                  <td style={s.td}>₱{b.totalPrice}</td>
                   <td style={s.td}><span style={s.payBadge}>{b.payment}</span></td>
                   <td style={s.td}>
                     {b.refundStatus === 'requested' ? (

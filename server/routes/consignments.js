@@ -18,7 +18,7 @@ router.post('/register', async (req, res) => {
       name, email, password, phone, address, validIdImage, validIdImageFileId,
       // Vehicle info
       brand, model, year, plateNumber, color, mileage, category, transmission,
-      fuelType, seats, location, suggestedPricePerDay, description, availableBookingTypes,
+      fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
       orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
     } = req.body;
 
@@ -35,7 +35,7 @@ router.post('/register', async (req, res) => {
     const consignment = await Consignment.create({
       owner: user._id,
       brand, model, year, plateNumber, color, mileage, category, transmission,
-      fuelType, seats, location, suggestedPricePerDay, description, availableBookingTypes,
+      fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
       orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
     });
 
@@ -60,14 +60,14 @@ router.post('/', protect, consignorOnly, async (req, res) => {
   try {
     const {
       brand, model, year, plateNumber, color, mileage, category, transmission,
-      fuelType, seats, location, suggestedPricePerDay, description, availableBookingTypes,
+      fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
       orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
     } = req.body;
 
     const consignment = await Consignment.create({
       owner: req.user.id,
       brand, model, year, plateNumber, color, mileage, category, transmission,
-      fuelType, seats, location, suggestedPricePerDay, description, availableBookingTypes,
+      fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
       orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
     });
 
@@ -127,7 +127,6 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         transmission: consignment.transmission,
         fuelType: consignment.fuelType,
         seats: consignment.seats,
-        location: consignment.location,
         description: consignment.description,
         image: consignment.vehiclePhotos?.[0]?.url || '',
         imageFileId: consignment.vehiclePhotos?.[0]?.fileId || '',
