@@ -209,3 +209,21 @@ VEHICLE_DATA.Suzuki.push(
 );
 
 export const ALL_CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe', 'Motorcycle'];
+
+// Car body types ordered by roughly how common they are in the Philippine
+// market (sedans and small SUVs/MPVs dominate; coupes are rare). Used to
+// order the Category dropdown instead of alphabetically.
+export const CAR_CATEGORIES_ORDERED = ['Sedan', 'SUV', 'Van', 'Hatchback', 'Truck', 'Coupe'];
+
+// Brands ordered by roughly their popularity/market share in the Philippines,
+// used for the Brand dropdown instead of alphabetical order.
+export const CAR_BRAND_ORDER = [
+  'Toyota', 'Mitsubishi', 'Ford', 'Nissan', 'Honda', 'Suzuki',
+  'Hyundai', 'Kia', 'Isuzu', 'Chevrolet', 'Mazda', 'Subaru',
+  'Geely', 'MG', 'GWM', 'Foton', 'BMW', 'Mercedes-Benz', 'Volkswagen',
+];
+
+export const MOTO_BRAND_ORDER = [
+  'Honda', 'Yamaha', 'Suzuki', 'Kawasaki', 'Rusi', 'Motorstar',
+  'Kymco', 'SYM', 'TVS', 'Bajaj', 'Vespa', 'CFMoto', 'Harley-Davidson',
+];

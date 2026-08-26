@@ -51,7 +51,7 @@ const Navbar = () => {
         {(!user || user.role !== 'consignor') && (
           <>
             <Link to="/" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>Home</Link>
-            <Link to="/cars" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>Cars</Link>
+            <Link to="/cars" style={{ textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' }}>Vehicles</Link>
           </>
         )}
         {user && user.role === 'user' && (

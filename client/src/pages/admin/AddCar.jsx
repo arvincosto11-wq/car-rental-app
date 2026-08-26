@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import api from '../../api';
-import { VEHICLE_DATA, ALL_CATEGORIES } from '../../data/vehicleBrands';
+import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
 
 const OTHER = '__other__';
-const BRAND_OPTIONS = Object.keys(VEHICLE_DATA).sort();
 
 const AddCar = () => {
   const { isDark } = useTheme();
+  const [vehicleType, setVehicleType] = useState('car'); // 'car' | 'motorcycle'
   const [form, setForm] = useState({
     brand: '', model: '', year: '', pricePerDay: '',
     category: '', transmission: '', fuelType: '',
@@ -23,13 +23,29 @@ const AddCar = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const modelOptions = brandChoice && brandChoice !== OTHER ? (VEHICLE_DATA[brandChoice] || []) : [];
+  const brandOrder = vehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
+  const modelOptions = brandChoice && brandChoice !== OTHER
+    ? (VEHICLE_DATA[brandChoice] || []).filter((m) =>
+        vehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
+      )
+    : [];
+
+  const handleVehicleTypeChange = (type) => {
+    setVehicleType(type);
+    setBrandChoice('');
+    setModelChoice('');
+    setForm({ ...form, brand: '', model: '', category: type === 'motorcycle' ? 'Motorcycle' : '' });
+    setBookingTypes(
+      type === 'motorcycle'
+        ? { 'self-drive': true, 'with-driver': false }
+        : { 'self-drive': true, 'with-driver': true }
+    );
+  };
 
   const handleBrandChoiceChange = (value) => {
     setBrandChoice(value);
     setModelChoice('');
-    setForm({ ...form, brand: value === OTHER ? '' : value, model: '', category: '' });
-    setBookingTypes({ 'self-drive': true, 'with-driver': true });
+    setForm({ ...form, brand: value === OTHER ? '' : value, model: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '' });
   };
 
   const handleModelChoiceChange = (value) => {
@@ -39,14 +55,8 @@ const AddCar = () => {
       return;
     }
     const match = modelOptions.find((m) => m.model === value);
-    const autoCategory = match?.category || '';
+    const autoCategory = match?.category || (vehicleType === 'motorcycle' ? 'Motorcycle' : '');
     setForm({ ...form, model: value, category: autoCategory });
-    // Motorcycles default to self-drive only; everything else defaults to both
-    setBookingTypes(
-      autoCategory === 'Motorcycle'
-        ? { 'self-drive': true, 'with-driver': false }
-        : { 'self-drive': true, 'with-driver': true }
-    );
   };
 
   const handleImageChange = (e) => {
@@ -102,10 +112,14 @@ const AddCar = () => {
       }
       await api.post('/cars', { ...form, image: imageUrl, imageFileId, availableBookingTypes: selectedBookingTypes });
       setSuccess('Vehicle added successfully!');
-      setForm({ brand: '', model: '', year: '', pricePerDay: '', category: '', transmission: '', fuelType: '', seats: '', description: '' });
+      setForm({ brand: '', model: '', year: '', pricePerDay: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '', transmission: '', fuelType: '', seats: '', description: '' });
       setBrandChoice('');
       setModelChoice('');
-      setBookingTypes({ 'self-drive': true, 'with-driver': true });
+      setBookingTypes(
+        vehicleType === 'motorcycle'
+          ? { 'self-drive': true, 'with-driver': false }
+          : { 'self-drive': true, 'with-driver': true }
+      );
       setImage(null);
       setImagePreview('');
     } catch (err) {
@@ -125,7 +139,6 @@ const AddCar = () => {
     field: { marginBottom: '16px' },
     label: { display: 'block', fontSize: '13px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
     input: { width: '100%', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#111827' },
-    disabledInput: { width: '100%', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: isDark ? '#1e293b' : '#f3f4f6', color: isDark ? '#64748b' : '#9ca3af' },
     textarea: { width: '100%', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '80px', resize: 'vertical', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#111827' },
     imageUpload: { position: 'relative', width: '200px', height: '140px', border: `2px dashed ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#0f172a' : '#fff' },
     imagePlaceholder: { textAlign: 'center', padding: '16px' },
@@ -135,6 +148,15 @@ const AddCar = () => {
     checkboxRow: { display: 'flex', gap: '20px', alignItems: 'center' },
     checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer' },
     hint: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '4px' },
+    typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '20px' },
+    typeToggleBtn: (active) => ({
+      flex: 1, padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
+      border: active ? '2px solid #2563eb' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff') : (isDark ? '#0f172a' : '#fff'),
+      color: active ? (isDark ? '#93c5fd' : '#1d4ed8') : (isDark ? '#94a3b8' : '#374151'),
+      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+    }),
+    categoryFixed: { padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', background: isDark ? '#0f172a' : '#f9fafb', color: isDark ? '#94a3b8' : '#6b7280' },
   };
 
   return (
@@ -144,6 +166,15 @@ const AddCar = () => {
       {error && <div style={s.error}>{error}</div>}
       {success && <div style={s.success}>{success}</div>}
       <form onSubmit={handleSubmit} style={s.form}>
+        <div style={s.typeToggleRow}>
+          <button type="button" style={s.typeToggleBtn(vehicleType === 'car')} onClick={() => handleVehicleTypeChange('car')}>
+            🚗 Car
+          </button>
+          <button type="button" style={s.typeToggleBtn(vehicleType === 'motorcycle')} onClick={() => handleVehicleTypeChange('motorcycle')}>
+            🏍️ Motorcycle
+          </button>
+        </div>
+
         <div style={s.field}>
           <label style={s.label}>Vehicle Image</label>
           <div style={s.imageUpload}>
@@ -151,7 +182,7 @@ const AddCar = () => {
               <img src={imagePreview} alt="preview" style={s.imagePreview} />
             ) : (
               <div style={s.imagePlaceholder}>
-                <span style={{ fontSize: '32px' }}>{form.category === 'Motorcycle' ? '🏍️' : '🚗'}</span>
+                <span style={{ fontSize: '32px' }}>{vehicleType === 'motorcycle' ? '🏍️' : '🚗'}</span>
                 <p style={{ fontSize: '13px', color: isDark ? '#64748b' : '#6b7280', marginTop: '8px' }}>Click to upload</p>
               </div>
             )}
@@ -164,7 +195,7 @@ const AddCar = () => {
             <label style={s.label}>Brand</label>
             <select style={s.input} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
               <option value="">Select brand</option>
-              {BRAND_OPTIONS.map((b) => <option key={b} value={b}>{b}</option>)}
+              {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
               <option value={OTHER}>Other (type manually)</option>
             </select>
             {brandChoice === OTHER && (
@@ -196,21 +227,27 @@ const AddCar = () => {
 
         <div style={s.field}>
           <label style={s.label}>Category</label>
-          <select style={s.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
-            <option value="">Select category</option>
-            {ALL_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-          </select>
-          <p style={s.hint}>
-            {modelChoice && modelChoice !== OTHER
-              ? 'Auto-filled based on the model you picked — change it if it\'s not right.'
-              : 'Pick a listed model to auto-fill this, or choose manually.'}
-          </p>
+          {vehicleType === 'motorcycle' ? (
+            <div style={s.categoryFixed}>Motorcycle</div>
+          ) : (
+            <>
+              <select style={s.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
+                <option value="">Select category</option>
+                {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
+              </select>
+              <p style={s.hint}>
+                {modelChoice && modelChoice !== OTHER
+                  ? 'Auto-filled based on the model you picked — change it if it\'s not right.'
+                  : 'Pick a listed model to auto-fill this, or choose manually.'}
+              </p>
+            </>
+          )}
         </div>
 
         <div style={s.row}>
           <div style={s.field}><label style={s.label}>Year</label><input style={s.input} type="number" placeholder="e.g. 2022" value={form.year} onChange={(e) => setForm({...form, year: e.target.value})} required /></div>
           <div style={s.field}><label style={s.label}>Daily Price (₱)</label><input style={s.input} type="number" placeholder="e.g. 150" value={form.pricePerDay} onChange={(e) => setForm({...form, pricePerDay: e.target.value})} required /></div>
-          <div style={s.field}><label style={s.label}>Seating Capacity</label><input style={s.input} type="number" placeholder={form.category === 'Motorcycle' ? 'e.g. 2' : 'e.g. 5'} value={form.seats} onChange={(e) => setForm({...form, seats: e.target.value})} required /></div>
+          <div style={s.field}><label style={s.label}>Seating Capacity</label><input style={s.input} type="number" placeholder={vehicleType === 'motorcycle' ? 'e.g. 2' : 'e.g. 5'} value={form.seats} onChange={(e) => setForm({...form, seats: e.target.value})} required /></div>
         </div>
 
         <div style={s.row}>
