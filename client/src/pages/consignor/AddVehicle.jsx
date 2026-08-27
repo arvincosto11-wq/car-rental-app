@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../api';
+import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
+
+const OTHER = '__other__';
 
 const AddVehicle = () => {
   const { isDark } = useTheme();
@@ -20,14 +23,44 @@ const AddVehicle = () => {
   const [vehiclePhotos, setVehiclePhotos] = useState([]);
   const [vehiclePreviews, setVehiclePreviews] = useState([]);
   const [bookingTypes, setBookingTypes] = useState({ 'self-drive': true, 'with-driver': true });
+  const [vehicleType, setVehicleType] = useState('car');
+  const [brandChoice, setBrandChoice] = useState('');
+  const [modelChoice, setModelChoice] = useState('');
 
-  const handleCategoryChange = (value) => {
-    setForm({ ...form, category: value });
+  const brandOrder = vehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
+  const modelOptions = brandChoice && brandChoice !== OTHER
+    ? (VEHICLE_DATA[brandChoice] || []).filter((m) =>
+        vehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
+      )
+    : [];
+
+  const handleVehicleTypeChange = (type) => {
+    setVehicleType(type);
+    setBrandChoice('');
+    setModelChoice('');
+    setForm({ ...form, brand: '', model: '', category: type === 'motorcycle' ? 'Motorcycle' : '' });
     setBookingTypes(
-      value === 'Motorcycle'
+      type === 'motorcycle'
         ? { 'self-drive': true, 'with-driver': false }
         : { 'self-drive': true, 'with-driver': true }
     );
+  };
+
+  const handleBrandChoiceChange = (value) => {
+    setBrandChoice(value);
+    setModelChoice('');
+    setForm({ ...form, brand: value === OTHER ? '' : value, model: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '' });
+  };
+
+  const handleModelChoiceChange = (value) => {
+    setModelChoice(value);
+    if (value === OTHER) {
+      setForm({ ...form, model: '' });
+      return;
+    }
+    const match = modelOptions.find((m) => m.model === value);
+    const autoCategory = match?.category || (vehicleType === 'motorcycle' ? 'Motorcycle' : '');
+    setForm({ ...form, model: value, category: autoCategory });
   };
 
   const [error, setError] = useState('');
@@ -132,6 +165,15 @@ const AddVehicle = () => {
     photoThumb: { width: '100%', height: '100%', objectFit: 'cover' },
     removePhotoBtn: { position: 'absolute', top: '2px', right: '2px', width: '20px', height: '20px', borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '13px', lineHeight: '20px', cursor: 'pointer', padding: 0 },
     btn: { width: '100%', padding: '11px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginTop: '8px' },
+    typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '16px' },
+    typeToggleBtn: (active) => ({
+      flex: 1, padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
+      border: active ? '2px solid #2563eb' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff') : (isDark ? '#0f172a' : '#fff'),
+      color: active ? (isDark ? '#93c5fd' : '#1d4ed8') : (isDark ? '#94a3b8' : '#374151'),
+      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+    }),
+    categoryFixed: { padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', background: isDark ? '#0f172a' : '#f9fafb', color: isDark ? '#94a3b8' : '#6b7280' },
   };
 
   return (
@@ -144,14 +186,47 @@ const AddVehicle = () => {
         {error && <div style={s.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={s.form}>
+          <div style={s.typeToggleRow}>
+            <button type="button" style={s.typeToggleBtn(vehicleType === 'car')} onClick={() => handleVehicleTypeChange('car')}>
+              🚗 Car
+            </button>
+            <button type="button" style={s.typeToggleBtn(vehicleType === 'motorcycle')} onClick={() => handleVehicleTypeChange('motorcycle')}>
+              🏍️ Motorcycle
+            </button>
+          </div>
+
           <div style={s.row}>
             <div style={s.field}>
               <label style={s.label}>Brand</label>
-              <input style={s.input} type="text" placeholder="e.g. Toyota" value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} required />
+              <select style={s.input} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
+                <option value="">Select brand</option>
+                {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
+                <option value={OTHER}>Other (type manually)</option>
+              </select>
+              {brandChoice === OTHER && (
+                <input style={{ ...s.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
+                  value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} required />
+              )}
             </div>
             <div style={s.field}>
               <label style={s.label}>Model</label>
-              <input style={s.input} type="text" placeholder="e.g. Vios" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} required />
+              {brandChoice && brandChoice !== OTHER ? (
+                <>
+                  <select style={s.input} value={modelChoice} onChange={(e) => handleModelChoiceChange(e.target.value)} required>
+                    <option value="">Select model</option>
+                    {modelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
+                    <option value={OTHER}>Other (type manually)</option>
+                  </select>
+                  {modelChoice === OTHER && (
+                    <input style={{ ...s.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
+                      value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} required />
+                  )}
+                </>
+              ) : (
+                <input style={s.input} type="text" placeholder={brandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
+                  value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}
+                  disabled={!brandChoice} required />
+              )}
             </div>
           </div>
 
@@ -178,11 +253,14 @@ const AddVehicle = () => {
           <div style={s.row3}>
             <div style={s.field}>
               <label style={s.label}>Category</label>
-              <select style={s.input} value={form.category} onChange={(e) => handleCategoryChange(e.target.value)} required>
-                <option value="">Select category</option>
-                <option>Sedan</option><option>SUV</option><option>Hatchback</option>
-                <option>Van</option><option>Truck</option><option>Coupe</option><option>Motorcycle</option>
-              </select>
+              {vehicleType === 'motorcycle' ? (
+                <div style={s.categoryFixed}>Motorcycle</div>
+              ) : (
+                <select style={s.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
+                  <option value="">Select category</option>
+                  {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              )}
             </div>
             <div style={s.field}>
               <label style={s.label}>Transmission</label>

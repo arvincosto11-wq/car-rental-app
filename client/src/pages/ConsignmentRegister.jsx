@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
+import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../data/vehicleBrands';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
+const OTHER = '__other__';
 
 const ConsignmentRegister = () => {
   const [form, setForm] = useState({
@@ -24,14 +26,44 @@ const ConsignmentRegister = () => {
   const [vehiclePhotos, setVehiclePhotos] = useState([]);
   const [vehiclePreviews, setVehiclePreviews] = useState([]);
   const [bookingTypes, setBookingTypes] = useState({ 'self-drive': true, 'with-driver': true });
+  const [vehicleType, setVehicleType] = useState('car');
+  const [brandChoice, setBrandChoice] = useState('');
+  const [modelChoice, setModelChoice] = useState('');
 
-  const handleCategoryChange = (value) => {
-    setForm({ ...form, category: value });
+  const brandOrder = vehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
+  const modelOptions = brandChoice && brandChoice !== OTHER
+    ? (VEHICLE_DATA[brandChoice] || []).filter((m) =>
+        vehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
+      )
+    : [];
+
+  const handleVehicleTypeChange = (type) => {
+    setVehicleType(type);
+    setBrandChoice('');
+    setModelChoice('');
+    setForm({ ...form, brand: '', model: '', category: type === 'motorcycle' ? 'Motorcycle' : '' });
     setBookingTypes(
-      value === 'Motorcycle'
+      type === 'motorcycle'
         ? { 'self-drive': true, 'with-driver': false }
         : { 'self-drive': true, 'with-driver': true }
     );
+  };
+
+  const handleBrandChoiceChange = (value) => {
+    setBrandChoice(value);
+    setModelChoice('');
+    setForm({ ...form, brand: value === OTHER ? '' : value, model: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '' });
+  };
+
+  const handleModelChoiceChange = (value) => {
+    setModelChoice(value);
+    if (value === OTHER) {
+      setForm({ ...form, model: '' });
+      return;
+    }
+    const match = modelOptions.find((m) => m.model === value);
+    const autoCategory = match?.category || (vehicleType === 'motorcycle' ? 'Motorcycle' : '');
+    setForm({ ...form, model: value, category: autoCategory });
   };
 
   const [error, setError] = useState('');
@@ -187,16 +219,47 @@ const ConsignmentRegister = () => {
 
           <h2 style={styles.sectionTitle}>Vehicle Information</h2>
 
+          <div style={styles.typeToggleRow}>
+            <button type="button" style={styles.typeToggleBtn(vehicleType === 'car')} onClick={() => handleVehicleTypeChange('car')}>
+              🚗 Car
+            </button>
+            <button type="button" style={styles.typeToggleBtn(vehicleType === 'motorcycle')} onClick={() => handleVehicleTypeChange('motorcycle')}>
+              🏍️ Motorcycle
+            </button>
+          </div>
+
           <div style={styles.row}>
             <div style={styles.field}>
               <label style={styles.label}>Brand</label>
-              <input style={styles.input} type="text" placeholder="e.g. Toyota"
-                value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} required />
+              <select style={styles.input} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
+                <option value="">Select brand</option>
+                {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
+                <option value={OTHER}>Other (type manually)</option>
+              </select>
+              {brandChoice === OTHER && (
+                <input style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
+                  value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} required />
+              )}
             </div>
             <div style={styles.field}>
               <label style={styles.label}>Model</label>
-              <input style={styles.input} type="text" placeholder="e.g. Vios"
-                value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} required />
+              {brandChoice && brandChoice !== OTHER ? (
+                <>
+                  <select style={styles.input} value={modelChoice} onChange={(e) => handleModelChoiceChange(e.target.value)} required>
+                    <option value="">Select model</option>
+                    {modelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
+                    <option value={OTHER}>Other (type manually)</option>
+                  </select>
+                  {modelChoice === OTHER && (
+                    <input style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
+                      value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} required />
+                  )}
+                </>
+              ) : (
+                <input style={styles.input} type="text" placeholder={brandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
+                  value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}
+                  disabled={!brandChoice} required />
+              )}
             </div>
           </div>
 
@@ -227,11 +290,14 @@ const ConsignmentRegister = () => {
           <div style={styles.row3}>
             <div style={styles.field}>
               <label style={styles.label}>Category</label>
-              <select style={styles.input} value={form.category} onChange={(e) => handleCategoryChange(e.target.value)} required>
-                <option value="">Select category</option>
-                <option>Sedan</option><option>SUV</option><option>Hatchback</option>
-                <option>Van</option><option>Truck</option><option>Coupe</option><option>Motorcycle</option>
-              </select>
+              {vehicleType === 'motorcycle' ? (
+                <div style={styles.categoryFixed}>Motorcycle</div>
+              ) : (
+                <select style={styles.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
+                  <option value="">Select category</option>
+                  {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              )}
             </div>
             <div style={styles.field}>
               <label style={styles.label}>Transmission</label>
@@ -393,6 +459,15 @@ const styles = {
   fieldHint: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' },
   checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#374151', cursor: 'pointer' },
   label: { display: 'block', fontSize: '13px', color: '#374151', marginBottom: '6px', fontWeight: '500' },
+  typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '16px' },
+  typeToggleBtn: (active) => ({
+    flex: 1, padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
+    border: active ? '2px solid #2563eb' : '1px solid #d1d5db',
+    background: active ? '#eff6ff' : '#fff',
+    color: active ? '#1d4ed8' : '#374151',
+    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+  }),
+  categoryFixed: { padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', background: '#f9fafb', color: '#6b7280' },
   input: {
     width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px',
     fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#111827', background: '#fff',
