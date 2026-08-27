@@ -184,8 +184,8 @@ const ConsignmentRegister = () => {
             </div>
             <div style={styles.field}>
               <label style={styles.label}>Password</label>
-              <input style={styles.input} type="password" placeholder="Create a password"
-                value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+              <input style={styles.input} type="password" placeholder="Create a password (min. 8 characters)"
+                value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} />
             </div>
           </div>
           <div className="responsive-row-2" style={styles.row}>

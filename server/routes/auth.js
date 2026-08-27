@@ -3,8 +3,11 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
+import { loginLimiter, registerLimiter } from '../middleware/rateLimit.js';
 
 const router = express.Router();
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Get the logged-in user's own profile (used to check things like license status before booking)
 router.get('/me', protect, async (req, res) => {
@@ -56,7 +59,7 @@ router.put('/me', protect, async (req, res) => {
 });
 
 // Register
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
   try {
     const {
       name, email, password, phone, address,
@@ -64,6 +67,13 @@ router.post('/register', async (req, res) => {
       licenseNumber, licenseExpiry,
       emergencyContactName, emergencyContactNumber
     } = req.body;
+
+    if (!EMAIL_REGEX.test(email || '')) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+    }
 
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: 'Email already exists' });
@@ -93,7 +103,7 @@ router.post('/register', async (req, res) => {
 });
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });

@@ -111,10 +111,11 @@ const Register = () => {
             <input
               style={styles.input}
               type="password"
-              placeholder="Create a password"
+              placeholder="Create a password (min. 8 characters)"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               required
+              minLength={8}
             />
           </div>
 

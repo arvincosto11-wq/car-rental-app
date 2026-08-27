@@ -5,13 +5,16 @@ import User from '../models/User.js';
 import Car from '../models/Car.js';
 import Consignment from '../models/Consignment.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
+import { registerLimiter } from '../middleware/rateLimit.js';
 
 const router = express.Router();
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Register as a vehicle owner (consignor) + submit their first vehicle in one step.
 // Public route — creates the User account (role: consignor) and the first
 // Consignment application together, then logs them straight in.
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
   try {
     const {
       // Owner info
@@ -21,6 +24,13 @@ router.post('/register', async (req, res) => {
       fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
       orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
     } = req.body;
+
+    if (!EMAIL_REGEX.test(email || '')) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+    }
 
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: 'Email already exists' });

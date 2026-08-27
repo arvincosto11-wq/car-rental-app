@@ -13,6 +13,10 @@ dotenv.config();
 
 const app = express();
 
+// Render sits behind a reverse proxy — without this, express-rate-limit
+// would see every request as coming from the same IP.
+app.set('trust proxy', 1);
+
 app.use(cors({
   origin: [
     'http://localhost:5173',
