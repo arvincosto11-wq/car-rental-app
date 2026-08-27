@@ -1,5 +1,6 @@
 import express from 'express';
 import Car from '../models/Car.js';
+import Booking from '../models/Booking.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -52,6 +53,10 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 // Delete car (admin only)
 router.delete('/:id', protect, adminOnly, async (req, res) => {
   try {
+    const hasBookings = await Booking.exists({ car: req.params.id });
+    if (hasBookings) {
+      return res.status(400).json({ message: 'This car has existing bookings and cannot be deleted. Hide it instead using the availability toggle.' });
+    }
     await Car.findByIdAndDelete(req.params.id);
     res.json({ message: 'Car deleted' });
   } catch (err) {

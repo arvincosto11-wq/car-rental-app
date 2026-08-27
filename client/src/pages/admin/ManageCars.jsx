@@ -34,6 +34,7 @@ const ManageCars = () => {
       setCars(cars.filter((c) => c._id !== id));
     } catch (err) {
       console.error(err);
+      alert(err.response?.data?.message || 'Failed to delete this car.');
     }
   };
 
