@@ -160,6 +160,17 @@ button:disabled {
   }
 }
 
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes toast-in {
+    from { opacity: 1; transform: none; }
+    to { opacity: 1; transform: none; }
+  }
+}
+
 /* Hover lift for clickable car cards (Home featured vehicles, Vehicles listing). */
 .car-card-hover {
   transition: transform 0.25s ease, box-shadow 0.25s ease;

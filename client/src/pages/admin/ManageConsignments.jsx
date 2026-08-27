@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
+import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
 
 const ManageConsignments = () => {
   const { isDark } = useTheme();
+  const { toast } = useUIFeedback();
   const [consignments, setConsignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
@@ -42,8 +44,9 @@ const ManageConsignments = () => {
       await api.put(`/consignments/${id}`, { decision: 'approved' });
       await fetchData();
       closeModal();
+      toast.success('Application approved and vehicle listed.');
     } catch (err) {
-      alert(err.response?.data?.message || 'Something went wrong approving this application.');
+      toast.error(err.response?.data?.message || 'Something went wrong approving this application.');
     } finally {
       setWorking(false);
     }
@@ -56,8 +59,9 @@ const ManageConsignments = () => {
       await api.put(`/consignments/${id}`, { decision: 'declined', adminNotes: declineReason });
       await fetchData();
       closeModal();
+      toast.info('Application declined.');
     } catch (err) {
-      alert(err.response?.data?.message || 'Something went wrong declining this application.');
+      toast.error(err.response?.data?.message || 'Something went wrong declining this application.');
     } finally {
       setWorking(false);
     }

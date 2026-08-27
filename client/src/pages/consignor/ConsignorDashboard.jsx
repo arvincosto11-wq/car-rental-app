@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
+import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
 
 const ConsignorDashboard = () => {
   const { user } = useAuth();
   const { isDark } = useTheme();
+  const { toast } = useUIFeedback();
   const navigate = useNavigate();
   const [consignments, setConsignments] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -56,9 +58,10 @@ const ConsignorDashboard = () => {
     try {
       await api.put(`/cars/${car._id}/toggle`);
       fetchConsignments();
+      toast.success('Vehicle marked available.');
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || 'Something went wrong updating availability.');
+      toast.error(err.response?.data?.message || 'Something went wrong updating availability.');
     }
   };
 

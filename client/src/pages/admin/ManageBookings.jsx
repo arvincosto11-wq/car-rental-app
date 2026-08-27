@@ -3,12 +3,14 @@ import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
+import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
 
 const LOW_RATING_THRESHOLD = 3;
 
 const ManageBookings = () => {
   const { isDark } = useTheme();
+  const { toast } = useUIFeedback();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ratingModalId, setRatingModalId] = useState(null);
@@ -34,12 +36,12 @@ const ManageBookings = () => {
     try {
       const res = await api.put(`/bookings/${id}`, { status });
       if (res.data.autoRefunded) {
-        alert(res.data.message);
+        toast.info(res.data.message);
       }
       await fetchBookings();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || 'Something went wrong updating this booking.');
+      toast.error(err.response?.data?.message || 'Something went wrong updating this booking.');
     }
   };
 
@@ -49,7 +51,7 @@ const ManageBookings = () => {
       await fetchBookings();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || 'Something went wrong updating this refund.');
+      toast.error(err.response?.data?.message || 'Something went wrong updating this refund.');
     }
   };
 

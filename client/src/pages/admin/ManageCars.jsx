@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
 import { useTheme } from '../../context/ThemeContext';
+import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, GOLD_TINT_BORDER, GOLD_TINT_BORDER_DARK, ON_GOLD } from '../../theme';
@@ -10,6 +11,7 @@ const OTHER = '__other__';
 
 const ManageCars = () => {
   const { isDark } = useTheme();
+  const { toast, confirm } = useUIFeedback();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingCar, setEditingCar] = useState(null);
@@ -44,13 +46,15 @@ const ManageCars = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this car?')) return;
+    const ok = await confirm('Delete this car? This cannot be undone.', { confirmLabel: 'Delete', danger: true });
+    if (!ok) return;
     try {
       await api.delete(`/cars/${id}`);
       setCars(cars.filter((c) => c._id !== id));
+      toast.success('Car deleted.');
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || 'Failed to delete this car.');
+      toast.error(err.response?.data?.message || 'Failed to delete this car.');
     }
   };
 
@@ -160,7 +164,7 @@ const ManageCars = () => {
 
   const handleUpdate = async (id) => {
     if (!editForm.availableBookingTypes || editForm.availableBookingTypes.length === 0) {
-      alert('Please select at least one booking type (Self Drive and/or With Driver).');
+      toast.error('Please select at least one booking type (Self Drive and/or With Driver).');
       return;
     }
     setUpdating(true);

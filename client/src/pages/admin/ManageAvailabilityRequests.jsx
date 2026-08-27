@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
+import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
 
 const ManageAvailabilityRequests = () => {
   const { isDark } = useTheme();
+  const { toast } = useUIFeedback();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [declineModalId, setDeclineModalId] = useState(null);
@@ -29,8 +31,9 @@ const ManageAvailabilityRequests = () => {
     try {
       await api.put(`/cars/${id}/availability-request`, { decision: 'approved' });
       await fetchData();
+      toast.success('Request approved.');
     } catch (err) {
-      alert(err.response?.data?.message || 'Something went wrong approving this request.');
+      toast.error(err.response?.data?.message || 'Something went wrong approving this request.');
     } finally {
       setWorking(false);
     }
@@ -52,8 +55,9 @@ const ManageAvailabilityRequests = () => {
       await api.put(`/cars/${declineModalId}/availability-request`, { decision: 'declined', adminNotes: declineReason });
       await fetchData();
       closeDeclineModal();
+      toast.info('Request declined.');
     } catch (err) {
-      alert(err.response?.data?.message || 'Something went wrong declining this request.');
+      toast.error(err.response?.data?.message || 'Something went wrong declining this request.');
     } finally {
       setWorking(false);
     }
