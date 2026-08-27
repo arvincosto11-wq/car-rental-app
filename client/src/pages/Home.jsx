@@ -5,6 +5,11 @@ import StarRating from '../components/StarRating';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 
+// Curated hero photos — Mayon Volcano ties the brand to Albay specifically,
+// and the handover shot matches the brand's own poster style. Swap/add files
+// in client/public/ and update this list to change the rotation.
+const HERO_IMAGES = ['/hero-mayon.webp', '/handling-keys.jpg'];
+
 const Home = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +34,7 @@ const Home = () => {
     fetchCars();
   }, []);
 
-  const heroImages = cars.filter((c) => c.image).slice(0, 5).map((c) => c.image);
+  const heroImages = HERO_IMAGES;
 
   useEffect(() => {
     if (heroImages.length < 2) return;
