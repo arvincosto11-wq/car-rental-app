@@ -143,10 +143,17 @@ const MyBookings = () => {
 
   const ratingBooking = bookings.find((b) => b._id === ratingModalId);
 
+  const totalSpent = bookings.reduce((sum, b) => sum + b.totalPrice, 0);
+  const confirmedCount = bookings.filter((b) => b.status === 'confirmed').length;
+
   const styles = {
     container: { maxWidth: '900px', margin: '0 auto', padding: '32px' },
     title: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '14px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
+    statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '28px' },
+    statCard: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '18px' },
+    statLabel: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px' },
+    statNum: { fontSize: '26px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     empty: { textAlign: 'center', padding: '48px', color: isDark ? '#94a3b8' : '#6b7280' },
     browseBtn: {
       marginTop: '16px',
@@ -329,6 +336,23 @@ const MyBookings = () => {
     <div style={styles.container}>
       <h1 style={styles.title}>My Bookings</h1>
       <p style={styles.subtitle}>View and manage your all car bookings</p>
+
+      {!loading && bookings.length > 0 && (
+        <div className="responsive-row-3" style={styles.statsRow}>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Total Bookings</div>
+            <div style={styles.statNum}>{bookings.length}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Confirmed</div>
+            <div style={styles.statNum}>{confirmedCount}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Total Spent</div>
+            <div style={styles.statNum}>₱{totalSpent}</div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>

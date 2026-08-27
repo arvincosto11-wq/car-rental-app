@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIFeedbackProvider } from './context/UIFeedbackContext';
@@ -17,7 +17,6 @@ import ManageBookings from './pages/admin/ManageBookings';
 import ManageClients from './pages/admin/ManageClients';
 import ManageConsignments from './pages/admin/ManageConsignments';
 import ManageAvailabilityRequests from './pages/admin/ManageAvailabilityRequests';
-import ClientDashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import ConsignmentRegister from './pages/ConsignmentRegister';
 import ConsignorDashboard from './pages/consignor/ConsignorDashboard';
@@ -47,14 +46,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['user']}>
-                  <><Navbar /><ClientDashboard /></>
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/dashboard" element={<Navigate to="/my-bookings" replace />} />
             <Route
               path="/profile"
               element={

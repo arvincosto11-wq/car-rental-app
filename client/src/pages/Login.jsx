@@ -21,7 +21,7 @@ const Login = () => {
       const res = await api.post('/auth/login', form);
       login(res.data.user, res.data.token);
       const role = res.data.user.role;
-      navigate(role === 'admin' ? '/admin' : role === 'consignor' ? '/consignor' : '/dashboard');
+      navigate(role === 'admin' ? '/admin' : role === 'consignor' ? '/consignor' : '/my-bookings');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
     } finally {

@@ -94,7 +94,7 @@ const Navbar = () => {
 
   const navLinks = [
     ...(!user || user.role !== 'consignor' ? [{ to: '/', label: 'Home' }, { to: '/cars', label: 'Vehicles' }] : []),
-    ...(user && user.role === 'user' ? [{ to: '/my-bookings', label: 'My Bookings' }, { to: '/dashboard', label: 'Dashboard' }] : []),
+    ...(user && user.role === 'user' ? [{ to: '/my-bookings', label: 'My Bookings' }] : []),
     ...(user && user.role === 'admin' ? [{ to: '/admin', label: 'Admin Dashboard' }] : []),
     ...(user && user.role === 'consignor' ? [{ to: '/consignor', label: 'My Vehicles' }] : []),
     ...(!user ? [{ to: '/consignment/register', label: 'List Your Car' }] : []),

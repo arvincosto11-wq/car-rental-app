@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 const getHomeRoute = (role) => {
   if (role === 'admin') return '/admin';
   if (role === 'consignor') return '/consignor';
-  return '/dashboard';
+  return '/my-bookings';
 };
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
