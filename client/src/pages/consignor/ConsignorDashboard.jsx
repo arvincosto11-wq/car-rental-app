@@ -12,6 +12,10 @@ const ConsignorDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [requestModalCarId, setRequestModalCarId] = useState(null);
+  const [requestReason, setRequestReason] = useState('');
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [requestError, setRequestError] = useState('');
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -41,13 +45,38 @@ const ConsignorDashboard = () => {
     }
   };
 
-  const handleToggleAvailability = async (carId) => {
+  const handleToggleAvailability = async (car) => {
+    if (car.isAvailable) {
+      setRequestModalCarId(car._id);
+      setRequestReason('');
+      setRequestError('');
+      return;
+    }
     try {
-      await api.put(`/cars/${carId}/toggle`);
+      await api.put(`/cars/${car._id}/toggle`);
       fetchConsignments();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || 'Something went wrong updating availability.');
+    }
+  };
+
+  const closeRequestModal = () => {
+    setRequestModalCarId(null);
+    setRequestError('');
+  };
+
+  const handleSubmitRequest = async () => {
+    setRequestSubmitting(true);
+    setRequestError('');
+    try {
+      await api.put(`/cars/${requestModalCarId}/toggle`, { reason: requestReason });
+      await fetchConsignments();
+      closeRequestModal();
+    } catch (err) {
+      setRequestError(err.response?.data?.message || 'Something went wrong submitting this request.');
+    } finally {
+      setRequestSubmitting(false);
     }
   };
 
@@ -113,6 +142,16 @@ const ConsignorDashboard = () => {
     refundDeclined: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     refundRequested: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     muted: { color: isDark ? '#64748b' : '#9ca3af', fontSize: '12px' },
+    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
+    modalContent: { background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '440px', width: '100%' },
+    modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '6px' },
+    modalSub: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '14px', lineHeight: '1.5' },
+    errorBox: { background: '#fef2f2', color: '#dc2626', fontSize: '13px', padding: '10px 14px', borderRadius: '8px', marginBottom: '14px' },
+    modalLabel: { display: 'block', fontSize: '13px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
+    modalTextarea: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: isDark ? '#f1f5f9' : '#1a1a1a', background: isDark ? '#0f172a' : '#fff', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' },
+    modalActions: { display: 'flex', gap: '10px' },
+    modalCancelBtn: { flex: 1, padding: '10px', background: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
+    modalSubmitBtn: { flex: 1, padding: '10px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
   };
 
   return (
@@ -161,14 +200,26 @@ const ConsignorDashboard = () => {
                   <div style={s.notesBox}>Reason: {c.adminNotes}</div>
                 )}
                 {c.status === 'approved' && c.linkedCar && (
-                  <div style={s.cardFooter}>
-                    <span style={c.linkedCar.isAvailable ? s.availableTag : s.unavailableTag}>
-                      {c.linkedCar.isAvailable ? 'Available for booking' : 'Hidden from listings'}
-                    </span>
-                    <button style={s.toggleBtn} onClick={() => handleToggleAvailability(c.linkedCar._id)}>
-                      {c.linkedCar.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
-                    </button>
-                  </div>
+                  <>
+                    <div style={s.cardFooter}>
+                      <span style={c.linkedCar.isAvailable ? s.availableTag : s.unavailableTag}>
+                        {c.linkedCar.isAvailable ? 'Available for booking' : 'Hidden from listings'}
+                      </span>
+                      {c.linkedCar.availabilityRequest?.status === 'pending' ? (
+                        <span style={s.badgePending}>Pending Admin Approval</span>
+                      ) : (
+                        <button style={s.toggleBtn} onClick={() => handleToggleAvailability(c.linkedCar)}>
+                          {c.linkedCar.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
+                        </button>
+                      )}
+                    </div>
+                    {c.linkedCar.availabilityRequest?.status === 'declined' && (
+                      <div style={s.notesBox}>
+                        Your request to mark this vehicle unavailable was declined
+                        {c.linkedCar.availabilityRequest.adminNotes ? `: ${c.linkedCar.availabilityRequest.adminNotes}` : '.'}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -232,6 +283,37 @@ const ConsignorDashboard = () => {
           </table>
         )}
       </div>
+
+      {requestModalCarId && (
+        <div style={s.modalOverlay}>
+          <div style={s.modalContent}>
+            <h2 style={s.modalTitle}>Request to Mark Unavailable</h2>
+            <p style={s.modalSub}>
+              This vehicle will stay bookable until an admin reviews and approves your request.
+            </p>
+
+            {requestError && <div style={s.errorBox}>{requestError}</div>}
+
+            <label style={s.modalLabel}>Reason (optional)</label>
+            <textarea
+              style={s.modalTextarea}
+              rows={3}
+              value={requestReason}
+              onChange={(e) => setRequestReason(e.target.value)}
+              placeholder="e.g. Vehicle needs maintenance, taking it off the platform, etc."
+            />
+
+            <div style={s.modalActions}>
+              <button style={s.modalCancelBtn} onClick={closeRequestModal} disabled={requestSubmitting}>
+                Cancel
+              </button>
+              <button style={s.modalSubmitBtn} onClick={handleSubmitRequest} disabled={requestSubmitting}>
+                {requestSubmitting ? 'Submitting...' : 'Submit Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -15,6 +15,16 @@ router.get('/', async (req, res) => {
   }
 });
 
+// List cars with a pending unavailability request (admin)
+router.get('/availability-requests', protect, adminOnly, async (req, res) => {
+  try {
+    const cars = await Car.find({ 'availabilityRequest.status': 'pending' }).populate('owner', 'name email');
+    res.json(cars);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Get single car (public)
 router.get('/:id', async (req, res) => {
   try {
@@ -64,7 +74,8 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
   }
 });
 
-// Toggle availability for a car the logged-in consignor owns
+// Toggle availability for a car the logged-in consignor owns.
+// Going unavailable requires admin approval; re-listing as available is instant.
 router.put('/:id/toggle', protect, consignorOnly, async (req, res) => {
   try {
     const car = await Car.findById(req.params.id);
@@ -72,7 +83,43 @@ router.put('/:id/toggle', protect, consignorOnly, async (req, res) => {
     if (!car.owner || car.owner.toString() !== req.user.id) {
       return res.status(403).json({ message: 'You can only manage your own vehicles' });
     }
-    car.isAvailable = !car.isAvailable;
+
+    if (car.isAvailable) {
+      if (car.availabilityRequest?.status === 'pending') {
+        return res.status(400).json({ message: 'You already have a pending request for this vehicle.' });
+      }
+      car.availabilityRequest = { status: 'pending', reason: req.body.reason || '', requestedAt: new Date(), adminNotes: '' };
+    } else {
+      car.isAvailable = true;
+      car.availabilityRequest = { status: 'none', reason: '', requestedAt: null, adminNotes: '' };
+    }
+
+    await car.save();
+    res.json(car);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin approves or declines a consignor's request to make their car unavailable
+router.put('/:id/availability-request', protect, adminOnly, async (req, res) => {
+  try {
+    const { decision, adminNotes } = req.body;
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+    if (car.availabilityRequest?.status !== 'pending') {
+      return res.status(400).json({ message: 'No pending request for this vehicle.' });
+    }
+
+    if (decision === 'approved') {
+      car.isAvailable = false;
+      car.availabilityRequest.status = 'none';
+      car.availabilityRequest.adminNotes = '';
+    } else {
+      car.availabilityRequest.status = 'declined';
+      car.availabilityRequest.adminNotes = adminNotes || '';
+    }
+
     await car.save();
     res.json(car);
   } catch (err) {

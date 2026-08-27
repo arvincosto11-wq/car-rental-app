@@ -16,7 +16,13 @@ const carSchema = new mongoose.Schema({
   isAvailable: { type: Boolean, default: true },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   avgRating: { type: Number, default: 0 },
-  ratingCount: { type: Number, default: 0 }
+  ratingCount: { type: Number, default: 0 },
+  availabilityRequest: {
+    status: { type: String, enum: ['none', 'pending', 'declined'], default: 'none' },
+    reason: { type: String, default: '' },
+    requestedAt: { type: Date },
+    adminNotes: { type: String, default: '' },
+  }
 }, { timestamps: true });
 
 export default mongoose.model('Car', carSchema);

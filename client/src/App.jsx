@@ -15,6 +15,7 @@ import ManageCars from './pages/admin/ManageCars';
 import ManageBookings from './pages/admin/ManageBookings';
 import ManageClients from './pages/admin/ManageClients';
 import ManageConsignments from './pages/admin/ManageConsignments';
+import ManageAvailabilityRequests from './pages/admin/ManageAvailabilityRequests';
 import ClientDashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import ConsignmentRegister from './pages/ConsignmentRegister';
@@ -125,6 +126,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <ManageConsignments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/availability-requests"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ManageAvailabilityRequests />
                 </ProtectedRoute>
               }
             />
