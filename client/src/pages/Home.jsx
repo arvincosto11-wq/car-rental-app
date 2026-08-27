@@ -16,7 +16,8 @@ const Home = () => {
     const fetchCars = async () => {
       try {
         const res = await api.get('/cars');
-        setCars(res.data.slice(0, 6));
+        const sorted = [...res.data].sort((a, b) => (b.isAvailable === false ? 0 : 1) - (a.isAvailable === false ? 0 : 1));
+        setCars(sorted.slice(0, 6));
       } catch (err) {
         console.error(err);
       } finally {
@@ -254,7 +255,9 @@ const Home = () => {
                   ) : (
                     <div style={styles.noImg}>No Image</div>
                   )}
-                  <span style={styles.availBadge}>Available Now</span>
+                  <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#2563eb' }}>
+                    {car.isAvailable === false ? 'Not Available' : 'Available Now'}
+                  </span>
                   <span style={styles.priceBadge}>₱{car.pricePerDay} / day</span>
                 </div>
                 <div style={styles.cardBody}>
