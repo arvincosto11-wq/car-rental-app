@@ -197,7 +197,7 @@ const Navbar = () => {
             </div>
           ) : (
             <>
-              <Link to="/login" style={{
+              <Link className="btn-like" to="/login" style={{
                 padding: '7px 16px',
                 borderRadius: '8px',
                 border: `1px solid ${btnBorder}`,
@@ -205,7 +205,7 @@ const Navbar = () => {
                 fontSize: '13px',
                 color: textColor,
               }}>Login</Link>
-              <Link to="/register" style={{
+              <Link className="btn-like" to="/register" style={{
                 padding: '7px 16px',
                 borderRadius: '8px',
                 background: isDark ? GOLD_DARK : GOLD,

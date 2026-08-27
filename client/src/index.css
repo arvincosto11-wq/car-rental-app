@@ -91,6 +91,39 @@ body.dark ::-webkit-scrollbar-thumb {
   background: #475569;
 }
 
+/* Interaction feedback for every real button in the app (and a handful of
+   Link elements deliberately styled as buttons, marked .btn-like), without
+   needing to touch each component's own inline styles. */
+button:not(:disabled),
+.btn-like {
+  transition: filter 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
+}
+button:not(:disabled):hover,
+.btn-like:hover {
+  filter: brightness(0.93);
+}
+button:not(:disabled):active,
+.btn-like:active {
+  transform: scale(0.97);
+  filter: brightness(0.87);
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+  filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled),
+  .btn-like {
+    transition: none;
+  }
+  button:not(:disabled):active,
+  .btn-like:active {
+    transform: none;
+  }
+}
+
 /* Bold poster-style headline face, used sparingly for hero moments only. */
 .display-heading {
   font-family: 'Oswald', 'Arial Narrow', sans-serif;

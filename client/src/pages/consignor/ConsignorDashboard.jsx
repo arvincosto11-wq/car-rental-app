@@ -163,7 +163,7 @@ const ConsignorDashboard = () => {
             <h1 style={s.title}>My Vehicles</h1>
             <p style={s.subtitle}>Track the status of your consignment applications.</p>
           </div>
-          <Link to="/consignor/add-vehicle" style={s.addBtn}>+ Add Another Vehicle</Link>
+          <Link className="btn-like" to="/consignor/add-vehicle" style={s.addBtn}>+ Add Another Vehicle</Link>
         </div>
 
         <div style={s.statsRow}>
@@ -182,7 +182,7 @@ const ConsignorDashboard = () => {
         ) : consignments.length === 0 ? (
           <div style={s.empty}>
             <p>You haven't submitted any vehicles yet.</p>
-            <Link to="/consignor/add-vehicle" style={s.addBtn}>Submit Your First Vehicle</Link>
+            <Link className="btn-like" to="/consignor/add-vehicle" style={s.addBtn}>Submit Your First Vehicle</Link>
           </div>
         ) : (
           consignments.map((c) => (
