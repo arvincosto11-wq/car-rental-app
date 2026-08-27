@@ -149,13 +149,27 @@ const ManageBookings = () => {
                   </div>
                   <div style={s.clientMeta}>{booking.user?.email}</div>
                   <div style={s.clientMeta}>ID: {booking.user?._id?.slice(-6) || '—'}</div>
+                  {booking.user?.ratingCount > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                      <StarRating value={booking.user.avgRating} size={11} readOnly />
+                      <span style={s.clientMeta}>{booking.user.avgRating.toFixed(1)} ({booking.user.ratingCount})</span>
+                    </div>
+                  )}
                 </td>
                 <td style={s.td}>
                   <div style={s.carCell}>
                     <div style={s.carThumb}>
                       {booking.car?.image && <img src={booking.car.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                     </div>
-                    <span>{booking.car?.brand} {booking.car?.model}</span>
+                    <div>
+                      <span>{booking.car?.brand} {booking.car?.model}</span>
+                      {booking.carRating?.ratedAt && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }} title={booking.carRating.comment || ''}>
+                          <StarRating value={booking.carRating.overall} size={11} readOnly />
+                          <span style={s.clientMeta}>{booking.carRating.overall.toFixed(1)} client review</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td style={s.td}>{new Date(booking.startDate).toLocaleDateString()} to {new Date(booking.endDate).toLocaleDateString()}</td>
@@ -194,7 +208,10 @@ const ManageBookings = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={s.completed}>completed</span>
                       {booking.clientRating?.ratedAt ? (
-                        <button style={s.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
+                        <>
+                          <StarRating value={booking.clientRating.rating} size={12} readOnly />
+                          <button style={s.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
+                        </>
                       ) : (
                         <button style={s.rateBtn} onClick={() => openRatingModal(booking)}>Rate Client</button>
                       )}
