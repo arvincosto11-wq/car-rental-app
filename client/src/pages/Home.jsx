@@ -80,14 +80,16 @@ const Home = () => {
       background: 'transparent',
     },
     searchBtn: {
-      padding: '0 28px',
+      padding: '12px 28px',
+      margin: '10px',
       background: isDark ? GOLD_DARK : GOLD,
       color: ON_GOLD,
       border: 'none',
+      borderRadius: '8px',
       fontSize: '14px',
-      fontWeight: '500',
+      fontWeight: '600',
       cursor: 'pointer',
-      height: '64px',
+      alignSelf: 'center',
     },
     section: {
       padding: '48px 32px',
@@ -325,7 +327,7 @@ const Home = () => {
               onChange={(e) => setPickupDate(e.target.value)}
             />
           </div>
-          <div className="hero-search-field" style={styles.searchField}>
+          <div className="hero-search-field" style={{ ...styles.searchField, borderRight: 'none' }}>
             <label style={styles.searchLabel}>Return Date</label>
             <input
               style={styles.searchInput}
