@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
 import api from '../../api';
+import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
+
+const OTHER = '__other__';
 
 const ManageCars = () => {
   const [cars, setCars] = useState([]);
@@ -11,6 +14,16 @@ const ManageCars = () => {
   const [editImage, setEditImage] = useState(null);
   const [editImagePreview, setEditImagePreview] = useState('');
   const [updating, setUpdating] = useState(false);
+  const [editVehicleType, setEditVehicleType] = useState('car');
+  const [editBrandChoice, setEditBrandChoice] = useState('');
+  const [editModelChoice, setEditModelChoice] = useState('');
+
+  const editBrandOrder = editVehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
+  const editModelOptions = editBrandChoice && editBrandChoice !== OTHER
+    ? (VEHICLE_DATA[editBrandChoice] || []).filter((m) =>
+        editVehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
+      )
+    : [];
 
   useEffect(() => {
     fetchCars();
@@ -65,6 +78,46 @@ const ManageCars = () => {
       imageFileId: car.imageFileId,
       availableBookingTypes: car.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver'],
     });
+
+    // Try to match the car's existing brand/model against the curated lists so
+    // the dropdowns preselect correctly instead of defaulting to "Other".
+    const vehicleType = car.category === 'Motorcycle' ? 'motorcycle' : 'car';
+    const brandOrder = vehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
+    const brandMatches = brandOrder.includes(car.brand);
+    let modelMatch = '';
+    if (brandMatches) {
+      const modelOptions = (VEHICLE_DATA[car.brand] || []).filter((m) =>
+        vehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
+      );
+      modelMatch = modelOptions.some((m) => m.model === car.model) ? car.model : OTHER;
+    }
+    setEditVehicleType(vehicleType);
+    setEditBrandChoice(brandMatches ? car.brand : OTHER);
+    setEditModelChoice(brandMatches ? modelMatch : '');
+  };
+
+  const handleEditVehicleTypeChange = (type) => {
+    setEditVehicleType(type);
+    setEditBrandChoice('');
+    setEditModelChoice('');
+    setEditForm({ ...editForm, brand: '', model: '', category: type === 'motorcycle' ? 'Motorcycle' : '' });
+  };
+
+  const handleEditBrandChoiceChange = (value) => {
+    setEditBrandChoice(value);
+    setEditModelChoice('');
+    setEditForm({ ...editForm, brand: value === OTHER ? '' : value, model: '', category: editVehicleType === 'motorcycle' ? 'Motorcycle' : '' });
+  };
+
+  const handleEditModelChoiceChange = (value) => {
+    setEditModelChoice(value);
+    if (value === OTHER) {
+      setEditForm({ ...editForm, model: '' });
+      return;
+    }
+    const match = editModelOptions.find((m) => m.model === value);
+    const autoCategory = match?.category || (editVehicleType === 'motorcycle' ? 'Motorcycle' : '');
+    setEditForm({ ...editForm, model: value, category: autoCategory });
   };
 
   const toggleEditBookingType = (type) => {
@@ -142,6 +195,15 @@ const ManageCars = () => {
                     <div style={styles.editForm}>
                       <h3 style={styles.editTitle}>Edit Car</h3>
 
+                      <div style={styles.typeToggleRow}>
+                        <button type="button" style={styles.typeToggleBtn(editVehicleType === 'car')} onClick={() => handleEditVehicleTypeChange('car')}>
+                          🚗 Car
+                        </button>
+                        <button type="button" style={styles.typeToggleBtn(editVehicleType === 'motorcycle')} onClick={() => handleEditVehicleTypeChange('motorcycle')}>
+                          🏍️ Motorcycle
+                        </button>
+                      </div>
+
                       {/* Image Upload */}
                       <div style={styles.field}>
                         <label style={styles.label}>Car Image</label>
@@ -173,13 +235,35 @@ const ManageCars = () => {
                       <div style={styles.editGrid}>
                         <div style={styles.field}>
                           <label style={styles.label}>Brand</label>
-                          <input style={styles.input} value={editForm.brand}
-                            onChange={(e) => setEditForm({...editForm, brand: e.target.value})} />
+                          <select style={styles.input} value={editBrandChoice} onChange={(e) => handleEditBrandChoiceChange(e.target.value)}>
+                            <option value="">Select brand</option>
+                            {editBrandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
+                            <option value={OTHER}>Other (type manually)</option>
+                          </select>
+                          {editBrandChoice === OTHER && (
+                            <input style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
+                              value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })} />
+                          )}
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label}>Model</label>
-                          <input style={styles.input} value={editForm.model}
-                            onChange={(e) => setEditForm({...editForm, model: e.target.value})} />
+                          {editBrandChoice && editBrandChoice !== OTHER ? (
+                            <>
+                              <select style={styles.input} value={editModelChoice} onChange={(e) => handleEditModelChoiceChange(e.target.value)}>
+                                <option value="">Select model</option>
+                                {editModelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
+                                <option value={OTHER}>Other (type manually)</option>
+                              </select>
+                              {editModelChoice === OTHER && (
+                                <input style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
+                                  value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })} />
+                              )}
+                            </>
+                          ) : (
+                            <input style={styles.input} type="text" placeholder={editBrandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
+                              value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
+                              disabled={!editBrandChoice} />
+                          )}
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label}>Year</label>
@@ -193,13 +277,22 @@ const ManageCars = () => {
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label}>Category</label>
-                          <select style={styles.input} value={editForm.category}
-                            onChange={(e) => setEditForm({...editForm, category: e.target.value})}>
-                            <option>Sedan</option><option>SUV</option>
-                            <option>Hatchback</option><option>Van</option>
-                            <option>Truck</option><option>Coupe</option>
-                            <option>Motorcycle</option>
-                          </select>
+                          {editVehicleType === 'motorcycle' ? (
+                            <div style={styles.categoryFixed}>Motorcycle</div>
+                          ) : (
+                            <>
+                              <select style={styles.input} value={editForm.category}
+                                onChange={(e) => setEditForm({...editForm, category: e.target.value})}>
+                                <option value="">Select category</option>
+                                {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
+                              </select>
+                              <p style={styles.hint}>
+                                {editModelChoice && editModelChoice !== OTHER
+                                  ? "Auto-filled based on the model you picked — change it if it's not right."
+                                  : 'Pick a listed model to auto-fill this, or choose manually.'}
+                              </p>
+                            </>
+                          )}
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label}>Transmission</label>
@@ -329,6 +422,16 @@ const styles = {
   saveBtn: { padding: '8px 20px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
   cancelBtn: { padding: '8px 20px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
   checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#374151', cursor: 'pointer' },
+  typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '16px' },
+  typeToggleBtn: (active) => ({
+    flex: 1, padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
+    border: active ? '2px solid #2563eb' : '1px solid #d1d5db',
+    background: active ? '#eff6ff' : '#fff',
+    color: active ? '#1d4ed8' : '#374151',
+    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+  }),
+  categoryFixed: { padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', background: '#f9fafb', color: '#6b7280' },
+  hint: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' },
 };
 
 export default ManageCars;
