@@ -15,7 +15,9 @@ const userSchema = new mongoose.Schema({
   emergencyContactName: { type: String, default: '' },
   emergencyContactNumber: { type: String, default: '' },
   idVerified: { type: Boolean, default: false },
-  isBlocked: { type: Boolean, default: false }
+  isBlocked: { type: Boolean, default: false },
+  avgRating: { type: Number, default: 0 },
+  ratingCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
 export default mongoose.model('User', userSchema);

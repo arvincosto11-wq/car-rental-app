@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import StarRating from '../components/StarRating';
 import api from '../api';
 
 const CarDetail = () => {
@@ -252,6 +253,21 @@ const CarDetail = () => {
             </div>
             <h1 style={s.carName}>{car.brand} {car.model}</h1>
             <p style={s.carSub}>{car.category} · {car.year}</p>
+            {car.ratingCount > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', marginTop: '-8px' }}>
+                <StarRating value={car.avgRating} size={16} readOnly />
+                <span style={{ fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' }}>
+                  {car.avgRating.toFixed(1)}
+                </span>
+                <span style={{ fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280' }}>
+                  ({car.ratingCount} review{car.ratingCount === 1 ? '' : 's'})
+                </span>
+              </div>
+            ) : (
+              <p style={{ fontSize: '13px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '-8px', marginBottom: '16px' }}>
+                No reviews yet
+              </p>
+            )}
 
             <div style={s.metaGrid}>
               <div style={s.metaItem}>

@@ -1,12 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
+import StarRating from '../../components/StarRating';
 import api from '../../api';
+
+const LOW_RATING_THRESHOLD = 3;
 
 const ManageBookings = () => {
   const { isDark } = useTheme();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [ratingModalId, setRatingModalId] = useState(null);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [ratingError, setRatingError] = useState('');
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
 
   useEffect(() => { fetchBookings(); }, []);
 
@@ -44,6 +52,38 @@ const ManageBookings = () => {
     }
   };
 
+  const openRatingModal = (booking) => {
+    setRatingModalId(booking._id);
+    setRatingValue(booking.clientRating?.rating || 0);
+    setRatingComment(booking.clientRating?.comment || '');
+    setRatingError('');
+  };
+
+  const closeRatingModal = () => {
+    setRatingModalId(null);
+    setRatingError('');
+  };
+
+  const handleSubmitRating = async () => {
+    if (!ratingValue) {
+      setRatingError('Please select a rating.');
+      return;
+    }
+    setRatingSubmitting(true);
+    setRatingError('');
+    try {
+      await api.post(`/bookings/${ratingModalId}/rate-client`, { rating: ratingValue, comment: ratingComment });
+      await fetchBookings();
+      closeRatingModal();
+    } catch (err) {
+      setRatingError(err.response?.data?.message || 'Failed to submit rating');
+    } finally {
+      setRatingSubmitting(false);
+    }
+  };
+
+  const ratingBooking = bookings.find((b) => b._id === ratingModalId);
+
   const s = {
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
@@ -64,6 +104,18 @@ const ManageBookings = () => {
     refundApproved: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     refundDeclined: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     select: { padding: '5px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#1a1a1a', cursor: 'pointer' },
+    rateBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontWeight: '500' },
+    editRatingBtn: { background: 'none', border: 'none', color: '#7c3aed', fontSize: '11px', cursor: 'pointer', padding: 0, textDecoration: 'underline' },
+    lowRatingBadge: { background: '#fee2e2', color: '#991b1b', fontSize: '10px', padding: '1px 8px', borderRadius: '20px', marginLeft: '6px', fontWeight: '600' },
+    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+    modalContent: { background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '440px', width: '90%' },
+    modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '14px' },
+    modalLabel: { display: 'block', fontSize: '13px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
+    modalTextarea: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: isDark ? '#f1f5f9' : '#1a1a1a', background: isDark ? '#0f172a' : '#fff', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' },
+    errorBox: { background: '#fef2f2', color: '#dc2626', fontSize: '13px', padding: '10px 14px', borderRadius: '8px', marginBottom: '14px' },
+    modalActions: { display: 'flex', gap: '10px' },
+    modalCancelBtn: { flex: 1, padding: '10px', background: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
+    modalSubmitBtn: { flex: 1, padding: '10px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
   };
 
   return (
@@ -87,7 +139,14 @@ const ManageBookings = () => {
             {bookings.map((booking) => (
               <tr key={booking._id}>
                 <td style={s.td}>
-                  <div style={s.clientName}>{booking.user?.name || 'Unknown'}</div>
+                  <div style={s.clientName}>
+                    {booking.user?.name || 'Unknown'}
+                    {booking.user?.ratingCount > 0 && booking.user.avgRating < LOW_RATING_THRESHOLD && (
+                      <span style={s.lowRatingBadge} title={`Avg rating: ${booking.user.avgRating.toFixed(1)} from ${booking.user.ratingCount} booking(s)`}>
+                        ⚠ Low Rating
+                      </span>
+                    )}
+                  </div>
                   <div style={s.clientMeta}>{booking.user?.email}</div>
                   <div style={s.clientMeta}>ID: {booking.user?._id?.slice(-6) || '—'}</div>
                 </td>
@@ -132,7 +191,14 @@ const ManageBookings = () => {
                   ) : booking.status === 'cancelled' ? (
                     <span style={s.cancelled}>cancelled</span>
                   ) : booking.status === 'completed' ? (
-                    <span style={s.completed}>completed</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={s.completed}>completed</span>
+                      {booking.clientRating?.ratedAt ? (
+                        <button style={s.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
+                      ) : (
+                        <button style={s.rateBtn} onClick={() => openRatingModal(booking)}>Rate Client</button>
+                      )}
+                    </div>
                   ) : (
                     <select style={s.select} value={booking.status} onChange={(e) => handleStatus(booking._id, e.target.value)}>
                       <option value="pending">Pending</option>
@@ -145,6 +211,39 @@ const ManageBookings = () => {
             ))}
           </tbody>
         </table>
+      )}
+
+      {ratingModalId && ratingBooking && (
+        <div style={s.modalOverlay}>
+          <div style={s.modalContent}>
+            <h2 style={s.modalTitle}>Rate {ratingBooking.user?.name || 'Client'}</h2>
+
+            {ratingError && <div style={s.errorBox}>{ratingError}</div>}
+
+            <label style={s.modalLabel}>How did the client return the vehicle?</label>
+            <div style={{ marginBottom: '18px' }}>
+              <StarRating value={ratingValue} onChange={setRatingValue} size={24} />
+            </div>
+
+            <label style={s.modalLabel}>Comment (optional)</label>
+            <textarea
+              style={s.modalTextarea}
+              rows={3}
+              value={ratingComment}
+              onChange={(e) => setRatingComment(e.target.value)}
+              placeholder="e.g. Returned the car clean and on time."
+            />
+
+            <div style={s.modalActions}>
+              <button style={s.modalCancelBtn} onClick={closeRatingModal} disabled={ratingSubmitting}>
+                Cancel
+              </button>
+              <button style={s.modalSubmitBtn} onClick={handleSubmitRating} disabled={ratingSubmitting}>
+                {ratingSubmitting ? 'Submitting...' : 'Submit Rating'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </AdminLayout>
   );

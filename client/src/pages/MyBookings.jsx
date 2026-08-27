@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
+import StarRating from '../components/StarRating';
 
 const REFUND_REASONS = [
   'Change of travel plans – Trip was canceled, postponed, or dates changed.',
@@ -22,6 +23,10 @@ const MyBookings = () => {
   const [refundReason, setRefundReason] = useState('');
   const [refundError, setRefundError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [ratingModalId, setRatingModalId] = useState(null);
+  const [ratingForm, setRatingForm] = useState({ vehicleCondition: 0, serviceQuality: 0, cleanliness: 0, comment: '' });
+  const [ratingError, setRatingError] = useState('');
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -41,6 +46,7 @@ const MyBookings = () => {
   const getStatusStyle = (status) => {
     if (status === 'confirmed') return styles.badgeConfirmed;
     if (status === 'cancelled') return styles.badgeCancelled;
+    if (status === 'completed') return styles.badgeCompleted;
     return styles.badgePending;
   };
 
@@ -94,6 +100,45 @@ const MyBookings = () => {
 
   const activeBooking = bookings.find((b) => b._id === refundModalId);
   const refundAmount = activeBooking ? Math.round(activeBooking.amountPaid * 0.5) : 0;
+
+  const openRatingModal = (booking) => {
+    setRatingModalId(booking._id);
+    setRatingForm({
+      vehicleCondition: booking.carRating?.vehicleCondition || 0,
+      serviceQuality: booking.carRating?.serviceQuality || 0,
+      cleanliness: booking.carRating?.cleanliness || 0,
+      comment: booking.carRating?.comment || '',
+    });
+    setRatingError('');
+  };
+
+  const closeRatingModal = () => {
+    setRatingModalId(null);
+    setRatingError('');
+  };
+
+  const handleSubmitRating = async () => {
+    const { vehicleCondition, serviceQuality, cleanliness, comment } = ratingForm;
+    if (!vehicleCondition || !serviceQuality || !cleanliness) {
+      setRatingError('Please rate all three categories.');
+      return;
+    }
+    setRatingSubmitting(true);
+    setRatingError('');
+    try {
+      const res = await api.post(`/bookings/${ratingModalId}/rate-car`, {
+        vehicleCondition, serviceQuality, cleanliness, comment,
+      });
+      setBookings(bookings.map((b) => (b._id === ratingModalId ? res.data : b)));
+      closeRatingModal();
+    } catch (err) {
+      setRatingError(err.response?.data?.message || 'Failed to submit rating');
+    } finally {
+      setRatingSubmitting(false);
+    }
+  };
+
+  const ratingBooking = bookings.find((b) => b._id === ratingModalId);
 
   return (
     <div style={styles.container}>
@@ -151,6 +196,21 @@ const MyBookings = () => {
                 {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved') && booking.refundReason && (
                   <p style={styles.refundNote}>Reason: {booking.refundReason}</p>
                 )}
+                {booking.status === 'completed' && (
+                  booking.carRating?.ratedAt ? (
+                    <div style={styles.ratingSummary}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <StarRating value={booking.carRating.overall} size={14} readOnly />
+                        <span style={styles.ratingScore}>{booking.carRating.overall.toFixed(1)}</span>
+                        <button style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button style={styles.rateBtn} onClick={() => openRatingModal(booking)}>
+                      Rate your experience
+                    </button>
+                  )
+                )}
               </div>
               <div style={styles.priceCol}>
                 <span style={styles.priceLabel}>Total Price</span>
@@ -194,6 +254,49 @@ const MyBookings = () => {
               </button>
               <button style={styles.modalSubmitBtn} onClick={handleSubmitRefund} disabled={submitting}>
                 {submitting ? 'Submitting...' : 'Submit Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ratingModalId && ratingBooking && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <h2 style={styles.modalTitle}>Rate Your Experience</h2>
+
+            {ratingError && <div style={styles.errorBox}>{ratingError}</div>}
+
+            {[
+              { key: 'vehicleCondition', label: 'Vehicle Condition' },
+              { key: 'serviceQuality', label: 'Service Quality' },
+              { key: 'cleanliness', label: 'Cleanliness' },
+            ].map(({ key, label }) => (
+              <div key={key} style={{ marginBottom: '14px' }}>
+                <label style={styles.modalLabel}>{label}</label>
+                <StarRating
+                  value={ratingForm[key]}
+                  onChange={(n) => setRatingForm({ ...ratingForm, [key]: n })}
+                  size={22}
+                />
+              </div>
+            ))}
+
+            <label style={styles.modalLabel}>Comment (optional)</label>
+            <textarea
+              style={styles.modalTextarea}
+              rows={3}
+              value={ratingForm.comment}
+              onChange={(e) => setRatingForm({ ...ratingForm, comment: e.target.value })}
+              placeholder="Tell us more about your experience..."
+            />
+
+            <div style={styles.modalActions}>
+              <button style={styles.modalCancelBtn} onClick={closeRatingModal} disabled={ratingSubmitting}>
+                Cancel
+              </button>
+              <button style={styles.modalSubmitBtn} onClick={handleSubmitRating} disabled={ratingSubmitting}>
+                {ratingSubmitting ? 'Submitting...' : 'Submit Rating'}
               </button>
             </div>
           </div>
@@ -270,6 +373,13 @@ const styles = {
     padding: '2px 10px',
     borderRadius: '20px',
   },
+  badgeCompleted: {
+    background: '#dbeafe',
+    color: '#1e40af',
+    fontSize: '11px',
+    padding: '2px 10px',
+    borderRadius: '20px',
+  },
   badgeRefundRequested: {
     background: '#fef3c7',
     color: '#92400e',
@@ -306,6 +416,28 @@ const styles = {
     cursor: 'pointer',
   },
   refundNote: { fontSize: '12px', color: '#6b7280', marginTop: '8px', fontStyle: 'italic' },
+  rateBtn: {
+    marginTop: '10px',
+    padding: '6px 14px',
+    fontSize: '12px',
+    fontWeight: '500',
+    background: '#2563eb',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
+  ratingSummary: { marginTop: '10px' },
+  ratingScore: { fontSize: '13px', fontWeight: '600', color: '#1a1a1a' },
+  editRatingBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#2563eb',
+    fontSize: '12px',
+    cursor: 'pointer',
+    padding: 0,
+    textDecoration: 'underline',
+  },
   priceCol: {
     textAlign: 'right',
     minWidth: '100px',
@@ -338,6 +470,11 @@ const styles = {
   modalSelect: {
     width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
     borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: '#1a1a1a',
+  },
+  modalTextarea: {
+    width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
+    borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: '#1a1a1a',
+    fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box',
   },
   modalActions: { display: 'flex', gap: '10px' },
   modalCancelBtn: {

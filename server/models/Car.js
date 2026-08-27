@@ -14,7 +14,9 @@ const carSchema = new mongoose.Schema({
   image: { type: String, default: '' },
   imageFileId: { type: String, default: '' },
   isAvailable: { type: Boolean, default: true },
-  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  avgRating: { type: Number, default: 0 },
+  ratingCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
 export default mongoose.model('Car', carSchema);

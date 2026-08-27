@@ -11,9 +11,24 @@ const bookingSchema = new mongoose.Schema({
   paymentType: { type: String, enum: ['downpayment', 'full'], default: 'downpayment' },
   bookingType: { type: String, enum: ['self-drive', 'with-driver'], default: 'with-driver' },
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'pending' },
-  refundStatus: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' }, 
+  refundStatus: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' },
   refundReason: { type: String, default: '' },
-  payment: { type: String, default: 'offline' }
+  payment: { type: String, default: 'offline' },
+  carRating: {
+    vehicleCondition: { type: Number, min: 1, max: 5 },
+    serviceQuality: { type: Number, min: 1, max: 5 },
+    cleanliness: { type: Number, min: 1, max: 5 },
+    overall: { type: Number, min: 1, max: 5 },
+    comment: { type: String, default: '' },
+    ratedAt: { type: Date },
+    updatedAt: { type: Date },
+  },
+  clientRating: {
+    rating: { type: Number, min: 1, max: 5 },
+    comment: { type: String, default: '' },
+    ratedAt: { type: Date },
+    updatedAt: { type: Date },
+  },
 }, { timestamps: true });
 
 export default mongoose.model('Booking', bookingSchema);

@@ -1,10 +1,33 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Booking from '../models/Booking.js';
 import Car from '../models/Car.js';
 import User from '../models/User.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 
 const router = express.Router();
+
+async function recomputeCarRating(carId) {
+  const [result] = await Booking.aggregate([
+    { $match: { car: new mongoose.Types.ObjectId(carId), 'carRating.overall': { $exists: true } } },
+    { $group: { _id: null, avg: { $avg: '$carRating.overall' }, count: { $sum: 1 } } }
+  ]);
+  await Car.findByIdAndUpdate(carId, {
+    avgRating: result ? Math.round(result.avg * 10) / 10 : 0,
+    ratingCount: result ? result.count : 0,
+  });
+}
+
+async function recomputeClientRating(userId) {
+  const [result] = await Booking.aggregate([
+    { $match: { user: new mongoose.Types.ObjectId(userId), 'clientRating.rating': { $exists: true } } },
+    { $group: { _id: null, avg: { $avg: '$clientRating.rating' }, count: { $sum: 1 } } }
+  ]);
+  await User.findByIdAndUpdate(userId, {
+    avgRating: result ? Math.round(result.avg * 10) / 10 : 0,
+    ratingCount: result ? result.count : 0,
+  });
+}
 
 // Create booking
 router.post('/', protect, async (req, res) => {
@@ -95,7 +118,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
   try {
     const bookings = await Booking.find()
       .populate('car')
-      .populate('user', 'name email')
+      .populate('user', 'name email avgRating ratingCount')
       .sort({ createdAt: -1 });
     res.json(bookings);
   } catch (err) {
@@ -228,6 +251,62 @@ router.put('/:id/refund', protect, adminOnly, async (req, res) => {
     }
 
     await booking.save();
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Client rates the car/service after the vehicle has been returned
+router.post('/:id/rate-car', protect, async (req, res) => {
+  try {
+    const { vehicleCondition, serviceQuality, cleanliness, comment } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    if (booking.status !== 'completed') {
+      return res.status(400).json({ message: 'You can only rate this booking after the vehicle has been returned.' });
+    }
+    for (const val of [vehicleCondition, serviceQuality, cleanliness]) {
+      if (!Number.isInteger(val) || val < 1 || val > 5) {
+        return res.status(400).json({ message: 'All ratings must be a whole number between 1 and 5.' });
+      }
+    }
+
+    const overall = Math.round(((vehicleCondition + serviceQuality + cleanliness) / 3) * 10) / 10;
+    const ratedAt = booking.carRating?.ratedAt || new Date();
+
+    booking.carRating = { vehicleCondition, serviceQuality, cleanliness, overall, comment: comment || '', ratedAt, updatedAt: new Date() };
+    await booking.save();
+    await recomputeCarRating(booking.car);
+
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin rates the client after the vehicle has been returned
+router.post('/:id/rate-client', protect, adminOnly, async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.status !== 'completed') {
+      return res.status(400).json({ message: 'You can only rate this client after the vehicle has been returned.' });
+    }
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be a whole number between 1 and 5.' });
+    }
+
+    const ratedAt = booking.clientRating?.ratedAt || new Date();
+
+    booking.clientRating = { rating, comment: comment || '', ratedAt, updatedAt: new Date() };
+    await booking.save();
+    await recomputeClientRating(booking.user);
+
     res.json(booking);
   } catch (err) {
     res.status(500).json({ message: err.message });
