@@ -255,6 +255,7 @@ const Home = () => {
       fontSize: '26px',
       fontWeight: '700',
       marginBottom: '10px',
+      color: '#f2eee6',
     },
     contactSub: {
       fontSize: '14px',
