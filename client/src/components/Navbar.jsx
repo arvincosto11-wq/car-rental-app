@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
@@ -8,9 +8,14 @@ const Navbar = () => {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const menuRef = useRef(null);
+
+  const isHome = location.pathname === '/';
+  const transparent = isHome && !scrolled;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -22,6 +27,18 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!isHome) {
+      setScrolled(true);
+      return;
+    }
+    window.scrollTo(0, 0);
+    setScrolled(false);
+    const handleScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isHome]);
+
   const handleLogout = () => {
     setMenuOpen(false);
     setMobileOpen(false);
@@ -29,8 +46,25 @@ const Navbar = () => {
     navigate('/');
   };
 
-  const navLinkStyle = { textDecoration: 'none', color: isDark ? '#94a3b8' : '#4b5563', fontSize: '14px' };
-  const mobileLinkStyle = { ...navLinkStyle, padding: '10px 0', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}` };
+  // When floating over the hero photo, everything reads light regardless of
+  // the real light/dark theme preference — a photo background needs light
+  // text either way. Once scrolled (or on any non-Home page) it falls back
+  // to the normal theme-aware colors.
+  const textColor = transparent ? '#ffffff' : (isDark ? '#f1f5f9' : '#1a1a1a');
+  const mutedColor = transparent ? 'rgba(255,255,255,0.85)' : (isDark ? '#94a3b8' : '#4b5563');
+  const btnBg = transparent ? 'rgba(255,255,255,0.15)' : (isDark ? '#1e293b' : '#f9fafb');
+  const btnBorder = transparent ? 'rgba(255,255,255,0.4)' : (isDark ? '#334155' : '#d1d5db');
+  const menuBg = isDark ? '#1e293b' : '#fff';
+  const menuBorder = isDark ? '#334155' : '#e5e7eb';
+
+  const navLinkStyle = { textDecoration: 'none', color: mutedColor, fontSize: '14px' };
+  const mobileLinkStyle = {
+    textDecoration: 'none',
+    color: isDark ? '#94a3b8' : '#4b5563',
+    fontSize: '14px',
+    padding: '10px 0',
+    borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}`,
+  };
 
   const navLinks = [
     ...(!user || user.role !== 'consignor' ? [{ to: '/', label: 'Home' }, { to: '/cars', label: 'Vehicles' }] : []),
@@ -42,11 +76,14 @@ const Navbar = () => {
 
   return (
     <nav style={{
-      position: 'sticky',
+      position: isHome ? 'fixed' : 'sticky',
       top: 0,
+      left: 0,
+      right: 0,
       zIndex: 100,
-      borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
-      background: isDark ? '#0f172a' : '#ffffff',
+      borderBottom: transparent ? 'none' : `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: transparent ? 'transparent' : (isDark ? '#0f172a' : '#ffffff'),
+      transition: 'background 0.25s ease, border-color 0.25s ease',
     }}>
       <div style={{
         display: 'flex',
@@ -61,7 +98,7 @@ const Navbar = () => {
           fontSize: '20px',
           fontWeight: '600',
           textDecoration: 'none',
-          color: isDark ? '#f1f5f9' : '#1a1a1a',
+          color: textColor,
         }}>
           <img src="/logo.png" alt="Rent-a-Ride" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
           Rent-a-Ride
@@ -77,9 +114,9 @@ const Navbar = () => {
           <button onClick={toggleTheme} style={{
             padding: '6px 12px',
             borderRadius: '8px',
-            border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-            background: isDark ? '#1e293b' : '#f9fafb',
-            color: isDark ? '#f1f5f9' : '#1a1a1a',
+            border: `1px solid ${btnBorder}`,
+            background: btnBg,
+            color: textColor,
             fontSize: '16px',
             cursor: 'pointer',
           }}>
@@ -94,9 +131,9 @@ const Navbar = () => {
                 gap: '6px',
                 padding: '7px 14px',
                 borderRadius: '8px',
-                background: isDark ? '#1e293b' : '#f9fafb',
-                border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-                color: isDark ? '#f1f5f9' : '#1a1a1a',
+                background: btnBg,
+                border: `1px solid ${btnBorder}`,
+                color: textColor,
                 fontSize: '13px',
                 cursor: 'pointer',
               }}>
@@ -118,8 +155,8 @@ const Navbar = () => {
                   top: 'calc(100% + 6px)',
                   right: 0,
                   minWidth: '160px',
-                  background: isDark ? '#1e293b' : '#fff',
-                  border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+                  background: menuBg,
+                  border: `1px solid ${menuBorder}`,
                   borderRadius: '8px',
                   boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
                   overflow: 'hidden',
@@ -163,10 +200,10 @@ const Navbar = () => {
               <Link to="/login" style={{
                 padding: '7px 16px',
                 borderRadius: '8px',
-                border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+                border: `1px solid ${btnBorder}`,
                 textDecoration: 'none',
                 fontSize: '13px',
-                color: isDark ? '#f1f5f9' : '#1a1a1a',
+                color: textColor,
               }}>Login</Link>
               <Link to="/register" style={{
                 padding: '7px 16px',
@@ -191,9 +228,9 @@ const Navbar = () => {
             width: '36px',
             height: '36px',
             borderRadius: '8px',
-            border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-            background: isDark ? '#1e293b' : '#f9fafb',
-            color: isDark ? '#f1f5f9' : '#1a1a1a',
+            border: `1px solid ${btnBorder}`,
+            background: btnBg,
+            color: textColor,
             fontSize: '16px',
             cursor: 'pointer',
           }}
@@ -205,7 +242,8 @@ const Navbar = () => {
       <div className={`navbar-mobile-menu${mobileOpen ? ' open' : ''}`} style={{
         flexDirection: 'column',
         padding: '4px 20px 16px',
-        borderTop: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+        background: menuBg,
+        borderTop: `1px solid ${menuBorder}`,
       }}>
         {navLinks.map((link) => (
           <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)} style={mobileLinkStyle}>{link.label}</Link>

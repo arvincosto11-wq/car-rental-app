@@ -10,6 +10,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
+  const [heroSlide, setHeroSlide] = useState(0);
   const navigate = useNavigate();
   const { isDark } = useTheme();
 
@@ -28,26 +29,82 @@ const Home = () => {
     fetchCars();
   }, []);
 
+  const heroImages = cars.filter((c) => c.image).slice(0, 5).map((c) => c.image);
+
+  useEffect(() => {
+    if (heroImages.length < 2) return;
+    const timer = setInterval(() => {
+      setHeroSlide((prev) => (prev + 1) % heroImages.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [heroImages.length]);
+
   const handleSearch = () => {
     navigate(`/cars?pickup=${pickupDate}&return=${returnDate}`);
   };
 
   const styles = {
     hero: {
-      padding: '60px 32px 40px',
+      position: 'relative',
+      minHeight: '620px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      background: '#17130e',
+    },
+    heroSlideImg: (active) => ({
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      opacity: active ? 1 : 0,
+      transition: 'opacity 1.4s ease',
+    }),
+    heroOverlay: {
+      position: 'absolute',
+      inset: 0,
+      background: 'linear-gradient(180deg, rgba(23,19,14,0.55), rgba(23,19,14,0.7))',
+    },
+    heroContent: {
+      position: 'relative',
+      zIndex: 2,
       textAlign: 'center',
-      background: 'transparent',
-      borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      padding: '110px 32px 60px',
+      width: '100%',
+    },
+    heroArrows: {
+      position: 'absolute',
+      bottom: '24px',
+      right: '32px',
+      zIndex: 2,
+      display: 'flex',
+      gap: '8px',
+    },
+    heroArrowBtn: {
+      width: '34px',
+      height: '34px',
+      borderRadius: '6px',
+      border: '1px solid rgba(255,255,255,0.5)',
+      background: 'rgba(255,255,255,0.1)',
+      color: '#fff',
+      cursor: 'pointer',
+      fontSize: '14px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     heroTitle: {
       fontSize: '46px',
       fontWeight: '700',
-      color: isDark ? '#f0464a' : '#d81e22',
+      color: '#ffffff',
       marginBottom: '8px',
+      textShadow: '0 2px 12px rgba(0,0,0,0.35)',
     },
     heroSubtitle: {
       fontSize: '16px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: 'rgba(255,255,255,0.85)',
       marginBottom: '32px',
     },
     searchBox: {
@@ -314,6 +371,27 @@ const Home = () => {
     <div>
       {/* Hero Section */}
       <div style={styles.hero}>
+        {heroImages.map((src, i) => (
+          <img key={src + i} src={src} alt="" style={styles.heroSlideImg(i === heroSlide)} />
+        ))}
+        <div style={styles.heroOverlay}></div>
+
+        {heroImages.length > 1 && (
+          <div style={styles.heroArrows}>
+            <button
+              style={styles.heroArrowBtn}
+              onClick={() => setHeroSlide((prev) => (prev - 1 + heroImages.length) % heroImages.length)}
+              aria-label="Previous"
+            >‹</button>
+            <button
+              style={styles.heroArrowBtn}
+              onClick={() => setHeroSlide((prev) => (prev + 1) % heroImages.length)}
+              aria-label="Next"
+            >›</button>
+          </div>
+        )}
+
+        <div style={styles.heroContent}>
         <h1 className="display-heading" style={styles.heroTitle}>Explore Without Limits</h1>
         <p style={styles.heroSubtitle}>Well-maintained rides across Albay — book in minutes.</p>
 
@@ -339,6 +417,7 @@ const Home = () => {
           <button className="hero-search-btn" style={styles.searchBtn} onClick={handleSearch}>
             Search
           </button>
+        </div>
         </div>
       </div>
 
