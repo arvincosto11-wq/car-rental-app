@@ -236,6 +236,7 @@ const ConsignorDashboard = () => {
             <p>No bookings yet for your vehicles.</p>
           </div>
         ) : (
+          <div className="table-scroll">
           <table style={s.table}>
             <thead>
               <tr>
@@ -281,6 +282,7 @@ const ConsignorDashboard = () => {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

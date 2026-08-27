@@ -108,6 +108,7 @@ const ManageClients = () => {
       {loading ? (
         <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
       ) : (
+        <div className="table-scroll">
         <table style={s.table}>
           <thead>
             <tr>
@@ -149,6 +150,7 @@ const ManageClients = () => {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {selectedClient && (
@@ -221,6 +223,7 @@ const ManageClients = () => {
             {bookingsForClient(selectedClient._id).length === 0 ? (
               <p style={s.empty}>No bookings yet.</p>
             ) : (
+              <div className="table-scroll">
               <table style={s.historyTable}>
                 <thead>
                   <tr>
@@ -243,6 +246,7 @@ const ManageClients = () => {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
 
             <button style={s.closeBtn} onClick={() => setSelectedClientId(null)}>

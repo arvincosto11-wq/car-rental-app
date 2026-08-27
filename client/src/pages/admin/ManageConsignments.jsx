@@ -125,6 +125,7 @@ const ManageConsignments = () => {
       ) : filtered.length === 0 ? (
         <div style={s.table}><p style={s.empty}>No applications here.</p></div>
       ) : (
+        <div className="table-scroll">
         <table style={s.table}>
           <thead>
             <tr>
@@ -161,6 +162,7 @@ const ManageConsignments = () => {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {selected && (

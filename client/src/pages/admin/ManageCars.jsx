@@ -346,7 +346,7 @@ const ManageCars = () => {
                       </div>
                     </div>
                   ) : (
-                    <div style={styles.carRow}>
+                    <div className="admin-row-stack" style={styles.carRow}>
                       <div style={styles.carThumbWrap}>
                         {car.image ? (
                           <img src={car.image} alt="" style={styles.carThumbImg} />
@@ -370,7 +370,7 @@ const ManageCars = () => {
                       <span style={car.isAvailable ? styles.available : styles.unavailable}>
                         {car.isAvailable ? 'Available' : 'Unavailable'}
                       </span>
-                      <div style={styles.actions}>
+                      <div className="admin-row-actions" style={styles.actions}>
                         <button style={styles.editBtn} onClick={() => handleEdit(car)}>Edit</button>
                         <button style={styles.toggleBtn} onClick={() => handleToggle(car)}>
                           {car.isAvailable ? 'Hide' : 'Show'}

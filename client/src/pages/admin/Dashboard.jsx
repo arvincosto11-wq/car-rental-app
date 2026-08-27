@@ -49,11 +49,11 @@ const Dashboard = () => {
   const s = {
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
-    statsRow: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' },
+    statsRow: { gap: '14px', marginBottom: '24px' },
     statCard: { background: isDark ? '#1e293b' : '#f3f4f6', borderRadius: '10px', padding: '16px', border: `1px solid ${isDark ? '#334155' : 'transparent'}` },
     statLabel: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px' },
     statNum: { fontSize: '24px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
+    grid: { gap: '16px' },
     box: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '18px' },
     boxTitle: { fontSize: '15px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     boxSubtitle: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '14px' },
@@ -77,13 +77,13 @@ const Dashboard = () => {
         <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
       ) : (
         <>
-          <div style={s.statsRow}>
+          <div className="responsive-grid-4" style={s.statsRow}>
             <div style={s.statCard}><div style={s.statLabel}>Total Cars</div><div style={s.statNum}>{stats.totalCars}</div></div>
             <div style={s.statCard}><div style={s.statLabel}>Total Bookings</div><div style={s.statNum}>{stats.totalBookings}</div></div>
             <div style={s.statCard}><div style={s.statLabel}>Pending</div><div style={s.statNum}>{stats.pending}</div></div>
             <div style={s.statCard}><div style={s.statLabel}>Confirmed</div><div style={s.statNum}>{stats.confirmed}</div></div>
           </div>
-          <div style={s.grid}>
+          <div className="responsive-row-2" style={s.grid}>
             <div style={s.box}>
               <div style={s.boxTitle}>Recent Bookings</div>
               <div style={s.boxSubtitle}>Latest customer bookings</div>

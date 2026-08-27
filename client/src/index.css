@@ -167,6 +167,58 @@ body.dark ::-webkit-scrollbar-thumb {
   }
 }
 
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table-scroll > table {
+  min-width: 640px;
+}
+
+.responsive-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+@media (max-width: 900px) {
+  .responsive-grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 420px) {
+  .responsive-grid-4 { grid-template-columns: 1fr; }
+}
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+}
+.admin-mobile-toggle {
+  display: none;
+}
+@media (max-width: 800px) {
+  .admin-layout { grid-template-columns: 1fr; }
+  .admin-sidebar {
+    display: none;
+  }
+  .admin-sidebar.open {
+    display: block;
+  }
+  .admin-mobile-toggle { display: flex !important; }
+  .admin-welcome-text { display: none; }
+}
+
+.admin-row-stack {
+  display: flex;
+}
+@media (max-width: 640px) {
+  .admin-row-stack {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  .admin-row-stack .admin-row-actions {
+    margin-top: 10px;
+  }
+}
+
 /* Navbar mobile menu */
 .navbar-nav-links,
 .navbar-auth-group {

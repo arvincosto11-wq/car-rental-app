@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -6,6 +7,7 @@ const AdminLayout = ({ children, activePage }) => {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -37,28 +39,38 @@ const AdminLayout = ({ children, activePage }) => {
   return (
     <div style={s.page}>
       <div style={s.topbar}>
-        <span style={{ fontSize: '16px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' }}>
-          🚗 CarRental Admin
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            className="admin-mobile-toggle"
+            onClick={() => setSidebarOpen((v) => !v)}
+            aria-label="Toggle menu"
+            style={{ alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, background: isDark ? '#0f172a' : '#f9fafb', color: isDark ? '#f1f5f9' : '#1a1a1a', fontSize: '15px', cursor: 'pointer' }}
+          >
+            {sidebarOpen ? '✕' : '☰'}
+          </button>
+          <span style={{ fontSize: '16px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' }}>
+            🚗 CarRental Admin
+          </span>
+        </div>
         <div style={s.topRight}>
-          <span style={s.welcome}>Welcome, {user?.name}</span>
+          <span className="admin-welcome-text" style={s.welcome}>Welcome, {user?.name}</span>
           <button style={s.toggleBtn} onClick={toggleTheme}>{isDark ? '☀️' : '🌙'}</button>
           <button style={s.logoutBtn} onClick={handleLogout}>Logout</button>
         </div>
       </div>
-      <div style={s.layout}>
-        <div style={s.sidebar}>
+      <div className="admin-layout" style={s.layout}>
+        <div className={`admin-sidebar${sidebarOpen ? ' open' : ''}`} style={s.sidebar}>
           <div style={s.avatar}>{user?.name?.charAt(0).toUpperCase()}</div>
           <div style={s.adminName}>{user?.name}</div>
           <nav>
             {sideLinks.map((link) => (
-              <Link key={link.to} to={link.to} style={activePage === link.label ? { ...s.sideItem, ...s.sideItemActive } : s.sideItem}>
+              <Link key={link.to} to={link.to} onClick={() => setSidebarOpen(false)} style={activePage === link.label ? { ...s.sideItem, ...s.sideItemActive } : s.sideItem}>
                 {link.label}
               </Link>
             ))}
           </nav>
         </div>
-        <div style={{ padding: '28px 32px' }}>{children}</div>
+        <div style={{ padding: '28px 32px', minWidth: 0 }}>{children}</div>
       </div>
     </div>
   );

@@ -123,6 +123,7 @@ const ManageBookings = () => {
       <h1 style={s.title}>Manage Bookings</h1>
       <p style={s.subtitle}>Track all customer bookings and manage booking statuses.</p>
       {loading ? <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p> : (
+        <div className="table-scroll">
         <table style={s.table}>
           <thead>
             <tr>
@@ -228,6 +229,7 @@ const ManageBookings = () => {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {ratingModalId && ratingBooking && (

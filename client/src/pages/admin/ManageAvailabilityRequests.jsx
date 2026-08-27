@@ -94,6 +94,7 @@ const ManageAvailabilityRequests = () => {
       ) : cars.length === 0 ? (
         <div style={s.table}><p style={s.empty}>No pending requests.</p></div>
       ) : (
+        <div className="table-scroll">
         <table style={s.table}>
           <thead>
             <tr>
@@ -135,6 +136,7 @@ const ManageAvailabilityRequests = () => {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {declineModalId && (
