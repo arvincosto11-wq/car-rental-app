@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import StarRating from '../../components/StarRating';
 import api from '../../api';
 
 const ManageCars = () => {
@@ -262,6 +263,14 @@ const ManageCars = () => {
                       <div style={styles.carInfo}>
                         <div style={styles.carName}>{car.brand} {car.model}</div>
                         <div style={styles.carSub}>{car.seats} · {car.transmission} · {car.category}</div>
+                        {car.ratingCount > 0 ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
+                            <StarRating value={car.avgRating} size={12} readOnly />
+                            <span style={styles.carRatingText}>{car.avgRating.toFixed(1)} ({car.ratingCount})</span>
+                          </div>
+                        ) : (
+                          <div style={styles.carRatingText}>No reviews yet</div>
+                        )}
                       </div>
                       <div style={styles.carPrice}>₱{car.pricePerDay}/day</div>
                       <span style={car.isAvailable ? styles.available : styles.unavailable}>
@@ -297,6 +306,7 @@ const styles = {
   carInfo: { flex: 1 },
   carName: { fontSize: '14px', fontWeight: '600', color: '#1a1a1a' },
   carSub: { fontSize: '12px', color: '#9ca3af', marginTop: '2px' },
+  carRatingText: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' },
   carPrice: { fontSize: '14px', fontWeight: '500', color: '#1a1a1a', minWidth: '80px' },
   available: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
   unavailable: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },

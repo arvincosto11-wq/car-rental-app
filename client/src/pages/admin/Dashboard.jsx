@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
+import StarRating from '../../components/StarRating';
 import api from '../../api';
 
 const Dashboard = () => {
@@ -11,6 +12,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ totalCars: 0, totalBookings: 0, pending: 0, confirmed: 0 });
   const [recentBookings, setRecentBookings] = useState([]);
+  const [topRatedCars, setTopRatedCars] = useState([]);
   const [revenue, setRevenue] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -29,8 +31,13 @@ const Dashboard = () => {
       const confirmed = bookings.filter((b) => b.status === 'confirmed');
       const pending = bookings.filter((b) => b.status === 'pending');
       const monthlyRevenue = confirmed.reduce((sum, b) => sum + b.totalPrice, 0);
+      const rated = carsRes.data
+        .filter((c) => c.ratingCount > 0)
+        .sort((a, b) => b.avgRating - a.avgRating || b.ratingCount - a.ratingCount)
+        .slice(0, 5);
       setStats({ totalCars: carsRes.data.length, totalBookings: bookings.length, pending: pending.length, confirmed: confirmed.length });
       setRecentBookings(bookings.slice(0, 5));
+      setTopRatedCars(rated);
       setRevenue(monthlyRevenue);
     } catch (err) {
       console.error(err);
@@ -58,6 +65,8 @@ const Dashboard = () => {
     badgeConfirmed: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     badgePending: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     revenueNum: { fontSize: '32px', fontWeight: '700', color: '#2563eb', marginTop: '16px' },
+    topRatedRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}` },
+    topRatedThumb: { width: '44px', height: '32px', borderRadius: '6px', overflow: 'hidden', background: isDark ? '#334155' : '#f3f4f6', flexShrink: 0 },
   };
 
   return (
@@ -97,6 +106,26 @@ const Dashboard = () => {
               <div style={s.boxSubtitle}>Revenue for current month</div>
               <div style={s.revenueNum}>₱{revenue}</div>
             </div>
+          </div>
+          <div style={{ ...s.box, marginTop: '16px' }}>
+            <div style={s.boxTitle}>Top Rated Cars</div>
+            <div style={s.boxSubtitle}>Your best-reviewed vehicles</div>
+            {topRatedCars.length === 0 ? (
+              <p style={{ color: isDark ? '#94a3b8' : '#6b7280', fontSize: '13px' }}>No reviews yet.</p>
+            ) : topRatedCars.map((car) => (
+              <div key={car._id} style={s.topRatedRow}>
+                <div style={s.topRatedThumb}>
+                  {car.image && <img src={car.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={s.bookingName}>{car.brand} {car.model}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                    <StarRating value={car.avgRating} size={13} readOnly />
+                    <span style={s.bookingDate}>{car.avgRating.toFixed(1)} ({car.ratingCount} review{car.ratingCount === 1 ? '' : 's'})</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}
