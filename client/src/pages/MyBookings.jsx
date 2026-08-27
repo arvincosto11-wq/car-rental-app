@@ -129,7 +129,7 @@ const MyBookings = () => {
       const res = await api.post(`/bookings/${ratingModalId}/rate-car`, {
         vehicleCondition, serviceQuality, cleanliness, comment,
       });
-      setBookings(bookings.map((b) => (b._id === ratingModalId ? res.data : b)));
+      setBookings(bookings.map((b) => (b._id === ratingModalId ? { ...b, carRating: res.data.carRating } : b)));
       closeRatingModal();
     } catch (err) {
       setRatingError(err.response?.data?.message || 'Failed to submit rating');
