@@ -59,7 +59,7 @@ const Dashboard = () => {
     boxTitle: { fontSize: '15px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     boxSubtitle: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '14px' },
     bookingRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}` },
-    bookingIcon: { width: '30px', height: '30px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT, borderRadius: '6px', flexShrink: 0 },
+    bookingIcon: { width: '30px', height: '30px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT, borderRadius: '6px', flexShrink: 0, overflow: 'hidden' },
     bookingName: { fontSize: '13px', fontWeight: '500', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     bookingDate: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af' },
     bookingPrice: { marginLeft: 'auto', fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
@@ -92,7 +92,9 @@ const Dashboard = () => {
                 <p style={{ color: isDark ? '#94a3b8' : '#6b7280', fontSize: '13px' }}>No bookings yet.</p>
               ) : recentBookings.map((b) => (
                 <div key={b._id} style={s.bookingRow}>
-                  <div style={s.bookingIcon}></div>
+                  <div style={s.bookingIcon}>
+                    {b.car?.image && <img src={b.car.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  </div>
                   <div>
                     <div style={s.bookingName}>{b.car?.brand} {b.car?.model}</div>
                     <div style={s.bookingDate}>{new Date(b.createdAt).toLocaleDateString()}</div>
