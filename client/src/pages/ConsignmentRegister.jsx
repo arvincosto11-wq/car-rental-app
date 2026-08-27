@@ -176,7 +176,7 @@ const ConsignmentRegister = () => {
             <input style={styles.input} type="text" placeholder="Enter your name"
               value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </div>
-          <div style={styles.row}>
+          <div className="responsive-row-2" style={styles.row}>
             <div style={styles.field}>
               <label style={styles.label}>Email</label>
               <input style={styles.input} type="email" placeholder="Enter your email"
@@ -188,7 +188,7 @@ const ConsignmentRegister = () => {
                 value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
             </div>
           </div>
-          <div style={styles.row}>
+          <div className="responsive-row-2" style={styles.row}>
             <div style={styles.field}>
               <label style={styles.label}>Phone Number</label>
               <input style={styles.input} type="tel" placeholder="09171234567"
@@ -228,7 +228,7 @@ const ConsignmentRegister = () => {
             </button>
           </div>
 
-          <div style={styles.row}>
+          <div className="responsive-row-2" style={styles.row}>
             <div style={styles.field}>
               <label style={styles.label}>Brand</label>
               <select style={styles.input} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
@@ -263,7 +263,7 @@ const ConsignmentRegister = () => {
             </div>
           </div>
 
-          <div style={styles.row3}>
+          <div className="responsive-row-3" style={styles.row3}>
             <div style={styles.field}>
               <label style={styles.label}>Year</label>
               <input style={styles.input} type="number" placeholder="e.g. 2022"
@@ -287,7 +287,7 @@ const ConsignmentRegister = () => {
               value={form.plateNumber} onChange={(e) => setForm({ ...form, plateNumber: e.target.value })} required />
           </div>
 
-          <div style={styles.row3}>
+          <div className="responsive-row-3" style={styles.row3}>
             <div style={styles.field}>
               <label style={styles.label}>Category</label>
               {vehicleType === 'motorcycle' ? (
@@ -353,7 +353,7 @@ const ConsignmentRegister = () => {
 
           <h2 style={styles.sectionTitle}>Vehicle Documents</h2>
 
-          <div style={styles.row}>
+          <div className="responsive-row-2" style={styles.row}>
             <div style={styles.field}>
               <label style={styles.label}>OR (Official Receipt)</label>
               <div style={styles.upload}>
@@ -453,8 +453,8 @@ const styles = {
     marginTop: '24px', marginBottom: '12px', paddingBottom: '8px',
     borderBottom: '1px solid #e5e7eb',
   },
-  row: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
-  row3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' },
+  row: { gap: '12px' },
+  row3: { gap: '12px' },
   field: { marginBottom: '16px' },
   fieldHint: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' },
   checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#374151', cursor: 'pointer' },

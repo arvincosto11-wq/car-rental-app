@@ -50,8 +50,6 @@ const Home = () => {
       marginBottom: '32px',
     },
     searchBox: {
-      display: 'flex',
-      alignItems: 'flex-end',
       gap: '0',
       maxWidth: '700px',
       margin: '0 auto',
@@ -109,8 +107,6 @@ const Home = () => {
       marginBottom: '32px',
     },
     grid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(3, 1fr)',
       gap: '20px',
     },
     card: {
@@ -205,8 +201,8 @@ const Home = () => {
         <h1 style={styles.heroTitle}>Luxury cars on Rent</h1>
         <p style={styles.heroSubtitle}>Find the perfect car for your next adventure</p>
 
-        <div style={styles.searchBox}>
-          <div style={styles.searchField}>
+        <div className="hero-search-box" style={styles.searchBox}>
+          <div className="hero-search-field" style={styles.searchField}>
             <label style={styles.searchLabel}>Pick-up Date</label>
             <input
               style={styles.searchInput}
@@ -215,7 +211,7 @@ const Home = () => {
               onChange={(e) => setPickupDate(e.target.value)}
             />
           </div>
-          <div style={styles.searchField}>
+          <div className="hero-search-field" style={styles.searchField}>
             <label style={styles.searchLabel}>Return Date</label>
             <input
               style={styles.searchInput}
@@ -224,7 +220,7 @@ const Home = () => {
               onChange={(e) => setReturnDate(e.target.value)}
             />
           </div>
-          <button style={styles.searchBtn} onClick={handleSearch}>
+          <button className="hero-search-btn" style={styles.searchBtn} onClick={handleSearch}>
             Search
           </button>
         </div>
@@ -242,7 +238,7 @@ const Home = () => {
         ) : cars.length === 0 ? (
           <p style={{ textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>No cars available yet.</p>
         ) : (
-          <div style={styles.grid}>
+          <div className="responsive-grid-3" style={styles.grid}>
             {cars.map((car) => (
               <div
                 key={car._id}

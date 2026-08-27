@@ -157,7 +157,7 @@ const MyBookings = () => {
       ) : (
         <div style={styles.list}>
           {bookings.map((booking, index) => (
-            <div key={booking._id} style={styles.card}>
+            <div key={booking._id} className="booking-card" style={styles.card}>
               <div style={styles.imgWrap}>
                 {booking.car?.image ? (
                   <img src={booking.car.image} alt="" style={styles.img} />
@@ -212,7 +212,7 @@ const MyBookings = () => {
                   )
                 )}
               </div>
-              <div style={styles.priceCol}>
+              <div className="booking-card-price" style={styles.priceCol}>
                 <span style={styles.priceLabel}>Total Price</span>
                 <span style={styles.price}>₱{booking.totalPrice}</span>
                 <span style={styles.bookedOn}>

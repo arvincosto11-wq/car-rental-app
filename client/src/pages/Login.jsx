@@ -78,6 +78,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     background: '#f9fafb',
+    padding: '40px 16px',
   },
   card: {
     background: '#fff',

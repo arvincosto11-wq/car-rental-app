@@ -157,7 +157,7 @@ const Register = () => {
             </div>
           </div>
 
-          <div style={styles.row}>
+          <div className="responsive-row-2" style={styles.row}>
             <div style={styles.field}>
               <label style={styles.label}>Driver's License Number</label>
               <input
@@ -181,7 +181,7 @@ const Register = () => {
             </div>
           </div>
 
-          <div style={styles.row}>
+          <div className="responsive-row-2" style={styles.row}>
             <div style={styles.field}>
               <label style={styles.label}>Emergency Contact Name</label>
               <input
@@ -270,7 +270,7 @@ const styles = {
     fontSize: '13px',
     marginBottom: '16px',
   },
-  row: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
+  row: { gap: '12px' },
   field: { marginBottom: '16px' },
   label: {
     display: 'block',

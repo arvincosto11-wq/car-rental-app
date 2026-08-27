@@ -65,7 +65,7 @@ const Cars = () => {
       ) : filtered.length === 0 ? (
         <p style={{ textAlign: 'center', color: '#6b7280' }}>No cars found.</p>
       ) : (
-        <div style={styles.grid}>
+        <div className="responsive-grid-3" style={styles.grid}>
           {filtered.map((car) => (
             <div
               key={car._id}
@@ -131,11 +131,12 @@ const styles = {
   },
   filters: {
     display: 'flex',
+    flexWrap: 'wrap',
     gap: '12px',
     marginBottom: '24px',
   },
   searchInput: {
-    flex: 1,
+    flex: '1 1 200px',
     padding: '10px 14px',
     border: '1px solid #d1d5db',
     borderRadius: '8px',
@@ -151,8 +152,6 @@ const styles = {
     background: '#fff',
   },
   grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '20px',
   },
   card: {

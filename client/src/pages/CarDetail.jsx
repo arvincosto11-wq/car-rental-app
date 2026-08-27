@@ -122,13 +122,13 @@ const CarDetail = () => {
     page: { minHeight: '100vh', background: isDark ? '#0f172a' : '#f9fafb' },
     container: { maxWidth: '1100px', margin: '0 auto', padding: '24px 32px' },
     backBtn: { background: 'none', border: 'none', color: isDark ? '#94a3b8' : '#6b7280', fontSize: '14px', cursor: 'pointer', marginBottom: '20px', padding: 0 },
-    layout: { display: 'grid', gridTemplateColumns: '1fr 340px', gap: '32px' },
+    layout: { gap: '32px' },
     imgWrap: { width: '100%', height: '300px', borderRadius: '12px', overflow: 'hidden', background: isDark ? '#334155' : '#f3f4f6', marginBottom: '16px' },
     img: { width: '100%', height: '100%', objectFit: 'cover' },
     noImg: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#64748b' : '#9ca3af' },
     carName: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     carSub: { fontSize: '15px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '20px' },
-    metaGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' },
+    metaGrid: { gap: '12px', marginBottom: '20px' },
     metaItem: { background: isDark ? '#1e293b' : '#f9fafb', padding: '12px', borderRadius: '8px', textAlign: 'center', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
     metaLabel: { display: 'block', fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '4px' },
     metaValue: { fontSize: '14px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
@@ -241,7 +241,7 @@ const CarDetail = () => {
           ← Back to all cars
         </button>
 
-        <div style={s.layout}>
+        <div className="car-detail-layout" style={s.layout}>
           {/* Left */}
           <div>
             <div style={s.imgWrap}>
@@ -269,7 +269,7 @@ const CarDetail = () => {
               </p>
             )}
 
-            <div style={s.metaGrid}>
+            <div className="meta-grid-4" style={s.metaGrid}>
               <div style={s.metaItem}>
                 <span style={s.metaLabel}>Seats</span>
                 <span style={s.metaValue}>{car.seats}</span>

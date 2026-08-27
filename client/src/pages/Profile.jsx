@@ -103,7 +103,7 @@ const Profile = () => {
     editBtn: { padding: '7px 16px', fontSize: '13px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer', fontWeight: '500' },
     cancelBtn: { padding: '9px 18px', fontSize: '13px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', background: 'none', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer', fontWeight: '500' },
     saveBtn: { padding: '9px 18px', fontSize: '13px', border: 'none', borderRadius: '8px', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: '600' },
-    profileGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' },
+    profileGrid: { gap: '14px' },
     profileItem: { background: isDark ? '#0f172a' : '#f9fafb', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
     profileLabel: { display: 'block', fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '3px' },
     profileValue: { fontSize: '13px', color: isDark ? '#f1f5f9' : '#1a1a1a', fontWeight: '500' },
@@ -114,7 +114,7 @@ const Profile = () => {
     field: { marginBottom: '14px' },
     label: { display: 'block', fontSize: '13px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
     input: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    row: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
+    row: { gap: '12px' },
     upload: { position: 'relative', width: '100%', maxWidth: '280px', height: '130px', border: `2px dashed ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#0f172a' : '#fff' },
     uploadPlaceholder: { textAlign: 'center', padding: '12px', fontSize: '12px', color: isDark ? '#64748b' : '#6b7280' },
     uploadPreview: { width: '100%', height: '100%', objectFit: 'cover' },
@@ -143,7 +143,7 @@ const Profile = () => {
             <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
           ) : !editMode ? (
             <>
-              <div style={s.profileGrid}>
+              <div className="responsive-row-2" style={s.profileGrid}>
                 <div style={s.profileItem}>
                   <span style={s.profileLabel}>Full Name</span>
                   <span style={s.profileValue}>{profile.name}</span>
@@ -206,7 +206,7 @@ const Profile = () => {
                   onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
 
-              <div style={s.row}>
+              <div className="responsive-row-2" style={s.row}>
                 <div style={s.field}>
                   <label style={s.label}>Phone Number</label>
                   <input style={s.input} type="tel" value={form.phone}
@@ -219,7 +219,7 @@ const Profile = () => {
                 </div>
               </div>
 
-              <div style={s.row}>
+              <div className="responsive-row-2" style={s.row}>
                 <div style={s.field}>
                   <label style={s.label}>License Number</label>
                   <input style={s.input} type="text" value={form.licenseNumber}
@@ -232,7 +232,7 @@ const Profile = () => {
                 </div>
               </div>
 
-              <div style={s.row}>
+              <div className="responsive-row-2" style={s.row}>
                 <div style={s.field}>
                   <label style={s.label}>Emergency Contact Name</label>
                   <input style={s.input} type="text" value={form.emergencyContactName}
