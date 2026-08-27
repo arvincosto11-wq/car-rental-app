@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
 
@@ -8,6 +9,7 @@ const Cars = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
+  const { isDark } = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,6 +33,137 @@ const Cars = () => {
     const matchCategory = category ? car.category === category : true;
     return matchSearch && matchCategory;
   });
+
+  const styles = {
+    container: {
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '32px',
+    },
+    title: {
+      fontSize: '28px',
+      fontWeight: '700',
+      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      marginBottom: '24px',
+    },
+    filters: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '12px',
+      marginBottom: '24px',
+    },
+    searchInput: {
+      flex: '1 1 200px',
+      padding: '10px 14px',
+      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '8px',
+      fontSize: '14px',
+      outline: 'none',
+      background: isDark ? '#1e293b' : '#fff',
+      color: isDark ? '#f1f5f9' : '#111827',
+    },
+    select: {
+      padding: '10px 14px',
+      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '8px',
+      fontSize: '14px',
+      outline: 'none',
+      background: isDark ? '#1e293b' : '#fff',
+      color: isDark ? '#f1f5f9' : '#111827',
+    },
+    grid: {
+      gap: '20px',
+    },
+    card: {
+      background: isDark ? '#1e293b' : '#fff',
+      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      borderRadius: '12px',
+      overflow: 'hidden',
+      cursor: 'pointer',
+    },
+    imgWrap: {
+      position: 'relative',
+      height: '160px',
+      background: isDark ? '#334155' : '#f3f4f6',
+    },
+    img: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+    },
+    noImg: {
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: isDark ? '#64748b' : '#9ca3af',
+      fontSize: '13px',
+    },
+    availBadge: {
+      position: 'absolute',
+      top: '10px',
+      left: '10px',
+      background: '#2563eb',
+      color: '#fff',
+      fontSize: '11px',
+      padding: '3px 10px',
+      borderRadius: '20px',
+    },
+    priceBadge: {
+      position: 'absolute',
+      bottom: '10px',
+      right: '10px',
+      background: 'rgba(0,0,0,0.6)',
+      color: '#fff',
+      fontSize: '12px',
+      padding: '3px 10px',
+      borderRadius: '6px',
+    },
+    cardBody: { padding: '14px 16px' },
+    carName: {
+      fontSize: '16px',
+      fontWeight: '600',
+      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      marginBottom: '4px',
+    },
+    carSub: {
+      fontSize: '13px',
+      color: isDark ? '#94a3b8' : '#6b7280',
+      marginBottom: '10px',
+    },
+    ratingRow: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      marginBottom: '8px',
+    },
+    ratingText: {
+      fontSize: '12px',
+      color: isDark ? '#94a3b8' : '#6b7280',
+      fontWeight: '500',
+    },
+    carMeta: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: '4px',
+      fontSize: '12px',
+      color: isDark ? '#94a3b8' : '#6b7280',
+    },
+    bookingTypeRow: {
+      display: 'flex',
+      gap: '6px',
+      marginTop: '10px',
+      flexWrap: 'wrap',
+    },
+    bookingTypeTag: {
+      fontSize: '11px',
+      color: isDark ? '#f1f5f9' : '#374151',
+      background: isDark ? '#334155' : '#f3f4f6',
+      padding: '3px 9px',
+      borderRadius: '20px',
+    },
+  };
 
   return (
     <div style={styles.container}>
@@ -61,9 +194,9 @@ const Cars = () => {
       </div>
 
       {loading ? (
-        <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading...</p>
+        <p style={{ textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
       ) : filtered.length === 0 ? (
-        <p style={{ textAlign: 'center', color: '#6b7280' }}>No cars found.</p>
+        <p style={{ textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>No cars found.</p>
       ) : (
         <div className="responsive-grid-3" style={styles.grid}>
           {filtered.map((car) => (
@@ -79,8 +212,8 @@ const Cars = () => {
                   <div style={styles.noImg}>No Image</div>
                 )}
                 <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#2563eb' }}>
-  {car.isAvailable === false ? 'Not Available' : 'Available Now'}
-</span>
+                  {car.isAvailable === false ? 'Not Available' : 'Available Now'}
+                </span>
                 <span style={styles.priceBadge}>₱{car.pricePerDay} / day</span>
               </div>
               <div style={styles.cardBody}>
@@ -115,134 +248,6 @@ const Cars = () => {
       )}
     </div>
   );
-};
-
-const styles = {
-  container: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '32px',
-  },
-  title: {
-    fontSize: '28px',
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: '24px',
-  },
-  filters: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '12px',
-    marginBottom: '24px',
-  },
-  searchInput: {
-    flex: '1 1 200px',
-    padding: '10px 14px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '14px',
-    outline: 'none',
-  },
-  select: {
-    padding: '10px 14px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '14px',
-    outline: 'none',
-    background: '#fff',
-  },
-  grid: {
-    gap: '20px',
-  },
-  card: {
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    cursor: 'pointer',
-  },
-  imgWrap: {
-    position: 'relative',
-    height: '160px',
-    background: '#f3f4f6',
-  },
-  img: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  noImg: {
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#9ca3af',
-    fontSize: '13px',
-  },
-  availBadge: {
-    position: 'absolute',
-    top: '10px',
-    left: '10px',
-    background: '#2563eb',
-    color: '#fff',
-    fontSize: '11px',
-    padding: '3px 10px',
-    borderRadius: '20px',
-  },
-  priceBadge: {
-    position: 'absolute',
-    bottom: '10px',
-    right: '10px',
-    background: 'rgba(0,0,0,0.6)',
-    color: '#fff',
-    fontSize: '12px',
-    padding: '3px 10px',
-    borderRadius: '6px',
-  },
-  cardBody: { padding: '14px 16px' },
-  carName: {
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: '4px',
-  },
-  carSub: {
-    fontSize: '13px',
-    color: '#6b7280',
-    marginBottom: '10px',
-  },
-  ratingRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    marginBottom: '8px',
-  },
-  ratingText: {
-    fontSize: '12px',
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  carMeta: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '4px',
-    fontSize: '12px',
-    color: '#6b7280',
-  },
-  bookingTypeRow: {
-    display: 'flex',
-    gap: '6px',
-    marginTop: '10px',
-    flexWrap: 'wrap',
-  },
-  bookingTypeTag: {
-    fontSize: '11px',
-    color: '#374151',
-    background: '#f3f4f6',
-    padding: '3px 9px',
-    borderRadius: '20px',
-  },
 };
 
 export default Cars;

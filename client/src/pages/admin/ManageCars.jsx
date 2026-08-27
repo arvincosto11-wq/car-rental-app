@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
+import { useTheme } from '../../context/ThemeContext';
 import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
 
 const OTHER = '__other__';
 
 const ManageCars = () => {
+  const { isDark } = useTheme();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingCar, setEditingCar] = useState(null);
@@ -182,6 +184,52 @@ const ManageCars = () => {
     }
   };
 
+  const styles = {
+    main: {},
+    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
+    subtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
+    carCard: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', marginBottom: '12px', overflow: 'hidden' },
+    carRow: { display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 16px' },
+    carThumbWrap: { width: '60px', height: '44px', borderRadius: '8px', overflow: 'hidden', background: isDark ? '#334155' : '#f3f4f6', flexShrink: 0 },
+    carThumbImg: { width: '100%', height: '100%', objectFit: 'cover' },
+    carThumb: { width: '100%', height: '100%', background: isDark ? '#334155' : '#f3f4f6' },
+    carInfo: { flex: 1 },
+    carName: { fontSize: '14px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    carSub: { fontSize: '12px', color: isDark ? '#94a3b8' : '#9ca3af', marginTop: '2px' },
+    carRatingText: { fontSize: '11px', color: isDark ? '#94a3b8' : '#9ca3af', marginTop: '4px' },
+    carPrice: { fontSize: '14px', fontWeight: '500', color: isDark ? '#f1f5f9' : '#1a1a1a', minWidth: '80px' },
+    available: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
+    unavailable: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
+    actions: { display: 'flex', gap: '6px' },
+    editBtn: { padding: '5px 12px', background: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff', border: `1px solid ${isDark ? '#1e40af' : '#bfdbfe'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#93c5fd' : '#1d4ed8' },
+    toggleBtn: { padding: '5px 12px', background: isDark ? '#0f172a' : '#f3f4f6', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    deleteBtn: { padding: '5px 12px', background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', border: `1px solid ${isDark ? '#7f1d1d' : '#fca5a5'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#fca5a5' : '#dc2626' },
+    editForm: { padding: '20px' },
+    editTitle: { fontSize: '16px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '16px' },
+    imageUpload: { position: 'relative', width: '200px', height: '140px', border: `2px dashed ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#0f172a' : '#fff' },
+    imagePlaceholder: { textAlign: 'center', padding: '16px' },
+    imagePreview: { width: '100%', height: '100%', objectFit: 'cover' },
+    fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
+    editGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '12px' },
+    field: { marginBottom: '8px' },
+    label: { display: 'block', fontSize: '12px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '4px', fontWeight: '500' },
+    input: { width: '100%', padding: '8px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', color: isDark ? '#f1f5f9' : '#111827', background: isDark ? '#0f172a' : '#fff' },
+    textarea: { width: '100%', padding: '8px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '60px', resize: 'vertical', color: isDark ? '#f1f5f9' : '#111827', background: isDark ? '#0f172a' : '#fff' },
+    saveBtn: { padding: '8px 20px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
+    cancelBtn: { padding: '8px 20px', background: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
+    checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer' },
+    typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '16px' },
+    typeToggleBtn: (active) => ({
+      flex: 1, padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
+      border: active ? '2px solid #2563eb' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff') : (isDark ? '#0f172a' : '#fff'),
+      color: active ? (isDark ? '#93c5fd' : '#1d4ed8') : (isDark ? '#94a3b8' : '#374151'),
+      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+    }),
+    categoryFixed: { padding: '8px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', background: isDark ? '#0f172a' : '#f9fafb', color: isDark ? '#94a3b8' : '#6b7280' },
+    hint: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '4px' },
+  };
+
   return (
     <AdminLayout activePage="Manage Cars">
       <div style={styles.main}>
@@ -213,7 +261,7 @@ const ManageCars = () => {
                           ) : (
                             <div style={styles.imagePlaceholder}>
                               <span style={{ fontSize: '28px' }}>🚗</span>
-                              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>
+                              <p style={{ fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '6px' }}>
                                 Click to upload new image
                               </p>
                             </div>
@@ -226,7 +274,7 @@ const ManageCars = () => {
                           />
                         </div>
                         {editImagePreview && (
-                          <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                          <p style={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '4px' }}>
                             Click image to change it
                           </p>
                         )}
@@ -386,52 +434,6 @@ const ManageCars = () => {
       </div>
     </AdminLayout>
   );
-};
-
-const styles = {
-  main: {},
-  title: { fontSize: '22px', fontWeight: '700', color: '#1a1a1a', marginBottom: '4px' },
-  subtitle: { fontSize: '13px', color: '#6b7280', marginBottom: '24px' },
-  carCard: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', marginBottom: '12px', overflow: 'hidden' },
-  carRow: { display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 16px' },
-  carThumbWrap: { width: '60px', height: '44px', borderRadius: '8px', overflow: 'hidden', background: '#f3f4f6', flexShrink: 0 },
-  carThumbImg: { width: '100%', height: '100%', objectFit: 'cover' },
-  carThumb: { width: '100%', height: '100%', background: '#f3f4f6' },
-  carInfo: { flex: 1 },
-  carName: { fontSize: '14px', fontWeight: '600', color: '#1a1a1a' },
-  carSub: { fontSize: '12px', color: '#9ca3af', marginTop: '2px' },
-  carRatingText: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' },
-  carPrice: { fontSize: '14px', fontWeight: '500', color: '#1a1a1a', minWidth: '80px' },
-  available: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-  unavailable: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-  actions: { display: 'flex', gap: '6px' },
-  editBtn: { padding: '5px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: '#1d4ed8' },
-  toggleBtn: { padding: '5px 12px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' },
-  deleteBtn: { padding: '5px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: '#dc2626' },
-  editForm: { padding: '20px' },
-  editTitle: { fontSize: '16px', fontWeight: '600', color: '#1a1a1a', marginBottom: '16px' },
-  imageUpload: { position: 'relative', width: '200px', height: '140px', border: '2px dashed #d1d5db', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  imagePlaceholder: { textAlign: 'center', padding: '16px' },
-  imagePreview: { width: '100%', height: '100%', objectFit: 'cover' },
-  fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
-  editGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '12px' },
-  field: { marginBottom: '8px' },
-  label: { display: 'block', fontSize: '12px', color: '#374151', marginBottom: '4px', fontWeight: '500' },
-  input: { width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', color: '#111827', background: '#fff' },
-  textarea: { width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '60px', resize: 'vertical', color: '#111827' },
-  saveBtn: { padding: '8px 20px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
-  cancelBtn: { padding: '8px 20px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
-  checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#374151', cursor: 'pointer' },
-  typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '16px' },
-  typeToggleBtn: (active) => ({
-    flex: 1, padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-    border: active ? '2px solid #2563eb' : '1px solid #d1d5db',
-    background: active ? '#eff6ff' : '#fff',
-    color: active ? '#1d4ed8' : '#374151',
-    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-  }),
-  categoryFixed: { padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', background: '#f9fafb', color: '#6b7280' },
-  hint: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' },
 };
 
 export default ManageCars;

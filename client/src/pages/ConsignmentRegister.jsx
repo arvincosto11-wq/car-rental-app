@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../data/vehicleBrands';
 
@@ -69,6 +70,7 @@ const ConsignmentRegister = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { isDark } = useTheme();
   const navigate = useNavigate();
 
   const uploadToImageKit = async (file) => {
@@ -154,6 +156,87 @@ const ConsignmentRegister = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const styles = {
+    container: {
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: isDark ? '#0f172a' : '#f9fafb',
+      padding: '40px 16px',
+    },
+    card: {
+      background: isDark ? '#1e293b' : '#fff',
+      padding: '40px',
+      borderRadius: '12px',
+      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      width: '100%',
+      maxWidth: '640px',
+    },
+    title: { fontSize: '24px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
+    subtitle: { fontSize: '14px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '16px' },
+    notice: {
+      background: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff', border: `1px solid ${isDark ? '#1e40af' : '#bfdbfe'}`, color: isDark ? '#93c5fd' : '#1e40af',
+      padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px',
+    },
+    noticeLink: { color: isDark ? '#93c5fd' : '#1d4ed8', fontWeight: '600', textDecoration: 'underline' },
+    error: {
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px',
+      borderRadius: '8px', fontSize: '13px', marginBottom: '16px',
+    },
+    sectionTitle: {
+      fontSize: '15px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a',
+      marginTop: '24px', marginBottom: '12px', paddingBottom: '8px',
+      borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+    },
+    row: { gap: '12px' },
+    row3: { gap: '12px' },
+    field: { marginBottom: '16px' },
+    fieldHint: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '4px' },
+    checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer' },
+    label: { display: 'block', fontSize: '13px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
+    typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '16px' },
+    typeToggleBtn: (active) => ({
+      flex: 1, padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
+      border: active ? '2px solid #2563eb' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff') : (isDark ? '#0f172a' : '#fff'),
+      color: active ? (isDark ? '#93c5fd' : '#1d4ed8') : (isDark ? '#94a3b8' : '#374151'),
+      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+    }),
+    categoryFixed: { padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', background: isDark ? '#0f172a' : '#f9fafb', color: isDark ? '#94a3b8' : '#6b7280' },
+    input: {
+      width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px',
+      fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: isDark ? '#f1f5f9' : '#111827', background: isDark ? '#0f172a' : '#fff',
+    },
+    textarea: {
+      width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px',
+      fontSize: '14px', outline: 'none', boxSizing: 'border-box', minHeight: '80px', resize: 'vertical', color: isDark ? '#f1f5f9' : '#111827', background: isDark ? '#0f172a' : '#fff',
+    },
+    upload: {
+      position: 'relative', width: '100%', height: '130px', border: `2px dashed ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '12px', overflow: 'hidden', cursor: 'pointer',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#0f172a' : '#fff',
+    },
+    uploadPlaceholder: { textAlign: 'center', padding: '16px' },
+    uploadHint: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '6px' },
+    uploadPreview: { width: '100%', height: '100%', objectFit: 'cover' },
+    fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
+    photoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '8px', marginTop: '10px' },
+    photoThumbWrap: { position: 'relative', width: '100%', height: '70px', borderRadius: '8px', overflow: 'hidden' },
+    photoThumb: { width: '100%', height: '100%', objectFit: 'cover' },
+    removePhotoBtn: {
+      position: 'absolute', top: '2px', right: '2px', width: '20px', height: '20px',
+      borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff',
+      fontSize: '13px', lineHeight: '20px', cursor: 'pointer', padding: 0,
+    },
+    btn: {
+      width: '100%', padding: '11px', background: '#2563eb', color: '#fff', border: 'none',
+      borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginTop: '8px',
+    },
+    footer: { textAlign: 'center', fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '20px' },
+    footerLink: { color: isDark ? '#93c5fd' : '#2563eb', textDecoration: 'none', fontWeight: '500' },
   };
 
   return (
@@ -418,87 +501,6 @@ const ConsignmentRegister = () => {
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#f9fafb',
-    padding: '40px 16px',
-  },
-  card: {
-    background: '#fff',
-    padding: '40px',
-    borderRadius: '12px',
-    border: '1px solid #e5e7eb',
-    width: '100%',
-    maxWidth: '640px',
-  },
-  title: { fontSize: '24px', fontWeight: '600', color: '#1a1a1a', marginBottom: '4px' },
-  subtitle: { fontSize: '14px', color: '#6b7280', marginBottom: '16px' },
-  notice: {
-    background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
-    padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px',
-  },
-  noticeLink: { color: '#1d4ed8', fontWeight: '600', textDecoration: 'underline' },
-  error: {
-    background: '#fef2f2', color: '#dc2626', padding: '10px 14px',
-    borderRadius: '8px', fontSize: '13px', marginBottom: '16px',
-  },
-  sectionTitle: {
-    fontSize: '15px', fontWeight: '700', color: '#1a1a1a',
-    marginTop: '24px', marginBottom: '12px', paddingBottom: '8px',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  row: { gap: '12px' },
-  row3: { gap: '12px' },
-  field: { marginBottom: '16px' },
-  fieldHint: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' },
-  checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#374151', cursor: 'pointer' },
-  label: { display: 'block', fontSize: '13px', color: '#374151', marginBottom: '6px', fontWeight: '500' },
-  typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '16px' },
-  typeToggleBtn: (active) => ({
-    flex: 1, padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-    border: active ? '2px solid #2563eb' : '1px solid #d1d5db',
-    background: active ? '#eff6ff' : '#fff',
-    color: active ? '#1d4ed8' : '#374151',
-    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-  }),
-  categoryFixed: { padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', background: '#f9fafb', color: '#6b7280' },
-  input: {
-    width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px',
-    fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#111827', background: '#fff',
-  },
-  textarea: {
-    width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px',
-    fontSize: '14px', outline: 'none', boxSizing: 'border-box', minHeight: '80px', resize: 'vertical', color: '#111827',
-  },
-  upload: {
-    position: 'relative', width: '100%', height: '130px', border: '2px dashed #d1d5db',
-    borderRadius: '12px', overflow: 'hidden', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff',
-  },
-  uploadPlaceholder: { textAlign: 'center', padding: '16px' },
-  uploadHint: { fontSize: '12px', color: '#6b7280', marginTop: '6px' },
-  uploadPreview: { width: '100%', height: '100%', objectFit: 'cover' },
-  fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
-  photoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '8px', marginTop: '10px' },
-  photoThumbWrap: { position: 'relative', width: '100%', height: '70px', borderRadius: '8px', overflow: 'hidden' },
-  photoThumb: { width: '100%', height: '100%', objectFit: 'cover' },
-  removePhotoBtn: {
-    position: 'absolute', top: '2px', right: '2px', width: '20px', height: '20px',
-    borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff',
-    fontSize: '13px', lineHeight: '20px', cursor: 'pointer', padding: 0,
-  },
-  btn: {
-    width: '100%', padding: '11px', background: '#2563eb', color: '#fff', border: 'none',
-    borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginTop: '8px',
-  },
-  footer: { textAlign: 'center', fontSize: '13px', color: '#6b7280', marginTop: '20px' },
-  footerLink: { color: '#2563eb', textDecoration: 'none', fontWeight: '500' },
 };
 
 export default ConsignmentRegister;

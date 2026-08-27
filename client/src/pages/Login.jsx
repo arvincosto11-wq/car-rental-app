@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 
 const Login = () => {
@@ -8,6 +9,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { isDark } = useTheme();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -24,6 +26,86 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const styles = {
+    container: {
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: isDark ? '#0f172a' : '#f9fafb',
+      padding: '40px 16px',
+    },
+    card: {
+      background: isDark ? '#1e293b' : '#fff',
+      padding: '40px',
+      borderRadius: '12px',
+      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      width: '100%',
+      maxWidth: '400px',
+    },
+    title: {
+      fontSize: '24px',
+      fontWeight: '600',
+      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      marginBottom: '4px',
+    },
+    subtitle: {
+      fontSize: '14px',
+      color: isDark ? '#94a3b8' : '#6b7280',
+      marginBottom: '24px',
+    },
+    error: {
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2',
+      color: isDark ? '#fca5a5' : '#dc2626',
+      padding: '10px 14px',
+      borderRadius: '8px',
+      fontSize: '13px',
+      marginBottom: '16px',
+    },
+    field: { marginBottom: '16px' },
+    label: {
+      display: 'block',
+      fontSize: '13px',
+      color: isDark ? '#94a3b8' : '#374151',
+      marginBottom: '6px',
+      fontWeight: '500',
+    },
+    input: {
+      width: '100%',
+      padding: '10px 12px',
+      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '8px',
+      fontSize: '14px',
+      outline: 'none',
+      boxSizing: 'border-box',
+      background: isDark ? '#0f172a' : '#fff',
+      color: isDark ? '#f1f5f9' : '#111827',
+    },
+    btn: {
+      width: '100%',
+      padding: '11px',
+      background: '#2563eb',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+      marginTop: '8px',
+    },
+    footer: {
+      textAlign: 'center',
+      fontSize: '13px',
+      color: isDark ? '#94a3b8' : '#6b7280',
+      marginTop: '20px',
+    },
+    footerLink: {
+      color: '#2563eb',
+      textDecoration: 'none',
+      fontWeight: '500',
+    },
   };
 
   return (
@@ -69,85 +151,6 @@ const Login = () => {
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#f9fafb',
-    padding: '40px 16px',
-  },
-  card: {
-    background: '#fff',
-    padding: '40px',
-    borderRadius: '12px',
-    border: '1px solid #e5e7eb',
-    width: '100%',
-    maxWidth: '400px',
-  },
-  title: {
-    fontSize: '24px',
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: '4px',
-  },
-  subtitle: {
-    fontSize: '14px',
-    color: '#6b7280',
-    marginBottom: '24px',
-  },
-  error: {
-    background: '#fef2f2',
-    color: '#dc2626',
-    padding: '10px 14px',
-    borderRadius: '8px',
-    fontSize: '13px',
-    marginBottom: '16px',
-  },
-  field: { marginBottom: '16px' },
-  label: {
-    display: 'block',
-    fontSize: '13px',
-    color: '#374151',
-    marginBottom: '6px',
-    fontWeight: '500',
-  },
-  input: {
-    width: '100%',
-    padding: '10px 12px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '14px',
-    outline: 'none',
-    boxSizing: 'border-box',
-    color: '#111827',
-  },
-  btn: {
-    width: '100%',
-    padding: '11px',
-    background: '#2563eb',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    marginTop: '8px',
-  },
-  footer: {
-    textAlign: 'center',
-    fontSize: '13px',
-    color: '#6b7280',
-    marginTop: '20px',
-  },
-  footerLink: {
-    color: '#2563eb',
-    textDecoration: 'none',
-    fontWeight: '500',
-  },
 };
 
 export default Login;
