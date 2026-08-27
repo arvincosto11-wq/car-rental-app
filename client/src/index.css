@@ -96,16 +96,19 @@ body.dark ::-webkit-scrollbar-thumb {
    needing to touch each component's own inline styles. */
 button:not(:disabled),
 .btn-like {
-  transition: filter 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease;
+  transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 button:not(:disabled):hover,
 .btn-like:hover {
   filter: brightness(0.93);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.16);
 }
 button:not(:disabled):active,
 .btn-like:active {
-  transform: scale(0.97);
+  transform: translateY(0) scale(0.97);
   filter: brightness(0.87);
+  box-shadow: none;
 }
 button:disabled {
   opacity: 0.55;
@@ -118,9 +121,12 @@ button:disabled {
   .btn-like {
     transition: none;
   }
+  button:not(:disabled):hover,
+  .btn-like:hover,
   button:not(:disabled):active,
   .btn-like:active {
     transform: none;
+    box-shadow: none;
   }
 }
 
