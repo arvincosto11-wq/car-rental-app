@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import StarRating from '../components/StarRating';
 import api from '../api';
 
 const Home = () => {
@@ -166,6 +167,17 @@ const Home = () => {
       color: isDark ? '#94a3b8' : '#6b7280',
       marginBottom: '10px',
     },
+    ratingRow: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      marginBottom: '8px',
+    },
+    ratingText: {
+      fontSize: '12px',
+      color: isDark ? '#94a3b8' : '#6b7280',
+      fontWeight: '500',
+    },
     carMeta: {
       display: 'grid',
       gridTemplateColumns: '1fr 1fr',
@@ -248,6 +260,16 @@ const Home = () => {
                 <div style={styles.cardBody}>
                   <h3 style={styles.carName}>{car.brand} {car.model}</h3>
                   <p style={styles.carSub}>{car.category} · {car.year}</p>
+                  {car.ratingCount > 0 ? (
+                    <div style={styles.ratingRow}>
+                      <StarRating value={car.avgRating} size={13} readOnly />
+                      <span style={styles.ratingText}>{car.avgRating.toFixed(1)} ({car.ratingCount})</span>
+                    </div>
+                  ) : (
+                    <div style={styles.ratingRow}>
+                      <span style={styles.ratingText}>No reviews yet</span>
+                    </div>
+                  )}
                   <div style={styles.carMeta}>
                     <span>{car.seats} Seats</span>
                     <span>{car.fuelType}</span>
