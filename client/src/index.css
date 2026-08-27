@@ -130,6 +130,31 @@ button:disabled {
   }
 }
 
+/* Custom dropdown chevron + focus ring for every native <select>, replacing
+   the default OS arrow without needing to rebuild every select as a custom
+   component. A neutral gray chevron reads fine on both light and dark
+   surfaces since it can't know the theme from pure CSS. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 34px !important;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+select:focus {
+  outline: none;
+  border-color: #e8a100 !important;
+  box-shadow: 0 0 0 3px rgba(232,161,0,0.2);
+}
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* Animated underline + color shift for navbar links. --nav-hover-color is
    set inline per-link since the brand gold value is computed in JS. */
 .nav-link {
