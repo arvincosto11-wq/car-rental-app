@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
-import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK } from '../../theme';
+import { GOLD, GOLD_DARK } from '../../theme';
 import api from '../../api';
 
 const Dashboard = () => {
@@ -59,7 +59,7 @@ const Dashboard = () => {
     boxTitle: { fontSize: '15px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     boxSubtitle: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '14px' },
     bookingRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}` },
-    bookingIcon: { width: '30px', height: '30px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT, borderRadius: '6px', flexShrink: 0, overflow: 'hidden' },
+    bookingIcon: { width: '30px', height: '30px', background: isDark ? '#334155' : '#f3f4f6', borderRadius: '6px', flexShrink: 0, overflow: 'hidden' },
     bookingName: { fontSize: '13px', fontWeight: '500', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     bookingDate: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af' },
     bookingPrice: { marginLeft: 'auto', fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
