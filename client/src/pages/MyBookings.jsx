@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
 
@@ -16,6 +17,7 @@ const REFUND_REASONS = [
 
 const MyBookings = () => {
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -140,13 +142,195 @@ const MyBookings = () => {
 
   const ratingBooking = bookings.find((b) => b._id === ratingModalId);
 
+  const styles = {
+    container: { maxWidth: '900px', margin: '0 auto', padding: '32px' },
+    title: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
+    subtitle: { fontSize: '14px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
+    empty: { textAlign: 'center', padding: '48px', color: isDark ? '#94a3b8' : '#6b7280' },
+    browseBtn: {
+      marginTop: '16px',
+      padding: '10px 24px',
+      background: '#2563eb',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '14px',
+      cursor: 'pointer',
+    },
+    list: { display: 'flex', flexDirection: 'column', gap: '16px' },
+    card: {
+      display: 'flex',
+      gap: '16px',
+      background: isDark ? '#1e293b' : '#fff',
+      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      borderRadius: '12px',
+      padding: '16px',
+      alignItems: 'center',
+    },
+    imgWrap: {
+      width: '100px',
+      height: '70px',
+      borderRadius: '8px',
+      overflow: 'hidden',
+      background: isDark ? '#334155' : '#f3f4f6',
+      flexShrink: 0,
+    },
+    img: { width: '100%', height: '100%', objectFit: 'cover' },
+    noImg: {
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '11px',
+      color: isDark ? '#64748b' : '#9ca3af',
+    },
+    info: { flex: 1 },
+    topRow: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' },
+    bookingNum: { fontSize: '14px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    badgePending: {
+      background: '#fef3c7',
+      color: '#92400e',
+      fontSize: '11px',
+      padding: '2px 10px',
+      borderRadius: '20px',
+    },
+    badgeConfirmed: {
+      background: '#d1fae5',
+      color: '#065f46',
+      fontSize: '11px',
+      padding: '2px 10px',
+      borderRadius: '20px',
+    },
+    badgeCancelled: {
+      background: '#fee2e2',
+      color: '#991b1b',
+      fontSize: '11px',
+      padding: '2px 10px',
+      borderRadius: '20px',
+    },
+    badgeCompleted: {
+      background: '#dbeafe',
+      color: '#1e40af',
+      fontSize: '11px',
+      padding: '2px 10px',
+      borderRadius: '20px',
+    },
+    badgeRefundRequested: {
+      background: '#fef3c7',
+      color: '#92400e',
+      fontSize: '11px',
+      padding: '2px 10px',
+      borderRadius: '20px',
+    },
+    badgeRefundApproved: {
+      background: '#dbeafe',
+      color: '#1e40af',
+      fontSize: '11px',
+      padding: '2px 10px',
+      borderRadius: '20px',
+    },
+    badgeRefundDeclined: {
+      background: '#fee2e2',
+      color: '#991b1b',
+      fontSize: '11px',
+      padding: '2px 10px',
+      borderRadius: '20px',
+    },
+    meta: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '4px' },
+    carName: { fontSize: '14px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginTop: '6px' },
+    carSub: { fontWeight: '400', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
+    refundBtn: {
+      marginTop: '10px',
+      padding: '6px 14px',
+      fontSize: '12px',
+      fontWeight: '500',
+      background: 'none',
+      color: isDark ? '#f87171' : '#dc2626',
+      border: `1px solid ${isDark ? '#f87171' : '#dc2626'}`,
+      borderRadius: '6px',
+      cursor: 'pointer',
+    },
+    refundNote: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '8px', fontStyle: 'italic' },
+    rateBtn: {
+      marginTop: '10px',
+      padding: '6px 14px',
+      fontSize: '12px',
+      fontWeight: '500',
+      background: '#2563eb',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '6px',
+      cursor: 'pointer',
+    },
+    ratingSummary: { marginTop: '10px' },
+    ratingScore: { fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    editRatingBtn: {
+      background: 'none',
+      border: 'none',
+      color: isDark ? '#93c5fd' : '#2563eb',
+      fontSize: '12px',
+      cursor: 'pointer',
+      padding: 0,
+      textDecoration: 'underline',
+    },
+    priceCol: {
+      textAlign: 'right',
+      minWidth: '100px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-end',
+    },
+    priceLabel: { fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280' },
+    price: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    bookedOn: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '4px' },
+    modalOverlay: {
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.5)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+    },
+    modalContent: {
+      background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', padding: '24px',
+      maxWidth: '440px', width: '90%',
+    },
+    modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '14px' },
+    warningBox: {
+      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fbbf24' : '#92400e', fontSize: '13px',
+      padding: '12px 14px', borderRadius: '8px', marginBottom: '14px', lineHeight: '1.5',
+    },
+    errorBox: {
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', fontSize: '13px',
+      padding: '10px 14px', borderRadius: '8px', marginBottom: '14px',
+    },
+    modalLabel: { display: 'block', fontSize: '13px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
+    modalSelect: {
+      width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: isDark ? '#f1f5f9' : '#1a1a1a',
+      background: isDark ? '#0f172a' : '#fff',
+    },
+    modalTextarea: {
+      width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: isDark ? '#f1f5f9' : '#1a1a1a',
+      fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', background: isDark ? '#0f172a' : '#fff',
+    },
+    modalActions: { display: 'flex', gap: '10px' },
+    modalCancelBtn: {
+      flex: 1, padding: '10px', background: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151',
+      border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500',
+    },
+    modalSubmitBtn: {
+      flex: 1, padding: '10px', background: '#2563eb', color: '#fff',
+      border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600',
+    },
+  };
+
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>My Bookings</h1>
       <p style={styles.subtitle}>View and manage your all car bookings</p>
 
       {loading ? (
-        <p style={{ color: '#6b7280' }}>Loading...</p>
+        <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
       ) : bookings.length === 0 ? (
         <div style={styles.empty}>
           <p>No bookings yet.</p>
@@ -306,185 +490,5 @@ const MyBookings = () => {
   );
 };
 
-const styles = {
-  container: { maxWidth: '900px', margin: '0 auto', padding: '32px' },
-  title: { fontSize: '28px', fontWeight: '700', color: '#1a1a1a', marginBottom: '4px' },
-  subtitle: { fontSize: '14px', color: '#6b7280', marginBottom: '24px' },
-  empty: { textAlign: 'center', padding: '48px', color: '#6b7280' },
-  browseBtn: {
-    marginTop: '16px',
-    padding: '10px 24px',
-    background: '#2563eb',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '14px',
-    cursor: 'pointer',
-  },
-  list: { display: 'flex', flexDirection: 'column', gap: '16px' },
-  card: {
-    display: 'flex',
-    gap: '16px',
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '12px',
-    padding: '16px',
-    alignItems: 'center',
-  },
-  imgWrap: {
-    width: '100px',
-    height: '70px',
-    borderRadius: '8px',
-    overflow: 'hidden',
-    background: '#f3f4f6',
-    flexShrink: 0,
-  },
-  img: { width: '100%', height: '100%', objectFit: 'cover' },
-  noImg: {
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '11px',
-    color: '#9ca3af',
-  },
-  info: { flex: 1 },
-  topRow: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' },
-  bookingNum: { fontSize: '14px', fontWeight: '600', color: '#1a1a1a' },
-  badgePending: {
-    background: '#fef3c7',
-    color: '#92400e',
-    fontSize: '11px',
-    padding: '2px 10px',
-    borderRadius: '20px',
-  },
-  badgeConfirmed: {
-    background: '#d1fae5',
-    color: '#065f46',
-    fontSize: '11px',
-    padding: '2px 10px',
-    borderRadius: '20px',
-  },
-  badgeCancelled: {
-    background: '#fee2e2',
-    color: '#991b1b',
-    fontSize: '11px',
-    padding: '2px 10px',
-    borderRadius: '20px',
-  },
-  badgeCompleted: {
-    background: '#dbeafe',
-    color: '#1e40af',
-    fontSize: '11px',
-    padding: '2px 10px',
-    borderRadius: '20px',
-  },
-  badgeRefundRequested: {
-    background: '#fef3c7',
-    color: '#92400e',
-    fontSize: '11px',
-    padding: '2px 10px',
-    borderRadius: '20px',
-  },
-  badgeRefundApproved: {
-    background: '#dbeafe',
-    color: '#1e40af',
-    fontSize: '11px',
-    padding: '2px 10px',
-    borderRadius: '20px',
-  },
-  badgeRefundDeclined: {
-    background: '#fee2e2',
-    color: '#991b1b',
-    fontSize: '11px',
-    padding: '2px 10px',
-    borderRadius: '20px',
-  },
-  meta: { fontSize: '12px', color: '#6b7280', marginBottom: '4px' },
-  carName: { fontSize: '14px', fontWeight: '600', color: '#1a1a1a', marginTop: '6px' },
-  carSub: { fontWeight: '400', fontSize: '12px', color: '#6b7280' },
-  refundBtn: {
-    marginTop: '10px',
-    padding: '6px 14px',
-    fontSize: '12px',
-    fontWeight: '500',
-    background: 'none',
-    color: '#dc2626',
-    border: '1px solid #dc2626',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-  refundNote: { fontSize: '12px', color: '#6b7280', marginTop: '8px', fontStyle: 'italic' },
-  rateBtn: {
-    marginTop: '10px',
-    padding: '6px 14px',
-    fontSize: '12px',
-    fontWeight: '500',
-    background: '#2563eb',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-  ratingSummary: { marginTop: '10px' },
-  ratingScore: { fontSize: '13px', fontWeight: '600', color: '#1a1a1a' },
-  editRatingBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#2563eb',
-    fontSize: '12px',
-    cursor: 'pointer',
-    padding: 0,
-    textDecoration: 'underline',
-  },
-  priceCol: {
-    textAlign: 'right',
-    minWidth: '100px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-  },
-  priceLabel: { fontSize: '11px', color: '#6b7280' },
-  price: { fontSize: '22px', fontWeight: '700', color: '#1a1a1a' },
-  bookedOn: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' },
-  modalOverlay: {
-    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    background: 'rgba(0,0,0,0.5)', display: 'flex',
-    alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-  },
-  modalContent: {
-    background: '#fff', borderRadius: '12px', padding: '24px',
-    maxWidth: '440px', width: '90%',
-  },
-  modalTitle: { fontSize: '18px', fontWeight: '700', color: '#1a1a1a', marginBottom: '14px' },
-  warningBox: {
-    background: '#fef3c7', color: '#92400e', fontSize: '13px',
-    padding: '12px 14px', borderRadius: '8px', marginBottom: '14px', lineHeight: '1.5',
-  },
-  errorBox: {
-    background: '#fef2f2', color: '#dc2626', fontSize: '13px',
-    padding: '10px 14px', borderRadius: '8px', marginBottom: '14px',
-  },
-  modalLabel: { display: 'block', fontSize: '13px', color: '#374151', marginBottom: '6px', fontWeight: '500' },
-  modalSelect: {
-    width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
-    borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: '#1a1a1a',
-  },
-  modalTextarea: {
-    width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
-    borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: '#1a1a1a',
-    fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box',
-  },
-  modalActions: { display: 'flex', gap: '10px' },
-  modalCancelBtn: {
-    flex: 1, padding: '10px', background: '#f3f4f6', color: '#374151',
-    border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500',
-  },
-  modalSubmitBtn: {
-    flex: 1, padding: '10px', background: '#2563eb', color: '#fff',
-    border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600',
-  },
-};
 
 export default MyBookings;
