@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 
 const AdminLayout = ({ children, activePage }) => {
   const { user, logout } = useAuth();
@@ -17,13 +18,13 @@ const AdminLayout = ({ children, activePage }) => {
     topRight: { display: 'flex', alignItems: 'center', gap: '12px' },
     welcome: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280' },
     toggleBtn: { padding: '6px 12px', borderRadius: '8px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, background: isDark ? '#1e293b' : '#f9fafb', color: isDark ? '#f1f5f9' : '#1a1a1a', fontSize: '16px', cursor: 'pointer' },
-    logoutBtn: { padding: '7px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
+    logoutBtn: { padding: '7px 16px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
     layout: { display: 'grid', gridTemplateColumns: '180px 1fr' },
     sidebar: { background: isDark ? '#1e293b' : '#fff', borderRight: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, padding: '24px 0', minHeight: 'calc(100vh - 45px)' },
-    avatar: { width: '48px', height: '48px', borderRadius: '50%', background: isDark ? '#1d4ed8' : '#dbeafe', color: isDark ? '#fff' : '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '600', margin: '0 auto 8px' },
+    avatar: { width: '48px', height: '48px', borderRadius: '50%', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '600', margin: '0 auto 8px' },
     adminName: { textAlign: 'center', fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '24px' },
     sideItem: { display: 'block', padding: '10px 20px', fontSize: '13px', color: isDark ? '#94a3b8' : '#4b5563', textDecoration: 'none' },
-    sideItemActive: { background: isDark ? '#1e40af' : '#eff6ff', color: isDark ? '#fff' : '#1d4ed8', borderLeft: '3px solid #2563eb' },
+    sideItemActive: { background: isDark ? GOLD_TINT_DARK : GOLD_TINT, color: isDark ? GOLD_DARK : GOLD, borderLeft: `3px solid ${isDark ? GOLD_DARK : GOLD}` },
   };
 
     const sideLinks = [

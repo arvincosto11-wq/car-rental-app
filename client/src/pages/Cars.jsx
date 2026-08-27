@@ -104,7 +104,7 @@ const Cars = () => {
       position: 'absolute',
       top: '10px',
       left: '10px',
-      background: '#2563eb',
+      background: '#16a34a',
       color: '#fff',
       fontSize: '11px',
       padding: '3px 10px',
@@ -211,7 +211,7 @@ const Cars = () => {
                 ) : (
                   <div style={styles.noImg}>No Image</div>
                 )}
-                <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#2563eb' }}>
+                <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#16a34a' }}>
                   {car.isAvailable === false ? 'Not Available' : 'Available Now'}
                 </span>
                 <span style={styles.priceBadge}>₱{car.pricePerDay} / day</span>

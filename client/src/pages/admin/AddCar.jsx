@@ -3,6 +3,7 @@ import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
+import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../../theme';
 
 const OTHER = '__other__';
 
@@ -144,16 +145,16 @@ const AddCar = () => {
     imagePlaceholder: { textAlign: 'center', padding: '16px' },
     imagePreview: { width: '100%', height: '100%', objectFit: 'cover' },
     fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
-    btn: { padding: '10px 28px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' },
+    btn: { padding: '10px 28px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' },
     checkboxRow: { display: 'flex', gap: '20px', alignItems: 'center' },
     checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer' },
     hint: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '4px' },
     typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '20px' },
     typeToggleBtn: (active) => ({
       flex: 1, padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-      border: active ? '2px solid #2563eb' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-      background: active ? (isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff') : (isDark ? '#0f172a' : '#fff'),
-      color: active ? (isDark ? '#93c5fd' : '#1d4ed8') : (isDark ? '#94a3b8' : '#374151'),
+      border: active ? `2px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#0f172a' : '#fff'),
+      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#94a3b8' : '#374151'),
       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
     }),
     categoryFixed: { padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', background: isDark ? '#0f172a' : '#f9fafb', color: isDark ? '#94a3b8' : '#6b7280' },

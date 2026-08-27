@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
+import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK } from '../../theme';
 import api from '../../api';
 
 const Dashboard = () => {
@@ -58,13 +59,13 @@ const Dashboard = () => {
     boxTitle: { fontSize: '15px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     boxSubtitle: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '14px' },
     bookingRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}` },
-    bookingIcon: { width: '30px', height: '30px', background: isDark ? '#1e40af' : '#eff6ff', borderRadius: '6px', flexShrink: 0 },
+    bookingIcon: { width: '30px', height: '30px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT, borderRadius: '6px', flexShrink: 0 },
     bookingName: { fontSize: '13px', fontWeight: '500', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     bookingDate: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af' },
     bookingPrice: { marginLeft: 'auto', fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     badgeConfirmed: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     badgePending: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-    revenueNum: { fontSize: '32px', fontWeight: '700', color: '#2563eb', marginTop: '16px' },
+    revenueNum: { fontSize: '32px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, marginTop: '16px' },
     topRatedRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}` },
     topRatedThumb: { width: '44px', height: '32px', borderRadius: '6px', overflow: 'hidden', background: isDark ? '#334155' : '#f3f4f6', flexShrink: 0 },
   };

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -97,7 +98,7 @@ const Navbar = () => {
               }}>
                 <span style={{
                   width: '22px', height: '22px', borderRadius: '50%',
-                  background: '#2563eb', color: '#fff', fontSize: '11px',
+                  background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, fontSize: '11px',
                   fontWeight: '700', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', flexShrink: 0,
                 }}>
@@ -166,8 +167,8 @@ const Navbar = () => {
               <Link to="/register" style={{
                 padding: '7px 16px',
                 borderRadius: '8px',
-                background: '#2563eb',
-                color: '#fff',
+                background: isDark ? GOLD_DARK : GOLD,
+                color: ON_GOLD,
                 textDecoration: 'none',
                 fontSize: '13px',
                 border: 'none',
@@ -220,7 +221,7 @@ const Navbar = () => {
         ) : (
           <>
             <Link to="/login" onClick={() => setMobileOpen(false)} style={mobileLinkStyle}>Login</Link>
-            <Link to="/register" onClick={() => setMobileOpen(false)} style={{ ...mobileLinkStyle, color: '#2563eb', fontWeight: '600' }}>Register</Link>
+            <Link to="/register" onClick={() => setMobileOpen(false)} style={{ ...mobileLinkStyle, color: isDark ? GOLD_DARK : GOLD, fontWeight: '600' }}>Register</Link>
           </>
         )}
       </div>

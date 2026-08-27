@@ -4,6 +4,7 @@ import StarRating from '../../components/StarRating';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
+import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, GOLD_TINT_BORDER, GOLD_TINT_BORDER_DARK, ON_GOLD } from '../../theme';
 
 const OTHER = '__other__';
 
@@ -201,7 +202,7 @@ const ManageCars = () => {
     available: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     unavailable: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     actions: { display: 'flex', gap: '6px' },
-    editBtn: { padding: '5px 12px', background: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff', border: `1px solid ${isDark ? '#1e40af' : '#bfdbfe'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#93c5fd' : '#1d4ed8' },
+    editBtn: { padding: '5px 12px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT, border: `1px solid ${isDark ? GOLD_TINT_BORDER_DARK : GOLD_TINT_BORDER}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? GOLD_DARK : GOLD },
     toggleBtn: { padding: '5px 12px', background: isDark ? '#0f172a' : '#f3f4f6', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     deleteBtn: { padding: '5px 12px', background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', border: `1px solid ${isDark ? '#7f1d1d' : '#fca5a5'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#fca5a5' : '#dc2626' },
     editForm: { padding: '20px' },
@@ -215,15 +216,15 @@ const ManageCars = () => {
     label: { display: 'block', fontSize: '12px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '4px', fontWeight: '500' },
     input: { width: '100%', padding: '8px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', color: isDark ? '#f1f5f9' : '#111827', background: isDark ? '#0f172a' : '#fff' },
     textarea: { width: '100%', padding: '8px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '60px', resize: 'vertical', color: isDark ? '#f1f5f9' : '#111827', background: isDark ? '#0f172a' : '#fff' },
-    saveBtn: { padding: '8px 20px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
+    saveBtn: { padding: '8px 20px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
     cancelBtn: { padding: '8px 20px', background: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
     checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer' },
     typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '16px' },
     typeToggleBtn: (active) => ({
       flex: 1, padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-      border: active ? '2px solid #2563eb' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-      background: active ? (isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff') : (isDark ? '#0f172a' : '#fff'),
-      color: active ? (isDark ? '#93c5fd' : '#1d4ed8') : (isDark ? '#94a3b8' : '#374151'),
+      border: active ? `2px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#0f172a' : '#fff'),
+      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#94a3b8' : '#374151'),
       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
     }),
     categoryFixed: { padding: '8px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', background: isDark ? '#0f172a' : '#f9fafb', color: isDark ? '#94a3b8' : '#6b7280' },

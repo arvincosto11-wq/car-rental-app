@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api';
+import { GOLD_DARK, ON_GOLD } from '../../theme';
 
 const AdminLogin = () => {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -154,8 +155,8 @@ const styles = {
   btn: {
     width: '100%',
     padding: '11px',
-    background: '#2563eb',
-    color: '#fff',
+    background: GOLD_DARK,
+    color: ON_GOLD,
     border: 'none',
     borderRadius: '8px',
     fontSize: '14px',

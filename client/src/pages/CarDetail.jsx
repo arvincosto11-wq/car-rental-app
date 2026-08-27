@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import StarRating from '../components/StarRating';
+import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 
 const CarDetail = () => {
@@ -144,9 +145,9 @@ const CarDetail = () => {
     paymentBtn: (active) => ({
       padding: '10px',
       borderRadius: '8px',
-      border: `2px solid ${active ? '#2563eb' : isDark ? '#334155' : '#d1d5db'}`,
-      background: active ? (isDark ? '#1e40af' : '#eff6ff') : 'transparent',
-      color: active ? (isDark ? '#93c5fd' : '#1d4ed8') : (isDark ? '#94a3b8' : '#6b7280'),
+      border: `2px solid ${active ? (isDark ? GOLD_DARK : GOLD) : isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? 'rgba(232,161,0,0.15)' : '#faedc7') : 'transparent',
+      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#94a3b8' : '#6b7280'),
       cursor: 'pointer',
       fontSize: '13px',
       fontWeight: active ? '600' : '400',
@@ -159,19 +160,19 @@ const CarDetail = () => {
     breakdownRow: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px' },
     breakdownTotal: { display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', borderTop: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, paddingTop: '8px', marginTop: '8px' },
     termsRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '14px', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
-    termsLink: { color: '#2563eb', cursor: 'pointer', textDecoration: 'underline' },
+    termsLink: { color: isDark ? GOLD_DARK : GOLD, cursor: 'pointer', textDecoration: 'underline' },
     success: { background: isDark ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: isDark ? '#86efac' : '#16a34a', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' },
     error: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' },
-    bookBtn: { width: '100%', padding: '12px', background: agreedToTerms ? '#2563eb' : (isDark ? '#334155' : '#d1d5db'), color: '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: agreedToTerms ? 'pointer' : 'not-allowed' },
+    bookBtn: { width: '100%', padding: '12px', background: agreedToTerms ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#334155' : '#d1d5db'), color: agreedToTerms ? ON_GOLD : '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: agreedToTerms ? 'pointer' : 'not-allowed' },
     noCC: { textAlign: 'center', fontSize: '12px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '8px' },
     modal: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
     modalContent: { background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '500px', width: '90%', maxHeight: '80vh', overflow: 'auto' },
     modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '16px' },
     modalText: { fontSize: '13px', color: isDark ? '#94a3b8' : '#4b5563', lineHeight: '1.8' },
-    closeBtn: { marginTop: '16px', padding: '10px 24px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', width: '100%' },
+    closeBtn: { marginTop: '16px', padding: '10px 24px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', width: '100%' },
     refundNoticeActions: { display: 'flex', gap: '10px', marginTop: '20px' },
     refundNoticeCancel: { flex: 1, padding: '10px', background: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
-    refundNoticeConfirm: { flex: 1, padding: '10px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
+    refundNoticeConfirm: { flex: 1, padding: '10px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
   };
 
   if (loading) return <div style={s.page}><p style={{ textAlign: 'center', padding: '40px', color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p></div>;

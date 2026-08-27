@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import StarRating from '../components/StarRating';
+import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 
 const Home = () => {
@@ -39,9 +40,9 @@ const Home = () => {
       borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
     },
     heroTitle: {
-      fontSize: '40px',
+      fontSize: '46px',
       fontWeight: '700',
-      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      color: isDark ? '#f0464a' : '#d81e22',
       marginBottom: '8px',
     },
     heroSubtitle: {
@@ -80,8 +81,8 @@ const Home = () => {
     },
     searchBtn: {
       padding: '0 28px',
-      background: '#2563eb',
-      color: '#fff',
+      background: isDark ? GOLD_DARK : GOLD,
+      color: ON_GOLD,
       border: 'none',
       fontSize: '14px',
       fontWeight: '500',
@@ -136,7 +137,7 @@ const Home = () => {
       position: 'absolute',
       top: '10px',
       left: '10px',
-      background: '#2563eb',
+      background: '#16a34a',
       color: '#fff',
       fontSize: '11px',
       padding: '3px 10px',
@@ -184,8 +185,8 @@ const Home = () => {
     },
     viewAllBtn: {
       padding: '12px 32px',
-      background: '#2563eb',
-      color: '#fff',
+      background: isDark ? GOLD_DARK : GOLD,
+      color: ON_GOLD,
       border: 'none',
       borderRadius: '8px',
       fontSize: '14px',
@@ -198,8 +199,8 @@ const Home = () => {
     <div>
       {/* Hero Section */}
       <div style={styles.hero}>
-        <h1 style={styles.heroTitle}>Luxury cars on Rent</h1>
-        <p style={styles.heroSubtitle}>Find the perfect car for your next adventure</p>
+        <h1 className="display-heading" style={styles.heroTitle}>Explore Without Limits</h1>
+        <p style={styles.heroSubtitle}>Well-maintained rides across Albay — book in minutes.</p>
 
         <div className="hero-search-box" style={styles.searchBox}>
           <div className="hero-search-field" style={styles.searchField}>
@@ -251,7 +252,7 @@ const Home = () => {
                   ) : (
                     <div style={styles.noImg}>No Image</div>
                   )}
-                  <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#2563eb' }}>
+                  <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#16a34a' }}>
                     {car.isAvailable === false ? 'Not Available' : 'Available Now'}
                   </span>
                   <span style={styles.priceBadge}>₱{car.pricePerDay} / day</span>

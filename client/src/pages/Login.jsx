@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 
 const Login = () => {
@@ -86,8 +87,8 @@ const Login = () => {
     btn: {
       width: '100%',
       padding: '11px',
-      background: '#2563eb',
-      color: '#fff',
+      background: isDark ? GOLD_DARK : GOLD,
+      color: ON_GOLD,
       border: 'none',
       borderRadius: '8px',
       fontSize: '14px',
@@ -102,7 +103,7 @@ const Login = () => {
       marginTop: '20px',
     },
     footerLink: {
-      color: '#2563eb',
+      color: isDark ? GOLD_DARK : GOLD,
       textDecoration: 'none',
       fontWeight: '500',
     },

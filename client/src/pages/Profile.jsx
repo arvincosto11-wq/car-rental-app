@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 
 const Profile = () => {
@@ -102,7 +103,7 @@ const Profile = () => {
     sectionTitle: { fontSize: '18px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     editBtn: { padding: '7px 16px', fontSize: '13px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer', fontWeight: '500' },
     cancelBtn: { padding: '9px 18px', fontSize: '13px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', background: 'none', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer', fontWeight: '500' },
-    saveBtn: { padding: '9px 18px', fontSize: '13px', border: 'none', borderRadius: '8px', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: '600' },
+    saveBtn: { padding: '9px 18px', fontSize: '13px', border: 'none', borderRadius: '8px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '600' },
     profileGrid: { gap: '14px' },
     profileItem: { background: isDark ? '#0f172a' : '#f9fafb', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
     profileLabel: { display: 'block', fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '3px' },

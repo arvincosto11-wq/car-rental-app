@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../data/vehicleBrands';
+import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const OTHER = '__other__';
@@ -200,9 +201,9 @@ const ConsignmentRegister = () => {
     typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '16px' },
     typeToggleBtn: (active) => ({
       flex: 1, padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-      border: active ? '2px solid #2563eb' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-      background: active ? (isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff') : (isDark ? '#0f172a' : '#fff'),
-      color: active ? (isDark ? '#93c5fd' : '#1d4ed8') : (isDark ? '#94a3b8' : '#374151'),
+      border: active ? `2px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#0f172a' : '#fff'),
+      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#94a3b8' : '#374151'),
       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
     }),
     categoryFixed: { padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', background: isDark ? '#0f172a' : '#f9fafb', color: isDark ? '#94a3b8' : '#6b7280' },
@@ -232,11 +233,11 @@ const ConsignmentRegister = () => {
       fontSize: '13px', lineHeight: '20px', cursor: 'pointer', padding: 0,
     },
     btn: {
-      width: '100%', padding: '11px', background: '#2563eb', color: '#fff', border: 'none',
+      width: '100%', padding: '11px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none',
       borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginTop: '8px',
     },
     footer: { textAlign: 'center', fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '20px' },
-    footerLink: { color: isDark ? '#93c5fd' : '#2563eb', textDecoration: 'none', fontWeight: '500' },
+    footerLink: { color: isDark ? GOLD_DARK : GOLD, textDecoration: 'none', fontWeight: '500' },
   };
 
   return (

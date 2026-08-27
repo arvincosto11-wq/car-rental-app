@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
@@ -170,8 +171,8 @@ const Register = () => {
     btn: {
       width: '100%',
       padding: '11px',
-      background: '#2563eb',
-      color: '#fff',
+      background: isDark ? GOLD_DARK : GOLD,
+      color: ON_GOLD,
       border: 'none',
       borderRadius: '8px',
       fontSize: '14px',
@@ -186,7 +187,7 @@ const Register = () => {
       marginTop: '20px',
     },
     footerLink: {
-      color: isDark ? '#93c5fd' : '#2563eb',
+      color: isDark ? GOLD_DARK : GOLD,
       textDecoration: 'none',
       fontWeight: '500',
     },

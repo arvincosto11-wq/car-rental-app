@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
+import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
 const REFUND_REASONS = [
   'Change of travel plans – Trip was canceled, postponed, or dates changed.',
@@ -150,8 +151,8 @@ const MyBookings = () => {
     browseBtn: {
       marginTop: '16px',
       padding: '10px 24px',
-      background: '#2563eb',
-      color: '#fff',
+      background: isDark ? GOLD_DARK : GOLD,
+      color: ON_GOLD,
       border: 'none',
       borderRadius: '8px',
       fontSize: '14px',
@@ -257,8 +258,8 @@ const MyBookings = () => {
       padding: '6px 14px',
       fontSize: '12px',
       fontWeight: '500',
-      background: '#2563eb',
-      color: '#fff',
+      background: isDark ? GOLD_DARK : GOLD,
+      color: ON_GOLD,
       border: 'none',
       borderRadius: '6px',
       cursor: 'pointer',
@@ -268,7 +269,7 @@ const MyBookings = () => {
     editRatingBtn: {
       background: 'none',
       border: 'none',
-      color: isDark ? '#93c5fd' : '#2563eb',
+      color: isDark ? GOLD_DARK : GOLD,
       fontSize: '12px',
       cursor: 'pointer',
       padding: 0,
@@ -319,7 +320,7 @@ const MyBookings = () => {
       border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500',
     },
     modalSubmitBtn: {
-      flex: 1, padding: '10px', background: '#2563eb', color: '#fff',
+      flex: 1, padding: '10px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
       border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600',
     },
   };

@@ -91,6 +91,13 @@ body.dark ::-webkit-scrollbar-thumb {
   background: #475569;
 }
 
+/* Bold poster-style headline face, used sparingly for hero moments only. */
+.display-heading {
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
 /* ---- Responsive layout utilities ---- */
 /* Applied alongside inline styles: components pass className for the
    properties below, keeping colors/spacing inline. Breakpoints collapse

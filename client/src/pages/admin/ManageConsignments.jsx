@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
+import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import api from '../../api';
 
 const ManageConsignments = () => {
@@ -66,7 +67,7 @@ const ManageConsignments = () => {
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '20px' },
     filterRow: { display: 'flex', gap: '8px', marginBottom: '16px' },
-    filterBtn: (active) => ({ padding: '7px 16px', fontSize: '13px', borderRadius: '8px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, background: active ? '#2563eb' : (isDark ? '#1e293b' : '#fff'), color: active ? '#fff' : (isDark ? '#f1f5f9' : '#374151'), cursor: 'pointer', fontWeight: '500' }),
+    filterBtn: (active) => ({ padding: '7px 16px', fontSize: '13px', borderRadius: '8px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, background: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#1e293b' : '#fff'), color: active ? ON_GOLD : (isDark ? '#f1f5f9' : '#374151'), cursor: 'pointer', fontWeight: '500' }),
     table: { width: '100%', borderCollapse: 'collapse', background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
     th: { textAlign: 'left', padding: '12px 16px', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, fontWeight: '500' },
     td: { padding: '12px 16px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}`, verticalAlign: 'middle' },
