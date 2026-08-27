@@ -77,7 +77,13 @@ const Navbar = () => {
   const menuBg = isDark ? '#1e293b' : '#fff';
   const menuBorder = isDark ? '#334155' : '#e5e7eb';
 
-  const navLinkStyle = { textDecoration: 'none', color: mutedColor, fontSize: '14px' };
+  const navLinkStyle = {
+    textDecoration: 'none',
+    color: mutedColor,
+    fontSize: '14px',
+    paddingBottom: '2px',
+    '--nav-hover-color': (transparent || isDark) ? GOLD_DARK : GOLD,
+  };
   const mobileLinkStyle = {
     textDecoration: 'none',
     color: isDark ? '#94a3b8' : '#4b5563',
@@ -126,7 +132,7 @@ const Navbar = () => {
 
         <div className="navbar-nav-links" style={{ gap: '24px', alignItems: 'center' }}>
           {navLinks.map((link) => (
-            <Link key={link.to} to={link.to} style={navLinkStyle}>{link.label}</Link>
+            <Link key={link.to} to={link.to} className="nav-link" style={navLinkStyle}>{link.label}</Link>
           ))}
         </div>
 

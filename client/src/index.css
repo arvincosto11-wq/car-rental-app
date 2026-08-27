@@ -130,6 +130,36 @@ button:disabled {
   }
 }
 
+/* Animated underline + color shift for navbar links. --nav-hover-color is
+   set inline per-link since the brand gold value is computed in JS. */
+.nav-link {
+  position: relative;
+  transition: color 0.2s ease;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--nav-hover-color, currentColor);
+  transition: width 0.25s ease;
+}
+.nav-link:hover {
+  color: var(--nav-hover-color, inherit);
+}
+.nav-link:hover::after {
+  width: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-link,
+  .nav-link::after {
+    transition: none;
+  }
+}
+
 /* Hover lift for clickable car cards (Home featured vehicles, Vehicles listing). */
 .car-card-hover {
   transition: transform 0.25s ease, box-shadow 0.25s ease;
