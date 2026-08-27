@@ -202,6 +202,7 @@ const Cars = () => {
           {filtered.map((car) => (
             <div
               key={car._id}
+              className="car-card-hover"
               style={styles.card}
               onClick={() => navigate(`/cars/${car._id}`)}
             >

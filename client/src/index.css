@@ -130,6 +130,23 @@ button:disabled {
   }
 }
 
+/* Hover lift for clickable car cards (Home featured vehicles, Vehicles listing). */
+.car-card-hover {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.car-card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 28px rgba(0,0,0,0.14);
+}
+@media (prefers-reduced-motion: reduce) {
+  .car-card-hover {
+    transition: none;
+  }
+  .car-card-hover:hover {
+    transform: none;
+  }
+}
+
 /* Bold poster-style headline face, used sparingly for hero moments only. */
 .display-heading {
   font-family: 'Oswald', 'Arial Narrow', sans-serif;
