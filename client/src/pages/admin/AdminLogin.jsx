@@ -38,8 +38,8 @@ const AdminLogin = () => {
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.logoWrap}>
-          <div style={styles.logoIcon}>🚗</div>
-          <h1 style={styles.logoText}>CarRental</h1>
+          <img src="/logo.png" alt="Rent-a-Ride" style={{ width: '36px', height: '36px', borderRadius: '50%' }} />
+          <h1 style={styles.logoText}>Rent-a-Ride</h1>
         </div>
         <h2 style={styles.title}>Admin Portal</h2>
         <p style={styles.subtitle}>Sign in to access the admin dashboard</p>

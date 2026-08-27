@@ -55,12 +55,16 @@ const Navbar = () => {
         padding: '12px 32px',
       }}>
         <Link to={user && user.role === 'consignor' ? '/consignor' : '/'} style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
           fontSize: '20px',
           fontWeight: '600',
           textDecoration: 'none',
           color: isDark ? '#f1f5f9' : '#1a1a1a',
         }}>
-          🚗 Rent-a-Ride
+          <img src="/logo.png" alt="Rent-a-Ride" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+          Rent-a-Ride
         </Link>
 
         <div className="navbar-nav-links" style={{ gap: '24px', alignItems: 'center' }}>

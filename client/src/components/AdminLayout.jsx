@@ -49,8 +49,9 @@ const AdminLayout = ({ children, activePage }) => {
           >
             {sidebarOpen ? '✕' : '☰'}
           </button>
-          <span style={{ fontSize: '16px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' }}>
-            🚗 CarRental Admin
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' }}>
+            <img src="/logo.png" alt="Rent-a-Ride" style={{ width: '28px', height: '28px', borderRadius: '50%' }} />
+            Rent-a-Ride Admin
           </span>
         </div>
         <div style={s.topRight}>
