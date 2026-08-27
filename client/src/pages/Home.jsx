@@ -285,6 +285,16 @@ const Home = () => {
       padding: '6px 14px',
       borderRadius: '20px',
     },
+    socialLink: {
+      fontSize: '12px',
+      fontWeight: '600',
+      color: '#f2eee6',
+      background: 'rgba(255,255,255,0.08)',
+      padding: '6px 14px',
+      borderRadius: '20px',
+      textDecoration: 'none',
+      cursor: 'pointer',
+    },
     hashtagBadge: {
       display: 'inline-block',
       marginTop: '24px',
@@ -452,7 +462,14 @@ const Home = () => {
               </li>
             </ul>
             <div style={styles.socialRow}>
-              <span style={styles.socialTag}>Facebook: Rent-A-Ride Albay</span>
+              <a
+                href="https://www.facebook.com/rentaridealbaybranch"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={styles.socialLink}
+              >
+                Facebook: Rent-A-Ride Albay
+              </a>
               <span style={styles.socialTag}>@rentaridealbay</span>
             </div>
           </div>
