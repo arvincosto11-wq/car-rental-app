@@ -21,6 +21,7 @@ import Profile from './pages/Profile';
 import ConsignmentRegister from './pages/ConsignmentRegister';
 import ConsignorDashboard from './pages/consignor/ConsignorDashboard';
 import AddVehicle from './pages/consignor/AddVehicle';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
@@ -131,6 +132,9 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Catch-all */}
+            <Route path="*" element={<><Navbar /><NotFound /></>} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

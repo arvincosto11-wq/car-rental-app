@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../data/vehicleBrands';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
+import LocationAddressFields from '../components/LocationAddressFields';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const OTHER = '__other__';
@@ -272,18 +273,16 @@ const ConsignmentRegister = () => {
                 value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} />
             </div>
           </div>
-          <div className="responsive-row-2" style={styles.row}>
-            <div style={styles.field}>
-              <label style={styles.label}>Phone Number</label>
-              <input style={styles.input} type="tel" placeholder="09171234567"
-                value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
-            </div>
-            <div style={styles.field}>
-              <label style={styles.label}>Address</label>
-              <input style={styles.input} type="text" placeholder="House/Unit No., Street, Barangay, City"
-                value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} required />
-            </div>
+          <div style={styles.field}>
+            <label style={styles.label}>Phone Number</label>
+            <input style={styles.input} type="tel" placeholder="09171234567"
+              value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
           </div>
+
+          <LocationAddressFields
+            styles={styles}
+            onChange={(address) => setForm((f) => ({ ...f, address }))}
+          />
 
           <div style={styles.field}>
             <label style={styles.label}>Your Valid ID (Driver's License, National ID, etc.)</label>

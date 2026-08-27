@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
+import LocationAddressFields from '../components/LocationAddressFields';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 
@@ -253,17 +254,10 @@ const Register = () => {
             />
           </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>Address</label>
-            <input
-              style={styles.input}
-              type="text"
-              placeholder="House/Unit No., Street, Barangay, City, Province"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              required
-            />
-          </div>
+          <LocationAddressFields
+            styles={styles}
+            onChange={(address) => setForm((f) => ({ ...f, address }))}
+          />
 
           <div style={styles.field}>
             <label style={styles.label}>Valid ID (Driver's License, National ID, etc.) — optional for now</label>
