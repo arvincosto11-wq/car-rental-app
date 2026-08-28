@@ -6,10 +6,22 @@ import { notifyUser, notifyAdmins } from '../utils/notify.js';
 
 const router = express.Router();
 
-// Get all cars (public)
+// Get all cars (public) — archived cars are excluded everywhere they'd
+// normally show up, including the admin's own Manage Cars list, which uses
+// this same endpoint. See /archived below for the admin-only archived view.
 router.get('/', async (req, res) => {
   try {
-    const cars = await Car.find();
+    const cars = await Car.find({ archived: { $ne: true } });
+    res.json(cars);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Archived cars (admin only)
+router.get('/archived', protect, adminOnly, async (req, res) => {
+  try {
+    const cars = await Car.find({ archived: true }).sort({ archivedAt: -1 });
     res.json(cars);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -62,7 +74,7 @@ router.get('/reviews/all', protect, adminOnly, async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const car = await Car.findById(req.params.id);
-    if (!car) return res.status(404).json({ message: 'Car not found' });
+    if (!car || car.archived) return res.status(404).json({ message: 'Car not found' });
     res.json(car);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -127,15 +139,54 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
   }
 });
 
-// Delete car (admin only)
+// Archive a car (admin only) — removes it from every public/admin listing
+// without deleting anything; fully recoverable via /restore below. Unlike
+// permanent deletion, this is safe on a car with booking/rating history.
+router.put('/:id/archive', protect, adminOnly, async (req, res) => {
+  try {
+    const car = await Car.findByIdAndUpdate(
+      req.params.id,
+      { archived: true, archivedAt: new Date() },
+      { new: true }
+    );
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+    res.json(car);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Restore an archived car (admin only)
+router.put('/:id/restore', protect, adminOnly, async (req, res) => {
+  try {
+    const car = await Car.findByIdAndUpdate(
+      req.params.id,
+      { archived: false, archivedAt: null },
+      { new: true }
+    );
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+    res.json(car);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Permanently delete a car (admin only). Only allowed once a car is already
+// archived (a deliberate second step, not reachable from the main list) and
+// only if it has no booking history, since that would orphan real data.
 router.delete('/:id', protect, adminOnly, async (req, res) => {
   try {
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+    if (!car.archived) {
+      return res.status(400).json({ message: 'Archive this car first before deleting it permanently.' });
+    }
     const hasBookings = await Booking.exists({ car: req.params.id });
     if (hasBookings) {
-      return res.status(400).json({ message: 'This car has existing bookings and cannot be deleted. Hide it instead using the availability toggle.' });
+      return res.status(400).json({ message: 'This car has existing bookings and cannot be permanently deleted.' });
     }
     await Car.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Car deleted' });
+    res.json({ message: 'Car permanently deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

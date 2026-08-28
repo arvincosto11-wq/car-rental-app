@@ -17,6 +17,8 @@ const carSchema = new mongoose.Schema({
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   avgRating: { type: Number, default: 0 },
   ratingCount: { type: Number, default: 0 },
+  archived: { type: Boolean, default: false },
+  archivedAt: { type: Date },
   availabilityRequest: {
     status: { type: String, enum: ['none', 'pending', 'declined'], default: 'none' },
     reason: { type: String, default: '' },

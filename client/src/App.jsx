@@ -15,6 +15,7 @@ import MyFavorites from './pages/MyFavorites';
 import AdminDashboard from './pages/admin/Dashboard';
 import AddCar from './pages/admin/AddCar';
 import ManageCars from './pages/admin/ManageCars';
+import ManageArchivedCars from './pages/admin/ManageArchivedCars';
 import ManageBookings from './pages/admin/ManageBookings';
 import ManageClients from './pages/admin/ManageClients';
 import ManageConsignments from './pages/admin/ManageConsignments';
@@ -117,6 +118,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <ManageCars />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/archived-cars"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ManageArchivedCars />
                 </ProtectedRoute>
               }
             />

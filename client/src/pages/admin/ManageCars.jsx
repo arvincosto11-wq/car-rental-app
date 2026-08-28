@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
 import { SkeletonListCard } from '../../components/Skeleton';
@@ -15,6 +16,7 @@ const ManageCars = () => {
   usePageTitle('Manage Cars');
   const { isDark } = useTheme();
   const { toast, confirm } = useUIFeedback();
+  const navigate = useNavigate();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingCar, setEditingCar] = useState(null);
@@ -49,16 +51,16 @@ const ManageCars = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    const ok = await confirm('Delete this car? This cannot be undone.', { confirmLabel: 'Delete', danger: true });
+  const handleArchive = async (id) => {
+    const ok = await confirm('Archive this car? It will be removed from listings but can be restored anytime from Archived Cars.', { confirmLabel: 'Archive' });
     if (!ok) return;
     try {
-      await api.delete(`/cars/${id}`);
+      await api.put(`/cars/${id}/archive`);
       setCars(cars.filter((c) => c._id !== id));
-      toast.success('Car deleted.');
+      toast.success('Car archived.');
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Failed to delete this car.');
+      toast.error(err.response?.data?.message || 'Failed to archive this car.');
     }
   };
 
@@ -212,7 +214,7 @@ const ManageCars = () => {
     actions: { display: 'flex', gap: '6px' },
     editBtn: { padding: '5px 12px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT, border: `1px solid ${isDark ? GOLD_TINT_BORDER_DARK : GOLD_TINT_BORDER}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? GOLD_DARK : GOLD },
     toggleBtn: { padding: '5px 12px', background: isDark ? '#0f172a' : '#f3f4f6', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    deleteBtn: { padding: '5px 12px', background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', border: `1px solid ${isDark ? '#7f1d1d' : '#fca5a5'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#fca5a5' : '#dc2626' },
+    archiveBtn: { padding: '5px 12px', background: isDark ? '#0f172a' : '#f3f4f6', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     editForm: { padding: '20px' },
     editTitle: { fontSize: '16px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '16px' },
     imageUpload: { position: 'relative', width: '200px', height: '140px', border: `2px dashed ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#0f172a' : '#fff' },
@@ -242,6 +244,12 @@ const ManageCars = () => {
       borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '18px',
       background: isDark ? '#1e293b' : '#fff', color: isDark ? '#f1f5f9' : '#111827',
     },
+    headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '18px' },
+    archivedLinkBtn: {
+      padding: '9px 16px', background: isDark ? '#1e293b' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151',
+      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+      cursor: 'pointer', whiteSpace: 'nowrap',
+    },
   };
 
   const filteredCars = cars.filter((car) => {
@@ -253,8 +261,15 @@ const ManageCars = () => {
   return (
     <AdminLayout activePage="Manage Cars">
       <div style={styles.main}>
-          <h1 style={styles.title}>Manage Cars</h1>
-          <p style={styles.subtitle}>View all listed cars, update or remove them.</p>
+          <div style={styles.headerRow}>
+            <div>
+              <h1 style={styles.title}>Manage Cars</h1>
+              <p style={styles.subtitle}>View all listed cars, update or remove them.</p>
+            </div>
+            <button style={styles.archivedLinkBtn} onClick={() => navigate('/admin/archived-cars')}>
+              🗄️ Archived Cars
+            </button>
+          </div>
           <input
             style={styles.searchInput}
             type="text"
@@ -454,7 +469,7 @@ const ManageCars = () => {
                         <button style={styles.toggleBtn} onClick={() => handleToggle(car)}>
                           {car.isAvailable ? 'Hide' : 'Show'}
                         </button>
-                        <button style={styles.deleteBtn} onClick={() => handleDelete(car._id)}>Delete</button>
+                        <button style={styles.archiveBtn} onClick={() => handleArchive(car._id)}>Archive</button>
                       </div>
                     </div>
                   )}
