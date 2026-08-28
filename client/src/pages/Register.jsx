@@ -8,6 +8,15 @@ import LocationAddressFields from '../components/LocationAddressFields';
 import PasswordInput from '../components/PasswordInput';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_ERROR = 'Enter a valid PH mobile number (e.g. 09171234567 or +639171234567).';
+
+const validators = {
+  email: (v) => (!v ? '' : EMAIL_REGEX.test(v) ? '' : 'Enter a valid email address.'),
+  phone: (v) => (!v ? '' : PHONE_REGEX.test(v) ? '' : PHONE_ERROR),
+  emergencyContactNumber: (v) => (!v ? '' : PHONE_REGEX.test(v) ? '' : PHONE_ERROR),
+  password: (v) => (!v ? '' : v.length < 8 ? 'Password must be at least 8 characters.' : ''),
+};
 
 const Register = () => {
   const [form, setForm] = useState({
@@ -17,6 +26,7 @@ const Register = () => {
     emergencyContactName: '', emergencyContactNumber: '',
   });
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [validIdImage, setValidIdImage] = useState(null);
   const [validIdPreview, setValidIdPreview] = useState('');
   const [error, setError] = useState('');
@@ -24,6 +34,20 @@ const Register = () => {
   const { login } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
+
+  const handleBlur = (field, value) => {
+    const validator = validators[field];
+    if (validator) {
+      setFieldErrors((prev) => ({ ...prev, [field]: validator(value) }));
+    }
+    if (field === 'confirmPassword' || field === 'password') {
+      setFieldErrors((prev) => ({
+        ...prev,
+        confirmPassword: confirmPassword && form.password && confirmPassword !== form.password
+          ? 'Passwords do not match.' : '',
+      }));
+    }
+  };
 
   const handleIdImageChange = (e) => {
     const file = e.target.files[0];
@@ -52,12 +76,16 @@ const Register = () => {
     e.preventDefault();
     setError('');
 
-    if (!PHONE_REGEX.test(form.phone)) {
-      setError('Please enter a valid Philippine phone number (e.g. 09171234567 or +639171234567)');
-      return;
-    }
-    if (form.password !== confirmPassword) {
-      setError('Passwords do not match.');
+    const nextFieldErrors = {
+      email: validators.email(form.email),
+      phone: validators.phone(form.phone),
+      emergencyContactNumber: validators.emergencyContactNumber(form.emergencyContactNumber),
+      password: validators.password(form.password),
+      confirmPassword: form.password !== confirmPassword ? 'Passwords do not match.' : '',
+    };
+    setFieldErrors(nextFieldErrors);
+    if (Object.values(nextFieldErrors).some(Boolean)) {
+      setError('Please fix the highlighted fields before continuing.');
       return;
     }
     setLoading(true);
@@ -198,7 +226,16 @@ const Register = () => {
       textDecoration: 'none',
       fontWeight: '500',
     },
+    fieldError: {
+      fontSize: '11px',
+      color: isDark ? '#fca5a5' : '#dc2626',
+      marginTop: '4px',
+    },
   };
+
+  const inputStyle = (field) => (
+    fieldErrors[field] ? { ...styles.input, border: `1px solid ${isDark ? '#f87171' : '#dc2626'}` } : styles.input
+  );
 
   return (
     <div style={styles.container}>
@@ -229,52 +266,68 @@ const Register = () => {
             <label style={styles.label} htmlFor="reg-email">Email</label>
             <input
               id="reg-email"
-              style={styles.input}
+              style={inputStyle('email')}
               type="email"
               placeholder="Enter your email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+              onBlur={(e) => handleBlur('email', e.target.value)}
+              aria-invalid={!!fieldErrors.email}
+              aria-describedby={fieldErrors.email ? 'reg-email-error' : undefined}
               required
             />
+            {fieldErrors.email && <p id="reg-email-error" style={styles.fieldError}>{fieldErrors.email}</p>}
           </div>
           <div style={styles.field}>
             <label style={styles.label} htmlFor="reg-password">Password</label>
             <PasswordInput
               id="reg-password"
-              style={styles.input}
+              style={inputStyle('password')}
               placeholder="Create a password (min. 8 characters)"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
+              onBlur={(e) => handleBlur('password', e.target.value)}
+              aria-invalid={!!fieldErrors.password}
+              aria-describedby={fieldErrors.password ? 'reg-password-error' : undefined}
               required
               minLength={8}
               isDark={isDark}
             />
+            {fieldErrors.password && <p id="reg-password-error" style={styles.fieldError}>{fieldErrors.password}</p>}
           </div>
           <div style={styles.field}>
             <label style={styles.label} htmlFor="reg-confirm-password">Confirm Password</label>
             <PasswordInput
               id="reg-confirm-password"
-              style={styles.input}
+              style={inputStyle('confirmPassword')}
               placeholder="Re-enter your password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              onBlur={(e) => handleBlur('confirmPassword', e.target.value)}
+              aria-invalid={!!fieldErrors.confirmPassword}
+              aria-describedby={fieldErrors.confirmPassword ? 'reg-confirm-password-error' : undefined}
               required
               minLength={8}
               isDark={isDark}
             />
+            {fieldErrors.confirmPassword && <p id="reg-confirm-password-error" style={styles.fieldError}>{fieldErrors.confirmPassword}</p>}
           </div>
 
           <div style={styles.field}>
             <label style={styles.label} htmlFor="reg-phone">Phone Number</label>
             <input
               id="reg-phone"
-              style={styles.input}
+              style={inputStyle('phone')}
               type="tel"
               placeholder="09171234567"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              onBlur={(e) => handleBlur('phone', e.target.value)}
+              aria-invalid={!!fieldErrors.phone}
+              aria-describedby={fieldErrors.phone ? 'reg-phone-error' : undefined}
               required
             />
+            {fieldErrors.phone && <p id="reg-phone-error" style={styles.fieldError}>{fieldErrors.phone}</p>}
           </div>
 
           <LocationAddressFields
@@ -341,13 +394,17 @@ const Register = () => {
               <label style={styles.label} htmlFor="reg-emergency-number">Emergency Contact Number</label>
               <input
                 id="reg-emergency-number"
-                style={styles.input}
+                style={inputStyle('emergencyContactNumber')}
                 type="tel"
                 placeholder="09171234567"
                 value={form.emergencyContactNumber}
                 onChange={(e) => setForm({ ...form, emergencyContactNumber: e.target.value })}
+                onBlur={(e) => handleBlur('emergencyContactNumber', e.target.value)}
+                aria-invalid={!!fieldErrors.emergencyContactNumber}
+                aria-describedby={fieldErrors.emergencyContactNumber ? 'reg-emergency-number-error' : undefined}
                 required
               />
+              {fieldErrors.emergencyContactNumber && <p id="reg-emergency-number-error" style={styles.fieldError}>{fieldErrors.emergencyContactNumber}</p>}
             </div>
           </div>
 
