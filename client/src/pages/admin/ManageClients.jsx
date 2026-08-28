@@ -104,6 +104,7 @@ const ManageClients = () => {
         style={s.searchInput}
         type="text"
         placeholder="Search by name or email..."
+        aria-label="Search clients by name or email"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />

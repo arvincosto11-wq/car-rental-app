@@ -445,6 +445,10 @@ const Home = () => {
                 className="car-card-hover"
                 style={styles.card}
                 onClick={() => navigate(`/cars/${car._id}`)}
+                role="link"
+                tabIndex={0}
+                aria-label={`View ${car.brand} ${car.model} details`}
+                onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/cars/${car._id}`); }}
               >
                 <div style={styles.imgWrap}>
                   {car.image ? (

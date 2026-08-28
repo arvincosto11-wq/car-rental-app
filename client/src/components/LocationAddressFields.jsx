@@ -5,7 +5,7 @@ import { regions, provinces, cities, barangays } from 'select-philippines-addres
 // Philippine addresses. Reports the combined address back to the parent as
 // a single string so it slots into the existing `address` form field with
 // no backend changes needed.
-const LocationAddressFields = ({ styles, rowClassName = 'responsive-row-2', onChange }) => {
+const LocationAddressFields = ({ styles, rowClassName = 'responsive-row-2', onChange, idPrefix = 'loc' }) => {
   const [street, setStreet] = useState('');
   const [regionList, setRegionList] = useState([]);
   const [provinceList, setProvinceList] = useState([]);
@@ -45,8 +45,9 @@ const LocationAddressFields = ({ styles, rowClassName = 'responsive-row-2', onCh
   return (
     <>
       <div style={styles.field}>
-        <label style={styles.label}>House/Unit No. & Street</label>
+        <label style={styles.label} htmlFor={`${idPrefix}-street`}>House/Unit No. & Street</label>
         <input
+          id={`${idPrefix}-street`}
           style={styles.input}
           type="text"
           placeholder="e.g. 123 Rizal St."
@@ -58,8 +59,9 @@ const LocationAddressFields = ({ styles, rowClassName = 'responsive-row-2', onCh
 
       <div className={rowClassName} style={{ gap: '12px' }}>
         <div style={styles.field}>
-          <label style={styles.label}>Region</label>
+          <label style={styles.label} htmlFor={`${idPrefix}-region`}>Region</label>
           <select
+            id={`${idPrefix}-region`}
             style={styles.input}
             value={region?.region_code || ''}
             onChange={(e) => {
@@ -76,8 +78,9 @@ const LocationAddressFields = ({ styles, rowClassName = 'responsive-row-2', onCh
           </select>
         </div>
         <div style={styles.field}>
-          <label style={styles.label}>Province</label>
+          <label style={styles.label} htmlFor={`${idPrefix}-province`}>Province</label>
           <select
+            id={`${idPrefix}-province`}
             style={styles.input}
             value={province?.province_code || ''}
             onChange={(e) => {
@@ -97,8 +100,9 @@ const LocationAddressFields = ({ styles, rowClassName = 'responsive-row-2', onCh
 
       <div className={rowClassName} style={{ gap: '12px' }}>
         <div style={styles.field}>
-          <label style={styles.label}>City / Municipality</label>
+          <label style={styles.label} htmlFor={`${idPrefix}-city`}>City / Municipality</label>
           <select
+            id={`${idPrefix}-city`}
             style={styles.input}
             value={city?.city_code || ''}
             onChange={(e) => {
@@ -114,8 +118,9 @@ const LocationAddressFields = ({ styles, rowClassName = 'responsive-row-2', onCh
           </select>
         </div>
         <div style={styles.field}>
-          <label style={styles.label}>Barangay</label>
+          <label style={styles.label} htmlFor={`${idPrefix}-barangay`}>Barangay</label>
           <select
+            id={`${idPrefix}-barangay`}
             style={styles.input}
             value={barangay?.brgy_code || ''}
             onChange={(e) => {

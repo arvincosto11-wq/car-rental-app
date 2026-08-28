@@ -198,33 +198,33 @@ const AddVehicle = () => {
 
           <div style={s.row}>
             <div style={s.field}>
-              <label style={s.label}>Brand</label>
-              <select style={s.input} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
+              <label style={s.label} htmlFor="av-brand">Brand</label>
+              <select id="av-brand" style={s.input} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
                 <option value="">Select brand</option>
                 {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
                 <option value={OTHER}>Other (type manually)</option>
               </select>
               {brandChoice === OTHER && (
-                <input style={{ ...s.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
+                <input aria-label="Brand name" style={{ ...s.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
                   value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} required />
               )}
             </div>
             <div style={s.field}>
-              <label style={s.label}>Model</label>
+              <label style={s.label} htmlFor="av-model">Model</label>
               {brandChoice && brandChoice !== OTHER ? (
                 <>
-                  <select style={s.input} value={modelChoice} onChange={(e) => handleModelChoiceChange(e.target.value)} required>
+                  <select id="av-model" style={s.input} value={modelChoice} onChange={(e) => handleModelChoiceChange(e.target.value)} required>
                     <option value="">Select model</option>
                     {modelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
                     <option value={OTHER}>Other (type manually)</option>
                   </select>
                   {modelChoice === OTHER && (
-                    <input style={{ ...s.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
+                    <input aria-label="Model name" style={{ ...s.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
                       value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} required />
                   )}
                 </>
               ) : (
-                <input style={s.input} type="text" placeholder={brandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
+                <input id="av-model" style={s.input} type="text" placeholder={brandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
                   value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}
                   disabled={!brandChoice} required />
               )}
@@ -233,46 +233,46 @@ const AddVehicle = () => {
 
           <div style={s.row3}>
             <div style={s.field}>
-              <label style={s.label}>Year</label>
-              <input style={s.input} type="number" placeholder="e.g. 2022" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} required />
+              <label style={s.label} htmlFor="av-year">Year</label>
+              <input id="av-year" style={s.input} type="number" placeholder="e.g. 2022" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} required />
             </div>
             <div style={s.field}>
-              <label style={s.label}>Color</label>
-              <input style={s.input} type="text" placeholder="e.g. White" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
+              <label style={s.label} htmlFor="av-color">Color</label>
+              <input id="av-color" style={s.input} type="text" placeholder="e.g. White" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
             </div>
             <div style={s.field}>
-              <label style={s.label}>Mileage (km)</label>
-              <input style={s.input} type="number" placeholder="e.g. 35000" value={form.mileage} onChange={(e) => setForm({ ...form, mileage: e.target.value })} />
+              <label style={s.label} htmlFor="av-mileage">Mileage (km)</label>
+              <input id="av-mileage" style={s.input} type="number" placeholder="e.g. 35000" value={form.mileage} onChange={(e) => setForm({ ...form, mileage: e.target.value })} />
             </div>
           </div>
 
           <div style={s.field}>
-            <label style={s.label}>Plate Number</label>
-            <input style={s.input} type="text" placeholder="e.g. ABC 1234" value={form.plateNumber} onChange={(e) => setForm({ ...form, plateNumber: e.target.value })} required />
+            <label style={s.label} htmlFor="av-plate">Plate Number</label>
+            <input id="av-plate" style={s.input} type="text" placeholder="e.g. ABC 1234" value={form.plateNumber} onChange={(e) => setForm({ ...form, plateNumber: e.target.value })} required />
           </div>
 
           <div style={s.row3}>
             <div style={s.field}>
-              <label style={s.label}>Category</label>
+              <label style={s.label} htmlFor="av-category">Category</label>
               {vehicleType === 'motorcycle' ? (
-                <div style={s.categoryFixed}>Motorcycle</div>
+                <div id="av-category" style={s.categoryFixed}>Motorcycle</div>
               ) : (
-                <select style={s.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
+                <select id="av-category" style={s.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
                   <option value="">Select category</option>
                   {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
                 </select>
               )}
             </div>
             <div style={s.field}>
-              <label style={s.label}>Transmission</label>
-              <select style={s.input} value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })} required>
+              <label style={s.label} htmlFor="av-transmission">Transmission</label>
+              <select id="av-transmission" style={s.input} value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })} required>
                 <option value="">Select transmission</option>
                 <option>Automatic</option><option>Manual</option><option>Semi-Automatic</option>
               </select>
             </div>
             <div style={s.field}>
-              <label style={s.label}>Fuel Type</label>
-              <select style={s.input} value={form.fuelType} onChange={(e) => setForm({ ...form, fuelType: e.target.value })} required>
+              <label style={s.label} htmlFor="av-fuel">Fuel Type</label>
+              <select id="av-fuel" style={s.input} value={form.fuelType} onChange={(e) => setForm({ ...form, fuelType: e.target.value })} required>
                 <option value="">Select fuel type</option>
                 <option>Petrol</option><option>Diesel</option><option>Electric</option><option>Hybrid</option>
               </select>
@@ -280,19 +280,19 @@ const AddVehicle = () => {
           </div>
 
           <div style={s.field}>
-            <label style={s.label}>Seating Capacity</label>
-            <input style={s.input} type="number" placeholder="e.g. 5" value={form.seats} onChange={(e) => setForm({ ...form, seats: e.target.value })} required />
+            <label style={s.label} htmlFor="av-seats">Seating Capacity</label>
+            <input id="av-seats" style={s.input} type="number" placeholder="e.g. 5" value={form.seats} onChange={(e) => setForm({ ...form, seats: e.target.value })} required />
           </div>
 
           <div style={s.field}>
-            <label style={s.label}>Suggested Daily Price (₱)</label>
-            <input style={s.input} type="number" placeholder="e.g. 120" value={form.suggestedPricePerDay} onChange={(e) => setForm({ ...form, suggestedPricePerDay: e.target.value })} required />
+            <label style={s.label} htmlFor="av-price">Suggested Daily Price (₱)</label>
+            <input id="av-price" style={s.input} type="number" placeholder="e.g. 120" value={form.suggestedPricePerDay} onChange={(e) => setForm({ ...form, suggestedPricePerDay: e.target.value })} required />
             <p style={s.fieldHint}>This is a starting suggestion — our admin may adjust it before listing.</p>
           </div>
 
           <div style={s.field}>
-            <label style={s.label}>Available Booking Types</label>
-            <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <label style={s.label} id="av-booking-types-label">Available Booking Types</label>
+            <div role="group" aria-labelledby="av-booking-types-label" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
               <label style={s.checkboxLabel}>
                 <input type="checkbox" checked={bookingTypes['self-drive']}
                   onChange={(e) => setBookingTypes({ ...bookingTypes, 'self-drive': e.target.checked })} />
@@ -308,13 +308,13 @@ const AddVehicle = () => {
           </div>
 
           <div style={s.field}>
-            <label style={s.label}>Description (optional)</label>
-            <textarea style={s.textarea} placeholder="Anything else buyers should know about the vehicle" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <label style={s.label} htmlFor="av-description">Description (optional)</label>
+            <textarea id="av-description" style={s.textarea} placeholder="Anything else buyers should know about the vehicle" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
 
           <div style={s.row}>
             <div style={s.field}>
-              <label style={s.label}>OR (Official Receipt)</label>
+              <label style={s.label} htmlFor="av-or">OR (Official Receipt)</label>
               <div style={s.upload}>
                 {orPreview ? (
                   <img src={orPreview} alt="OR preview" style={s.uploadPreview} />
@@ -324,11 +324,11 @@ const AddVehicle = () => {
                     <p style={s.uploadHint}>Click to upload OR photo</p>
                   </div>
                 )}
-                <input type="file" accept="image/*" style={s.fileInput} onChange={(e) => { const f = e.target.files[0]; if (f) { setOrImage(f); setOrPreview(URL.createObjectURL(f)); } }} />
+                <input id="av-or" type="file" accept="image/*" style={s.fileInput} onChange={(e) => { const f = e.target.files[0]; if (f) { setOrImage(f); setOrPreview(URL.createObjectURL(f)); } }} />
               </div>
             </div>
             <div style={s.field}>
-              <label style={s.label}>CR (Certificate of Registration)</label>
+              <label style={s.label} htmlFor="av-cr">CR (Certificate of Registration)</label>
               <div style={s.upload}>
                 {crPreview ? (
                   <img src={crPreview} alt="CR preview" style={s.uploadPreview} />
@@ -338,26 +338,26 @@ const AddVehicle = () => {
                     <p style={s.uploadHint}>Click to upload CR photo</p>
                   </div>
                 )}
-                <input type="file" accept="image/*" style={s.fileInput} onChange={(e) => { const f = e.target.files[0]; if (f) { setCrImage(f); setCrPreview(URL.createObjectURL(f)); } }} />
+                <input id="av-cr" type="file" accept="image/*" style={s.fileInput} onChange={(e) => { const f = e.target.files[0]; if (f) { setCrImage(f); setCrPreview(URL.createObjectURL(f)); } }} />
               </div>
             </div>
           </div>
 
           <div style={s.field}>
-            <label style={s.label}>Vehicle Photos (multiple angles recommended)</label>
+            <label style={s.label} htmlFor="av-vehicle-photos">Vehicle Photos (multiple angles recommended)</label>
             <div style={s.upload}>
               <div style={s.uploadPlaceholder}>
                 <span style={{ fontSize: '26px' }}>📷</span>
                 <p style={s.uploadHint}>Click to add photos — you can select more than one</p>
               </div>
-              <input type="file" accept="image/*" multiple style={s.fileInput} onChange={handleVehiclePhotosChange} />
+              <input id="av-vehicle-photos" type="file" accept="image/*" multiple style={s.fileInput} onChange={handleVehiclePhotosChange} />
             </div>
             {vehiclePreviews.length > 0 && (
               <div style={s.photoGrid}>
                 {vehiclePreviews.map((src, i) => (
                   <div key={i} style={s.photoThumbWrap}>
                     <img src={src} alt={`Vehicle ${i + 1}`} style={s.photoThumb} />
-                    <button type="button" style={s.removePhotoBtn} onClick={() => removeVehiclePhoto(i)}>×</button>
+                    <button type="button" style={s.removePhotoBtn} onClick={() => removeVehiclePhoto(i)} aria-label={`Remove photo ${i + 1}`}>×</button>
                   </div>
                 ))}
               </div>

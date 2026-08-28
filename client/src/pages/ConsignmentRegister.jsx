@@ -257,35 +257,36 @@ const ConsignmentRegister = () => {
           <h2 style={styles.sectionTitle}>Your Information</h2>
 
           <div style={styles.field}>
-            <label style={styles.label}>Full Name</label>
-            <input style={styles.input} type="text" placeholder="Enter your name"
+            <label style={styles.label} htmlFor="cr-name">Full Name</label>
+            <input id="cr-name" style={styles.input} type="text" placeholder="Enter your name"
               value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </div>
           <div className="responsive-row-2" style={styles.row}>
             <div style={styles.field}>
-              <label style={styles.label}>Email</label>
-              <input style={styles.input} type="email" placeholder="Enter your email"
+              <label style={styles.label} htmlFor="cr-email">Email</label>
+              <input id="cr-email" style={styles.input} type="email" placeholder="Enter your email"
                 value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>Password</label>
-              <input style={styles.input} type="password" placeholder="Create a password (min. 8 characters)"
+              <label style={styles.label} htmlFor="cr-password">Password</label>
+              <input id="cr-password" style={styles.input} type="password" placeholder="Create a password (min. 8 characters)"
                 value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} />
             </div>
           </div>
           <div style={styles.field}>
-            <label style={styles.label}>Phone Number</label>
-            <input style={styles.input} type="tel" placeholder="09171234567"
+            <label style={styles.label} htmlFor="cr-phone">Phone Number</label>
+            <input id="cr-phone" style={styles.input} type="tel" placeholder="09171234567"
               value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
           </div>
 
           <LocationAddressFields
             styles={styles}
+            idPrefix="cr-loc"
             onChange={(address) => setForm((f) => ({ ...f, address }))}
           />
 
           <div style={styles.field}>
-            <label style={styles.label}>Your Valid ID (Driver's License, National ID, etc.)</label>
+            <label style={styles.label} htmlFor="cr-valid-id">Your Valid ID (Driver's License, National ID, etc.)</label>
             <div style={styles.upload}>
               {validIdPreview ? (
                 <img src={validIdPreview} alt="ID preview" style={styles.uploadPreview} />
@@ -295,7 +296,7 @@ const ConsignmentRegister = () => {
                   <p style={styles.uploadHint}>Click to upload a photo of your ID</p>
                 </div>
               )}
-              <input type="file" accept="image/*" style={styles.fileInput}
+              <input id="cr-valid-id" type="file" accept="image/*" style={styles.fileInput}
                 onChange={(e) => { const f = e.target.files[0]; if (f) { setValidIdImage(f); setValidIdPreview(URL.createObjectURL(f)); } }} />
             </div>
           </div>
@@ -313,33 +314,33 @@ const ConsignmentRegister = () => {
 
           <div className="responsive-row-2" style={styles.row}>
             <div style={styles.field}>
-              <label style={styles.label}>Brand</label>
-              <select style={styles.input} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
+              <label style={styles.label} htmlFor="cr-brand">Brand</label>
+              <select id="cr-brand" style={styles.input} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
                 <option value="">Select brand</option>
                 {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
                 <option value={OTHER}>Other (type manually)</option>
               </select>
               {brandChoice === OTHER && (
-                <input style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
+                <input aria-label="Brand name" style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
                   value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} required />
               )}
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>Model</label>
+              <label style={styles.label} htmlFor="cr-model">Model</label>
               {brandChoice && brandChoice !== OTHER ? (
                 <>
-                  <select style={styles.input} value={modelChoice} onChange={(e) => handleModelChoiceChange(e.target.value)} required>
+                  <select id="cr-model" style={styles.input} value={modelChoice} onChange={(e) => handleModelChoiceChange(e.target.value)} required>
                     <option value="">Select model</option>
                     {modelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
                     <option value={OTHER}>Other (type manually)</option>
                   </select>
                   {modelChoice === OTHER && (
-                    <input style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
+                    <input aria-label="Model name" style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
                       value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} required />
                   )}
                 </>
               ) : (
-                <input style={styles.input} type="text" placeholder={brandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
+                <input id="cr-model" style={styles.input} type="text" placeholder={brandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
                   value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}
                   disabled={!brandChoice} required />
               )}
@@ -348,50 +349,50 @@ const ConsignmentRegister = () => {
 
           <div className="responsive-row-3" style={styles.row3}>
             <div style={styles.field}>
-              <label style={styles.label}>Year</label>
-              <input style={styles.input} type="number" placeholder="e.g. 2022"
+              <label style={styles.label} htmlFor="cr-year">Year</label>
+              <input id="cr-year" style={styles.input} type="number" placeholder="e.g. 2022"
                 value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} required />
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>Color</label>
-              <input style={styles.input} type="text" placeholder="e.g. White"
+              <label style={styles.label} htmlFor="cr-color">Color</label>
+              <input id="cr-color" style={styles.input} type="text" placeholder="e.g. White"
                 value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>Mileage (km)</label>
-              <input style={styles.input} type="number" placeholder="e.g. 35000"
+              <label style={styles.label} htmlFor="cr-mileage">Mileage (km)</label>
+              <input id="cr-mileage" style={styles.input} type="number" placeholder="e.g. 35000"
                 value={form.mileage} onChange={(e) => setForm({ ...form, mileage: e.target.value })} />
             </div>
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>Plate Number</label>
-            <input style={styles.input} type="text" placeholder="e.g. ABC 1234"
+            <label style={styles.label} htmlFor="cr-plate">Plate Number</label>
+            <input id="cr-plate" style={styles.input} type="text" placeholder="e.g. ABC 1234"
               value={form.plateNumber} onChange={(e) => setForm({ ...form, plateNumber: e.target.value })} required />
           </div>
 
           <div className="responsive-row-3" style={styles.row3}>
             <div style={styles.field}>
-              <label style={styles.label}>Category</label>
+              <label style={styles.label} htmlFor="cr-category">Category</label>
               {vehicleType === 'motorcycle' ? (
-                <div style={styles.categoryFixed}>Motorcycle</div>
+                <div id="cr-category" style={styles.categoryFixed}>Motorcycle</div>
               ) : (
-                <select style={styles.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
+                <select id="cr-category" style={styles.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
                   <option value="">Select category</option>
                   {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
                 </select>
               )}
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>Transmission</label>
-              <select style={styles.input} value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })} required>
+              <label style={styles.label} htmlFor="cr-transmission">Transmission</label>
+              <select id="cr-transmission" style={styles.input} value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })} required>
                 <option value="">Select transmission</option>
                 <option>Automatic</option><option>Manual</option><option>Semi-Automatic</option>
               </select>
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>Fuel Type</label>
-              <select style={styles.input} value={form.fuelType} onChange={(e) => setForm({ ...form, fuelType: e.target.value })} required>
+              <label style={styles.label} htmlFor="cr-fuel">Fuel Type</label>
+              <select id="cr-fuel" style={styles.input} value={form.fuelType} onChange={(e) => setForm({ ...form, fuelType: e.target.value })} required>
                 <option value="">Select fuel type</option>
                 <option>Petrol</option><option>Diesel</option><option>Electric</option><option>Hybrid</option>
               </select>
@@ -399,21 +400,21 @@ const ConsignmentRegister = () => {
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>Seating Capacity</label>
-            <input style={styles.input} type="number" placeholder="e.g. 5"
+            <label style={styles.label} htmlFor="cr-seats">Seating Capacity</label>
+            <input id="cr-seats" style={styles.input} type="number" placeholder="e.g. 5"
               value={form.seats} onChange={(e) => setForm({ ...form, seats: e.target.value })} required />
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>Suggested Daily Price (₱)</label>
-            <input style={styles.input} type="number" placeholder="e.g. 120"
+            <label style={styles.label} htmlFor="cr-price">Suggested Daily Price (₱)</label>
+            <input id="cr-price" style={styles.input} type="number" placeholder="e.g. 120"
               value={form.suggestedPricePerDay} onChange={(e) => setForm({ ...form, suggestedPricePerDay: e.target.value })} required />
             <p style={styles.fieldHint}>This is a starting suggestion — our admin may adjust it before listing.</p>
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>Available Booking Types</label>
-            <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <label style={styles.label} id="cr-booking-types-label">Available Booking Types</label>
+            <div role="group" aria-labelledby="cr-booking-types-label" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
               <label style={styles.checkboxLabel}>
                 <input type="checkbox" checked={bookingTypes['self-drive']}
                   onChange={(e) => setBookingTypes({ ...bookingTypes, 'self-drive': e.target.checked })} />
@@ -429,8 +430,8 @@ const ConsignmentRegister = () => {
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>Description (optional)</label>
-            <textarea style={styles.textarea} placeholder="Anything else buyers should know about the vehicle"
+            <label style={styles.label} htmlFor="cr-description">Description (optional)</label>
+            <textarea id="cr-description" style={styles.textarea} placeholder="Anything else buyers should know about the vehicle"
               value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
 
@@ -438,7 +439,7 @@ const ConsignmentRegister = () => {
 
           <div className="responsive-row-2" style={styles.row}>
             <div style={styles.field}>
-              <label style={styles.label}>OR (Official Receipt)</label>
+              <label style={styles.label} htmlFor="cr-or">OR (Official Receipt)</label>
               <div style={styles.upload}>
                 {orPreview ? (
                   <img src={orPreview} alt="OR preview" style={styles.uploadPreview} />
@@ -448,12 +449,12 @@ const ConsignmentRegister = () => {
                     <p style={styles.uploadHint}>Click to upload OR photo</p>
                   </div>
                 )}
-                <input type="file" accept="image/*" style={styles.fileInput}
+                <input id="cr-or" type="file" accept="image/*" style={styles.fileInput}
                   onChange={(e) => { const f = e.target.files[0]; if (f) { setOrImage(f); setOrPreview(URL.createObjectURL(f)); } }} />
               </div>
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>CR (Certificate of Registration)</label>
+              <label style={styles.label} htmlFor="cr-cr">CR (Certificate of Registration)</label>
               <div style={styles.upload}>
                 {crPreview ? (
                   <img src={crPreview} alt="CR preview" style={styles.uploadPreview} />
@@ -463,27 +464,27 @@ const ConsignmentRegister = () => {
                     <p style={styles.uploadHint}>Click to upload CR photo</p>
                   </div>
                 )}
-                <input type="file" accept="image/*" style={styles.fileInput}
+                <input id="cr-cr" type="file" accept="image/*" style={styles.fileInput}
                   onChange={(e) => { const f = e.target.files[0]; if (f) { setCrImage(f); setCrPreview(URL.createObjectURL(f)); } }} />
               </div>
             </div>
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>Vehicle Photos (multiple angles recommended)</label>
+            <label style={styles.label} htmlFor="cr-vehicle-photos">Vehicle Photos (multiple angles recommended)</label>
             <div style={styles.upload}>
               <div style={styles.uploadPlaceholder}>
                 <span style={{ fontSize: '26px' }}>📷</span>
                 <p style={styles.uploadHint}>Click to add photos — you can select more than one</p>
               </div>
-              <input type="file" accept="image/*" multiple style={styles.fileInput} onChange={handleVehiclePhotosChange} />
+              <input id="cr-vehicle-photos" type="file" accept="image/*" multiple style={styles.fileInput} onChange={handleVehiclePhotosChange} />
             </div>
             {vehiclePreviews.length > 0 && (
               <div style={styles.photoGrid}>
                 {vehiclePreviews.map((src, i) => (
                   <div key={i} style={styles.photoThumbWrap}>
                     <img src={src} alt={`Vehicle ${i + 1}`} style={styles.photoThumb} />
-                    <button type="button" style={styles.removePhotoBtn} onClick={() => removeVehiclePhoto(i)}>×</button>
+                    <button type="button" style={styles.removePhotoBtn} onClick={() => removeVehiclePhoto(i)} aria-label={`Remove photo ${i + 1}`}>×</button>
                   </div>
                 ))}
               </div>

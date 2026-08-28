@@ -63,7 +63,7 @@ const AdminLayout = ({ children, activePage }) => {
             btnBg={isDark ? '#0f172a' : '#f9fafb'}
             btnBorder={isDark ? '#334155' : '#d1d5db'}
           />
-          <button style={s.toggleBtn} onClick={toggleTheme}>{isDark ? '☀️' : '🌙'}</button>
+          <button style={s.toggleBtn} onClick={toggleTheme} aria-label="Toggle theme">{isDark ? '☀️' : '🌙'}</button>
           <button style={s.logoutBtn} onClick={handleLogout}>Logout</button>
         </div>
       </div>

@@ -208,8 +208,9 @@ const Register = () => {
 
         <form onSubmit={handleSubmit}>
           <div style={styles.field}>
-            <label style={styles.label}>Full Name</label>
+            <label style={styles.label} htmlFor="reg-name">Full Name</label>
             <input
+              id="reg-name"
               style={styles.input}
               type="text"
               placeholder="Enter your name"
@@ -219,8 +220,9 @@ const Register = () => {
             />
           </div>
           <div style={styles.field}>
-            <label style={styles.label}>Email</label>
+            <label style={styles.label} htmlFor="reg-email">Email</label>
             <input
+              id="reg-email"
               style={styles.input}
               type="email"
               placeholder="Enter your email"
@@ -230,8 +232,9 @@ const Register = () => {
             />
           </div>
           <div style={styles.field}>
-            <label style={styles.label}>Password</label>
+            <label style={styles.label} htmlFor="reg-password">Password</label>
             <input
+              id="reg-password"
               style={styles.input}
               type="password"
               placeholder="Create a password (min. 8 characters)"
@@ -243,8 +246,9 @@ const Register = () => {
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>Phone Number</label>
+            <label style={styles.label} htmlFor="reg-phone">Phone Number</label>
             <input
+              id="reg-phone"
               style={styles.input}
               type="tel"
               placeholder="09171234567"
@@ -260,7 +264,7 @@ const Register = () => {
           />
 
           <div style={styles.field}>
-            <label style={styles.label}>Valid ID (Driver's License, National ID, etc.) — optional for now</label>
+            <label style={styles.label} htmlFor="reg-valid-id">Valid ID (Driver's License, National ID, etc.) — optional for now</label>
             <div style={styles.idUpload}>
               {validIdPreview ? (
                 <img src={validIdPreview} alt="ID preview" style={styles.idPreview} />
@@ -270,14 +274,15 @@ const Register = () => {
                   <p style={{ fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '6px' }}>Click to upload a photo of your ID</p>
                 </div>
               )}
-              <input type="file" accept="image/*" onChange={handleIdImageChange} style={styles.fileInput} />
+              <input id="reg-valid-id" type="file" accept="image/*" onChange={handleIdImageChange} style={styles.fileInput} />
             </div>
           </div>
 
           <div className="responsive-row-2" style={styles.row}>
             <div style={styles.field}>
-              <label style={styles.label}>Driver's License Number</label>
+              <label style={styles.label} htmlFor="reg-license-number">Driver's License Number</label>
               <input
+                id="reg-license-number"
                 style={styles.input}
                 type="text"
                 placeholder="e.g. N01-23-456789"
@@ -287,8 +292,9 @@ const Register = () => {
               />
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>License Expiry Date</label>
+              <label style={styles.label} htmlFor="reg-license-expiry">License Expiry Date</label>
               <input
+                id="reg-license-expiry"
                 style={styles.input}
                 type="date"
                 value={form.licenseExpiry}
@@ -300,8 +306,9 @@ const Register = () => {
 
           <div className="responsive-row-2" style={styles.row}>
             <div style={styles.field}>
-              <label style={styles.label}>Emergency Contact Name</label>
+              <label style={styles.label} htmlFor="reg-emergency-name">Emergency Contact Name</label>
               <input
+                id="reg-emergency-name"
                 style={styles.input}
                 type="text"
                 placeholder="Full name"
@@ -311,8 +318,9 @@ const Register = () => {
               />
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>Emergency Contact Number</label>
+              <label style={styles.label} htmlFor="reg-emergency-number">Emergency Contact Number</label>
               <input
+                id="reg-emergency-number"
                 style={styles.input}
                 type="tel"
                 placeholder="09171234567"

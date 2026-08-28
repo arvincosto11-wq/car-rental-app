@@ -216,12 +216,14 @@ const Cars = () => {
           style={styles.searchInput}
           type="text"
           placeholder="Search by brand or model..."
+          aria-label="Search by brand or model"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <select
           style={styles.select}
           value={category}
+          aria-label="Filter by category"
           onChange={(e) => setCategory(e.target.value)}
         >
           <option value="">All Categories</option>
@@ -236,6 +238,7 @@ const Cars = () => {
         <select
           style={styles.select}
           value={transmission}
+          aria-label="Filter by transmission"
           onChange={(e) => setTransmission(e.target.value)}
         >
           <option value="">All Transmissions</option>
@@ -243,11 +246,12 @@ const Cars = () => {
           <option value="Manual">Manual</option>
           <option value="Semi-Automatic">Semi-Automatic</option>
         </select>
-        <div style={styles.priceRangeGroup}>
+        <div style={styles.priceRangeGroup} role="group" aria-label="Price range">
           <input
             style={styles.priceInput}
             type="number"
             placeholder="Min ₱"
+            aria-label="Minimum price"
             value={minPrice}
             onChange={(e) => setMinPrice(e.target.value)}
             min="0"
@@ -257,6 +261,7 @@ const Cars = () => {
             style={styles.priceInput}
             type="number"
             placeholder="Max ₱"
+            aria-label="Maximum price"
             value={maxPrice}
             onChange={(e) => setMaxPrice(e.target.value)}
             min="0"
@@ -265,6 +270,7 @@ const Cars = () => {
         <select
           style={styles.select}
           value={sortBy}
+          aria-label="Sort by"
           onChange={(e) => setSortBy(e.target.value)}
         >
           <option value="">Sort By</option>
@@ -304,6 +310,10 @@ const Cars = () => {
               className="car-card-hover"
               style={styles.card}
               onClick={() => navigate(`/cars/${car._id}`)}
+              role="link"
+              tabIndex={0}
+              aria-label={`View ${car.brand} ${car.model} details`}
+              onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/cars/${car._id}`); }}
             >
               <div style={styles.imgWrap}>
                 {car.image ? (

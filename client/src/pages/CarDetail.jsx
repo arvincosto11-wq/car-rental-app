@@ -322,15 +322,15 @@ const CarDetail = () => {
             {error && <div style={s.error}>{error}</div>}
 
             <div style={s.field}>
-              <label style={s.label}>Pickup Date</label>
-              <input style={s.input} type="date" value={startDate}
+              <label style={s.label} htmlFor="cd-start-date">Pickup Date</label>
+              <input id="cd-start-date" style={s.input} type="date" value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]} />
             </div>
 
             <div style={s.field}>
-              <label style={s.label}>Return Date</label>
-              <input style={s.input} type="date" value={endDate}
+              <label style={s.label} htmlFor="cd-end-date">Return Date</label>
+              <input id="cd-end-date" style={s.input} type="date" value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 min={startDate} />
             </div>
@@ -338,9 +338,9 @@ const CarDetail = () => {
             {/* Booking Type */}
             {totalDays > 0 && (
               <>
-                <label style={s.label}>Booking Type</label>
+                <label style={s.label} id="cd-booking-type-label">Booking Type</label>
                 {supportedBookingTypes.length > 1 ? (
-                  <div style={s.paymentOptions}>
+                  <div role="group" aria-labelledby="cd-booking-type-label" style={s.paymentOptions}>
                     {supportedBookingTypes.includes('with-driver') && (
                       <button
                         style={s.paymentBtn(bookingType === 'with-driver')}
@@ -370,13 +370,13 @@ const CarDetail = () => {
                       Self-drive requires a valid driver's license on file. Add yours below to continue.
                     </p>
                     <div style={s.field}>
-                      <label style={s.label}>Driver's License Number</label>
-                      <input style={s.input} type="text" placeholder="e.g. N03-12-123456"
+                      <label style={s.label} htmlFor="cd-license-number">Driver's License Number</label>
+                      <input id="cd-license-number" style={s.input} type="text" placeholder="e.g. N03-12-123456"
                         value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
                     </div>
                     <div style={s.field}>
-                      <label style={s.label}>License Expiry Date</label>
-                      <input style={s.input} type="date" value={licenseExpiry}
+                      <label style={s.label} htmlFor="cd-license-expiry">License Expiry Date</label>
+                      <input id="cd-license-expiry" style={s.input} type="date" value={licenseExpiry}
                         onChange={(e) => setLicenseExpiry(e.target.value)} />
                     </div>
                   </div>
@@ -387,8 +387,8 @@ const CarDetail = () => {
             {/* Payment Options */}
             {totalDays > 0 && (
               <>
-                <label style={s.label}>Payment Option</label>
-                <div style={s.paymentOptions}>
+                <label style={s.label} id="cd-payment-option-label">Payment Option</label>
+                <div role="group" aria-labelledby="cd-payment-option-label" style={s.paymentOptions}>
                   <button
                     style={s.paymentBtn(paymentType === 'downpayment')}
                     onClick={() => setPaymentType('downpayment')}
@@ -432,16 +432,17 @@ const CarDetail = () => {
             {/* Terms and Conditions */}
             <div style={s.termsRow}>
               <input
+                id="cd-agree-terms"
                 type="checkbox"
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
                 style={{ marginTop: '2px', flexShrink: 0 }}
               />
               <span>
-                I agree to the{' '}
-                <span style={s.termsLink} onClick={() => setShowTerms(true)}>
+                <label htmlFor="cd-agree-terms">I agree to the</label>{' '}
+                <button type="button" style={{ ...s.termsLink, background: 'none', border: 'none', padding: 0, font: 'inherit' }} onClick={() => setShowTerms(true)}>
                   Terms and Conditions
-                </span>
+                </button>
               </span>
             </div>
 

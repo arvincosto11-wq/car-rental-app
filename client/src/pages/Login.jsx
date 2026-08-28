@@ -119,8 +119,9 @@ const Login = () => {
 
         <form onSubmit={handleSubmit}>
           <div style={styles.field}>
-            <label style={styles.label}>Email</label>
+            <label style={styles.label} htmlFor="login-email">Email</label>
             <input
+              id="login-email"
               style={styles.input}
               type="email"
               placeholder="Enter your email"
@@ -130,8 +131,9 @@ const Login = () => {
             />
           </div>
           <div style={styles.field}>
-            <label style={styles.label}>Password</label>
+            <label style={styles.label} htmlFor="login-password">Password</label>
             <input
+              id="login-password"
               style={styles.input}
               type="password"
               placeholder="Enter your password"

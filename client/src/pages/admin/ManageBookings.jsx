@@ -207,7 +207,7 @@ const ManageBookings = () => {
                       )}
                     </div>
                   ) : (
-                    <select style={s.select} value={booking.status} onChange={(e) => handleStatus(booking._id, e.target.value)}>
+                    <select style={s.select} value={booking.status} aria-label="Update booking status" onChange={(e) => handleStatus(booking._id, e.target.value)}>
                       <option value="pending">Pending</option>
                       <option value="confirmed">Confirmed</option>
                       <option value="cancelled">Cancelled</option>

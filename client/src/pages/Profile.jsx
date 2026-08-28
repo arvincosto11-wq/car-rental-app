@@ -243,52 +243,52 @@ const Profile = () => {
               {saveError && <div style={s.formError}>{saveError}</div>}
 
               <div style={s.field}>
-                <label style={s.label}>Full Name</label>
-                <input style={s.input} type="text" value={form.name}
+                <label style={s.label} htmlFor="profile-name">Full Name</label>
+                <input id="profile-name" style={s.input} type="text" value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
 
               <div className="responsive-row-2" style={s.row}>
                 <div style={s.field}>
-                  <label style={s.label}>Phone Number</label>
-                  <input style={s.input} type="tel" value={form.phone}
+                  <label style={s.label} htmlFor="profile-phone">Phone Number</label>
+                  <input id="profile-phone" style={s.input} type="tel" value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                 </div>
                 <div style={s.field}>
-                  <label style={s.label}>Address</label>
-                  <input style={s.input} type="text" value={form.address}
+                  <label style={s.label} htmlFor="profile-address">Address</label>
+                  <input id="profile-address" style={s.input} type="text" value={form.address}
                     onChange={(e) => setForm({ ...form, address: e.target.value })} />
                 </div>
               </div>
 
               <div className="responsive-row-2" style={s.row}>
                 <div style={s.field}>
-                  <label style={s.label}>License Number</label>
-                  <input style={s.input} type="text" value={form.licenseNumber}
+                  <label style={s.label} htmlFor="profile-license-number">License Number</label>
+                  <input id="profile-license-number" style={s.input} type="text" value={form.licenseNumber}
                     onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} />
                 </div>
                 <div style={s.field}>
-                  <label style={s.label}>License Expiry</label>
-                  <input style={s.input} type="date" value={form.licenseExpiry}
+                  <label style={s.label} htmlFor="profile-license-expiry">License Expiry</label>
+                  <input id="profile-license-expiry" style={s.input} type="date" value={form.licenseExpiry}
                     onChange={(e) => setForm({ ...form, licenseExpiry: e.target.value })} />
                 </div>
               </div>
 
               <div className="responsive-row-2" style={s.row}>
                 <div style={s.field}>
-                  <label style={s.label}>Emergency Contact Name</label>
-                  <input style={s.input} type="text" value={form.emergencyContactName}
+                  <label style={s.label} htmlFor="profile-emergency-name">Emergency Contact Name</label>
+                  <input id="profile-emergency-name" style={s.input} type="text" value={form.emergencyContactName}
                     onChange={(e) => setForm({ ...form, emergencyContactName: e.target.value })} />
                 </div>
                 <div style={s.field}>
-                  <label style={s.label}>Emergency Contact Number</label>
-                  <input style={s.input} type="tel" value={form.emergencyContactNumber}
+                  <label style={s.label} htmlFor="profile-emergency-number">Emergency Contact Number</label>
+                  <input id="profile-emergency-number" style={s.input} type="tel" value={form.emergencyContactNumber}
                     onChange={(e) => setForm({ ...form, emergencyContactNumber: e.target.value })} />
                 </div>
               </div>
 
               <div style={s.field}>
-                <label style={s.label}>Valid ID (leave as is, or upload a new photo)</label>
+                <label style={s.label} htmlFor="profile-valid-id">Valid ID (leave as is, or upload a new photo)</label>
                 <div style={s.upload}>
                   {validIdPreview ? (
                     <img src={validIdPreview} alt="New ID preview" style={s.uploadPreview} />
@@ -297,7 +297,7 @@ const Profile = () => {
                   ) : (
                     <div style={s.uploadPlaceholder}>Click to upload a photo of your ID</div>
                   )}
-                  <input type="file" accept="image/*" style={s.fileInput}
+                  <input id="profile-valid-id" type="file" accept="image/*" style={s.fileInput}
                     onChange={(e) => { const f = e.target.files[0]; if (f) { setValidIdImage(f); setValidIdPreview(URL.createObjectURL(f)); } }} />
                 </div>
                 {validIdImage && (
@@ -328,19 +328,19 @@ const Profile = () => {
 
           <form onSubmit={handleChangePassword}>
             <div style={s.field}>
-              <label style={s.label}>Current Password</label>
-              <input style={s.input} type="password" value={pwForm.currentPassword}
+              <label style={s.label} htmlFor="pw-current">Current Password</label>
+              <input id="pw-current" style={s.input} type="password" value={pwForm.currentPassword}
                 onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })} required />
             </div>
             <div className="responsive-row-2" style={s.row}>
               <div style={s.field}>
-                <label style={s.label}>New Password</label>
-                <input style={s.input} type="password" value={pwForm.newPassword} minLength={8}
+                <label style={s.label} htmlFor="pw-new">New Password</label>
+                <input id="pw-new" style={s.input} type="password" value={pwForm.newPassword} minLength={8}
                   onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} required />
               </div>
               <div style={s.field}>
-                <label style={s.label}>Confirm New Password</label>
-                <input style={s.input} type="password" value={pwForm.confirmPassword} minLength={8}
+                <label style={s.label} htmlFor="pw-confirm">Confirm New Password</label>
+                <input id="pw-confirm" style={s.input} type="password" value={pwForm.confirmPassword} minLength={8}
                   onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })} required />
               </div>
             </div>
