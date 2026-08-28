@@ -37,6 +37,39 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Censor a reviewer's name down to their first initial (e.g. "John123" ->
+// "J****"). Done server-side so the real name never reaches the browser.
+const maskReviewerName = (name) => {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return 'A****';
+  return `${trimmed.charAt(0).toUpperCase()}****`;
+};
+
+// Public reviews for a car, pulled from client ratings left after a booking
+router.get('/:id/reviews', async (req, res) => {
+  try {
+    const bookings = await Booking.find({ car: req.params.id, 'carRating.ratedAt': { $exists: true } })
+      .populate('user', 'name')
+      .sort({ 'carRating.ratedAt': -1 })
+      .select('carRating user');
+
+    const reviews = bookings.map((b) => ({
+      _id: b._id,
+      reviewerName: maskReviewerName(b.user?.name),
+      vehicleCondition: b.carRating.vehicleCondition,
+      serviceQuality: b.carRating.serviceQuality,
+      cleanliness: b.carRating.cleanliness,
+      overall: b.carRating.overall,
+      comment: b.carRating.comment,
+      ratedAt: b.carRating.ratedAt,
+    }));
+
+    res.json(reviews);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Add car (admin only)
 router.post('/', protect, adminOnly, async (req, res) => {
   try {

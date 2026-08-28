@@ -15,6 +15,8 @@ const CarDetail = () => {
   const navigate = useNavigate();
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [paymentType, setPaymentType] = useState('downpayment');
@@ -46,6 +48,20 @@ const CarDetail = () => {
       }
     };
     fetchCar();
+  }, [id]);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const res = await api.get(`/cars/${id}/reviews`);
+        setReviews(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+    fetchReviews();
   }, [id]);
 
   useEffect(() => {
@@ -139,6 +155,16 @@ const CarDetail = () => {
     metaLabel: { display: 'block', fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '4px' },
     metaValue: { fontSize: '14px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     description: { fontSize: '14px', color: isDark ? '#94a3b8' : '#4b5563', lineHeight: '1.6' },
+    reviewsSection: { marginTop: '40px', maxWidth: '760px' },
+    reviewsTitle: { fontSize: '20px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
+    reviewsSubtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '18px' },
+    reviewCard: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '16px', marginBottom: '12px' },
+    reviewHeader: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' },
+    reviewAvatar: { width: '30px', height: '30px', borderRadius: '50%', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    reviewerName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    reviewDate: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af' },
+    reviewComment: { fontSize: '13px', color: isDark ? '#cbd5e1' : '#374151', lineHeight: '1.5', marginTop: '8px' },
+    reviewEmpty: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280' },
     bookingCard: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '20px', height: 'fit-content' },
     priceRow: { display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '16px' },
     price: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a' },
@@ -457,6 +483,38 @@ const CarDetail = () => {
               {paymentType === 'full' ? 'Full payment due now' : 'Remaining balance due upon vehicle pickup'} · Cash or GCash accepted
             </p>
           </div>
+        </div>
+
+        <div style={s.reviewsSection}>
+          <h2 style={s.reviewsTitle}>Reviews</h2>
+          <p style={s.reviewsSubtitle}>
+            {car.ratingCount > 0
+              ? `${car.avgRating.toFixed(1)} average from ${car.ratingCount} review${car.ratingCount === 1 ? '' : 's'}`
+              : 'What renters are saying about this vehicle.'}
+          </p>
+
+          {reviewsLoading ? (
+            <Skeleton height="80px" radius="12px" isDark={isDark} />
+          ) : reviews.length === 0 ? (
+            <p style={s.reviewEmpty}>No reviews yet — be the first to rent and rate this vehicle.</p>
+          ) : (
+            reviews.map((r) => (
+              <div key={r._id} style={s.reviewCard}>
+                <div style={s.reviewHeader}>
+                  <span style={s.reviewAvatar}>{r.reviewerName.charAt(0)}</span>
+                  <div>
+                    <div style={s.reviewerName}>{r.reviewerName}</div>
+                    <div style={s.reviewDate}>{new Date(r.ratedAt).toLocaleDateString()}</div>
+                  </div>
+                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <StarRating value={r.overall} size={14} readOnly />
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' }}>{r.overall.toFixed(1)}</span>
+                  </div>
+                </div>
+                {r.comment && <p style={s.reviewComment}>{r.comment}</p>}
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
