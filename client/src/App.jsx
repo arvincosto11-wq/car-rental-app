@@ -10,6 +10,7 @@ import CarDetail from './pages/CarDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import MyBookings from './pages/MyBookings';
+import RateBookings from './pages/RateBookings';
 import AdminDashboard from './pages/admin/Dashboard';
 import AddCar from './pages/admin/AddCar';
 import ManageCars from './pages/admin/ManageCars';
@@ -48,6 +49,14 @@ function App() {
               }
             />
             <Route path="/dashboard" element={<Navigate to="/my-bookings" replace />} />
+            <Route
+              path="/my-bookings/rate"
+              element={
+                <ProtectedRoute allowedRoles={['user']}>
+                  <><Navbar /><RateBookings /></>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/profile"
               element={

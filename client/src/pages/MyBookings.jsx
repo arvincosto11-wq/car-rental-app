@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
+import RatingModal from '../components/RatingModal';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
 const REFUND_REASONS = [
@@ -27,9 +28,6 @@ const MyBookings = () => {
   const [refundError, setRefundError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [ratingModalId, setRatingModalId] = useState(null);
-  const [ratingForm, setRatingForm] = useState({ vehicleCondition: 0, serviceQuality: 0, cleanliness: 0, comment: '' });
-  const [ratingError, setRatingError] = useState('');
-  const [ratingSubmitting, setRatingSubmitting] = useState(false);
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -104,52 +102,34 @@ const MyBookings = () => {
   const activeBooking = bookings.find((b) => b._id === refundModalId);
   const refundAmount = activeBooking ? Math.round(activeBooking.amountPaid * 0.5) : 0;
 
-  const openRatingModal = (booking) => {
-    setRatingModalId(booking._id);
-    setRatingForm({
-      vehicleCondition: booking.carRating?.vehicleCondition || 0,
-      serviceQuality: booking.carRating?.serviceQuality || 0,
-      cleanliness: booking.carRating?.cleanliness || 0,
-      comment: booking.carRating?.comment || '',
-    });
-    setRatingError('');
-  };
-
-  const closeRatingModal = () => {
-    setRatingModalId(null);
-    setRatingError('');
-  };
-
-  const handleSubmitRating = async () => {
-    const { vehicleCondition, serviceQuality, cleanliness, comment } = ratingForm;
-    if (!vehicleCondition || !serviceQuality || !cleanliness) {
-      setRatingError('Please rate all three categories.');
-      return;
-    }
-    setRatingSubmitting(true);
-    setRatingError('');
-    try {
-      const res = await api.post(`/bookings/${ratingModalId}/rate-car`, {
-        vehicleCondition, serviceQuality, cleanliness, comment,
-      });
-      setBookings(bookings.map((b) => (b._id === ratingModalId ? { ...b, carRating: res.data.carRating } : b)));
-      closeRatingModal();
-    } catch (err) {
-      setRatingError(err.response?.data?.message || 'Failed to submit rating');
-    } finally {
-      setRatingSubmitting(false);
-    }
+  const openRatingModal = (booking) => setRatingModalId(booking._id);
+  const closeRatingModal = () => setRatingModalId(null);
+  const handleRatingSubmitted = (carRating) => {
+    setBookings(bookings.map((b) => (b._id === ratingModalId ? { ...b, carRating } : b)));
+    closeRatingModal();
   };
 
   const ratingBooking = bookings.find((b) => b._id === ratingModalId);
 
   const totalSpent = bookings.reduce((sum, b) => sum + b.totalPrice, 0);
   const confirmedCount = bookings.filter((b) => b.status === 'confirmed').length;
+  const unratedCount = bookings.filter((b) => b.status === 'completed' && !b.carRating?.ratedAt).length;
 
   const styles = {
     container: { maxWidth: '900px', margin: '0 auto', padding: '32px' },
+    headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
     title: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '14px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
+    rateBookingsBtn: {
+      display: 'flex', alignItems: 'center', gap: '8px',
+      padding: '10px 18px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+      border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+      whiteSpace: 'nowrap',
+    },
+    rateBookingsBadge: {
+      background: 'rgba(0,0,0,0.2)', color: ON_GOLD, fontSize: '11px', fontWeight: '700',
+      borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
+    },
     statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '28px' },
     statCard: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '18px' },
     statLabel: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px' },
@@ -316,11 +296,6 @@ const MyBookings = () => {
       borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: isDark ? '#f1f5f9' : '#1a1a1a',
       background: isDark ? '#0f172a' : '#fff',
     },
-    modalTextarea: {
-      width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-      borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: isDark ? '#f1f5f9' : '#1a1a1a',
-      fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', background: isDark ? '#0f172a' : '#fff',
-    },
     modalActions: { display: 'flex', gap: '10px' },
     modalCancelBtn: {
       flex: 1, padding: '10px', background: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151',
@@ -334,8 +309,18 @@ const MyBookings = () => {
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>My Bookings</h1>
-      <p style={styles.subtitle}>View and manage your all car bookings</p>
+      <div style={styles.headerRow}>
+        <div>
+          <h1 style={styles.title}>My Bookings</h1>
+          <p style={styles.subtitle}>View and manage your all car bookings</p>
+        </div>
+        {!loading && unratedCount > 0 && (
+          <button style={styles.rateBookingsBtn} onClick={() => navigate('/my-bookings/rate')}>
+            ⭐ Rate My Bookings
+            <span style={styles.rateBookingsBadge}>{unratedCount}</span>
+          </button>
+        )}
+      </div>
 
       {!loading && bookings.length > 0 && (
         <div className="responsive-row-3" style={styles.statsRow}>
@@ -470,46 +455,12 @@ const MyBookings = () => {
       )}
 
       {ratingModalId && ratingBooking && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h2 style={styles.modalTitle}>Rate Your Experience</h2>
-
-            {ratingError && <div style={styles.errorBox}>{ratingError}</div>}
-
-            {[
-              { key: 'vehicleCondition', label: 'Vehicle Condition' },
-              { key: 'serviceQuality', label: 'Service Quality' },
-              { key: 'cleanliness', label: 'Cleanliness' },
-            ].map(({ key, label }) => (
-              <div key={key} style={{ marginBottom: '14px' }}>
-                <label style={styles.modalLabel}>{label}</label>
-                <StarRating
-                  value={ratingForm[key]}
-                  onChange={(n) => setRatingForm({ ...ratingForm, [key]: n })}
-                  size={22}
-                />
-              </div>
-            ))}
-
-            <label style={styles.modalLabel}>Comment (optional)</label>
-            <textarea
-              style={styles.modalTextarea}
-              rows={3}
-              value={ratingForm.comment}
-              onChange={(e) => setRatingForm({ ...ratingForm, comment: e.target.value })}
-              placeholder="Tell us more about your experience..."
-            />
-
-            <div style={styles.modalActions}>
-              <button style={styles.modalCancelBtn} onClick={closeRatingModal} disabled={ratingSubmitting}>
-                Cancel
-              </button>
-              <button style={styles.modalSubmitBtn} onClick={handleSubmitRating} disabled={ratingSubmitting}>
-                {ratingSubmitting ? 'Submitting...' : 'Submit Rating'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <RatingModal
+          booking={ratingBooking}
+          isDark={isDark}
+          onClose={closeRatingModal}
+          onSubmitted={handleRatingSubmitted}
+        />
       )}
     </div>
   );
