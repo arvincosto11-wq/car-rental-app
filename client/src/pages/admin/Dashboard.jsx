@@ -6,6 +6,7 @@ import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import Skeleton from '../../components/Skeleton';
+import RevenueTrendChart from '../../components/RevenueTrendChart';
 import api from '../../api';
 
 const Dashboard = () => {
@@ -17,6 +18,7 @@ const Dashboard = () => {
   const [topRatedCars, setTopRatedCars] = useState([]);
   const [revenue, setRevenue] = useState({ week: 0, month: 0, all: 0 });
   const [revenuePeriod, setRevenuePeriod] = useState('month');
+  const [monthlyTrend, setMonthlyTrend] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,6 +45,20 @@ const Dashboard = () => {
         .filter((b) => new Date(b.createdAt) >= cutoff)
         .reduce((sum, b) => sum + b.totalPrice, 0);
 
+      const months = Array.from({ length: 6 }).map((_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+        return { year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString('en-US', { month: 'short' }) };
+      });
+      const trend = months.map(({ year, month, label }) => ({
+        label,
+        value: confirmed
+          .filter((b) => {
+            const bd = new Date(b.createdAt);
+            return bd.getFullYear() === year && bd.getMonth() === month;
+          })
+          .reduce((sum, b) => sum + b.totalPrice, 0),
+      }));
+
       const rated = carsRes.data
         .filter((c) => c.ratingCount > 0)
         .sort((a, b) => b.avgRating - a.avgRating || b.ratingCount - a.ratingCount)
@@ -55,6 +71,7 @@ const Dashboard = () => {
         month: sumSince(startOfMonth),
         all: confirmed.reduce((sum, b) => sum + b.totalPrice, 0),
       });
+      setMonthlyTrend(trend);
     } catch (err) {
       console.error(err);
     } finally {
@@ -82,6 +99,8 @@ const Dashboard = () => {
     badgePending: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     revenueNum: { fontSize: '32px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, marginTop: '16px' },
     periodToggleRow: { display: 'flex', gap: '8px', marginTop: '4px' },
+    trendWrap: { marginTop: '20px' },
+    trendLabel: { fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px', fontWeight: '500' },
     periodBtn: (active) => ({
       padding: '6px 14px',
       borderRadius: '20px',
@@ -160,6 +179,15 @@ const Dashboard = () => {
                 <button type="button" style={s.periodBtn(revenuePeriod === 'all')} onClick={() => setRevenuePeriod('all')}>All Time</button>
               </div>
               <div style={s.revenueNum}>₱{revenue[revenuePeriod].toLocaleString()}</div>
+              <div style={s.trendWrap}>
+                <div style={s.trendLabel}>Last 6 months</div>
+                <RevenueTrendChart
+                  data={monthlyTrend}
+                  isDark={isDark}
+                  barColor={isDark ? GOLD_DARK : GOLD}
+                  barColorHover={isDark ? GOLD : GOLD_DARK}
+                />
+              </div>
             </div>
           </div>
           <div style={{ ...s.box, marginTop: '16px' }}>
