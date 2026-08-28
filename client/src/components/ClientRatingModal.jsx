@@ -59,12 +59,13 @@ const ClientRatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
         {error && <div style={s.errorBox}>{error}</div>}
 
         <label style={s.modalLabel}>How did the client return the vehicle?</label>
-        <div style={{ marginBottom: '18px' }}>
+        <div style={{ marginBottom: '18px' }} role="group" aria-label="How did the client return the vehicle?">
           <StarRating value={value} onChange={setValue} size={24} />
         </div>
 
-        <label style={s.modalLabel}>Comment (optional)</label>
+        <label style={s.modalLabel} htmlFor="client-rating-comment">Comment (optional)</label>
         <textarea
+          id="client-rating-comment"
           style={s.modalTextarea}
           rows={3}
           value={comment}

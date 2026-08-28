@@ -337,8 +337,9 @@ const ConsignorDashboard = () => {
 
             {requestError && <div style={s.errorBox}>{requestError}</div>}
 
-            <label style={s.modalLabel}>Reason (optional)</label>
+            <label style={s.modalLabel} htmlFor="request-reason">Reason (optional)</label>
             <textarea
+              id="request-reason"
               style={s.modalTextarea}
               rows={3}
               value={requestReason}

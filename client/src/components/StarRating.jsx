@@ -6,7 +6,9 @@ const StarRating = ({ value = 0, onChange, size = 18, readOnly = false }) => {
         <span
           key={n}
           onClick={readOnly ? undefined : () => onChange(n)}
+          onKeyDown={readOnly ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(n); } }}
           role={readOnly ? undefined : 'button'}
+          tabIndex={readOnly ? undefined : 0}
           aria-label={readOnly ? undefined : `${n} star${n > 1 ? 's' : ''}`}
           style={{
             cursor: readOnly ? 'default' : 'pointer',

@@ -91,7 +91,7 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
           { key: 'serviceQuality', label: 'Service Quality' },
           { key: 'cleanliness', label: 'Cleanliness' },
         ].map(({ key, label }) => (
-          <div key={key} style={{ marginBottom: '14px' }}>
+          <div key={key} style={{ marginBottom: '14px' }} role="group" aria-label={label}>
             <label style={s.modalLabel}>{label}</label>
             <StarRating
               value={form[key]}
@@ -101,8 +101,9 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
           </div>
         ))}
 
-        <label style={s.modalLabel}>Comment (optional)</label>
+        <label style={s.modalLabel} htmlFor="rating-comment">Comment (optional)</label>
         <textarea
+          id="rating-comment"
           style={s.modalTextarea}
           rows={3}
           value={form.comment}

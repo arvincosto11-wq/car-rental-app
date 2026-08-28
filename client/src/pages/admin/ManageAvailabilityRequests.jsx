@@ -165,8 +165,9 @@ const ManageAvailabilityRequests = () => {
         <div style={s.modalOverlay}>
           <div style={s.modalContent} ref={declineModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="decline-modal-title">
             <h2 id="decline-modal-title" style={s.modalTitle}>Decline Request</h2>
-            <label style={s.modalLabel}>Reason (shown to the consignor)</label>
+            <label style={s.modalLabel} htmlFor="avail-decline-reason">Reason (shown to the consignor)</label>
             <textarea
+              id="avail-decline-reason"
               style={s.modalTextarea}
               rows={3}
               value={declineReason}

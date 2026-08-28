@@ -416,8 +416,9 @@ const MyBookings = () => {
 
             {refundError && <div style={styles.errorBox}>{refundError}</div>}
 
-            <label style={styles.modalLabel}>Reason for refund</label>
+            <label style={styles.modalLabel} htmlFor="refund-reason">Reason for refund</label>
             <select
+              id="refund-reason"
               style={styles.modalSelect}
               value={refundReason}
               onChange={(e) => setRefundReason(e.target.value)}

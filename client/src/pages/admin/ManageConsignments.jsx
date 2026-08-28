@@ -310,6 +310,7 @@ const ManageConsignments = () => {
                     <textarea
                       style={s.declineTextarea}
                       placeholder="Reason for declining (shown to the applicant)..."
+                      aria-label="Reason for declining"
                       value={declineReason}
                       onChange={(e) => setDeclineReason(e.target.value)}
                     />

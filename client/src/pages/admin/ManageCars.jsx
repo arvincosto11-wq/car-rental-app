@@ -260,7 +260,7 @@ const ManageCars = () => {
 
                       {/* Image Upload */}
                       <div style={styles.field}>
-                        <label style={styles.label}>Car Image</label>
+                        <label style={styles.label} htmlFor="mc-edit-image">Car Image</label>
                         <div style={styles.imageUpload}>
                           {editImagePreview ? (
                             <img src={editImagePreview} alt="preview" style={styles.imagePreview} />
@@ -273,6 +273,7 @@ const ManageCars = () => {
                             </div>
                           )}
                           <input
+                            id="mc-edit-image"
                             type="file"
                             accept="image/*"
                             onChange={handleEditImageChange}
@@ -288,54 +289,54 @@ const ManageCars = () => {
 
                       <div style={styles.editGrid}>
                         <div style={styles.field}>
-                          <label style={styles.label}>Brand</label>
-                          <select style={styles.input} value={editBrandChoice} onChange={(e) => handleEditBrandChoiceChange(e.target.value)}>
+                          <label style={styles.label} htmlFor="mc-edit-brand">Brand</label>
+                          <select id="mc-edit-brand" style={styles.input} value={editBrandChoice} onChange={(e) => handleEditBrandChoiceChange(e.target.value)}>
                             <option value="">Select brand</option>
                             {editBrandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
                             <option value={OTHER}>Other (type manually)</option>
                           </select>
                           {editBrandChoice === OTHER && (
-                            <input style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
+                            <input aria-label="Brand name" style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
                               value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })} />
                           )}
                         </div>
                         <div style={styles.field}>
-                          <label style={styles.label}>Model</label>
+                          <label style={styles.label} htmlFor="mc-edit-model">Model</label>
                           {editBrandChoice && editBrandChoice !== OTHER ? (
                             <>
-                              <select style={styles.input} value={editModelChoice} onChange={(e) => handleEditModelChoiceChange(e.target.value)}>
+                              <select id="mc-edit-model" style={styles.input} value={editModelChoice} onChange={(e) => handleEditModelChoiceChange(e.target.value)}>
                                 <option value="">Select model</option>
                                 {editModelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
                                 <option value={OTHER}>Other (type manually)</option>
                               </select>
                               {editModelChoice === OTHER && (
-                                <input style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
+                                <input aria-label="Model name" style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
                                   value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })} />
                               )}
                             </>
                           ) : (
-                            <input style={styles.input} type="text" placeholder={editBrandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
+                            <input id="mc-edit-model" style={styles.input} type="text" placeholder={editBrandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
                               value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
                               disabled={!editBrandChoice} />
                           )}
                         </div>
                         <div style={styles.field}>
-                          <label style={styles.label}>Year</label>
-                          <input style={styles.input} type="number" value={editForm.year}
+                          <label style={styles.label} htmlFor="mc-edit-year">Year</label>
+                          <input id="mc-edit-year" style={styles.input} type="number" value={editForm.year}
                             onChange={(e) => setEditForm({...editForm, year: e.target.value})} />
                         </div>
                         <div style={styles.field}>
-                          <label style={styles.label}>Daily Price (₱)</label>
-                          <input style={styles.input} type="number" value={editForm.pricePerDay}
+                          <label style={styles.label} htmlFor="mc-edit-price">Daily Price (₱)</label>
+                          <input id="mc-edit-price" style={styles.input} type="number" value={editForm.pricePerDay}
                             onChange={(e) => setEditForm({...editForm, pricePerDay: e.target.value})} />
                         </div>
                         <div style={styles.field}>
-                          <label style={styles.label}>Category</label>
+                          <label style={styles.label} htmlFor="mc-edit-category">Category</label>
                           {editVehicleType === 'motorcycle' ? (
-                            <div style={styles.categoryFixed}>Motorcycle</div>
+                            <div id="mc-edit-category" style={styles.categoryFixed}>Motorcycle</div>
                           ) : (
                             <>
-                              <select style={styles.input} value={editForm.category}
+                              <select id="mc-edit-category" style={styles.input} value={editForm.category}
                                 onChange={(e) => setEditForm({...editForm, category: e.target.value})}>
                                 <option value="">Select category</option>
                                 {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
@@ -349,30 +350,30 @@ const ManageCars = () => {
                           )}
                         </div>
                         <div style={styles.field}>
-                          <label style={styles.label}>Transmission</label>
-                          <select style={styles.input} value={editForm.transmission}
+                          <label style={styles.label} htmlFor="mc-edit-transmission">Transmission</label>
+                          <select id="mc-edit-transmission" style={styles.input} value={editForm.transmission}
                             onChange={(e) => setEditForm({...editForm, transmission: e.target.value})}>
                             <option>Automatic</option><option>Manual</option>
                             <option>Semi-Automatic</option>
                           </select>
                         </div>
                         <div style={styles.field}>
-                          <label style={styles.label}>Fuel Type</label>
-                          <select style={styles.input} value={editForm.fuelType}
+                          <label style={styles.label} htmlFor="mc-edit-fuel">Fuel Type</label>
+                          <select id="mc-edit-fuel" style={styles.input} value={editForm.fuelType}
                             onChange={(e) => setEditForm({...editForm, fuelType: e.target.value})}>
                             <option>Petrol</option><option>Diesel</option>
                             <option>Electric</option><option>Hybrid</option>
                           </select>
                         </div>
                         <div style={styles.field}>
-                          <label style={styles.label}>Seats</label>
-                          <input style={styles.input} type="number" value={editForm.seats}
+                          <label style={styles.label} htmlFor="mc-edit-seats">Seats</label>
+                          <input id="mc-edit-seats" style={styles.input} type="number" value={editForm.seats}
                             onChange={(e) => setEditForm({...editForm, seats: e.target.value})} />
                         </div>
                       </div>
                       <div style={styles.field}>
-                        <label style={styles.label}>Available Booking Types</label>
-                        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                        <label style={styles.label} id="mc-edit-booking-types-label">Available Booking Types</label>
+                        <div role="group" aria-labelledby="mc-edit-booking-types-label" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                           <label style={styles.checkboxLabel}>
                             <input type="checkbox" checked={(editForm.availableBookingTypes || []).includes('self-drive')}
                               onChange={() => toggleEditBookingType('self-drive')} />
@@ -386,8 +387,8 @@ const ManageCars = () => {
                         </div>
                       </div>
                       <div style={styles.field}>
-                        <label style={styles.label}>Description</label>
-                        <textarea style={styles.textarea} value={editForm.description}
+                        <label style={styles.label} htmlFor="mc-edit-description">Description</label>
+                        <textarea id="mc-edit-description" style={styles.textarea} value={editForm.description}
                           onChange={(e) => setEditForm({...editForm, description: e.target.value})} />
                       </div>
                       <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
