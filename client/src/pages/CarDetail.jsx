@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import StarRating from '../components/StarRating';
+import Skeleton from '../components/Skeleton';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 
@@ -175,7 +176,20 @@ const CarDetail = () => {
     refundNoticeConfirm: { flex: 1, padding: '10px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
   };
 
-  if (loading) return <div style={s.page}><p style={{ textAlign: 'center', padding: '40px', color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p></div>;
+  if (loading) return (
+    <div style={s.page}>
+      <div className="car-detail-layout" style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px', display: 'grid', gap: '32px' }}>
+        <div>
+          <Skeleton height="360px" radius="12px" isDark={isDark} style={{ marginBottom: '16px' }} />
+          <Skeleton height="24px" width="60%" isDark={isDark} style={{ marginBottom: '10px' }} />
+          <Skeleton height="14px" width="40%" isDark={isDark} />
+        </div>
+        <div>
+          <Skeleton height="220px" radius="12px" isDark={isDark} />
+        </div>
+      </div>
+    </div>
+  );
   if (!car) return <div style={s.page}><p style={{ textAlign: 'center', padding: '40px', color: isDark ? '#94a3b8' : '#6b7280' }}>Car not found.</p></div>;
 
   return (

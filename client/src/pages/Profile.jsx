@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import Skeleton from '../components/Skeleton';
 import api from '../api';
 
 const Profile = () => {
@@ -18,6 +19,11 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
+
+  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -93,6 +99,34 @@ const Profile = () => {
     }
   };
 
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPwError('');
+    setPwSuccess('');
+    if (pwForm.newPassword.length < 8) {
+      setPwError('New password must be at least 8 characters.');
+      return;
+    }
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      setPwError('New password and confirmation do not match.');
+      return;
+    }
+    setPwSaving(true);
+    try {
+      await api.put('/auth/change-password', {
+        currentPassword: pwForm.currentPassword,
+        newPassword: pwForm.newPassword,
+      });
+      setPwSuccess('Password updated.');
+      setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setPwSuccess(''), 3000);
+    } catch (err) {
+      setPwError(err.response?.data?.message || 'Something went wrong changing your password.');
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
   const s = {
     page: { minHeight: '100vh', background: isDark ? '#0f172a' : '#f9fafb' },
     container: { maxWidth: '700px', margin: '0 auto', padding: '32px' },
@@ -141,7 +175,14 @@ const Profile = () => {
           </div>
 
           {!profile ? (
-            <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
+            <div className="responsive-row-2" style={s.profileGrid}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} style={s.profileItem}>
+                  <Skeleton height="11px" width="40%" isDark={isDark} style={{ marginBottom: '8px' }} />
+                  <Skeleton height="14px" width="70%" isDark={isDark} />
+                </div>
+              ))}
+            </div>
           ) : !editMode ? (
             <>
               <div className="responsive-row-2" style={s.profileGrid}>
@@ -276,6 +317,37 @@ const Profile = () => {
               </div>
             </form>
           )}
+        </div>
+
+        <div style={{ ...s.profileCard, marginTop: '20px' }}>
+          <div style={s.sectionTitle}>Change Password</div>
+          <p style={s.subtitle}>Update the password you use to log in.</p>
+
+          {pwSuccess && <div style={s.formSuccess}>{pwSuccess}</div>}
+          {pwError && <div style={s.formError}>{pwError}</div>}
+
+          <form onSubmit={handleChangePassword}>
+            <div style={s.field}>
+              <label style={s.label}>Current Password</label>
+              <input style={s.input} type="password" value={pwForm.currentPassword}
+                onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })} required />
+            </div>
+            <div className="responsive-row-2" style={s.row}>
+              <div style={s.field}>
+                <label style={s.label}>New Password</label>
+                <input style={s.input} type="password" value={pwForm.newPassword} minLength={8}
+                  onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} required />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Confirm New Password</label>
+                <input style={s.input} type="password" value={pwForm.confirmPassword} minLength={8}
+                  onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })} required />
+              </div>
+            </div>
+            <button type="submit" style={s.saveBtn} disabled={pwSaving}>
+              {pwSaving ? 'Updating...' : 'Update Password'}
+            </button>
+          </form>
         </div>
       </div>
     </div>

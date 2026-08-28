@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
+import { SkeletonListCard } from '../../components/Skeleton';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
@@ -240,7 +241,7 @@ const ManageCars = () => {
       <div style={styles.main}>
           <h1 style={styles.title}>Manage Cars</h1>
           <p style={styles.subtitle}>View all listed cars, update or remove them.</p>
-          {loading ? <p>Loading...</p> : (
+          {loading ? <SkeletonListCard isDark={isDark} count={4} /> : (
             <div>
               {cars.map((car) => (
                 <div key={car._id} style={styles.carCard}>

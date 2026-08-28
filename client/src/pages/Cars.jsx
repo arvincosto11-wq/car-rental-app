@@ -3,12 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
+import Skeleton from '../components/Skeleton';
 
 const Cars = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
+  const [transmission, setTransmission] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [availableOnly, setAvailableOnly] = useState(false);
+  const [sortBy, setSortBy] = useState('');
   const { isDark } = useTheme();
   const navigate = useNavigate();
 
@@ -26,13 +32,25 @@ const Cars = () => {
     fetchCars();
   }, []);
 
-  const filtered = cars.filter((car) => {
-    const matchSearch =
-      car.brand.toLowerCase().includes(search.toLowerCase()) ||
-      car.model.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = category ? car.category === category : true;
-    return matchSearch && matchCategory;
-  });
+  const filtered = cars
+    .filter((car) => {
+      const matchSearch =
+        car.brand.toLowerCase().includes(search.toLowerCase()) ||
+        car.model.toLowerCase().includes(search.toLowerCase());
+      const matchCategory = category ? car.category === category : true;
+      const matchTransmission = transmission ? car.transmission === transmission : true;
+      const matchMin = minPrice ? car.pricePerDay >= Number(minPrice) : true;
+      const matchMax = maxPrice ? car.pricePerDay <= Number(maxPrice) : true;
+      const matchAvailable = availableOnly ? car.isAvailable !== false : true;
+      return matchSearch && matchCategory && matchTransmission && matchMin && matchMax && matchAvailable;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'price-asc') return a.pricePerDay - b.pricePerDay;
+      if (sortBy === 'price-desc') return b.pricePerDay - a.pricePerDay;
+      if (sortBy === 'rating-desc') return (b.avgRating || 0) - (a.avgRating || 0);
+      if (sortBy === 'name-asc') return `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
+      return 0;
+    });
 
   const styles = {
     container: {
@@ -71,6 +89,30 @@ const Cars = () => {
       background: isDark ? '#1e293b' : '#fff',
       color: isDark ? '#f1f5f9' : '#111827',
     },
+    priceInput: {
+      width: '90px',
+      padding: '10px 12px',
+      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '8px',
+      fontSize: '14px',
+      outline: 'none',
+      background: isDark ? '#1e293b' : '#fff',
+      color: isDark ? '#f1f5f9' : '#111827',
+    },
+    priceRangeGroup: { display: 'flex', alignItems: 'center', gap: '6px' },
+    priceRangeSep: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280' },
+    availableToggle: {
+      display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px',
+      color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer', whiteSpace: 'nowrap',
+    },
+    resultsCount: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '14px' },
+    skeletonCard: {
+      background: isDark ? '#1e293b' : '#fff',
+      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      borderRadius: '12px',
+      overflow: 'hidden',
+    },
+    skeletonBody: { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' },
     grid: {
       gap: '20px',
     },
@@ -191,13 +233,70 @@ const Cars = () => {
           <option value="Coupe">Coupe</option>
           <option value="Motorcycle">Motorcycle</option>
         </select>
+        <select
+          style={styles.select}
+          value={transmission}
+          onChange={(e) => setTransmission(e.target.value)}
+        >
+          <option value="">All Transmissions</option>
+          <option value="Automatic">Automatic</option>
+          <option value="Manual">Manual</option>
+          <option value="Semi-Automatic">Semi-Automatic</option>
+        </select>
+        <div style={styles.priceRangeGroup}>
+          <input
+            style={styles.priceInput}
+            type="number"
+            placeholder="Min ₱"
+            value={minPrice}
+            onChange={(e) => setMinPrice(e.target.value)}
+            min="0"
+          />
+          <span style={styles.priceRangeSep}>–</span>
+          <input
+            style={styles.priceInput}
+            type="number"
+            placeholder="Max ₱"
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value)}
+            min="0"
+          />
+        </div>
+        <select
+          style={styles.select}
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+        >
+          <option value="">Sort By</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="rating-desc">Highest Rated</option>
+          <option value="name-asc">Name: A to Z</option>
+        </select>
+        <label style={styles.availableToggle}>
+          <input type="checkbox" checked={availableOnly} onChange={(e) => setAvailableOnly(e.target.checked)} />
+          Available only
+        </label>
       </div>
 
       {loading ? (
-        <p style={{ textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
+        <div className="responsive-grid-3" style={styles.grid}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} style={styles.skeletonCard}>
+              <Skeleton height="160px" radius="0" isDark={isDark} />
+              <div style={styles.skeletonBody}>
+                <Skeleton height="18px" width="70%" isDark={isDark} />
+                <Skeleton height="13px" width="45%" isDark={isDark} />
+                <Skeleton height="13px" width="90%" isDark={isDark} />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
         <p style={{ textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>No cars found.</p>
       ) : (
+        <>
+        <p style={styles.resultsCount}>{filtered.length} vehicle{filtered.length === 1 ? '' : 's'} found</p>
         <div className="responsive-grid-3" style={styles.grid}>
           {filtered.map((car) => (
             <div
@@ -246,6 +345,7 @@ const Cars = () => {
             </div>
           ))}
         </div>
+        </>
       )}
     </div>
   );

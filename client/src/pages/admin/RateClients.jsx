@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import ClientRatingModal from '../../components/ClientRatingModal';
+import { SkeletonListCard } from '../../components/Skeleton';
 import api from '../../api';
 
 const RateClients = () => {
@@ -61,7 +62,7 @@ const RateClients = () => {
       <p style={s.subtitle}>Completed bookings where the client hasn't been rated yet.</p>
 
       {loading ? (
-        <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
+        <SkeletonListCard isDark={isDark} />
       ) : unrated.length === 0 ? (
         <div style={s.empty}>
           <p>🎉 All returned bookings have been rated.</p>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
+import { SkeletonTableRows } from '../../components/Skeleton';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
@@ -126,7 +127,23 @@ const ManageConsignments = () => {
       </div>
 
       {loading ? (
-        <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
+        <div className="table-scroll">
+          <table style={s.table}>
+            <thead>
+              <tr>
+                <th style={s.th}>Owner</th>
+                <th style={s.th}>Vehicle</th>
+                <th style={s.th}>Suggested Price</th>
+                <th style={s.th}>Status</th>
+                <th style={s.th}>Submitted</th>
+                <th style={s.th}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <SkeletonTableRows isDark={isDark} columns={6} />
+            </tbody>
+          </table>
+        </div>
       ) : filtered.length === 0 ? (
         <div style={s.table}><p style={s.empty}>No applications here.</p></div>
       ) : (

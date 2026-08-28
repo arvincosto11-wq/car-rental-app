@@ -213,6 +213,20 @@ select:disabled {
   }
 }
 
+/* Shimmering loading placeholders (see components/Skeleton.jsx). */
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton {
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
 /* Bold poster-style headline face, used sparingly for hero moments only. */
 .display-heading {
   font-family: 'Oswald', 'Arial Narrow', sans-serif;

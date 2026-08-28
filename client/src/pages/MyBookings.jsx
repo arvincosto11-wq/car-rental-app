@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
 import RatingModal from '../components/RatingModal';
+import { SkeletonListCard } from '../components/Skeleton';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
 const REFUND_REASONS = [
@@ -329,7 +330,7 @@ const MyBookings = () => {
       )}
 
       {loading ? (
-        <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
+        <SkeletonListCard isDark={isDark} />
       ) : bookings.length === 0 ? (
         <div style={styles.empty}>
           <p>No bookings yet.</p>

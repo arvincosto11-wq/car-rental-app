@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import RatingModal from '../components/RatingModal';
+import { SkeletonListCard } from '../components/Skeleton';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
 const RateBookings = () => {
@@ -70,7 +71,7 @@ const RateBookings = () => {
       <p style={styles.subtitle}>Completed bookings you haven't rated yet.</p>
 
       {loading ? (
-        <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
+        <SkeletonListCard isDark={isDark} />
       ) : unrated.length === 0 ? (
         <div style={styles.empty}>
           <p>🎉 You're all caught up — nothing left to rate.</p>

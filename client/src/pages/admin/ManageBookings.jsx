@@ -4,6 +4,7 @@ import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
 import ClientRatingModal from '../../components/ClientRatingModal';
+import { SkeletonTableRows } from '../../components/Skeleton';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
@@ -113,8 +114,7 @@ const ManageBookings = () => {
           </button>
         )}
       </div>
-      {loading ? <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p> : (
-        <div className="table-scroll">
+      <div className="table-scroll">
         <table style={s.table}>
           <thead>
             <tr>
@@ -128,7 +128,7 @@ const ManageBookings = () => {
             </tr>
           </thead>
           <tbody>
-            {bookings.map((booking) => (
+            {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : bookings.map((booking) => (
               <tr key={booking._id}>
                 <td style={s.td}>
                   <div style={s.clientName}>
@@ -218,8 +218,7 @@ const ManageBookings = () => {
             ))}
           </tbody>
         </table>
-        </div>
-      )}
+      </div>
 
       {ratingModalId && ratingBooking && (
         <ClientRatingModal

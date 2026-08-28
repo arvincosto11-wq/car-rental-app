@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
+import Skeleton from '../../components/Skeleton';
 import api from '../../api';
 
 const Dashboard = () => {
@@ -100,7 +101,28 @@ const Dashboard = () => {
       <h1 style={s.title}>Admin Dashboard</h1>
       <p style={s.subtitle}>Monitor overall platform performance</p>
       {loading ? (
-        <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
+        <>
+          <div className="responsive-grid-4" style={s.statsRow}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} style={s.statCard}>
+                <Skeleton height="12px" width="60%" isDark={isDark} style={{ marginBottom: '10px' }} />
+                <Skeleton height="24px" width="40%" isDark={isDark} />
+              </div>
+            ))}
+          </div>
+          <div className="responsive-row-2" style={s.grid}>
+            <div style={s.box}>
+              <Skeleton height="15px" width="50%" isDark={isDark} style={{ marginBottom: '14px' }} />
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} height="40px" isDark={isDark} style={{ marginBottom: '8px' }} />
+              ))}
+            </div>
+            <div style={s.box}>
+              <Skeleton height="15px" width="50%" isDark={isDark} style={{ marginBottom: '14px' }} />
+              <Skeleton height="32px" width="60%" isDark={isDark} />
+            </div>
+          </div>
+        </>
       ) : (
         <>
           <div className="responsive-grid-4" style={s.statsRow}>

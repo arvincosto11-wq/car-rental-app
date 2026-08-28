@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
+import { SkeletonTableRows } from '../../components/Skeleton';
 import api from '../../api';
 
 const ManageClients = () => {
@@ -105,10 +106,7 @@ const ManageClients = () => {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      {loading ? (
-        <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
-      ) : (
-        <div className="table-scroll">
+      <div className="table-scroll">
         <table style={s.table}>
           <thead>
             <tr>
@@ -122,7 +120,7 @@ const ManageClients = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((client) => (
+            {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : filtered.map((client) => (
               <tr key={client._id}>
                 <td style={s.td}>
                   <div style={s.nameCell}>{client.name}</div>
@@ -150,8 +148,7 @@ const ManageClients = () => {
             ))}
           </tbody>
         </table>
-        </div>
-      )}
+      </div>
 
       {selectedClient && (
         <div style={s.modalOverlay}>

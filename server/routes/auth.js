@@ -58,6 +58,28 @@ router.put('/me', protect, async (req, res) => {
   }
 });
 
+// Change the logged-in user's password (requires their current password)
+router.put('/change-password', protect, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters.' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const match = await bcrypt.compare(currentPassword || '', user.password);
+    if (!match) return res.status(400).json({ message: 'Current password is incorrect.' });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ message: 'Password updated successfully.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Register
 router.post('/register', registerLimiter, async (req, res) => {
   try {

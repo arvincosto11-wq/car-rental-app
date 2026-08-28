@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
+import { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
 import api from '../../api';
 
 const ConsignorDashboard = () => {
@@ -181,7 +182,7 @@ const ConsignorDashboard = () => {
         </div>
 
         {loading ? (
-          <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
+          <SkeletonListCard isDark={isDark} />
         ) : consignments.length === 0 ? (
           <div style={s.empty}>
             <p>You haven't submitted any vehicles yet.</p>
@@ -233,9 +234,7 @@ const ConsignorDashboard = () => {
         <h2 style={s.sectionTitle}>Booking History</h2>
         <p style={s.sectionSubtitle}>Track bookings for your listed vehicles. Approving or declining bookings is handled by our admin team.</p>
 
-        {bookingsLoading ? (
-          <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
-        ) : bookings.length === 0 ? (
+        {!bookingsLoading && bookings.length === 0 ? (
           <div style={s.empty}>
             <p>No bookings yet for your vehicles.</p>
           </div>
@@ -254,7 +253,7 @@ const ConsignorDashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b) => (
+              {bookingsLoading ? <SkeletonTableRows isDark={isDark} columns={7} /> : bookings.map((b) => (
                 <tr key={b._id}>
                   <td style={s.td}>
                     <div style={s.clientName}>{b.user?.name || 'Unknown'}</div>

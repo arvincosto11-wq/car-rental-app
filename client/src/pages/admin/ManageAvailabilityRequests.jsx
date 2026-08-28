@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
+import { SkeletonTableRows } from '../../components/Skeleton';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
 
@@ -94,7 +95,22 @@ const ManageAvailabilityRequests = () => {
       <p style={s.subtitle}>Consignors need your approval before taking a vehicle off the platform.</p>
 
       {loading ? (
-        <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p>
+        <div className="table-scroll">
+          <table style={s.table}>
+            <thead>
+              <tr>
+                <th style={s.th}>Owner</th>
+                <th style={s.th}>Vehicle</th>
+                <th style={s.th}>Reason</th>
+                <th style={s.th}>Requested</th>
+                <th style={s.th}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <SkeletonTableRows isDark={isDark} columns={5} />
+            </tbody>
+          </table>
+        </div>
       ) : cars.length === 0 ? (
         <div style={s.table}><p style={s.empty}>No pending requests.</p></div>
       ) : (
