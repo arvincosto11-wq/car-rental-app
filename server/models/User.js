@@ -17,7 +17,8 @@ const userSchema = new mongoose.Schema({
   idVerified: { type: Boolean, default: false },
   isBlocked: { type: Boolean, default: false },
   avgRating: { type: Number, default: 0 },
-  ratingCount: { type: Number, default: 0 }
+  ratingCount: { type: Number, default: 0 },
+  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Car' }]
 }, { timestamps: true });
 
 export default mongoose.model('User', userSchema);

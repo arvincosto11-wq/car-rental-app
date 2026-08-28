@@ -5,6 +5,8 @@ import { useUIFeedback } from '../context/UIFeedbackContext';
 import StarRating from '../components/StarRating';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import usePageTitle from '../hooks/usePageTitle';
+import useFavorites from '../hooks/useFavorites';
+import FavoriteButton from '../components/FavoriteButton';
 import api from '../api';
 
 const CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe', 'Motorcycle'];
@@ -24,6 +26,7 @@ const Home = () => {
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
+  const { canFavorite, isFavorite, toggleFavorite } = useFavorites();
   usePageTitle();
 
   useEffect(() => {
@@ -484,7 +487,7 @@ const Home = () => {
                 role="link"
                 tabIndex={0}
                 aria-label={`View ${car.brand} ${car.model} details`}
-                onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/cars/${car._id}`); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) navigate(`/cars/${car._id}`); }}
               >
                 <div style={styles.imgWrap}>
                   {car.image ? (
@@ -495,6 +498,13 @@ const Home = () => {
                   <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#16a34a' }}>
                     {car.isAvailable === false ? 'Not Available' : 'Available Now'}
                   </span>
+                  <FavoriteButton
+                    carId={car._id}
+                    canFavorite={canFavorite}
+                    isFavorite={isFavorite(car._id)}
+                    onToggle={toggleFavorite}
+                    style={{ position: 'absolute', top: '10px', right: '10px' }}
+                  />
                   <span style={styles.priceBadge}>₱{car.pricePerDay} / day</span>
                 </div>
                 <div style={styles.cardBody}>

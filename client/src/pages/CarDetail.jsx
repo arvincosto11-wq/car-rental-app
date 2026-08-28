@@ -4,8 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import StarRating from '../components/StarRating';
 import Skeleton from '../components/Skeleton';
+import FavoriteButton from '../components/FavoriteButton';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
+import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 
@@ -15,6 +17,7 @@ const CarDetail = () => {
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { canFavorite, isFavorite, toggleFavorite } = useFavorites();
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
@@ -318,7 +321,17 @@ const CarDetail = () => {
                 <div style={s.noImg}>No Image</div>
               )}
             </div>
-            <h1 style={s.carName}>{car.brand} {car.model}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+              <h1 style={s.carName}>{car.brand} {car.model}</h1>
+              <FavoriteButton
+                carId={car._id}
+                canFavorite={canFavorite}
+                isFavorite={isFavorite(car._id)}
+                onToggle={toggleFavorite}
+                size={38}
+                style={{ background: isDark ? '#1e293b' : '#f3f4f6', color: isFavorite(car._id) ? '#ef4444' : (isDark ? '#94a3b8' : '#6b7280'), flexShrink: 0 }}
+              />
+            </div>
             <p style={s.carSub}>{car.category} · {car.year}</p>
             {car.ratingCount > 0 ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', marginTop: '-8px' }}>

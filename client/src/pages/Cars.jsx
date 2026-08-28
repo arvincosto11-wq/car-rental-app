@@ -4,10 +4,13 @@ import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
 import Skeleton from '../components/Skeleton';
+import FavoriteButton from '../components/FavoriteButton';
 import usePageTitle from '../hooks/usePageTitle';
+import useFavorites from '../hooks/useFavorites';
 
 const Cars = () => {
   usePageTitle('Vehicles');
+  const { canFavorite, isFavorite, toggleFavorite } = useFavorites();
   const [searchParams] = useSearchParams();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -344,7 +347,7 @@ const Cars = () => {
               role="link"
               tabIndex={0}
               aria-label={`View ${car.brand} ${car.model} details`}
-              onKeyDown={(e) => { if (e.key === 'Enter') navigate(carDetailUrl(car._id)); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) navigate(carDetailUrl(car._id)); }}
             >
               <div style={styles.imgWrap}>
                 {car.image ? (
@@ -355,6 +358,13 @@ const Cars = () => {
                 <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#16a34a' }}>
                   {car.isAvailable === false ? 'Not Available' : 'Available Now'}
                 </span>
+                <FavoriteButton
+                  carId={car._id}
+                  canFavorite={canFavorite}
+                  isFavorite={isFavorite(car._id)}
+                  onToggle={toggleFavorite}
+                  style={{ position: 'absolute', top: '10px', right: '10px' }}
+                />
                 <span style={styles.priceBadge}>₱{car.pricePerDay} / day</span>
               </div>
               <div style={styles.cardBody}>
