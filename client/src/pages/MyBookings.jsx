@@ -7,6 +7,7 @@ import StarRating from '../components/StarRating';
 import RatingModal from '../components/RatingModal';
 import { SkeletonListCard } from '../components/Skeleton';
 import useModalA11y from '../hooks/useModalA11y';
+import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
 const REFUND_REASONS = [
@@ -20,6 +21,7 @@ const REFUND_REASONS = [
 ];
 
 const MyBookings = () => {
+  usePageTitle('My Bookings');
   const { user } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();

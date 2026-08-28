@@ -4,8 +4,10 @@ import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
 import Skeleton from '../components/Skeleton';
+import usePageTitle from '../hooks/usePageTitle';
 
 const Cars = () => {
+  usePageTitle('Vehicles');
   const [searchParams] = useSearchParams();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);

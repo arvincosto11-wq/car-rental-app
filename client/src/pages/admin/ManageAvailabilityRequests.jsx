@@ -4,9 +4,11 @@ import AdminLayout from '../../components/AdminLayout';
 import { SkeletonTableRows } from '../../components/Skeleton';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import useModalA11y from '../../hooks/useModalA11y';
+import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
 
 const ManageAvailabilityRequests = () => {
+  usePageTitle('Availability Requests');
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
   const [cars, setCars] = useState([]);

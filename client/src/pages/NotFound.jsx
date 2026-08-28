@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import usePageTitle from '../hooks/usePageTitle';
 
 const NotFound = () => {
+  usePageTitle('Page Not Found');
   const { isDark } = useTheme();
 
   const styles = {

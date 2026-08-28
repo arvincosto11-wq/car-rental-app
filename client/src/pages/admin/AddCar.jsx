@@ -4,10 +4,12 @@ import AdminLayout from '../../components/AdminLayout';
 import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../../theme';
+import usePageTitle from '../../hooks/usePageTitle';
 
 const OTHER = '__other__';
 
 const AddCar = () => {
+  usePageTitle('Add Vehicle');
   const { isDark } = useTheme();
   const [vehicleType, setVehicleType] = useState('car'); // 'car' | 'motorcycle'
   const [form, setForm] = useState({

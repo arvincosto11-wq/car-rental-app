@@ -6,8 +6,10 @@ import api from '../api';
 import RatingModal from '../components/RatingModal';
 import { SkeletonListCard } from '../components/Skeleton';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import usePageTitle from '../hooks/usePageTitle';
 
 const RateBookings = () => {
+  usePageTitle('Rate My Bookings');
   const { user } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();

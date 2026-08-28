@@ -3,9 +3,11 @@ import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import ClientRatingModal from '../../components/ClientRatingModal';
 import { SkeletonListCard } from '../../components/Skeleton';
+import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
 
 const RateClients = () => {
+  usePageTitle('Rate Clients');
   const { isDark } = useTheme();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);

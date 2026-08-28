@@ -7,9 +7,11 @@ import StarRating from '../../components/StarRating';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import Skeleton from '../../components/Skeleton';
 import RevenueTrendChart from '../../components/RevenueTrendChart';
+import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
 
 const Dashboard = () => {
+  usePageTitle('Admin Dashboard');
   const { user } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();

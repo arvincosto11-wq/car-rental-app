@@ -6,6 +6,7 @@ import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 import LocationAddressFields from '../components/LocationAddressFields';
 import PasswordInput from '../components/PasswordInput';
+import usePageTitle from '../hooks/usePageTitle';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -19,6 +20,7 @@ const validators = {
 };
 
 const Register = () => {
+  usePageTitle('Register');
   const [form, setForm] = useState({
     name: '', email: '', password: '',
     phone: '', address: '',

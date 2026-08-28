@@ -4,9 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import PasswordInput from '../components/PasswordInput';
+import usePageTitle from '../hooks/usePageTitle';
 import api from '../api';
 
 const Login = () => {
+  usePageTitle('Login');
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

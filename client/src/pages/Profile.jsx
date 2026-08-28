@@ -4,9 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import Skeleton from '../components/Skeleton';
+import usePageTitle from '../hooks/usePageTitle';
 import api from '../api';
 
 const Profile = () => {
+  usePageTitle('My Profile');
   const { user } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();

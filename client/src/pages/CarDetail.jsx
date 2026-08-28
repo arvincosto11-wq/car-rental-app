@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import StarRating from '../components/StarRating';
 import Skeleton from '../components/Skeleton';
 import useModalA11y from '../hooks/useModalA11y';
+import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 
@@ -22,6 +23,7 @@ const CarDetail = () => {
   // Pre-filled from the homepage/Cars search box, if the visitor came from there.
   const [startDate, setStartDate] = useState(searchParams.get('pickup') || '');
   const [endDate, setEndDate] = useState(searchParams.get('return') || '');
+  usePageTitle(car ? `${car.brand} ${car.model}` : 'Vehicle');
   const [paymentType, setPaymentType] = useState('downpayment');
   const [bookingType, setBookingType] = useState('with-driver');
   const [profile, setProfile] = useState(null);

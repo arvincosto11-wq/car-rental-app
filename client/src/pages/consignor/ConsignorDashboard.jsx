@@ -6,9 +6,11 @@ import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
 import useModalA11y from '../../hooks/useModalA11y';
+import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
 
 const ConsignorDashboard = () => {
+  usePageTitle('My Vehicles');
   const { user } = useAuth();
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();

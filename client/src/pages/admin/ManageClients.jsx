@@ -3,9 +3,11 @@ import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import { SkeletonTableRows } from '../../components/Skeleton';
 import useModalA11y from '../../hooks/useModalA11y';
+import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
 
 const ManageClients = () => {
+  usePageTitle('Manage Clients');
   const { isDark } = useTheme();
   const [clients, setClients] = useState([]);
   const [bookings, setBookings] = useState([]);

@@ -7,10 +7,12 @@ import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, GOLD_TINT_BORDER, GOLD_TINT_BORDER_DARK, ON_GOLD } from '../../theme';
+import usePageTitle from '../../hooks/usePageTitle';
 
 const OTHER = '__other__';
 
 const ManageCars = () => {
+  usePageTitle('Manage Cars');
   const { isDark } = useTheme();
   const { toast, confirm } = useUIFeedback();
   const [cars, setCars] = useState([]);

@@ -6,11 +6,13 @@ import api from '../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../data/vehicleBrands';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 import LocationAddressFields from '../components/LocationAddressFields';
+import usePageTitle from '../hooks/usePageTitle';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const OTHER = '__other__';
 
 const ConsignmentRegister = () => {
+  usePageTitle('Apply for Consignment');
   const [form, setForm] = useState({
     // Owner info
     name: '', email: '', password: '', phone: '', address: '',

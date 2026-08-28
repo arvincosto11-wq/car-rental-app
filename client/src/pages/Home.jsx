@@ -4,6 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useUIFeedback } from '../context/UIFeedbackContext';
 import StarRating from '../components/StarRating';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import usePageTitle from '../hooks/usePageTitle';
 import api from '../api';
 
 const CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe', 'Motorcycle'];
@@ -23,6 +24,7 @@ const Home = () => {
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
+  usePageTitle();
 
   useEffect(() => {
     const fetchCars = async () => {

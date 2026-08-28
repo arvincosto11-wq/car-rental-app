@@ -5,9 +5,11 @@ import { SkeletonTableRows } from '../../components/Skeleton';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import useModalA11y from '../../hooks/useModalA11y';
+import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
 
 const ManageConsignments = () => {
+  usePageTitle('Manage Consignments');
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
   const [consignments, setConsignments] = useState([]);

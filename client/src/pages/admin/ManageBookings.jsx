@@ -7,11 +7,13 @@ import ClientRatingModal from '../../components/ClientRatingModal';
 import { SkeletonTableRows } from '../../components/Skeleton';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
+import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
 
 const LOW_RATING_THRESHOLD = 3;
 
 const ManageBookings = () => {
+  usePageTitle('Manage Bookings');
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const { toast } = useUIFeedback();
