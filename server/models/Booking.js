@@ -21,6 +21,7 @@ const bookingSchema = new mongoose.Schema({
     overall: { type: Number, min: 1, max: 5 },
     comment: { type: String, default: '' },
     photos: [{ url: String, fileId: String }],
+    hidden: { type: Boolean, default: false },
     ratedAt: { type: Date },
     updatedAt: { type: Date },
   },

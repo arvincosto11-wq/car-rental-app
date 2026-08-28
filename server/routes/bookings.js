@@ -10,7 +10,7 @@ const router = express.Router();
 
 async function recomputeCarRating(carId) {
   const [result] = await Booking.aggregate([
-    { $match: { car: new mongoose.Types.ObjectId(carId), 'carRating.overall': { $exists: true } } },
+    { $match: { car: new mongoose.Types.ObjectId(carId), 'carRating.overall': { $exists: true }, 'carRating.hidden': { $ne: true } } },
     { $group: { _id: null, avg: { $avg: '$carRating.overall' }, count: { $sum: 1 } } }
   ]);
   await Car.findByIdAndUpdate(carId, {
@@ -301,12 +301,37 @@ router.post('/:id/rate-car', protect, async (req, res) => {
 
     const overall = Math.round(((vehicleCondition + serviceQuality + cleanliness) / 3) * 10) / 10;
     const ratedAt = booking.carRating?.ratedAt || new Date();
+    // Preserve any existing moderation state across a client's edit to their
+    // own rating — editing shouldn't silently un-hide a review admin removed.
+    const hidden = booking.carRating?.hidden || false;
 
     booking.carRating = {
       vehicleCondition, serviceQuality, cleanliness, overall,
-      comment: comment || '', photos: Array.isArray(photos) ? photos : [],
+      comment: comment || '', photos: Array.isArray(photos) ? photos : [], hidden,
       ratedAt, updatedAt: new Date(),
     };
+    await booking.save();
+    await recomputeCarRating(booking.car);
+
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin hides or unhides a client's car review (moderation) — hidden
+// reviews stay in the database but drop out of the public reviews list
+// and the car's average rating.
+router.put('/:id/rate-car/moderate', protect, adminOnly, async (req, res) => {
+  try {
+    const { hidden } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!booking.carRating?.ratedAt) {
+      return res.status(400).json({ message: 'This booking has no review to moderate.' });
+    }
+
+    booking.carRating.hidden = !!hidden;
     await booking.save();
     await recomputeCarRating(booking.car);
 

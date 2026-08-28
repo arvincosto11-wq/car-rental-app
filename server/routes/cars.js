@@ -26,6 +26,38 @@ router.get('/availability-requests', protect, adminOnly, async (req, res) => {
   }
 });
 
+// All reviews across every car, for admin moderation — unlike the public
+// per-car endpoint below, this is not masked (admin already has full client
+// records elsewhere) and includes hidden reviews so they can be un-hidden.
+router.get('/reviews/all', protect, adminOnly, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ 'carRating.ratedAt': { $exists: true } })
+      .populate('user', 'name email')
+      .populate('car', 'brand model image')
+      .sort({ 'carRating.ratedAt': -1 })
+      .select('carRating user car');
+
+    const reviews = bookings.map((b) => ({
+      _id: b._id,
+      reviewerName: b.user?.name || 'Unknown',
+      reviewerEmail: b.user?.email || '',
+      car: b.car ? { _id: b.car._id, brand: b.car.brand, model: b.car.model, image: b.car.image } : null,
+      vehicleCondition: b.carRating.vehicleCondition,
+      serviceQuality: b.carRating.serviceQuality,
+      cleanliness: b.carRating.cleanliness,
+      overall: b.carRating.overall,
+      comment: b.carRating.comment,
+      photos: b.carRating.photos || [],
+      hidden: !!b.carRating.hidden,
+      ratedAt: b.carRating.ratedAt,
+    }));
+
+    res.json(reviews);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Get single car (public)
 router.get('/:id', async (req, res) => {
   try {
@@ -48,7 +80,7 @@ const maskReviewerName = (name) => {
 // Public reviews for a car, pulled from client ratings left after a booking
 router.get('/:id/reviews', async (req, res) => {
   try {
-    const bookings = await Booking.find({ car: req.params.id, 'carRating.ratedAt': { $exists: true } })
+    const bookings = await Booking.find({ car: req.params.id, 'carRating.ratedAt': { $exists: true }, 'carRating.hidden': { $ne: true } })
       .populate('user', 'name')
       .sort({ 'carRating.ratedAt': -1 })
       .select('carRating user');

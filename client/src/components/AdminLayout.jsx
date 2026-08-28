@@ -36,6 +36,7 @@ const AdminLayout = ({ children, activePage }) => {
     { to: '/admin/manage-clients', label: 'Manage Clients' },
     { to: '/admin/manage-consignments', label: 'Manage Consignments' },
     { to: '/admin/availability-requests', label: 'Availability Requests' },
+    { to: '/admin/manage-reviews', label: 'Manage Reviews' },
   ];
 
   return (
