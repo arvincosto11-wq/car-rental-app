@@ -4,6 +4,7 @@ import Booking from '../models/Booking.js';
 import Car from '../models/Car.js';
 import User from '../models/User.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
+import { notifyUser, notifyAdmins } from '../utils/notify.js';
 
 const router = express.Router();
 
@@ -169,6 +170,8 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         booking.refundReason = 'Automatically refunded: this car was already booked by another confirmed reservation.';
         await booking.save();
 
+        await notifyUser(booking.user, 'Booking Cancelled & Refunded', 'Your booking request could not be confirmed because the vehicle was already booked. It has been cancelled and automatically approved for a refund.', '/my-bookings');
+
         return res.json({
           ...booking.toObject(),
           autoRefunded: true,
@@ -188,6 +191,11 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         }
       );
 
+      await notifyUser(booking.user, 'Booking Confirmed', 'Your booking has been confirmed. Check My Bookings for details.', '/my-bookings');
+      if (car.owner) {
+        await notifyUser(car.owner, 'Vehicle Booked', `Your vehicle ${car.brand} ${car.model} has a new confirmed booking.`, '/consignor');
+      }
+
       return res.json(booking);
     }
 
@@ -196,6 +204,13 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 
     if ((status === 'cancelled' || status === 'completed') && previousStatus === 'confirmed') {
       await Car.findByIdAndUpdate(booking.car, { isAvailable: true });
+    }
+
+    if (status === 'cancelled' && previousStatus !== 'cancelled') {
+      await notifyUser(booking.user, 'Booking Cancelled', 'Your booking has been cancelled by our team.', '/my-bookings');
+    }
+    if (status === 'completed' && previousStatus !== 'completed') {
+      await notifyUser(booking.user, 'Vehicle Returned', 'Your vehicle return has been recorded. You can now rate your experience.', '/my-bookings/rate');
     }
 
     res.json(booking);
@@ -224,6 +239,8 @@ router.post('/:id/refund', protect, async (req, res) => {
     booking.refundReason = reason;
     await booking.save();
 
+    await notifyAdmins('New Refund Request', 'A client has requested a refund for a booking.', '/admin/manage-bookings');
+
     res.json(booking);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -251,6 +268,13 @@ router.put('/:id/refund', protect, adminOnly, async (req, res) => {
     }
 
     await booking.save();
+
+    if (decision === 'approved') {
+      await notifyUser(booking.user, 'Refund Approved', 'Your refund request has been approved.', '/my-bookings');
+    } else if (decision === 'declined') {
+      await notifyUser(booking.user, 'Refund Declined', 'Your refund request has been declined.', '/my-bookings');
+    }
+
     res.json(booking);
   } catch (err) {
     res.status(500).json({ message: err.message });

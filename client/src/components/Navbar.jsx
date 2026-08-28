@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import NotificationBell from './NotificationBell';
 
 const ThemeIcon = ({ dark, size = 16 }) => (
   dark ? (
@@ -150,6 +151,10 @@ const Navbar = () => {
           }}>
             <ThemeIcon dark={isDark} />
           </button>
+
+          {user && (
+            <NotificationBell isDark={isDark} iconColor={textColor} btnBg={btnBg} btnBorder={btnBorder} />
+          )}
 
           {user ? (
             <div ref={menuRef} style={{ position: 'relative' }}>

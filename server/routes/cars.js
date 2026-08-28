@@ -2,6 +2,7 @@ import express from 'express';
 import Car from '../models/Car.js';
 import Booking from '../models/Booking.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
+import { notifyUser, notifyAdmins } from '../utils/notify.js';
 
 const router = express.Router();
 
@@ -89,6 +90,9 @@ router.put('/:id/toggle', protect, consignorOnly, async (req, res) => {
         return res.status(400).json({ message: 'You already have a pending request for this vehicle.' });
       }
       car.availabilityRequest = { status: 'pending', reason: req.body.reason || '', requestedAt: new Date(), adminNotes: '' };
+      await car.save();
+      await notifyAdmins('New Availability Request', `A consignor requested to mark "${car.brand} ${car.model}" unavailable.`, '/admin/availability-requests');
+      return res.json(car);
     } else {
       car.isAvailable = true;
       car.availabilityRequest = { status: 'none', reason: '', requestedAt: null, adminNotes: '' };
@@ -121,6 +125,13 @@ router.put('/:id/availability-request', protect, adminOnly, async (req, res) => 
     }
 
     await car.save();
+
+    if (decision === 'approved') {
+      await notifyUser(car.owner, 'Availability Request Approved', `Your request to mark "${car.brand} ${car.model}" unavailable has been approved.`, '/consignor');
+    } else {
+      await notifyUser(car.owner, 'Availability Request Declined', `Your request to mark "${car.brand} ${car.model}" unavailable was declined.${adminNotes ? ` Reason: ${adminNotes}` : ''}`, '/consignor');
+    }
+
     res.json(car);
   } catch (err) {
     res.status(500).json({ message: err.message });

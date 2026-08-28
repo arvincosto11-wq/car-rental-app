@@ -6,6 +6,7 @@ import Car from '../models/Car.js';
 import Consignment from '../models/Consignment.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { registerLimiter } from '../middleware/rateLimit.js';
+import { notifyUser, notifyAdmins } from '../utils/notify.js';
 
 const router = express.Router();
 
@@ -55,6 +56,8 @@ router.post('/register', registerLimiter, async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    await notifyAdmins('New Consignment Application', `${name} submitted a new vehicle application (${brand} ${model}).`, '/admin/manage-consignments');
+
     res.status(201).json({
       token,
       user: { id: user._id, name, email, role: user.role },
@@ -80,6 +83,8 @@ router.post('/', protect, consignorOnly, async (req, res) => {
       fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
       orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
     });
+
+    await notifyAdmins('New Consignment Application', `A consignor submitted a new vehicle application (${brand} ${model}).`, '/admin/manage-consignments');
 
     res.status(201).json(consignment);
   } catch (err) {
@@ -148,6 +153,13 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     }
 
     await consignment.save();
+
+    if (decision === 'approved') {
+      await notifyUser(consignment.owner, 'Application Approved', `Your vehicle application for ${consignment.brand} ${consignment.model} has been approved and is now live.`, '/consignor');
+    } else {
+      await notifyUser(consignment.owner, 'Application Declined', `Your vehicle application for ${consignment.brand} ${consignment.model} was declined.${adminNotes ? ` Reason: ${adminNotes}` : ''}`, '/consignor');
+    }
+
     res.json(consignment);
   } catch (err) {
     res.status(500).json({ message: err.message });

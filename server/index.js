@@ -8,6 +8,7 @@ import bookingRoutes from './routes/bookings.js';
 import imagekitRoutes from './routes/imagekit.js';
 import userRoutes from './routes/users.js';
 import consignmentRoutes from './routes/consignments.js';
+import notificationRoutes from './routes/notifications.js';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/imagekit', imagekitRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/consignments', consignmentRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: '🚗 Car Rental API is running!' });

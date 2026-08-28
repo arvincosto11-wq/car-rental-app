@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
+import NotificationBell from './NotificationBell';
 
 const AdminLayout = ({ children, activePage }) => {
   const { user, logout } = useAuth();
@@ -56,6 +57,12 @@ const AdminLayout = ({ children, activePage }) => {
         </div>
         <div style={s.topRight}>
           <span className="admin-welcome-text" style={s.welcome}>Welcome, {user?.name}</span>
+          <NotificationBell
+            isDark={isDark}
+            iconColor={isDark ? '#f1f5f9' : '#1a1a1a'}
+            btnBg={isDark ? '#0f172a' : '#f9fafb'}
+            btnBorder={isDark ? '#334155' : '#d1d5db'}
+          />
           <button style={s.toggleBtn} onClick={toggleTheme}>{isDark ? '☀️' : '🌙'}</button>
           <button style={s.logoutBtn} onClick={handleLogout}>Logout</button>
         </div>
