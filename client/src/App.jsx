@@ -18,6 +18,7 @@ import ManageBookings from './pages/admin/ManageBookings';
 import ManageClients from './pages/admin/ManageClients';
 import ManageConsignments from './pages/admin/ManageConsignments';
 import ManageAvailabilityRequests from './pages/admin/ManageAvailabilityRequests';
+import RateClients from './pages/admin/RateClients';
 import Profile from './pages/Profile';
 import ConsignmentRegister from './pages/ConsignmentRegister';
 import ConsignorDashboard from './pages/consignor/ConsignorDashboard';
@@ -138,6 +139,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <ManageAvailabilityRequests />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/rate-clients"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <RateClients />
                 </ProtectedRoute>
               }
             />

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
+import ClientRatingModal from '../../components/ClientRatingModal';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
@@ -10,14 +12,11 @@ const LOW_RATING_THRESHOLD = 3;
 
 const ManageBookings = () => {
   const { isDark } = useTheme();
+  const navigate = useNavigate();
   const { toast } = useUIFeedback();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ratingModalId, setRatingModalId] = useState(null);
-  const [ratingValue, setRatingValue] = useState(0);
-  const [ratingComment, setRatingComment] = useState('');
-  const [ratingError, setRatingError] = useState('');
-  const [ratingSubmitting, setRatingSubmitting] = useState(false);
 
   useEffect(() => { fetchBookings(); }, []);
 
@@ -55,41 +54,30 @@ const ManageBookings = () => {
     }
   };
 
-  const openRatingModal = (booking) => {
-    setRatingModalId(booking._id);
-    setRatingValue(booking.clientRating?.rating || 0);
-    setRatingComment(booking.clientRating?.comment || '');
-    setRatingError('');
-  };
-
-  const closeRatingModal = () => {
-    setRatingModalId(null);
-    setRatingError('');
-  };
-
-  const handleSubmitRating = async () => {
-    if (!ratingValue) {
-      setRatingError('Please select a rating.');
-      return;
-    }
-    setRatingSubmitting(true);
-    setRatingError('');
-    try {
-      await api.post(`/bookings/${ratingModalId}/rate-client`, { rating: ratingValue, comment: ratingComment });
-      await fetchBookings();
-      closeRatingModal();
-    } catch (err) {
-      setRatingError(err.response?.data?.message || 'Failed to submit rating');
-    } finally {
-      setRatingSubmitting(false);
-    }
+  const openRatingModal = (booking) => setRatingModalId(booking._id);
+  const closeRatingModal = () => setRatingModalId(null);
+  const handleRatingSubmitted = async () => {
+    await fetchBookings();
+    closeRatingModal();
   };
 
   const ratingBooking = bookings.find((b) => b._id === ratingModalId);
+  const unratedClientCount = bookings.filter((b) => b.status === 'completed' && !b.clientRating?.ratedAt).length;
 
   const s = {
+    headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
+    rateClientsBtn: {
+      display: 'flex', alignItems: 'center', gap: '8px',
+      padding: '9px 16px', background: '#7c3aed', color: '#fff',
+      border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+      whiteSpace: 'nowrap',
+    },
+    rateClientsBadge: {
+      background: 'rgba(255,255,255,0.25)', color: '#fff', fontSize: '11px', fontWeight: '700',
+      borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
+    },
     table: { width: '100%', borderCollapse: 'collapse', background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
     th: { textAlign: 'left', padding: '12px 16px', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, fontWeight: '500' },
     td: { padding: '12px 16px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}`, verticalAlign: 'middle' },
@@ -110,21 +98,22 @@ const ManageBookings = () => {
     rateBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     editRatingBtn: { background: 'none', border: 'none', color: '#7c3aed', fontSize: '11px', cursor: 'pointer', padding: 0, textDecoration: 'underline' },
     lowRatingBadge: { background: '#fee2e2', color: '#991b1b', fontSize: '10px', padding: '1px 8px', borderRadius: '20px', marginLeft: '6px', fontWeight: '600' },
-    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-    modalContent: { background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '440px', width: '90%' },
-    modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '14px' },
-    modalLabel: { display: 'block', fontSize: '13px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
-    modalTextarea: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: isDark ? '#f1f5f9' : '#1a1a1a', background: isDark ? '#0f172a' : '#fff', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' },
-    errorBox: { background: '#fef2f2', color: '#dc2626', fontSize: '13px', padding: '10px 14px', borderRadius: '8px', marginBottom: '14px' },
-    modalActions: { display: 'flex', gap: '10px' },
-    modalCancelBtn: { flex: 1, padding: '10px', background: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
-    modalSubmitBtn: { flex: 1, padding: '10px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
   };
 
   return (
     <AdminLayout activePage="Manage Bookings">
-      <h1 style={s.title}>Manage Bookings</h1>
-      <p style={s.subtitle}>Track all customer bookings and manage booking statuses.</p>
+      <div style={s.headerRow}>
+        <div>
+          <h1 style={s.title}>Manage Bookings</h1>
+          <p style={s.subtitle}>Track all customer bookings and manage booking statuses.</p>
+        </div>
+        {!loading && unratedClientCount > 0 && (
+          <button style={s.rateClientsBtn} onClick={() => navigate('/admin/rate-clients')}>
+            ⭐ Rate Clients
+            <span style={s.rateClientsBadge}>{unratedClientCount}</span>
+          </button>
+        )}
+      </div>
       {loading ? <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Loading...</p> : (
         <div className="table-scroll">
         <table style={s.table}>
@@ -236,36 +225,12 @@ const ManageBookings = () => {
       )}
 
       {ratingModalId && ratingBooking && (
-        <div style={s.modalOverlay}>
-          <div style={s.modalContent}>
-            <h2 style={s.modalTitle}>Rate {ratingBooking.user?.name || 'Client'}</h2>
-
-            {ratingError && <div style={s.errorBox}>{ratingError}</div>}
-
-            <label style={s.modalLabel}>How did the client return the vehicle?</label>
-            <div style={{ marginBottom: '18px' }}>
-              <StarRating value={ratingValue} onChange={setRatingValue} size={24} />
-            </div>
-
-            <label style={s.modalLabel}>Comment (optional)</label>
-            <textarea
-              style={s.modalTextarea}
-              rows={3}
-              value={ratingComment}
-              onChange={(e) => setRatingComment(e.target.value)}
-              placeholder="e.g. Returned the car clean and on time."
-            />
-
-            <div style={s.modalActions}>
-              <button style={s.modalCancelBtn} onClick={closeRatingModal} disabled={ratingSubmitting}>
-                Cancel
-              </button>
-              <button style={s.modalSubmitBtn} onClick={handleSubmitRating} disabled={ratingSubmitting}>
-                {ratingSubmitting ? 'Submitting...' : 'Submit Rating'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ClientRatingModal
+          booking={ratingBooking}
+          isDark={isDark}
+          onClose={closeRatingModal}
+          onSubmitted={handleRatingSubmitted}
+        />
       )}
     </AdminLayout>
   );
