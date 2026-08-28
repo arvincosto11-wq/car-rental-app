@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import { useUIFeedback } from '../context/UIFeedbackContext';
 import StarRating from '../components/StarRating';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
+
+const CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe', 'Motorcycle'];
 
 // Curated hero photos — Mayon Volcano ties the brand to Albay specifically,
 // and the handover shot matches the brand's own poster style. Swap/add files
@@ -15,9 +18,11 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
+  const [searchCategory, setSearchCategory] = useState('');
   const [heroSlide, setHeroSlide] = useState(0);
   const navigate = useNavigate();
   const { isDark } = useTheme();
+  const { toast } = useUIFeedback();
 
   useEffect(() => {
     const fetchCars = async () => {
@@ -45,7 +50,20 @@ const Home = () => {
   }, [heroImages.length]);
 
   const handleSearch = () => {
-    navigate(`/cars?pickup=${pickupDate}&return=${returnDate}`);
+    const today = new Date().toISOString().split('T')[0];
+    if (pickupDate && pickupDate < today) {
+      toast.error('Pick-up date cannot be in the past.');
+      return;
+    }
+    if (pickupDate && returnDate && returnDate < pickupDate) {
+      toast.error('Return date must be on or after the pick-up date.');
+      return;
+    }
+    const params = new URLSearchParams();
+    if (pickupDate) params.set('pickup', pickupDate);
+    if (returnDate) params.set('return', returnDate);
+    if (searchCategory) params.set('category', searchCategory);
+    navigate(`/cars?${params.toString()}`);
   };
 
   const styles = {
@@ -114,7 +132,7 @@ const Home = () => {
     },
     searchBox: {
       gap: '0',
-      maxWidth: '700px',
+      maxWidth: '820px',
       margin: '0 auto',
       background: isDark ? '#1e293b' : '#fff',
       border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
@@ -402,22 +420,38 @@ const Home = () => {
 
         <div className="hero-search-box" style={styles.searchBox}>
           <div className="hero-search-field" style={styles.searchField}>
-            <label style={styles.searchLabel}>Pick-up Date</label>
+            <label style={styles.searchLabel} htmlFor="home-pickup-date">Pick-up Date</label>
             <input
+              id="home-pickup-date"
               style={styles.searchInput}
               type="date"
+              min={new Date().toISOString().split('T')[0]}
               value={pickupDate}
               onChange={(e) => setPickupDate(e.target.value)}
             />
           </div>
-          <div className="hero-search-field" style={{ ...styles.searchField, borderRight: 'none' }}>
-            <label style={styles.searchLabel}>Return Date</label>
+          <div className="hero-search-field" style={styles.searchField}>
+            <label style={styles.searchLabel} htmlFor="home-return-date">Return Date</label>
             <input
+              id="home-return-date"
               style={styles.searchInput}
               type="date"
+              min={pickupDate || new Date().toISOString().split('T')[0]}
               value={returnDate}
               onChange={(e) => setReturnDate(e.target.value)}
             />
+          </div>
+          <div className="hero-search-field" style={{ ...styles.searchField, borderRight: 'none' }}>
+            <label style={styles.searchLabel} htmlFor="home-search-category">Vehicle Type</label>
+            <select
+              id="home-search-category"
+              style={styles.searchInput}
+              value={searchCategory}
+              onChange={(e) => setSearchCategory(e.target.value)}
+            >
+              <option value="">Any</option>
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
           <button className="hero-search-btn" style={styles.searchBtn} onClick={handleSearch}>
             Search

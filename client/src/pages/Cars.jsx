@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
 import Skeleton from '../components/Skeleton';
 
 const Cars = () => {
+  const [searchParams] = useSearchParams();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState(searchParams.get('category') || '');
   const [transmission, setTransmission] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
@@ -17,6 +18,19 @@ const Cars = () => {
   const [sortBy, setSortBy] = useState('');
   const { isDark } = useTheme();
   const navigate = useNavigate();
+
+  // Carried over from the homepage search box (if used) so a picked car's
+  // detail page can pre-fill its own date fields — the listing itself isn't
+  // filtered by these, see the note on Cars page date search.
+  const pickupDate = searchParams.get('pickup') || '';
+  const returnDate = searchParams.get('return') || '';
+  const carDetailUrl = (carId) => {
+    if (!pickupDate && !returnDate) return `/cars/${carId}`;
+    const params = new URLSearchParams();
+    if (pickupDate) params.set('pickup', pickupDate);
+    if (returnDate) params.set('return', returnDate);
+    return `/cars/${carId}?${params.toString()}`;
+  };
 
   useEffect(() => {
     const fetchCars = async () => {
@@ -205,11 +219,26 @@ const Cars = () => {
       padding: '3px 9px',
       borderRadius: '20px',
     },
+    dateNotice: {
+      fontSize: '13px',
+      color: isDark ? '#94a3b8' : '#6b7280',
+      marginBottom: '16px',
+      background: isDark ? '#1e293b' : '#f9fafb',
+      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      borderRadius: '8px',
+      padding: '10px 14px',
+    },
   };
 
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>All Cars</h1>
+
+      {(pickupDate || returnDate) && (
+        <p style={styles.dateNotice}>
+          📅 {pickupDate || '—'} to {returnDate || '—'} — pick a vehicle below and these dates will carry over to its booking form.
+        </p>
+      )}
 
       <div style={styles.filters}>
         <input
@@ -309,11 +338,11 @@ const Cars = () => {
               key={car._id}
               className="car-card-hover"
               style={styles.card}
-              onClick={() => navigate(`/cars/${car._id}`)}
+              onClick={() => navigate(carDetailUrl(car._id))}
               role="link"
               tabIndex={0}
               aria-label={`View ${car.brand} ${car.model} details`}
-              onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/cars/${car._id}`); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') navigate(carDetailUrl(car._id)); }}
             >
               <div style={styles.imgWrap}>
                 {car.image ? (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import StarRating from '../components/StarRating';
@@ -13,13 +13,15 @@ const CarDetail = () => {
   const { user } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewFilter, setReviewFilter] = useState('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  // Pre-filled from the homepage/Cars search box, if the visitor came from there.
+  const [startDate, setStartDate] = useState(searchParams.get('pickup') || '');
+  const [endDate, setEndDate] = useState(searchParams.get('return') || '');
   const [paymentType, setPaymentType] = useState('downpayment');
   const [bookingType, setBookingType] = useState('with-driver');
   const [profile, setProfile] = useState(null);
