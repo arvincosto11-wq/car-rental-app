@@ -20,6 +20,7 @@ const ConsignorDashboard = () => {
   const [requestReason, setRequestReason] = useState('');
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestError, setRequestError] = useState('');
+  const [earningsPeriod, setEarningsPeriod] = useState('month');
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -101,6 +102,20 @@ const ConsignorDashboard = () => {
   const approvedCount = consignments.filter((c) => c.status === 'approved').length;
   const pendingCount = consignments.filter((c) => c.status === 'pending').length;
 
+  const earnedBookings = bookings.filter((b) => b.status === 'confirmed' || b.status === 'completed');
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - 7);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const sumEarningsSince = (cutoff) => earnedBookings
+    .filter((b) => new Date(b.createdAt) >= cutoff)
+    .reduce((sum, b) => sum + b.totalPrice, 0);
+  const earnings = {
+    week: sumEarningsSince(startOfWeek),
+    month: sumEarningsSince(startOfMonth),
+    all: earnedBookings.reduce((sum, b) => sum + b.totalPrice, 0),
+  };
+
   const s = {
     page: { minHeight: '100vh', background: isDark ? '#0f172a' : '#f9fafb' },
     container: { maxWidth: '900px', margin: '0 auto', padding: '32px' },
@@ -112,6 +127,17 @@ const ConsignorDashboard = () => {
     statCard: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '18px' },
     statLabel: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px' },
     statNum: { fontSize: '26px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    earningsBox: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '18px', marginBottom: '28px' },
+    earningsLabel: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '10px' },
+    earningsNum: { fontSize: '28px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, marginTop: '14px' },
+    periodToggleRow: { display: 'flex', gap: '8px' },
+    periodBtn: (active) => ({
+      padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+      border: active ? 'none' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
+      color: active ? ON_GOLD : (isDark ? '#94a3b8' : '#6b7280'),
+      cursor: 'pointer',
+    }),
     empty: { textAlign: 'center', padding: '48px 16px', color: isDark ? '#94a3b8' : '#6b7280' },
     card: { display: 'flex', gap: '16px', background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '16px', marginBottom: '12px' },
     thumb: { width: '110px', height: '80px', borderRadius: '8px', overflow: 'hidden', background: isDark ? '#334155' : '#f3f4f6', flexShrink: 0 },
@@ -179,6 +205,16 @@ const ConsignorDashboard = () => {
             <div style={s.statLabel}>Pending Review</div>
             <div style={s.statNum}>{pendingCount}</div>
           </div>
+        </div>
+
+        <div style={s.earningsBox}>
+          <div style={s.earningsLabel}>Earnings from confirmed & completed bookings</div>
+          <div style={s.periodToggleRow}>
+            <button type="button" style={s.periodBtn(earningsPeriod === 'week')} onClick={() => setEarningsPeriod('week')}>This Week</button>
+            <button type="button" style={s.periodBtn(earningsPeriod === 'month')} onClick={() => setEarningsPeriod('month')}>This Month</button>
+            <button type="button" style={s.periodBtn(earningsPeriod === 'all')} onClick={() => setEarningsPeriod('all')}>All Time</button>
+          </div>
+          <div style={s.earningsNum}>₱{earnings[earningsPeriod].toLocaleString()}</div>
         </div>
 
         {loading ? (
