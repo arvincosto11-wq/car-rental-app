@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
-import { GOLD, GOLD_DARK } from '../../theme';
+import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import api from '../../api';
 
 const Dashboard = () => {
@@ -14,7 +14,8 @@ const Dashboard = () => {
   const [stats, setStats] = useState({ totalCars: 0, totalBookings: 0, pending: 0, confirmed: 0 });
   const [recentBookings, setRecentBookings] = useState([]);
   const [topRatedCars, setTopRatedCars] = useState([]);
-  const [revenue, setRevenue] = useState(0);
+  const [revenue, setRevenue] = useState({ week: 0, month: 0, all: 0 });
+  const [revenuePeriod, setRevenuePeriod] = useState('month');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,7 +32,16 @@ const Dashboard = () => {
       const bookings = bookingsRes.data;
       const confirmed = bookings.filter((b) => b.status === 'confirmed');
       const pending = bookings.filter((b) => b.status === 'pending');
-      const monthlyRevenue = confirmed.reduce((sum, b) => sum + b.totalPrice, 0);
+
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - 7);
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const sumSince = (cutoff) => confirmed
+        .filter((b) => new Date(b.createdAt) >= cutoff)
+        .reduce((sum, b) => sum + b.totalPrice, 0);
+
       const rated = carsRes.data
         .filter((c) => c.ratingCount > 0)
         .sort((a, b) => b.avgRating - a.avgRating || b.ratingCount - a.ratingCount)
@@ -39,7 +49,11 @@ const Dashboard = () => {
       setStats({ totalCars: carsRes.data.length, totalBookings: bookings.length, pending: pending.length, confirmed: confirmed.length });
       setRecentBookings(bookings.slice(0, 5));
       setTopRatedCars(rated);
-      setRevenue(monthlyRevenue);
+      setRevenue({
+        week: sumSince(startOfWeek),
+        month: sumSince(startOfMonth),
+        all: confirmed.reduce((sum, b) => sum + b.totalPrice, 0),
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -66,6 +80,17 @@ const Dashboard = () => {
     badgeConfirmed: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     badgePending: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     revenueNum: { fontSize: '32px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, marginTop: '16px' },
+    periodToggleRow: { display: 'flex', gap: '8px', marginTop: '4px' },
+    periodBtn: (active) => ({
+      padding: '6px 14px',
+      borderRadius: '20px',
+      fontSize: '12px',
+      fontWeight: '600',
+      border: active ? 'none' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
+      color: active ? ON_GOLD : (isDark ? '#94a3b8' : '#6b7280'),
+      cursor: 'pointer',
+    }),
     topRatedRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}` },
     topRatedThumb: { width: '44px', height: '32px', borderRadius: '6px', overflow: 'hidden', background: isDark ? '#334155' : '#f3f4f6', flexShrink: 0 },
   };
@@ -105,9 +130,14 @@ const Dashboard = () => {
               ))}
             </div>
             <div style={s.box}>
-              <div style={s.boxTitle}>Monthly Revenue</div>
-              <div style={s.boxSubtitle}>Revenue for current month</div>
-              <div style={s.revenueNum}>₱{revenue}</div>
+              <div style={s.boxTitle}>Revenue</div>
+              <div style={s.boxSubtitle}>From confirmed bookings</div>
+              <div style={s.periodToggleRow}>
+                <button type="button" style={s.periodBtn(revenuePeriod === 'week')} onClick={() => setRevenuePeriod('week')}>This Week</button>
+                <button type="button" style={s.periodBtn(revenuePeriod === 'month')} onClick={() => setRevenuePeriod('month')}>This Month</button>
+                <button type="button" style={s.periodBtn(revenuePeriod === 'all')} onClick={() => setRevenuePeriod('all')}>All Time</button>
+              </div>
+              <div style={s.revenueNum}>₱{revenue[revenuePeriod].toLocaleString()}</div>
             </div>
           </div>
           <div style={{ ...s.box, marginTop: '16px' }}>
