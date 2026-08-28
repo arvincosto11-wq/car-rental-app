@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import PasswordInput from '../components/PasswordInput';
 import api from '../api';
 
 const Login = () => {
@@ -132,14 +133,14 @@ const Login = () => {
           </div>
           <div style={styles.field}>
             <label style={styles.label} htmlFor="login-password">Password</label>
-            <input
+            <PasswordInput
               id="login-password"
               style={styles.input}
-              type="password"
               placeholder="Enter your password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               required
+              isDark={isDark}
             />
           </div>
           <button style={styles.btn} type="submit" disabled={loading}>

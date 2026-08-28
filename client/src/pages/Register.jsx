@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 import LocationAddressFields from '../components/LocationAddressFields';
+import PasswordInput from '../components/PasswordInput';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 
@@ -233,15 +234,15 @@ const Register = () => {
           </div>
           <div style={styles.field}>
             <label style={styles.label} htmlFor="reg-password">Password</label>
-            <input
+            <PasswordInput
               id="reg-password"
               style={styles.input}
-              type="password"
               placeholder="Create a password (min. 8 characters)"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               required
               minLength={8}
+              isDark={isDark}
             />
           </div>
 
