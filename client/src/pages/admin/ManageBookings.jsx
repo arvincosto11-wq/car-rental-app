@@ -95,7 +95,6 @@ const ManageBookings = () => {
     refundApproved: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     refundDeclined: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     select: { padding: '5px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#1a1a1a', cursor: 'pointer' },
-    rateBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     editRatingBtn: { background: 'none', border: 'none', color: '#7c3aed', fontSize: '11px', cursor: 'pointer', padding: 0, textDecoration: 'underline' },
     lowRatingBadge: { background: '#fee2e2', color: '#991b1b', fontSize: '10px', padding: '1px 8px', borderRadius: '20px', marginLeft: '6px', fontWeight: '600' },
   };
@@ -200,13 +199,11 @@ const ManageBookings = () => {
                   ) : booking.status === 'completed' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={s.completed}>completed</span>
-                      {booking.clientRating?.ratedAt ? (
+                      {booking.clientRating?.ratedAt && (
                         <>
                           <StarRating value={booking.clientRating.rating} size={12} readOnly />
                           <button style={s.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
                         </>
-                      ) : (
-                        <button style={s.rateBtn} onClick={() => openRatingModal(booking)}>Rate Client</button>
                       )}
                     </div>
                   ) : (

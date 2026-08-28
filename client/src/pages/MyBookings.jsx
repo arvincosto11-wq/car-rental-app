@@ -240,17 +240,6 @@ const MyBookings = () => {
       cursor: 'pointer',
     },
     refundNote: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '8px', fontStyle: 'italic' },
-    rateBtn: {
-      marginTop: '10px',
-      padding: '6px 14px',
-      fontSize: '12px',
-      fontWeight: '500',
-      background: isDark ? GOLD_DARK : GOLD,
-      color: ON_GOLD,
-      border: 'none',
-      borderRadius: '6px',
-      cursor: 'pointer',
-    },
     ratingSummary: { marginTop: '10px' },
     ratingScore: { fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     editRatingBtn: {
@@ -390,20 +379,14 @@ const MyBookings = () => {
                 {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved') && booking.refundReason && (
                   <p style={styles.refundNote}>Reason: {booking.refundReason}</p>
                 )}
-                {booking.status === 'completed' && (
-                  booking.carRating?.ratedAt ? (
-                    <div style={styles.ratingSummary}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <StarRating value={booking.carRating.overall} size={14} readOnly />
-                        <span style={styles.ratingScore}>{booking.carRating.overall.toFixed(1)}</span>
-                        <button style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
-                      </div>
+                {booking.status === 'completed' && booking.carRating?.ratedAt && (
+                  <div style={styles.ratingSummary}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <StarRating value={booking.carRating.overall} size={14} readOnly />
+                      <span style={styles.ratingScore}>{booking.carRating.overall.toFixed(1)}</span>
+                      <button style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
                     </div>
-                  ) : (
-                    <button style={styles.rateBtn} onClick={() => openRatingModal(booking)}>
-                      Rate your experience
-                    </button>
-                  )
+                  </div>
                 )}
               </div>
               <div className="booking-card-price" style={styles.priceCol}>
