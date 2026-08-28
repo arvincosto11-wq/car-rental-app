@@ -116,6 +116,18 @@ button:disabled {
   filter: none;
 }
 
+/* Small icon-only toggle buttons (e.g. the password show/hide eye) opt out
+   of the lift/shadow feedback above — that's sized for full CTA buttons,
+   not a 16px icon sitting flush inside a text input. */
+button.icon-toggle-btn:not(:disabled) {
+  transition: none;
+}
+button.icon-toggle-btn:not(:disabled):hover,
+button.icon-toggle-btn:not(:disabled):active {
+  filter: none;
+  box-shadow: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   button:not(:disabled),
   .btn-like {

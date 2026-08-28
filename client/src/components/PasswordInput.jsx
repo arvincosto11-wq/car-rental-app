@@ -34,6 +34,7 @@ const PasswordInput = ({ id, style, value, onChange, placeholder, required, minL
       />
       <button
         type="button"
+        className="icon-toggle-btn"
         onClick={() => setVisible((v) => !v)}
         aria-label={visible ? 'Hide password' : 'Show password'}
         style={{
