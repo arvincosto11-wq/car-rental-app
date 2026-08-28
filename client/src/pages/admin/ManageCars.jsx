@@ -23,6 +23,7 @@ const ManageCars = () => {
   const [editVehicleType, setEditVehicleType] = useState('car');
   const [editBrandChoice, setEditBrandChoice] = useState('');
   const [editModelChoice, setEditModelChoice] = useState('');
+  const [search, setSearch] = useState('');
 
   const editBrandOrder = editVehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
   const editModelOptions = editBrandChoice && editBrandChoice !== OTHER
@@ -234,16 +235,37 @@ const ManageCars = () => {
     }),
     categoryFixed: { padding: '8px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', background: isDark ? '#0f172a' : '#f9fafb', color: isDark ? '#94a3b8' : '#6b7280' },
     hint: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '4px' },
+    searchInput: {
+      width: '100%', maxWidth: '360px', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '18px',
+      background: isDark ? '#1e293b' : '#fff', color: isDark ? '#f1f5f9' : '#111827',
+    },
   };
+
+  const filteredCars = cars.filter((car) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return `${car.brand} ${car.model}`.toLowerCase().includes(q);
+  });
 
   return (
     <AdminLayout activePage="Manage Cars">
       <div style={styles.main}>
           <h1 style={styles.title}>Manage Cars</h1>
           <p style={styles.subtitle}>View all listed cars, update or remove them.</p>
-          {loading ? <SkeletonListCard isDark={isDark} count={4} /> : (
+          <input
+            style={styles.searchInput}
+            type="text"
+            placeholder="Search by brand or model..."
+            aria-label="Search cars"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {loading ? <SkeletonListCard isDark={isDark} count={4} /> : filteredCars.length === 0 ? (
+            <p style={{ color: isDark ? '#94a3b8' : '#6b7280', fontSize: '13px' }}>No cars match.</p>
+          ) : (
             <div>
-              {cars.map((car) => (
+              {filteredCars.map((car) => (
                 <div key={car._id} style={styles.carCard}>
                   {editingCar === car._id ? (
                     <div style={styles.editForm}>

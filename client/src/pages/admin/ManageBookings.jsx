@@ -18,6 +18,8 @@ const ManageBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ratingModalId, setRatingModalId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => { fetchBookings(); }, []);
 
@@ -65,6 +67,16 @@ const ManageBookings = () => {
   const ratingBooking = bookings.find((b) => b._id === ratingModalId);
   const unratedClientCount = bookings.filter((b) => b.status === 'completed' && !b.clientRating?.ratedAt).length;
 
+  const filteredBookings = bookings.filter((b) => {
+    const matchStatus = statusFilter === 'all' ? true : b.status === statusFilter;
+    const q = search.trim().toLowerCase();
+    const matchSearch = !q
+      || b.user?.name?.toLowerCase().includes(q)
+      || b.user?.email?.toLowerCase().includes(q)
+      || `${b.car?.brand} ${b.car?.model}`.toLowerCase().includes(q);
+    return matchStatus && matchSearch;
+  });
+
   const s = {
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
@@ -98,6 +110,15 @@ const ManageBookings = () => {
     select: { padding: '5px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#1a1a1a', cursor: 'pointer' },
     editRatingBtn: { background: 'none', border: 'none', color: '#7c3aed', fontSize: '11px', cursor: 'pointer', padding: 0, textDecoration: 'underline' },
     lowRatingBadge: { background: '#fee2e2', color: '#991b1b', fontSize: '10px', padding: '1px 8px', borderRadius: '20px', marginLeft: '6px', fontWeight: '600' },
+    filterRow: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' },
+    searchInput: {
+      flex: '1 1 220px', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px',
+      fontSize: '13px', outline: 'none', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#f1f5f9' : '#111827',
+    },
+    statusSelect: {
+      padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px',
+      fontSize: '13px', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#f1f5f9' : '#111827', cursor: 'pointer',
+    },
   };
 
   return (
@@ -114,6 +135,25 @@ const ManageBookings = () => {
           </button>
         )}
       </div>
+
+      <div style={s.filterRow}>
+        <input
+          style={s.searchInput}
+          type="text"
+          placeholder="Search by client, email, or car..."
+          aria-label="Search bookings"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select style={s.statusSelect} value={statusFilter} aria-label="Filter by status" onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="all">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
       <div className="table-scroll">
         <table style={s.table}>
           <thead>
@@ -128,7 +168,9 @@ const ManageBookings = () => {
             </tr>
           </thead>
           <tbody>
-            {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : bookings.map((booking) => (
+            {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : filteredBookings.length === 0 ? (
+              <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>No bookings match.</td></tr>
+            ) : filteredBookings.map((booking) => (
               <tr key={booking._id}>
                 <td style={s.td}>
                   <div style={s.clientName}>
