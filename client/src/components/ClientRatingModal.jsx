@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import StarRating from './StarRating';
+import useModalA11y from '../hooks/useModalA11y';
 
 // Shared "rate this client" modal for admin, used by both the Manage
 // Bookings table and the dedicated Rate Clients panel.
@@ -16,6 +17,8 @@ const ClientRatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
     setComment(booking.clientRating?.comment || '');
     setError('');
   }, [booking]);
+
+  const modalRef = useModalA11y(onClose);
 
   if (!booking) return null;
 
@@ -50,8 +53,8 @@ const ClientRatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
 
   return (
     <div style={s.modalOverlay}>
-      <div style={s.modalContent}>
-        <h2 style={s.modalTitle}>Rate {booking.user?.name || 'Client'}</h2>
+      <div style={s.modalContent} ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="client-rating-modal-title">
+        <h2 id="client-rating-modal-title" style={s.modalTitle}>Rate {booking.user?.name || 'Client'}</h2>
 
         {error && <div style={s.errorBox}>{error}</div>}
 

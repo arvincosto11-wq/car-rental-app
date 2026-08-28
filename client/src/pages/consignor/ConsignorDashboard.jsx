@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
+import useModalA11y from '../../hooks/useModalA11y';
 import api from '../../api';
 
 const ConsignorDashboard = () => {
@@ -21,6 +22,7 @@ const ConsignorDashboard = () => {
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestError, setRequestError] = useState('');
   const [earningsPeriod, setEarningsPeriod] = useState('month');
+  const requestModalRef = useModalA11y(() => setRequestModalCarId(null), !!requestModalCarId);
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -327,8 +329,8 @@ const ConsignorDashboard = () => {
 
       {requestModalCarId && (
         <div style={s.modalOverlay}>
-          <div style={s.modalContent}>
-            <h2 style={s.modalTitle}>Request to Mark Unavailable</h2>
+          <div style={s.modalContent} ref={requestModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="request-modal-title">
+            <h2 id="request-modal-title" style={s.modalTitle}>Request to Mark Unavailable</h2>
             <p style={s.modalSub}>
               This vehicle will stay bookable until an admin reviews and approves your request.
             </p>

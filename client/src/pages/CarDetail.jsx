@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import StarRating from '../components/StarRating';
 import Skeleton from '../components/Skeleton';
+import useModalA11y from '../hooks/useModalA11y';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 
@@ -27,6 +28,9 @@ const CarDetail = () => {
   const [booking, setBooking] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+
+  const termsModalRef = useModalA11y(() => setShowTerms(false), showTerms);
+  const refundNoticeModalRef = useModalA11y(() => setShowRefundNotice(false), showRefundNotice);
 
   useEffect(() => {
     const fetchCar = async () => {
@@ -197,8 +201,8 @@ const CarDetail = () => {
       {/* Terms Modal */}
       {showTerms && (
         <div style={s.modal}>
-          <div style={s.modalContent}>
-            <h2 style={s.modalTitle}>Terms and Conditions</h2>
+          <div style={s.modalContent} ref={termsModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="terms-modal-title">
+            <h2 id="terms-modal-title" style={s.modalTitle}>Terms and Conditions</h2>
             <div style={s.modalText}>
               <p><strong>1. Booking Policy</strong></p>
               <p>A minimum of 20% downpayment is required to confirm your booking. The remaining balance must be paid upon vehicle pickup.</p>
@@ -231,8 +235,8 @@ const CarDetail = () => {
       {/* Refund Notice Modal */}
       {showRefundNotice && (
         <div style={s.modal}>
-          <div style={s.modalContent}>
-            <h2 style={s.modalTitle}>Before You Confirm</h2>
+          <div style={s.modalContent} ref={refundNoticeModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-notice-title">
+            <h2 id="refund-notice-title" style={s.modalTitle}>Before You Confirm</h2>
             <div style={s.modalText}>
               <p>⚠️ <strong>Refund Policy:</strong> If you need to cancel this booking later, refunds deduct 50% of the amount you paid as a processing fee.</p>
               <p style={{ marginTop: '10px' }}>

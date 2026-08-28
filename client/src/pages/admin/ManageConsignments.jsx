@@ -4,6 +4,7 @@ import AdminLayout from '../../components/AdminLayout';
 import { SkeletonTableRows } from '../../components/Skeleton';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
+import useModalA11y from '../../hooks/useModalA11y';
 import api from '../../api';
 
 const ManageConsignments = () => {
@@ -38,6 +39,8 @@ const ManageConsignments = () => {
     setShowDeclineBox(false);
     setDeclineReason('');
   };
+
+  const detailModalRef = useModalA11y(closeModal, !!selected);
 
   const handleApprove = async (id) => {
     setWorking(true);
@@ -189,9 +192,9 @@ const ManageConsignments = () => {
 
       {selected && (
         <div style={s.modalOverlay}>
-          <div style={s.modalContent}>
-            <button style={s.closeX} onClick={closeModal}>×</button>
-            <h2 style={s.modalTitle}>{selected.brand} {selected.model} ({selected.year})</h2>
+          <div style={s.modalContent} ref={detailModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="consignment-modal-title">
+            <button style={s.closeX} onClick={closeModal} aria-label="Close">×</button>
+            <h2 id="consignment-modal-title" style={s.modalTitle}>{selected.brand} {selected.model} ({selected.year})</h2>
             <p style={s.modalSub}>
               Submitted by {selected.owner?.name} &middot; <span style={badgeStyle(selected.status)}>{selected.status}</span>
             </p>

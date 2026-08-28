@@ -3,6 +3,7 @@ import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import { SkeletonTableRows } from '../../components/Skeleton';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
+import useModalA11y from '../../hooks/useModalA11y';
 import api from '../../api';
 
 const ManageAvailabilityRequests = () => {
@@ -13,6 +14,7 @@ const ManageAvailabilityRequests = () => {
   const [declineModalId, setDeclineModalId] = useState(null);
   const [declineReason, setDeclineReason] = useState('');
   const [working, setWorking] = useState(false);
+  const declineModalRef = useModalA11y(() => setDeclineModalId(null), !!declineModalId);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -161,8 +163,8 @@ const ManageAvailabilityRequests = () => {
 
       {declineModalId && (
         <div style={s.modalOverlay}>
-          <div style={s.modalContent}>
-            <h2 style={s.modalTitle}>Decline Request</h2>
+          <div style={s.modalContent} ref={declineModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="decline-modal-title">
+            <h2 id="decline-modal-title" style={s.modalTitle}>Decline Request</h2>
             <label style={s.modalLabel}>Reason (shown to the consignor)</label>
             <textarea
               style={s.modalTextarea}

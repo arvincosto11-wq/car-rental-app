@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback } from 'react';
 import { useTheme } from './ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import useModalA11y from '../hooks/useModalA11y';
 
 const UIFeedbackContext = createContext(null);
 
@@ -37,6 +38,8 @@ export const UIFeedbackProvider = ({ children }) => {
     confirmState?.resolve(result);
     setConfirmState(null);
   };
+
+  const confirmModalRef = useModalA11y(() => resolveConfirm(false), !!confirmState);
 
   const typeStyles = {
     success: { border: isDark ? '#16a34a' : '#86efac', text: isDark ? '#86efac' : '#16a34a' },
@@ -131,8 +134,8 @@ export const UIFeedbackProvider = ({ children }) => {
 
       {confirmState && (
         <div style={s.confirmOverlay}>
-          <div style={s.confirmCard}>
-            <p style={s.confirmMessage}>{confirmState.message}</p>
+          <div style={s.confirmCard} ref={confirmModalRef} tabIndex={-1} role="alertdialog" aria-modal="true" aria-describedby="confirm-modal-message">
+            <p id="confirm-modal-message" style={s.confirmMessage}>{confirmState.message}</p>
             <div style={s.confirmActions}>
               <button style={s.confirmCancelBtn} onClick={() => resolveConfirm(false)}>
                 {confirmState.cancelLabel || 'Cancel'}

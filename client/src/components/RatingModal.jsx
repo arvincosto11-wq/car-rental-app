@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../api';
 import StarRating from './StarRating';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import useModalA11y from '../hooks/useModalA11y';
 
 // Shared "rate your experience" modal, used by both the My Bookings list
 // and the dedicated Rate My Bookings panel so the rating flow only lives
@@ -21,6 +22,8 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
     });
     setError('');
   }, [booking]);
+
+  const modalRef = useModalA11y(onClose);
 
   if (!booking) return null;
 
@@ -78,8 +81,8 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
 
   return (
     <div style={s.modalOverlay}>
-      <div style={s.modalContent}>
-        <h2 style={s.modalTitle}>Rate Your Experience</h2>
+      <div style={s.modalContent} ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="rating-modal-title">
+        <h2 id="rating-modal-title" style={s.modalTitle}>Rate Your Experience</h2>
 
         {error && <div style={s.errorBox}>{error}</div>}
 

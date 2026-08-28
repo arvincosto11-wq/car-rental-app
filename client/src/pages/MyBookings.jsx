@@ -6,6 +6,7 @@ import api from '../api';
 import StarRating from '../components/StarRating';
 import RatingModal from '../components/RatingModal';
 import { SkeletonListCard } from '../components/Skeleton';
+import useModalA11y from '../hooks/useModalA11y';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
 const REFUND_REASONS = [
@@ -102,6 +103,7 @@ const MyBookings = () => {
 
   const activeBooking = bookings.find((b) => b._id === refundModalId);
   const refundAmount = activeBooking ? Math.round(activeBooking.amountPaid * 0.5) : 0;
+  const refundModalRef = useModalA11y(closeRefundModal, !!(refundModalId && activeBooking));
 
   const openRatingModal = (booking) => setRatingModalId(booking._id);
   const closeRatingModal = () => setRatingModalId(null);
@@ -404,8 +406,8 @@ const MyBookings = () => {
 
       {refundModalId && activeBooking && (
         <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h2 style={styles.modalTitle}>Request a Refund</h2>
+          <div style={styles.modalContent} ref={refundModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-modal-title">
+            <h2 id="refund-modal-title" style={styles.modalTitle}>Request a Refund</h2>
 
             <div style={styles.warningBox}>
               ⚠️ Refunds deduct 50% of the amount you paid as a processing fee.

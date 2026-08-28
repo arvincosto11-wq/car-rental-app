@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import { SkeletonTableRows } from '../../components/Skeleton';
+import useModalA11y from '../../hooks/useModalA11y';
 import api from '../../api';
 
 const ManageClients = () => {
@@ -56,6 +57,7 @@ const ManageClients = () => {
   );
 
   const selectedClient = clients.find((c) => c._id === selectedClientId);
+  const clientModalRef = useModalA11y(() => setSelectedClientId(null), !!selectedClient);
 
   const s = {
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
@@ -152,9 +154,9 @@ const ManageClients = () => {
 
       {selectedClient && (
         <div style={s.modalOverlay}>
-          <div style={s.modalContent}>
-            <button style={s.closeX} onClick={() => setSelectedClientId(null)}>×</button>
-            <h2 style={s.modalTitle}>{selectedClient.name}</h2>
+          <div style={s.modalContent} ref={clientModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="client-modal-title">
+            <button style={s.closeX} onClick={() => setSelectedClientId(null)} aria-label="Close">×</button>
+            <h2 id="client-modal-title" style={s.modalTitle}>{selectedClient.name}</h2>
             <p style={s.modalSub}>{selectedClient.email}</p>
 
             <div style={s.badgeRow}>
