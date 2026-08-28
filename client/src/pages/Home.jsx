@@ -539,9 +539,16 @@ const Home = () => {
                 <span style={styles.contactIcon}>📞</span>
                 <span>0950-651-0479</span>
               </li>
-              <li style={styles.contactRow}>
-                <span style={styles.contactIcon}>📍</span>
-                <span>Salugan, Camalig, Albay</span>
+              <li>
+                <a
+                  href="https://www.google.com/maps/search/?api=1&query=Salugan%2C+Camalig%2C+Albay"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ ...styles.contactRow, textDecoration: 'none', color: 'inherit' }}
+                >
+                  <span style={styles.contactIcon}>📍</span>
+                  <span>Salugan, Camalig, Albay</span>
+                </a>
               </li>
               <li style={styles.contactRow}>
                 <span style={styles.contactIcon}>🕒</span>
