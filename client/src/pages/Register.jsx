@@ -16,6 +16,7 @@ const Register = () => {
     licenseNumber: '', licenseExpiry: '',
     emergencyContactName: '', emergencyContactNumber: '',
   });
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [validIdImage, setValidIdImage] = useState(null);
   const [validIdPreview, setValidIdPreview] = useState('');
   const [error, setError] = useState('');
@@ -53,6 +54,10 @@ const Register = () => {
 
     if (!PHONE_REGEX.test(form.phone)) {
       setError('Please enter a valid Philippine phone number (e.g. 09171234567 or +639171234567)');
+      return;
+    }
+    if (form.password !== confirmPassword) {
+      setError('Passwords do not match.');
       return;
     }
     setLoading(true);
@@ -245,6 +250,19 @@ const Register = () => {
               isDark={isDark}
             />
           </div>
+          <div style={styles.field}>
+            <label style={styles.label} htmlFor="reg-confirm-password">Confirm Password</label>
+            <PasswordInput
+              id="reg-confirm-password"
+              style={styles.input}
+              placeholder="Re-enter your password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={8}
+              isDark={isDark}
+            />
+          </div>
 
           <div style={styles.field}>
             <label style={styles.label} htmlFor="reg-phone">Phone Number</label>
@@ -279,6 +297,9 @@ const Register = () => {
             </div>
           </div>
 
+          <p style={{ ...styles.subtitle, marginBottom: '8px' }}>
+            Driver's license (optional now — only needed if you later book a self-drive vehicle)
+          </p>
           <div className="responsive-row-2" style={styles.row}>
             <div style={styles.field}>
               <label style={styles.label} htmlFor="reg-license-number">Driver's License Number</label>
@@ -289,7 +310,6 @@ const Register = () => {
                 placeholder="e.g. N01-23-456789"
                 value={form.licenseNumber}
                 onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })}
-                required
               />
             </div>
             <div style={styles.field}>
@@ -300,7 +320,6 @@ const Register = () => {
                 type="date"
                 value={form.licenseExpiry}
                 onChange={(e) => setForm({ ...form, licenseExpiry: e.target.value })}
-                required
               />
             </div>
           </div>
