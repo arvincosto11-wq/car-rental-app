@@ -17,6 +17,7 @@ const CarDetail = () => {
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [reviewFilter, setReviewFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [paymentType, setPaymentType] = useState('downpayment');
@@ -165,6 +166,16 @@ const CarDetail = () => {
     reviewDate: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af' },
     reviewComment: { fontSize: '13px', color: isDark ? '#cbd5e1' : '#374151', lineHeight: '1.5', marginTop: '8px' },
     reviewEmpty: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280' },
+    reviewFilterRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' },
+    reviewFilterBtn: (active) => ({
+      padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+      border: active ? 'none' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
+      color: active ? ON_GOLD : (isDark ? '#94a3b8' : '#6b7280'),
+      cursor: 'pointer', whiteSpace: 'nowrap',
+    }),
+    reviewPhotoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: '8px', marginTop: '10px', maxWidth: '360px' },
+    reviewPhoto: { width: '100%', height: '64px', objectFit: 'cover', borderRadius: '8px' },
     bookingCard: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '20px', height: 'fit-content' },
     priceRow: { display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '16px' },
     price: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a' },
@@ -221,6 +232,13 @@ const CarDetail = () => {
     </div>
   );
   if (!car) return <div style={s.page}><p style={{ textAlign: 'center', padding: '40px', color: isDark ? '#94a3b8' : '#6b7280' }}>Car not found.</p></div>;
+
+  const filteredReviews = reviews.filter((r) => {
+    if (reviewFilter === 'with-comments') return !!r.comment;
+    if (reviewFilter === 'with-photos') return r.photos && r.photos.length > 0;
+    if (['5', '4', '3', '2', '1'].includes(reviewFilter)) return Math.round(r.overall) === Number(reviewFilter);
+    return true;
+  });
 
   return (
     <div style={s.page}>
@@ -493,12 +511,38 @@ const CarDetail = () => {
               : 'What renters are saying about this vehicle.'}
           </p>
 
+          {!reviewsLoading && reviews.length > 0 && (
+            <div style={s.reviewFilterRow} role="group" aria-label="Filter reviews">
+              {[
+                { key: 'all', label: `All (${reviews.length})` },
+                { key: '5', label: `5★ (${reviews.filter((r) => Math.round(r.overall) === 5).length})` },
+                { key: '4', label: `4★ (${reviews.filter((r) => Math.round(r.overall) === 4).length})` },
+                { key: '3', label: `3★ (${reviews.filter((r) => Math.round(r.overall) === 3).length})` },
+                { key: '2', label: `2★ (${reviews.filter((r) => Math.round(r.overall) === 2).length})` },
+                { key: '1', label: `1★ (${reviews.filter((r) => Math.round(r.overall) === 1).length})` },
+                { key: 'with-comments', label: `With Comments (${reviews.filter((r) => r.comment).length})` },
+                { key: 'with-photos', label: `With Photos (${reviews.filter((r) => r.photos?.length).length})` },
+              ].map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  style={s.reviewFilterBtn(reviewFilter === f.key)}
+                  onClick={() => setReviewFilter(f.key)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {reviewsLoading ? (
             <Skeleton height="80px" radius="12px" isDark={isDark} />
           ) : reviews.length === 0 ? (
             <p style={s.reviewEmpty}>No reviews yet — be the first to rent and rate this vehicle.</p>
+          ) : filteredReviews.length === 0 ? (
+            <p style={s.reviewEmpty}>No reviews match this filter.</p>
           ) : (
-            reviews.map((r) => (
+            filteredReviews.map((r) => (
               <div key={r._id} style={s.reviewCard}>
                 <div style={s.reviewHeader}>
                   <span style={s.reviewAvatar}>{r.reviewerName.charAt(0)}</span>
@@ -512,6 +556,13 @@ const CarDetail = () => {
                   </div>
                 </div>
                 {r.comment && <p style={s.reviewComment}>{r.comment}</p>}
+                {r.photos?.length > 0 && (
+                  <div style={s.reviewPhotoGrid}>
+                    {r.photos.map((p, i) => (
+                      <img key={i} src={p.url} alt={`Review photo ${i + 1}`} style={s.reviewPhoto} />
+                    ))}
+                  </div>
+                )}
               </div>
             ))
           )}

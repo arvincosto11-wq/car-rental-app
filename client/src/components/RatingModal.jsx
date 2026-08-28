@@ -7,8 +7,24 @@ import useModalA11y from '../hooks/useModalA11y';
 // Shared "rate your experience" modal, used by both the My Bookings list
 // and the dedicated Rate My Bookings panel so the rating flow only lives
 // in one place.
+const uploadToImageKit = async (file) => {
+  const authRes = await api.get('/imagekit/user-auth');
+  const { token, expire, signature, publicKey } = authRes.data;
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('fileName', file.name);
+  formData.append('token', token);
+  formData.append('expire', expire);
+  formData.append('signature', signature);
+  formData.append('publicKey', publicKey);
+  const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', body: formData });
+  const data = await uploadRes.json();
+  return { url: data.url, fileId: data.fileId };
+};
+
 const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
   const [form, setForm] = useState({ vehicleCondition: 0, serviceQuality: 0, cleanliness: 0, comment: '' });
+  const [photos, setPhotos] = useState([]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -20,12 +36,21 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
       cleanliness: booking.carRating?.cleanliness || 0,
       comment: booking.carRating?.comment || '',
     });
+    setPhotos((booking.carRating?.photos || []).map((p) => ({ id: p.url, url: p.url, fileId: p.fileId })));
     setError('');
   }, [booking]);
 
   const modalRef = useModalA11y(onClose);
 
   if (!booking) return null;
+
+  const handlePhotosChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setPhotos((prev) => [...prev, ...files.map((file) => ({ id: URL.createObjectURL(file), file, preview: URL.createObjectURL(file) }))]);
+  };
+
+  const removePhoto = (id) => setPhotos((prev) => prev.filter((p) => p.id !== id));
 
   const handleSubmit = async () => {
     const { vehicleCondition, serviceQuality, cleanliness, comment } = form;
@@ -36,8 +61,16 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
     setSubmitting(true);
     setError('');
     try {
+      const uploadedPhotos = [];
+      for (const p of photos) {
+        if (p.file) {
+          uploadedPhotos.push(await uploadToImageKit(p.file));
+        } else {
+          uploadedPhotos.push({ url: p.url, fileId: p.fileId });
+        }
+      }
       const res = await api.post(`/bookings/${booking._id}/rate-car`, {
-        vehicleCondition, serviceQuality, cleanliness, comment,
+        vehicleCondition, serviceQuality, cleanliness, comment, photos: uploadedPhotos,
       });
       onSubmitted(res.data.carRating);
     } catch (err) {
@@ -67,6 +100,20 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
       width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
       borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: isDark ? '#f1f5f9' : '#1a1a1a',
       fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', background: isDark ? '#0f172a' : '#fff',
+    },
+    photoUpload: {
+      position: 'relative', width: '100%', height: '70px', border: `2px dashed ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+      background: isDark ? '#0f172a' : '#fff', marginBottom: '10px',
+    },
+    photoUploadHint: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
+    photoFileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
+    photoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))', gap: '8px', marginBottom: '18px' },
+    photoThumbWrap: { position: 'relative', width: '100%', height: '56px', borderRadius: '8px', overflow: 'hidden' },
+    photoThumb: { width: '100%', height: '100%', objectFit: 'cover' },
+    removePhotoBtn: {
+      position: 'absolute', top: '2px', right: '2px', width: '18px', height: '18px', borderRadius: '50%',
+      border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '12px', lineHeight: '18px', cursor: 'pointer', padding: 0,
     },
     modalActions: { display: 'flex', gap: '10px' },
     modalCancelBtn: {
@@ -110,6 +157,22 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
           onChange={(e) => setForm({ ...form, comment: e.target.value })}
           placeholder="Tell us more about your experience..."
         />
+
+        <label style={s.modalLabel} htmlFor="rating-photos">Photos (optional)</label>
+        <div style={s.photoUpload}>
+          <span style={s.photoUploadHint}>📷 Click to add photos</span>
+          <input id="rating-photos" type="file" accept="image/*" multiple style={s.photoFileInput} onChange={handlePhotosChange} />
+        </div>
+        {photos.length > 0 && (
+          <div style={s.photoGrid}>
+            {photos.map((p, i) => (
+              <div key={p.id} style={s.photoThumbWrap}>
+                <img src={p.preview || p.url} alt={`Review photo ${i + 1}`} style={s.photoThumb} />
+                <button type="button" style={s.removePhotoBtn} onClick={() => removePhoto(p.id)} aria-label={`Remove photo ${i + 1}`}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div style={s.modalActions}>
           <button style={s.modalCancelBtn} onClick={onClose} disabled={submitting}>

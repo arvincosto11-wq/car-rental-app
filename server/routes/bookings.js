@@ -284,7 +284,7 @@ router.put('/:id/refund', protect, adminOnly, async (req, res) => {
 // Client rates the car/service after the vehicle has been returned
 router.post('/:id/rate-car', protect, async (req, res) => {
   try {
-    const { vehicleCondition, serviceQuality, cleanliness, comment } = req.body;
+    const { vehicleCondition, serviceQuality, cleanliness, comment, photos } = req.body;
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     if (booking.user.toString() !== req.user.id) {
@@ -302,7 +302,11 @@ router.post('/:id/rate-car', protect, async (req, res) => {
     const overall = Math.round(((vehicleCondition + serviceQuality + cleanliness) / 3) * 10) / 10;
     const ratedAt = booking.carRating?.ratedAt || new Date();
 
-    booking.carRating = { vehicleCondition, serviceQuality, cleanliness, overall, comment: comment || '', ratedAt, updatedAt: new Date() };
+    booking.carRating = {
+      vehicleCondition, serviceQuality, cleanliness, overall,
+      comment: comment || '', photos: Array.isArray(photos) ? photos : [],
+      ratedAt, updatedAt: new Date(),
+    };
     await booking.save();
     await recomputeCarRating(booking.car);
 

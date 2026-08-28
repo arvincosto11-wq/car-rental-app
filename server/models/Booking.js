@@ -20,6 +20,7 @@ const bookingSchema = new mongoose.Schema({
     cleanliness: { type: Number, min: 1, max: 5 },
     overall: { type: Number, min: 1, max: 5 },
     comment: { type: String, default: '' },
+    photos: [{ url: String, fileId: String }],
     ratedAt: { type: Date },
     updatedAt: { type: Date },
   },

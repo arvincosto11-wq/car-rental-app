@@ -61,6 +61,7 @@ router.get('/:id/reviews', async (req, res) => {
       cleanliness: b.carRating.cleanliness,
       overall: b.carRating.overall,
       comment: b.carRating.comment,
+      photos: b.carRating.photos || [],
       ratedAt: b.carRating.ratedAt,
     }));
 
