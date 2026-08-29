@@ -6,6 +6,7 @@ import StarRating from '../components/StarRating';
 import Skeleton from '../components/Skeleton';
 import FavoriteButton from '../components/FavoriteButton';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
+import BookingSteps from '../components/BookingSteps';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
@@ -40,6 +41,8 @@ const CarDetail = () => {
   const [booking, setBooking] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [step, setStep] = useState(1);
+  const BOOKING_STEPS = ['Dates', 'Type & Payment', 'Confirm'];
 
   const termsModalRef = useModalA11y(() => setShowTerms(false), showTerms);
   const refundNoticeModalRef = useModalA11y(() => setShowRefundNotice(false), showRefundNotice);
@@ -121,15 +124,24 @@ const CarDetail = () => {
     return bookedRanges.some((r) => s < new Date(r.endDate).getTime() && e > new Date(r.startDate).getTime());
   };
 
-  const openRefundNotice = () => {
+  const goToStep = (n) => {
+    setError('');
+    setStep(n);
+  };
+
+  const goToDatesNext = () => {
     if (!user) return navigate('/login');
     if (!startDate || !endDate) return setError('Please select pickup and return dates');
     if (totalDays <= 0) return setError('Return date must be after pickup date');
-    if (!agreedToTerms) return setError('Please agree to the Terms and Conditions');
     if (car.isAvailable === false) return setError('This vehicle is no longer listed for booking.');
     if (overlapsBookedDates(startDate, endDate)) {
-      return setError('This vehicle is already booked for some of your selected dates. Check the calendar below and pick different dates.');
+      return setError('This vehicle is already booked for some of your selected dates. Check the calendar above and pick different dates.');
     }
+    setError('');
+    setStep(2);
+  };
+
+  const goToConfirmNext = () => {
     if (needsLicenseInput) {
       if (!licenseNumber.trim() || !licenseExpiry) {
         return setError("Please provide your driver's license details to book self-drive.");
@@ -138,6 +150,12 @@ const CarDetail = () => {
         return setError('That license expiry date has already passed. Please enter a valid, unexpired license.');
       }
     }
+    setError('');
+    setStep(3);
+  };
+
+  const openRefundNotice = () => {
+    if (!agreedToTerms) return setError('Please agree to the Terms and Conditions');
     setError('');
     setShowRefundNotice(true);
   };
@@ -237,6 +255,15 @@ const CarDetail = () => {
     error: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' },
     bookBtn: { width: '100%', padding: '12px', background: agreedToTerms ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#334155' : '#d1d5db'), color: agreedToTerms ? ON_GOLD : '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: agreedToTerms ? 'pointer' : 'not-allowed' },
     noCC: { textAlign: 'center', fontSize: '12px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '8px' },
+    stepActions: { display: 'flex', gap: '10px', marginTop: '18px' },
+    nextBtn: { flex: 1, padding: '11px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+    backStepBtn: { padding: '11px 18px', background: 'none', color: isDark ? '#94a3b8' : '#6b7280', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' },
+    summaryBar: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+      background: isDark ? '#0f172a' : '#f9fafb', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      borderRadius: '8px', padding: '10px 12px', marginBottom: '16px', fontSize: '12px', color: isDark ? '#cbd5e1' : '#374151',
+    },
+    summaryEditBtn: { background: 'none', border: 'none', color: isDark ? GOLD_DARK : GOLD, fontSize: '12px', fontWeight: '700', cursor: 'pointer', padding: 0 },
     modal: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
     modalContent: { background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '500px', width: '90%', maxHeight: '80vh', overflow: 'auto' },
     modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '16px' },
@@ -405,150 +432,177 @@ const CarDetail = () => {
             {success && <div style={s.success}>{success}</div>}
             {error && <div style={s.error}>{error}</div>}
 
-            <div style={s.field}>
-              <label style={s.label} htmlFor="cd-start-date">Pickup Date</label>
-              <input id="cd-start-date" style={s.input} type="date" value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]} />
-            </div>
+            <div className="booking-steps-shell">
+              <BookingSteps steps={BOOKING_STEPS} currentStep={step} onStepClick={goToStep} isDark={isDark} />
 
-            <div style={s.field}>
-              <label style={s.label} htmlFor="cd-end-date">Return Date</label>
-              <input id="cd-end-date" style={s.input} type="date" value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                min={startDate} />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <AvailabilityCalendar
-                bookedRanges={bookedRanges}
-                selectedStart={startDate}
-                selectedEnd={endDate}
-                isDark={isDark}
-              />
-            </div>
-
-            {/* Booking Type */}
-            {totalDays > 0 && (
-              <>
-                <label style={s.label} id="cd-booking-type-label">Booking Type</label>
-                {supportedBookingTypes.length > 1 ? (
-                  <div role="group" aria-labelledby="cd-booking-type-label" style={s.paymentOptions}>
-                    {supportedBookingTypes.includes('with-driver') && (
-                      <button
-                        style={s.paymentBtn(bookingType === 'with-driver')}
-                        onClick={() => setBookingType('with-driver')}
-                      >
-                        With Driver
-                      </button>
-                    )}
-                    {supportedBookingTypes.includes('self-drive') && (
-                      <button
-                        style={s.paymentBtn(bookingType === 'self-drive')}
-                        onClick={() => setBookingType('self-drive')}
-                      >
-                        Self Drive
-                      </button>
-                    )}
+              <div>
+                {step > 1 && startDate && endDate && (
+                  <div style={s.summaryBar}>
+                    <span>📅 {new Date(startDate).toLocaleDateString()} → {new Date(endDate).toLocaleDateString()} ({totalDays} day{totalDays === 1 ? '' : 's'})</span>
+                    <button type="button" style={s.summaryEditBtn} onClick={() => goToStep(1)}>Edit</button>
                   </div>
-                ) : (
-                  <p style={s.fieldHint}>
-                    This vehicle is available for {supportedBookingTypes[0] === 'self-drive' ? 'Self Drive' : 'With Driver'} only.
-                  </p>
                 )}
 
-                {needsLicenseInput && (
-                  <div style={s.licenseBox}>
-                    <p style={s.licenseNote}>
-                      Self-drive requires a valid driver's license on file. Add yours below to continue.
+                {step === 1 && (
+                  <>
+                    <div style={s.field}>
+                      <label style={s.label} htmlFor="cd-start-date">Pickup Date</label>
+                      <input id="cd-start-date" style={s.input} type="date" value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]} />
+                    </div>
+
+                    <div style={s.field}>
+                      <label style={s.label} htmlFor="cd-end-date">Return Date</label>
+                      <input id="cd-end-date" style={s.input} type="date" value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        min={startDate} />
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                      <AvailabilityCalendar
+                        bookedRanges={bookedRanges}
+                        selectedStart={startDate}
+                        selectedEnd={endDate}
+                        isDark={isDark}
+                      />
+                    </div>
+
+                    <div style={s.stepActions}>
+                      <button style={s.nextBtn} onClick={goToDatesNext} disabled={car.isAvailable === false}>
+                        Continue
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {step === 2 && (
+                  <>
+                    <label style={s.label} id="cd-booking-type-label">Booking Type</label>
+                    {supportedBookingTypes.length > 1 ? (
+                      <div role="group" aria-labelledby="cd-booking-type-label" style={s.paymentOptions}>
+                        {supportedBookingTypes.includes('with-driver') && (
+                          <button
+                            style={s.paymentBtn(bookingType === 'with-driver')}
+                            onClick={() => setBookingType('with-driver')}
+                          >
+                            With Driver
+                          </button>
+                        )}
+                        {supportedBookingTypes.includes('self-drive') && (
+                          <button
+                            style={s.paymentBtn(bookingType === 'self-drive')}
+                            onClick={() => setBookingType('self-drive')}
+                          >
+                            Self Drive
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <p style={s.fieldHint}>
+                        This vehicle is available for {supportedBookingTypes[0] === 'self-drive' ? 'Self Drive' : 'With Driver'} only.
+                      </p>
+                    )}
+
+                    {needsLicenseInput && (
+                      <div style={s.licenseBox}>
+                        <p style={s.licenseNote}>
+                          Self-drive requires a valid driver's license on file. Add yours below to continue.
+                        </p>
+                        <div style={s.field}>
+                          <label style={s.label} htmlFor="cd-license-number">Driver's License Number</label>
+                          <input id="cd-license-number" style={s.input} type="text" placeholder="e.g. N03-12-123456"
+                            value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
+                        </div>
+                        <div style={s.field}>
+                          <label style={s.label} htmlFor="cd-license-expiry">License Expiry Date</label>
+                          <input id="cd-license-expiry" style={s.input} type="date" value={licenseExpiry}
+                            onChange={(e) => setLicenseExpiry(e.target.value)} />
+                        </div>
+                      </div>
+                    )}
+
+                    <label style={s.label} id="cd-payment-option-label">Payment Option</label>
+                    <div role="group" aria-labelledby="cd-payment-option-label" style={s.paymentOptions}>
+                      <button
+                        style={s.paymentBtn(paymentType === 'downpayment')}
+                        onClick={() => setPaymentType('downpayment')}
+                      >
+                        20% Down
+                        <div style={{ fontSize: '12px', marginTop: '2px' }}>
+                          ₱{downPayment.toLocaleString()}
+                        </div>
+                      </button>
+                      <button
+                        style={s.paymentBtn(paymentType === 'full')}
+                        onClick={() => setPaymentType('full')}
+                      >
+                        Full Payment
+                        <div style={{ fontSize: '12px', marginTop: '2px' }}>
+                          ₱{totalPrice.toLocaleString()}
+                        </div>
+                      </button>
+                    </div>
+
+                    <div style={s.priceBreakdown}>
+                      <div style={s.breakdownRow}>
+                        <span>{totalDays} days × ₱{car.pricePerDay.toLocaleString()}</span>
+                        <span>₱{totalPrice.toLocaleString()}</span>
+                      </div>
+                      {paymentType === 'downpayment' && (
+                        <div style={s.breakdownRow}>
+                          <span>Remaining balance</span>
+                          <span>₱{(totalPrice - downPayment).toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div style={s.breakdownTotal}>
+                        <span>{paymentType === 'downpayment' ? 'Due now (20%)' : 'Total due'}</span>
+                        <span>₱{amountToPay.toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <div style={s.stepActions}>
+                      <button style={s.backStepBtn} onClick={() => goToStep(1)}>Back</button>
+                      <button style={s.nextBtn} onClick={goToConfirmNext}>Continue</button>
+                    </div>
+                  </>
+                )}
+
+                {step === 3 && (
+                  <>
+                    <div style={s.termsRow}>
+                      <input
+                        id="cd-agree-terms"
+                        type="checkbox"
+                        checked={agreedToTerms}
+                        onChange={(e) => setAgreedToTerms(e.target.checked)}
+                        style={{ marginTop: '2px', flexShrink: 0 }}
+                      />
+                      <span>
+                        <label htmlFor="cd-agree-terms">I agree to the</label>{' '}
+                        <button type="button" style={{ ...s.termsLink, background: 'none', border: 'none', padding: 0, font: 'inherit' }} onClick={() => setShowTerms(true)}>
+                          Terms and Conditions
+                        </button>
+                      </span>
+                    </div>
+
+                    <div style={s.stepActions}>
+                      <button style={s.backStepBtn} onClick={() => goToStep(2)} disabled={booking}>Back</button>
+                      <button
+                        style={s.nextBtn}
+                        onClick={openRefundNotice}
+                        disabled={booking || !agreedToTerms || car.isAvailable === false}
+                      >
+                        {booking ? 'Booking...' : `Book Now — Pay ₱${amountToPay > 0 ? amountToPay.toLocaleString() : car.pricePerDay.toLocaleString()}`}
+                      </button>
+                    </div>
+                    <p style={s.noCC}>
+                      {paymentType === 'full' ? 'Full payment due now' : 'Remaining balance due upon vehicle pickup'} · Cash or GCash accepted
                     </p>
-                    <div style={s.field}>
-                      <label style={s.label} htmlFor="cd-license-number">Driver's License Number</label>
-                      <input id="cd-license-number" style={s.input} type="text" placeholder="e.g. N03-12-123456"
-                        value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
-                    </div>
-                    <div style={s.field}>
-                      <label style={s.label} htmlFor="cd-license-expiry">License Expiry Date</label>
-                      <input id="cd-license-expiry" style={s.input} type="date" value={licenseExpiry}
-                        onChange={(e) => setLicenseExpiry(e.target.value)} />
-                    </div>
-                  </div>
+                  </>
                 )}
-              </>
-            )}
-
-            {/* Payment Options */}
-            {totalDays > 0 && (
-              <>
-                <label style={s.label} id="cd-payment-option-label">Payment Option</label>
-                <div role="group" aria-labelledby="cd-payment-option-label" style={s.paymentOptions}>
-                  <button
-                    style={s.paymentBtn(paymentType === 'downpayment')}
-                    onClick={() => setPaymentType('downpayment')}
-                  >
-                    20% Down
-                    <div style={{ fontSize: '12px', marginTop: '2px' }}>
-                      ₱{downPayment.toLocaleString()}
-                    </div>
-                  </button>
-                  <button
-                    style={s.paymentBtn(paymentType === 'full')}
-                    onClick={() => setPaymentType('full')}
-                  >
-                    Full Payment
-                    <div style={{ fontSize: '12px', marginTop: '2px' }}>
-                      ₱{totalPrice.toLocaleString()}
-                    </div>
-                  </button>
-                </div>
-
-                {/* Price Breakdown */}
-                <div style={s.priceBreakdown}>
-                  <div style={s.breakdownRow}>
-                    <span>{totalDays} days × ₱{car.pricePerDay.toLocaleString()}</span>
-                    <span>₱{totalPrice.toLocaleString()}</span>
-                  </div>
-                  {paymentType === 'downpayment' && (
-                    <div style={s.breakdownRow}>
-                      <span>Remaining balance</span>
-                      <span>₱{(totalPrice - downPayment).toLocaleString()}</span>
-                    </div>
-                  )}
-                  <div style={s.breakdownTotal}>
-                    <span>{paymentType === 'downpayment' ? 'Due now (20%)' : 'Total due'}</span>
-                    <span>₱{amountToPay.toLocaleString()}</span>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Terms and Conditions */}
-            <div style={s.termsRow}>
-              <input
-                id="cd-agree-terms"
-                type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                style={{ marginTop: '2px', flexShrink: 0 }}
-              />
-              <span>
-                <label htmlFor="cd-agree-terms">I agree to the</label>{' '}
-                <button type="button" style={{ ...s.termsLink, background: 'none', border: 'none', padding: 0, font: 'inherit' }} onClick={() => setShowTerms(true)}>
-                  Terms and Conditions
-                </button>
-              </span>
+              </div>
             </div>
-
-            <button
-              style={s.bookBtn}
-              onClick={openRefundNotice}
-              disabled={booking || !agreedToTerms || car.isAvailable === false}
-            >
-              {booking ? 'Booking...' : `Book Now — Pay ₱${amountToPay > 0 ? amountToPay.toLocaleString() : car.pricePerDay.toLocaleString()}`}
-            </button>
-                        <p style={s.noCC}>
-              {paymentType === 'full' ? 'Full payment due now' : 'Remaining balance due upon vehicle pickup'} · Cash or GCash accepted
-            </p>
           </div>
         </div>
 

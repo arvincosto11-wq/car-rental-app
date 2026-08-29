@@ -302,6 +302,22 @@ select:disabled {
   .car-detail-layout { grid-template-columns: 1fr; }
 }
 
+/* Booking wizard step indicator (Car Detail) — vertical sidebar on desktop,
+   collapses to a horizontal row on mobile with the connector lines hidden. */
+.booking-steps-shell {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 18px;
+}
+@media (max-width: 700px) {
+  .booking-steps-shell { grid-template-columns: 1fr; }
+  .booking-steps-list { flex-direction: row !important; justify-content: space-between; margin-bottom: 8px; }
+  .booking-step-item-wrap { flex: 1; }
+  .booking-step-row { flex-direction: column !important; gap: 4px !important; }
+  .booking-step-label { font-size: 10px !important; text-align: center; }
+  .booking-step-connector { display: none !important; }
+}
+
 .meta-grid-4 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
