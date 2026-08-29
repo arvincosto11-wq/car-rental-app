@@ -42,10 +42,12 @@ const CarDetail = () => {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
+  const [showBookingModal, setShowBookingModal] = useState(false);
   const BOOKING_STEPS = ['Dates', 'Type & Payment', 'Confirm'];
 
   const termsModalRef = useModalA11y(() => setShowTerms(false), showTerms);
   const refundNoticeModalRef = useModalA11y(() => setShowRefundNotice(false), showRefundNotice);
+  const bookingModalRef = useModalA11y(() => setShowBookingModal(false), showBookingModal);
 
   useEffect(() => {
     const fetchCar = async () => {
@@ -160,6 +162,12 @@ const CarDetail = () => {
     setShowRefundNotice(true);
   };
 
+  const openBookingModal = () => {
+    if (!user) return navigate('/login');
+    setError('');
+    setShowBookingModal(true);
+  };
+
   const confirmBooking = async () => {
     setBooking(true);
     setError('');
@@ -175,6 +183,7 @@ const CarDetail = () => {
         ...(needsLicenseInput ? { licenseNumber, licenseExpiry } : {}),
       });
                   setShowRefundNotice(false);
+      setShowBookingModal(false);
       if (paymentType === 'full') {
         setSuccess(`Booking confirmed! Your full payment of ₱${amountToPay.toLocaleString()} has been received.`);
       } else {
@@ -253,7 +262,7 @@ const CarDetail = () => {
     termsLink: { color: isDark ? GOLD_DARK : GOLD, cursor: 'pointer', textDecoration: 'underline' },
     success: { background: isDark ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: isDark ? '#86efac' : '#16a34a', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' },
     error: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' },
-    bookBtn: { width: '100%', padding: '12px', background: agreedToTerms ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#334155' : '#d1d5db'), color: agreedToTerms ? ON_GOLD : '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: agreedToTerms ? 'pointer' : 'not-allowed' },
+    bookBtn: { width: '100%', padding: '12px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
     noCC: { textAlign: 'center', fontSize: '12px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '8px' },
     stepActions: { display: 'flex', gap: '10px', marginTop: '18px' },
     nextBtn: { flex: 1, padding: '11px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
@@ -267,6 +276,8 @@ const CarDetail = () => {
     modal: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
     modalContent: { background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '500px', width: '90%', maxHeight: '80vh', overflow: 'auto' },
     modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '16px' },
+    modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '16px' },
+    modalCloseBtn: { background: 'none', border: 'none', fontSize: '20px', lineHeight: 1, cursor: 'pointer', color: isDark ? '#94a3b8' : '#6b7280', padding: '2px' },
     modalText: { fontSize: '13px', color: isDark ? '#94a3b8' : '#4b5563', lineHeight: '1.8' },
     closeBtn: { marginTop: '16px', padding: '10px 24px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', width: '100%' },
     refundNoticeActions: { display: 'flex', gap: '10px', marginTop: '20px' },
@@ -356,80 +367,15 @@ const CarDetail = () => {
         </div>
       )}
 
-      <div style={s.container}>
-        <button style={s.backBtn} onClick={() => navigate('/cars')}>
-          ← Back to all cars
-        </button>
-
-        <div className="car-detail-layout" style={s.layout}>
-          {/* Left */}
-          <div>
-            <div style={s.imgWrap}>
-              {car.image ? (
-                <img src={car.image} alt={car.model} style={s.img} />
-              ) : (
-                <div style={s.noImg}>No Image</div>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-              <h1 style={s.carName}>{car.brand} {car.model}</h1>
-              <FavoriteButton
-                carId={car._id}
-                canFavorite={canFavorite}
-                isFavorite={isFavorite(car._id)}
-                onToggle={toggleFavorite}
-                size={38}
-                style={{ background: isDark ? '#1e293b' : '#f3f4f6', color: isFavorite(car._id) ? '#ef4444' : (isDark ? '#94a3b8' : '#6b7280'), flexShrink: 0 }}
-              />
-            </div>
-            <p style={s.carSub}>{car.category} · {car.year}</p>
-            {car.ratingCount > 0 ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', marginTop: '-8px' }}>
-                <StarRating value={car.avgRating} size={16} readOnly />
-                <span style={{ fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' }}>
-                  {car.avgRating.toFixed(1)}
-                </span>
-                <span style={{ fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280' }}>
-                  ({car.ratingCount} review{car.ratingCount === 1 ? '' : 's'})
-                </span>
-              </div>
-            ) : (
-              <p style={{ fontSize: '13px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '-8px', marginBottom: '16px' }}>
-                No reviews yet
-              </p>
-            )}
-
-            <div className="meta-grid-4" style={s.metaGrid}>
-              <div style={s.metaItem}>
-                <span style={s.metaLabel}>Seats</span>
-                <span style={s.metaValue}>{car.seats}</span>
-              </div>
-              <div style={s.metaItem}>
-                <span style={s.metaLabel}>Fuel</span>
-                <span style={s.metaValue}>{car.fuelType}</span>
-              </div>
-              <div style={s.metaItem}>
-                <span style={s.metaLabel}>Transmission</span>
-                <span style={s.metaValue}>{car.transmission}</span>
-              </div>
+      {/* Booking Modal */}
+      {showBookingModal && (
+        <div style={s.modal}>
+          <div style={{ ...s.modalContent, maxWidth: '560px' }} ref={bookingModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="booking-modal-title">
+            <div style={s.modalHeader}>
+              <h2 id="booking-modal-title" style={{ ...s.modalTitle, marginBottom: 0 }}>Book {car.brand} {car.model}</h2>
+              <button type="button" className="icon-toggle-btn" aria-label="Close" style={s.modalCloseBtn} onClick={() => setShowBookingModal(false)}>✕</button>
             </div>
 
-            {car.description && (
-              <p style={s.description}>{car.description}</p>
-            )}
-          </div>
-
-          {/* Booking Card */}
-          <div style={s.bookingCard}>
-            <div style={s.priceRow}>
-              <span style={s.price}>₱{car.pricePerDay.toLocaleString()}</span>
-              <span style={s.perDay}>per day</span>
-            </div>
-
-            {car.isAvailable === false && (
-              <div style={s.error}>This vehicle isn't currently listed for booking. Check back later or browse other cars.
-              </div>)}
-            {success && <div style={s.success}>{success}</div>}
             {error && <div style={s.error}>{error}</div>}
 
             <div className="booking-steps-shell">
@@ -603,6 +549,94 @@ const CarDetail = () => {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      <div style={s.container}>
+        <button style={s.backBtn} onClick={() => navigate('/cars')}>
+          ← Back to all cars
+        </button>
+
+        <div className="car-detail-layout" style={s.layout}>
+          {/* Left */}
+          <div>
+            <div style={s.imgWrap}>
+              {car.image ? (
+                <img src={car.image} alt={car.model} style={s.img} />
+              ) : (
+                <div style={s.noImg}>No Image</div>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+              <h1 style={s.carName}>{car.brand} {car.model}</h1>
+              <FavoriteButton
+                carId={car._id}
+                canFavorite={canFavorite}
+                isFavorite={isFavorite(car._id)}
+                onToggle={toggleFavorite}
+                size={38}
+                style={{ background: isDark ? '#1e293b' : '#f3f4f6', color: isFavorite(car._id) ? '#ef4444' : (isDark ? '#94a3b8' : '#6b7280'), flexShrink: 0 }}
+              />
+            </div>
+            <p style={s.carSub}>{car.category} · {car.year}</p>
+            {car.ratingCount > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', marginTop: '-8px' }}>
+                <StarRating value={car.avgRating} size={16} readOnly />
+                <span style={{ fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' }}>
+                  {car.avgRating.toFixed(1)}
+                </span>
+                <span style={{ fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280' }}>
+                  ({car.ratingCount} review{car.ratingCount === 1 ? '' : 's'})
+                </span>
+              </div>
+            ) : (
+              <p style={{ fontSize: '13px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '-8px', marginBottom: '16px' }}>
+                No reviews yet
+              </p>
+            )}
+
+            <div className="meta-grid-4" style={s.metaGrid}>
+              <div style={s.metaItem}>
+                <span style={s.metaLabel}>Seats</span>
+                <span style={s.metaValue}>{car.seats}</span>
+              </div>
+              <div style={s.metaItem}>
+                <span style={s.metaLabel}>Fuel</span>
+                <span style={s.metaValue}>{car.fuelType}</span>
+              </div>
+              <div style={s.metaItem}>
+                <span style={s.metaLabel}>Transmission</span>
+                <span style={s.metaValue}>{car.transmission}</span>
+              </div>
+            </div>
+
+            {car.description && (
+              <p style={s.description}>{car.description}</p>
+            )}
+          </div>
+
+          {/* Booking Card */}
+          <div style={s.bookingCard}>
+            <div style={s.priceRow}>
+              <span style={s.price}>₱{car.pricePerDay.toLocaleString()}</span>
+              <span style={s.perDay}>per day</span>
+            </div>
+
+            {car.isAvailable === false && (
+              <div style={s.error}>This vehicle isn't currently listed for booking. Check back later or browse other cars.
+              </div>)}
+            {success && <div style={s.success}>{success}</div>}
+
+            {car.isAvailable !== false && !success && (
+              <>
+                <p style={s.fieldHint}>Pick your dates, choose a booking type, and confirm — takes about a minute.</p>
+                <button style={s.bookBtn} onClick={openBookingModal}>
+                  Book Now
+                </button>
+                <p style={s.noCC}>Cash or GCash accepted</p>
+              </>
+            )}
           </div>
         </div>
 
