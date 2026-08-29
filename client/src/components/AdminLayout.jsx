@@ -30,6 +30,7 @@ const AdminLayout = ({ children, activePage }) => {
 
     const sideLinks = [
     { to: '/admin', label: 'Dashboard' },
+    { to: '/admin/analytics', label: 'Analytics' },
     { to: '/admin/add-car', label: 'Add Vehicle' },
     { to: '/admin/manage-cars', label: 'Manage Cars' },
     { to: '/admin/manage-bookings', label: 'Manage Bookings' },

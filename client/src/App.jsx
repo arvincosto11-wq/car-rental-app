@@ -13,6 +13,7 @@ import MyBookings from './pages/MyBookings';
 import RateBookings from './pages/RateBookings';
 import MyFavorites from './pages/MyFavorites';
 import AdminDashboard from './pages/admin/Dashboard';
+import Analytics from './pages/admin/Analytics';
 import AddCar from './pages/admin/AddCar';
 import ManageCars from './pages/admin/ManageCars';
 import ManageArchivedCars from './pages/admin/ManageArchivedCars';
@@ -102,6 +103,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Analytics />
                 </ProtectedRoute>
               }
             />

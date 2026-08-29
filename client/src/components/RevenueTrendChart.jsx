@@ -19,11 +19,13 @@ const niceMax = (value) => {
 
 const formatShort = (n) => (n >= 1000 ? `${Math.round(n / 1000)}k` : `${Math.round(n)}`);
 
-// Single-series monthly revenue bar chart. No legend needed (one series -
-// the card title already says what's plotted); the current month gets a
-// direct label, the rest are reachable via hover/focus tooltip.
-const RevenueTrendChart = ({ data, isDark, barColor, barColorHover }) => {
+// Single-series bar chart (originally built for monthly revenue, general
+// enough for any small labeled series — e.g. booking counts). No legend
+// needed (one series - the card title already says what's plotted); the
+// last bar gets a direct label, the rest are reachable via hover/focus.
+const RevenueTrendChart = ({ data, isDark, barColor, barColorHover, formatValue, title }) => {
   const [active, setActive] = useState(null);
+  const format = formatValue || ((v) => `₱${v.toLocaleString()}`);
 
   const width = 600;
   const height = 200;
@@ -45,7 +47,7 @@ const RevenueTrendChart = ({ data, isDark, barColor, barColorHover }) => {
   const gridLines = [0, 0.25, 0.5, 0.75, 1].map((f) => scaleMax * f);
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }} role="img" aria-label="Monthly revenue for the last 6 months">
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }} role="img" aria-label={title || 'Monthly revenue for the last 6 months'}>
       {gridLines.map((g, i) => {
         const y = padTop + chartH - (g / scaleMax) * chartH;
         return (
@@ -68,7 +70,7 @@ const RevenueTrendChart = ({ data, isDark, barColor, barColorHover }) => {
             key={d.label}
             tabIndex={0}
             role="button"
-            aria-label={`${d.label}: ₱${d.value.toLocaleString()}`}
+            aria-label={`${d.label}: ${format(d.value)}`}
             style={{ cursor: 'pointer', outline: 'none' }}
             onPointerEnter={() => setActive(i)}
             onPointerLeave={() => setActive(null)}
@@ -81,7 +83,7 @@ const RevenueTrendChart = ({ data, isDark, barColor, barColorHover }) => {
 
             {isLast && !isActive && (
               <text x={x + barWidth / 2} y={y - 8} textAnchor="middle" fontSize="11" fontWeight="700" fill={labelColor}>
-                ₱{d.value.toLocaleString()}
+                {format(d.value)}
               </text>
             )}
 
@@ -89,7 +91,7 @@ const RevenueTrendChart = ({ data, isDark, barColor, barColorHover }) => {
               <g>
                 <rect x={Math.min(Math.max(x + barWidth / 2 - 42, padLeft), width - padRight - 84)} y={Math.max(y - 32, padTop)} width="84" height="24" rx="6" fill={isDark ? '#f1f5f9' : '#1a1a1a'} />
                 <text x={Math.min(Math.max(x + barWidth / 2, padLeft + 42), width - padRight - 42)} y={Math.max(y - 32, padTop) + 16} textAnchor="middle" fontSize="11" fontWeight="700" fill={isDark ? '#0f172a' : '#ffffff'}>
-                  ₱{d.value.toLocaleString()}
+                  {format(d.value)}
                 </text>
               </g>
             )}
