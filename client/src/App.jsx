@@ -23,7 +23,6 @@ import ManageAvailabilityRequests from './pages/admin/ManageAvailabilityRequests
 import RateClients from './pages/admin/RateClients';
 import ManageReviews from './pages/admin/ManageReviews';
 import Profile from './pages/Profile';
-import Notifications from './pages/Notifications';
 import ConsignmentRegister from './pages/ConsignmentRegister';
 import ConsignorDashboard from './pages/consignor/ConsignorDashboard';
 import AddVehicle from './pages/consignor/AddVehicle';
@@ -75,14 +74,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <><Navbar /><Profile /></>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/notifications"
-              element={
-                <ProtectedRoute>
-                  <Notifications />
                 </ProtectedRoute>
               }
             />

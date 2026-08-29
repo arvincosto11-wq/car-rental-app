@@ -24,6 +24,7 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const ref = useRef(null);
 
   const fetchNotifications = async () => {
@@ -43,7 +44,10 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        setShowAll(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -83,10 +87,7 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
     }
   };
 
-  const handleViewAll = () => {
-    setOpen(false);
-    navigate('/notifications');
-  };
+  const handleViewAll = () => setShowAll(true);
 
   const s = {
     wrap: { position: 'relative' },
@@ -134,7 +135,7 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
 
   return (
     <div ref={ref} style={s.wrap}>
-      <button style={s.btn} onClick={() => setOpen((v) => !v)} aria-label="Notifications">
+      <button style={s.btn} onClick={() => { setOpen((v) => !v); setShowAll(false); }} aria-label="Notifications">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -152,7 +153,7 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
             <div style={s.empty}>No notifications yet.</div>
           ) : (
             <>
-              {notifications.slice(0, DROPDOWN_LIMIT).map((n) => (
+              {(showAll ? notifications : notifications.slice(0, DROPDOWN_LIMIT)).map((n) => (
                 <div
                   key={n._id}
                   style={s.item(n.read)}
@@ -178,7 +179,9 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
                   <div style={s.itemTime}>{timeAgo(n.createdAt)}</div>
                 </div>
               ))}
-              <button style={s.viewAllBtn} onClick={handleViewAll}>View All</button>
+              {!showAll && notifications.length > DROPDOWN_LIMIT && (
+                <button style={s.viewAllBtn} onClick={handleViewAll}>View All</button>
+              )}
             </>
           )}
         </div>
