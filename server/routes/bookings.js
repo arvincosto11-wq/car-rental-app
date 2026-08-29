@@ -19,6 +19,22 @@ async function recomputeCarRating(carId) {
   });
 }
 
+// A confirmed booking is auto-completed the day after its return date, so
+// clients can rate their trip and consignors get credited without an admin
+// having to remember to click "Mark as Returned". Early returns still go
+// through the manual admin action.
+async function autoCompleteExpiredBookings() {
+  const startOfToday = new Date();
+  startOfToday.setUTCHours(0, 0, 0, 0);
+
+  const expired = await Booking.find({ status: 'confirmed', endDate: { $lt: startOfToday } });
+  for (const booking of expired) {
+    booking.status = 'completed';
+    await booking.save();
+    await notifyUser(booking.user, 'Vehicle Returned', 'Your vehicle return has been recorded. You can now rate your experience.', '/my-bookings/rate');
+  }
+}
+
 async function recomputeClientRating(userId) {
   const [result] = await Booking.aggregate([
     { $match: { user: new mongoose.Types.ObjectId(userId), 'clientRating.rating': { $exists: true } } },
@@ -137,6 +153,7 @@ router.post('/', protect, async (req, res) => {
 // Get logged-in user's bookings
 router.get('/my', protect, async (req, res) => {
   try {
+    await autoCompleteExpiredBookings();
     const bookings = await Booking.find({ user: req.user.id })
       .populate('car')
       .sort({ createdAt: -1 });
@@ -149,6 +166,7 @@ router.get('/my', protect, async (req, res) => {
 // Get all bookings (admin)
 router.get('/all', protect, adminOnly, async (req, res) => {
   try {
+    await autoCompleteExpiredBookings();
     const bookings = await Booking.find()
       .populate('car')
       .populate('user', 'name email avgRating ratingCount')
@@ -163,6 +181,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
 // consignors can track bookings but cannot approve/decline them)
 router.get('/owner', protect, consignorOnly, async (req, res) => {
   try {
+    await autoCompleteExpiredBookings();
     const cars = await Car.find({ owner: req.user.id }).select('_id');
     const carIds = cars.map((c) => c._id);
     const bookings = await Booking.find({ car: { $in: carIds } })
