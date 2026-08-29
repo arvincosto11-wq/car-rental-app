@@ -30,6 +30,23 @@ async function recomputeClientRating(userId) {
   });
 }
 
+// Date-range overlap check: does `car` already have a booking in one of
+// `statuses` whose dates overlap [start, end)? Only CONFIRMED bookings are
+// treated as a hard block for other clients — a pending request never blocks
+// anyone else's request for the same dates, it just risks losing the race
+// when one of the pending requests gets confirmed (see the auto-refund
+// logic below, which is the actual arbiter).
+async function findOverlappingBooking(carId, start, end, statuses, excludeId) {
+  const query = {
+    car: carId,
+    status: { $in: statuses },
+    startDate: { $lt: end },
+    endDate: { $gt: start },
+  };
+  if (excludeId) query._id = { $ne: excludeId };
+  return Booking.findOne(query);
+}
+
 // Create booking
 router.post('/', protect, async (req, res) => {
     try {
@@ -44,7 +61,7 @@ router.post('/', protect, async (req, res) => {
     if (!car) return res.status(404).json({ message: 'Car not found' });
 
     if (!car.isAvailable) {
-      return res.status(400).json({ message: 'This car is currently unavailable.' });
+      return res.status(400).json({ message: 'This vehicle is not currently listed for booking.' });
     }
 
     const requestedType = bookingType || 'with-driver';
@@ -53,13 +70,26 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({ message: `This vehicle does not offer ${requestedType === 'self-drive' ? 'self-drive' : 'with-driver'} bookings.` });
     }
 
-    const existing = await Booking.findOne({
-      user: req.user.id,
-      car: carId,
-      status: { $in: ['pending', 'confirmed'] }
+    const requestedStart = new Date(startDate);
+    const requestedEnd = new Date(endDate);
+
+    // Don't let the same client double-submit for dates they've already
+    // requested/booked on this car.
+    const ownExisting = await Booking.findOne({
+      user: req.user.id, car: carId, status: { $in: ['pending', 'confirmed'] },
+      startDate: { $lt: requestedEnd }, endDate: { $gt: requestedStart },
     });
-    if (existing) {
-      return res.status(400).json({ message: 'You already have an active booking request for this car.' });
+    if (ownExisting) {
+      return res.status(400).json({ message: 'You already have an active booking request for this car during these dates.' });
+    }
+
+    // Only a CONFIRMED booking actually blocks the dates for everyone else —
+    // pending requests from other clients don't, so multiple people can
+    // request the same dates and the first one an admin confirms wins (the
+    // others get auto-refunded, see PUT /:id below).
+    const confirmedOverlap = await findOverlappingBooking(carId, requestedStart, requestedEnd, ['confirmed']);
+    if (confirmedOverlap) {
+      return res.status(400).json({ message: 'This vehicle is already booked for some of the selected dates. Please choose different dates.' });
     }
 
     // Self-drive bookings require a valid, unexpired driver's license on file.
@@ -79,8 +109,8 @@ router.post('/', protect, async (req, res) => {
       }
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = requestedStart;
+    const end = requestedEnd;
     const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
     const booking = await Booking.create({
@@ -155,41 +185,46 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     const previousStatus = booking.status;
 
     if (status === 'confirmed' && previousStatus !== 'confirmed') {
-      // Atomically claim the car only if it's still available. This prevents two
-      // bookings for the same car both being confirmed (e.g. admin approving
-      // both before the page refreshes, or two near-simultaneous requests).
-      const car = await Car.findOneAndUpdate(
-        { _id: booking.car, isAvailable: true },
-        { isAvailable: false },
-        { new: true }
-      );
+      const car = await Car.findById(booking.car);
+      if (!car) return res.status(404).json({ message: 'Car not found' });
 
-      if (!car) {
-        // Car was already taken by another confirmed booking. Don't allow this
+      // Re-check for a conflicting CONFIRMED booking right before committing —
+      // this is the actual guard against double-booking now that availability
+      // is per-date-range instead of one blanket flag on the car.
+      const conflict = await findOverlappingBooking(booking.car, booking.startDate, booking.endDate, ['confirmed'], booking._id);
+
+      if (conflict) {
+        // Another booking already claimed overlapping dates. Don't allow this
         // one to be confirmed too — send it straight to an approved refund instead.
         booking.status = 'cancelled';
         booking.refundStatus = 'approved';
-        booking.refundReason = 'Automatically refunded: this car was already booked by another confirmed reservation.';
+        booking.refundReason = 'Automatically refunded: this vehicle was already booked for overlapping dates by another confirmed reservation.';
         await booking.save();
 
-        await notifyUser(booking.user, 'Booking Cancelled & Refunded', 'Your booking request could not be confirmed because the vehicle was already booked. It has been cancelled and automatically approved for a refund.', '/my-bookings');
+        await notifyUser(booking.user, 'Booking Cancelled & Refunded', 'Your booking request could not be confirmed because the vehicle was already booked for those dates. It has been cancelled and automatically approved for a refund.', '/my-bookings');
 
         return res.json({
           ...booking.toObject(),
           autoRefunded: true,
-          message: 'This car was already booked by another client. The request has been cancelled and automatically approved for refund.'
+          message: 'This vehicle was already booked for overlapping dates by another client. The request has been cancelled and automatically approved for refund.'
         });
       }
 
       booking.status = status;
       await booking.save();
 
+      // Any other PENDING request for this car that overlaps these same dates
+      // has lost the race — auto-cancel and refund it. Pending requests for
+      // non-overlapping dates are untouched.
       await Booking.updateMany(
-        { car: booking.car, _id: { $ne: booking._id }, status: 'pending' },
+        {
+          car: booking.car, _id: { $ne: booking._id }, status: 'pending',
+          startDate: { $lt: booking.endDate }, endDate: { $gt: booking.startDate },
+        },
         {
           status: 'cancelled',
           refundStatus: 'approved',
-          refundReason: 'Automatically refunded: another booking for this car was confirmed first.'
+          refundReason: 'Automatically refunded: another booking for overlapping dates was confirmed first.'
         }
       );
 
@@ -203,10 +238,6 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 
     booking.status = status;
     await booking.save();
-
-    if ((status === 'cancelled' || status === 'completed') && previousStatus === 'confirmed') {
-      await Car.findByIdAndUpdate(booking.car, { isAvailable: true });
-    }
 
     if (status === 'cancelled' && previousStatus !== 'cancelled') {
       await notifyUser(booking.user, 'Booking Cancelled', 'Your booking has been cancelled by our team.', '/my-bookings');
@@ -262,11 +293,7 @@ router.put('/:id/refund', protect, adminOnly, async (req, res) => {
     booking.refundStatus = decision;
 
     if (decision === 'approved') {
-      const wasConfirmed = booking.status === 'confirmed';
       booking.status = 'cancelled';
-      if (wasConfirmed) {
-        await Car.findByIdAndUpdate(booking.car, { isAvailable: true });
-      }
     }
 
     await booking.save();

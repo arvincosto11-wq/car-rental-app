@@ -101,7 +101,7 @@ const MyFavorites = () => {
                   <div style={styles.noImg}>No Image</div>
                 )}
                 <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#16a34a' }}>
-                  {car.isAvailable === false ? 'Not Available' : 'Available Now'}
+                  {car.isAvailable === false ? 'Not Listed' : 'Bookable'}
                 </span>
                 <FavoriteButton
                   carId={car._id}

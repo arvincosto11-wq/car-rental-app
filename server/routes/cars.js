@@ -28,6 +28,19 @@ router.get('/archived', protect, adminOnly, async (req, res) => {
   }
 });
 
+// Public: confirmed booking date ranges for a car, so clients can see which
+// dates are already taken before booking. Only start/end dates are exposed —
+// no renter identity or booking details, since this is publicly reachable.
+router.get('/:id/booked-dates', async (req, res) => {
+  try {
+    const bookings = await Booking.find({ car: req.params.id, status: 'confirmed' })
+      .select('startDate endDate');
+    res.json(bookings.map((b) => ({ startDate: b.startDate, endDate: b.endDate })));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // List cars with a pending unavailability request (admin)
 router.get('/availability-requests', protect, adminOnly, async (req, res) => {
   try {

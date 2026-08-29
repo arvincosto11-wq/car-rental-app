@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import StarRating from '../components/StarRating';
 import Skeleton from '../components/Skeleton';
 import FavoriteButton from '../components/FavoriteButton';
+import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
@@ -23,6 +24,7 @@ const CarDetail = () => {
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewFilter, setReviewFilter] = useState('all');
+  const [bookedRanges, setBookedRanges] = useState([]);
   // Pre-filled from the homepage/Cars search box, if the visitor came from there.
   const [startDate, setStartDate] = useState(searchParams.get('pickup') || '');
   const [endDate, setEndDate] = useState(searchParams.get('return') || '');
@@ -73,6 +75,18 @@ const CarDetail = () => {
   }, [id]);
 
   useEffect(() => {
+    const fetchBookedDates = async () => {
+      try {
+        const res = await api.get(`/cars/${id}/booked-dates`);
+        setBookedRanges(res.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchBookedDates();
+  }, [id]);
+
+  useEffect(() => {
     if (!user) return;
     const fetchProfile = async () => {
       try {
@@ -101,12 +115,21 @@ const CarDetail = () => {
   const downPayment = Math.ceil(totalPrice * 0.20);
   const amountToPay = paymentType === 'downpayment' ? downPayment : totalPrice;
 
+  const overlapsBookedDates = (start, end) => {
+    const s = new Date(start).getTime();
+    const e = new Date(end).getTime();
+    return bookedRanges.some((r) => s < new Date(r.endDate).getTime() && e > new Date(r.startDate).getTime());
+  };
+
   const openRefundNotice = () => {
     if (!user) return navigate('/login');
     if (!startDate || !endDate) return setError('Please select pickup and return dates');
     if (totalDays <= 0) return setError('Return date must be after pickup date');
     if (!agreedToTerms) return setError('Please agree to the Terms and Conditions');
-    if (car.isAvailable === false) return setError('This car is no longer available.');
+    if (car.isAvailable === false) return setError('This vehicle is no longer listed for booking.');
+    if (overlapsBookedDates(startDate, endDate)) {
+      return setError('This vehicle is already booked for some of your selected dates. Check the calendar below and pick different dates.');
+    }
     if (needsLicenseInput) {
       if (!licenseNumber.trim() || !licenseExpiry) {
         return setError("Please provide your driver's license details to book self-drive.");
@@ -377,7 +400,7 @@ const CarDetail = () => {
             </div>
 
             {car.isAvailable === false && (
-              <div style={s.error}>This car is currently booked and unavailable. Check back later or browse other cars.
+              <div style={s.error}>This vehicle isn't currently listed for booking. Check back later or browse other cars.
               </div>)}
             {success && <div style={s.success}>{success}</div>}
             {error && <div style={s.error}>{error}</div>}
@@ -394,6 +417,15 @@ const CarDetail = () => {
               <input id="cd-end-date" style={s.input} type="date" value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 min={startDate} />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <AvailabilityCalendar
+                bookedRanges={bookedRanges}
+                selectedStart={startDate}
+                selectedEnd={endDate}
+                isDark={isDark}
+              />
             </div>
 
             {/* Booking Type */}
