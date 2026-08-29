@@ -18,6 +18,7 @@ import AddCar from './pages/admin/AddCar';
 import ManageCars from './pages/admin/ManageCars';
 import ManageArchivedCars from './pages/admin/ManageArchivedCars';
 import ManageBookings from './pages/admin/ManageBookings';
+import BookingsCalendar from './pages/admin/BookingsCalendar';
 import ManageClients from './pages/admin/ManageClients';
 import ManageConsignments from './pages/admin/ManageConsignments';
 import ManageAvailabilityRequests from './pages/admin/ManageAvailabilityRequests';
@@ -143,6 +144,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <ManageBookings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/bookings-calendar"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <BookingsCalendar />
                 </ProtectedRoute>
               }
             />

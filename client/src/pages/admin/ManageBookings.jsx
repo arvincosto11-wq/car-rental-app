@@ -129,6 +129,11 @@ const ManageBookings = () => {
       padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px',
       fontSize: '13px', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#f1f5f9' : '#111827', cursor: 'pointer',
     },
+    calendarBtn: {
+      padding: '9px 16px', background: isDark ? '#1e293b' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151',
+      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+      cursor: 'pointer', whiteSpace: 'nowrap',
+    },
   };
 
   return (
@@ -138,12 +143,17 @@ const ManageBookings = () => {
           <h1 style={s.title}>Manage Bookings</h1>
           <p style={s.subtitle}>Track all customer bookings and manage booking statuses.</p>
         </div>
-        {!loading && unratedClientCount > 0 && (
-          <button style={s.rateClientsBtn} onClick={() => navigate('/admin/rate-clients')}>
-            ⭐ Rate Clients
-            <span style={s.rateClientsBadge}>{unratedClientCount}</span>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button style={s.calendarBtn} onClick={() => navigate('/admin/bookings-calendar')}>
+            📅 Calendar View
           </button>
-        )}
+          {!loading && unratedClientCount > 0 && (
+            <button style={s.rateClientsBtn} onClick={() => navigate('/admin/rate-clients')}>
+              ⭐ Rate Clients
+              <span style={s.rateClientsBadge}>{unratedClientCount}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div style={s.filterRow}>
