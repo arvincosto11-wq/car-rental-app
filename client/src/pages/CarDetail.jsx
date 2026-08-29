@@ -404,8 +404,10 @@ const CarDetail = () => {
         </div>
       )}
 
-      {/* Booking Modal */}
-      {showBookingModal && (
+      {/* Booking Modal — hidden while Terms or the Refund Notice is stacked on
+          top of it, since they're a different size and would otherwise show
+          both panels' edges overlapping instead of one clean dialog. */}
+      {showBookingModal && !showTerms && !showRefundNotice && (
         <div style={s.modal}>
           <div style={{ ...s.modalContent, maxWidth: '560px' }} ref={bookingModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="booking-modal-title">
             <div style={s.modalHeader}>
