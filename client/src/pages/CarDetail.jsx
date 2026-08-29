@@ -126,6 +126,41 @@ const CarDetail = () => {
     return bookedRanges.some((r) => s < new Date(r.endDate).getTime() && e > new Date(r.startDate).getTime());
   };
 
+  // Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
+  // the wrong day in timezones ahead of UTC, like PH).
+  const toDateValue = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const handleSelectDay = (date) => {
+    setError('');
+    const clicked = toDateValue(date);
+
+    if (!startDate || (startDate && endDate)) {
+      setStartDate(clicked);
+      setEndDate('');
+      return;
+    }
+
+    if (new Date(clicked).getTime() === new Date(startDate).getTime()) {
+      setStartDate('');
+      setEndDate('');
+      return;
+    }
+    if (new Date(clicked) < new Date(startDate)) {
+      setStartDate(clicked);
+      return;
+    }
+    if (overlapsBookedDates(startDate, clicked)) {
+      setError('That range includes a booked date. Please choose a different range.');
+      return;
+    }
+    setEndDate(clicked);
+  };
+
   const goToStep = (n) => {
     setError('');
     setStep(n);
@@ -391,18 +426,17 @@ const CarDetail = () => {
 
                 {step === 1 && (
                   <>
-                    <div style={s.field}>
-                      <label style={s.label} htmlFor="cd-start-date">Pickup Date</label>
-                      <input id="cd-start-date" style={s.input} type="date" value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]} />
-                    </div>
-
-                    <div style={s.field}>
-                      <label style={s.label} htmlFor="cd-end-date">Return Date</label>
-                      <input id="cd-end-date" style={s.input} type="date" value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        min={startDate} />
+                    <div style={s.summaryBar}>
+                      <span>
+                        {startDate && endDate
+                          ? `📅 ${new Date(startDate).toLocaleDateString()} → ${new Date(endDate).toLocaleDateString()} (${totalDays} day${totalDays === 1 ? '' : 's'})`
+                          : startDate
+                          ? `📅 ${new Date(startDate).toLocaleDateString()} → pick your return date`
+                          : 'Tap a date below to select pickup, then another for return'}
+                      </span>
+                      {(startDate || endDate) && (
+                        <button type="button" style={s.summaryEditBtn} onClick={() => { setStartDate(''); setEndDate(''); }}>Clear</button>
+                      )}
                     </div>
 
                     <div style={{ marginBottom: '16px' }}>
@@ -410,6 +444,7 @@ const CarDetail = () => {
                         bookedRanges={bookedRanges}
                         selectedStart={startDate}
                         selectedEnd={endDate}
+                        onSelectDay={handleSelectDay}
                         isDark={isDark}
                       />
                     </div>
