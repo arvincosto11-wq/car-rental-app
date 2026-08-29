@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import RatingModal from '../components/RatingModal';
 import { SkeletonListCard } from '../components/Skeleton';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, GOLD_TINT_BORDER, GOLD_TINT_BORDER_DARK, ON_GOLD } from '../theme';
 import usePageTitle from '../hooks/usePageTitle';
 
 const RateBookings = () => {
@@ -43,12 +43,12 @@ const RateBookings = () => {
   const styles = {
     container: { maxWidth: '700px', margin: '0 auto', padding: '32px' },
     backLink: {
-      display: 'inline-flex', alignItems: 'center', gap: '6px',
-      padding: '8px 16px', fontSize: '13px', fontWeight: '600',
-      color: isDark ? '#f1f5f9' : '#374151',
-      background: isDark ? '#1e293b' : '#f3f4f6',
-      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-      borderRadius: '8px', textDecoration: 'none', marginBottom: '16px',
+      display: 'inline-flex', alignItems: 'center', gap: '7px',
+      padding: '8px 18px', fontSize: '13px', fontWeight: '700',
+      color: isDark ? GOLD_DARK : GOLD,
+      background: isDark ? GOLD_TINT_DARK : GOLD_TINT,
+      border: `1px solid ${isDark ? GOLD_TINT_BORDER_DARK : GOLD_TINT_BORDER}`,
+      borderRadius: '999px', textDecoration: 'none', marginBottom: '16px',
     },
     title: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginTop: '10px', marginBottom: '4px' },
     subtitle: { fontSize: '14px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
@@ -75,7 +75,12 @@ const RateBookings = () => {
 
   return (
     <div style={styles.container}>
-      <Link to="/my-bookings" className="btn-like" style={styles.backLink}>← Back to My Bookings</Link>
+      <Link to="/my-bookings" className="btn-like" style={styles.backLink}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+        Back to My Bookings
+      </Link>
       <h1 style={styles.title}>Rate My Bookings</h1>
       <p style={styles.subtitle}>Completed bookings you haven't rated yet.</p>
 
