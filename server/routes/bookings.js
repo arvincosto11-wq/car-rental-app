@@ -333,9 +333,20 @@ router.put('/:id/rate-car/moderate', protect, adminOnly, async (req, res) => {
       return res.status(400).json({ message: 'This booking has no review to moderate.' });
     }
 
+    const wasHidden = booking.carRating.hidden;
     booking.carRating.hidden = !!hidden;
     await booking.save();
     await recomputeCarRating(booking.car);
+
+    if (!!hidden && !wasHidden) {
+      const car = await Car.findById(booking.car).select('brand model');
+      await notifyUser(
+        booking.user,
+        'Your review was removed',
+        `Your review${car ? ` for ${car.brand} ${car.model}` : ''} was removed by an admin for not meeting our guidelines.`,
+        '/my-bookings'
+      );
+    }
 
     res.json(booking);
   } catch (err) {

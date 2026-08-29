@@ -5,12 +5,15 @@ import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
 import ClientRatingModal from '../../components/ClientRatingModal';
 import { SkeletonTableRows } from '../../components/Skeleton';
+import Pagination from '../../components/Pagination';
+import { paginate } from '../../utils/paginate';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
 
 const LOW_RATING_THRESHOLD = 3;
+const PAGE_SIZE = 10;
 
 const ManageBookings = () => {
   usePageTitle('Manage Bookings');
@@ -22,6 +25,7 @@ const ManageBookings = () => {
   const [ratingModalId, setRatingModalId] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(1);
 
   useEffect(() => { fetchBookings(); }, []);
 
@@ -78,6 +82,10 @@ const ManageBookings = () => {
       || `${b.car?.brand} ${b.car?.model}`.toLowerCase().includes(q);
     return matchStatus && matchSearch;
   });
+  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
+  const pageBookings = paginate(filteredBookings, page, PAGE_SIZE);
+
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
   const s = {
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
@@ -145,9 +153,9 @@ const ManageBookings = () => {
           placeholder="Search by client, email, or car..."
           aria-label="Search bookings"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
         />
-        <select style={s.statusSelect} value={statusFilter} aria-label="Filter by status" onChange={(e) => setStatusFilter(e.target.value)}>
+        <select style={s.statusSelect} value={statusFilter} aria-label="Filter by status" onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
           <option value="all">All Statuses</option>
           <option value="pending">Pending</option>
           <option value="confirmed">Confirmed</option>
@@ -172,7 +180,7 @@ const ManageBookings = () => {
           <tbody>
             {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : filteredBookings.length === 0 ? (
               <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>No bookings match.</td></tr>
-            ) : filteredBookings.map((booking) => (
+            ) : pageBookings.map((booking) => (
               <tr key={booking._id}>
                 <td style={s.td}>
                   <div style={s.clientName}>
@@ -263,6 +271,8 @@ const ManageBookings = () => {
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} isDark={isDark} />
 
       {ratingModalId && ratingBooking && (
         <ClientRatingModal

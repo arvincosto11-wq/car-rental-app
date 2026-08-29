@@ -2,11 +2,15 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import { SkeletonTableRows } from '../../components/Skeleton';
+import Pagination from '../../components/Pagination';
+import { paginate } from '../../utils/paginate';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
+
+const PAGE_SIZE = 10;
 
 const ManageConsignments = () => {
   usePageTitle('Manage Consignments');
@@ -16,6 +20,7 @@ const ManageConsignments = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
   const [selectedId, setSelectedId] = useState(null);
+  const [page, setPage] = useState(1);
   const [declineReason, setDeclineReason] = useState('');
   const [showDeclineBox, setShowDeclineBox] = useState(false);
   const [working, setWorking] = useState(false);
@@ -35,6 +40,9 @@ const ManageConsignments = () => {
 
   const selected = consignments.find((c) => c._id === selectedId);
   const filtered = consignments.filter((c) => filter === 'all' || c.status === filter);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageConsignments = paginate(filtered, page, PAGE_SIZE);
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
   const closeModal = () => {
     setSelectedId(null);
@@ -125,7 +133,7 @@ const ManageConsignments = () => {
 
       <div style={s.filterRow}>
         {['pending', 'approved', 'declined', 'all'].map((f) => (
-          <button key={f} style={s.filterBtn(filter === f)} onClick={() => setFilter(f)}>
+          <button key={f} style={s.filterBtn(filter === f)} onClick={() => { setFilter(f); setPage(1); }}>
             {f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
         ))}
@@ -165,7 +173,7 @@ const ManageConsignments = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => (
+            {pageConsignments.map((c) => (
               <tr key={c._id}>
                 <td style={s.td}>
                   <div style={s.ownerName}>{c.owner?.name || 'Unknown'}</div>
@@ -191,6 +199,8 @@ const ManageConsignments = () => {
         </table>
         </div>
       )}
+
+      {!loading && <Pagination page={page} totalPages={totalPages} onPageChange={setPage} isDark={isDark} />}
 
       {selected && (
         <div style={s.modalOverlay}>

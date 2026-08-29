@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import { SkeletonTableRows } from '../../components/Skeleton';
+import Pagination from '../../components/Pagination';
+import { paginate } from '../../utils/paginate';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
+
+const PAGE_SIZE = 10;
 
 const ManageClients = () => {
   usePageTitle('Manage Clients');
@@ -14,6 +18,7 @@ const ManageClients = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedClientId, setSelectedClientId] = useState(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -57,6 +62,9 @@ const ManageClients = () => {
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.email.toLowerCase().includes(search.toLowerCase())
   );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageClients = paginate(filtered, page, PAGE_SIZE);
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
   const selectedClient = clients.find((c) => c._id === selectedClientId);
   const clientModalRef = useModalA11y(() => setSelectedClientId(null), !!selectedClient);
@@ -108,7 +116,7 @@ const ManageClients = () => {
         placeholder="Search by name or email..."
         aria-label="Search clients by name or email"
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
       />
 
       <div className="table-scroll">
@@ -125,7 +133,7 @@ const ManageClients = () => {
             </tr>
           </thead>
           <tbody>
-            {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : filtered.map((client) => (
+            {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : pageClients.map((client) => (
               <tr key={client._id}>
                 <td style={s.td}>
                   <div style={s.nameCell}>{client.name}</div>
@@ -154,6 +162,8 @@ const ManageClients = () => {
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} isDark={isDark} />
 
       {selectedClient && (
         <div style={s.modalOverlay}>
