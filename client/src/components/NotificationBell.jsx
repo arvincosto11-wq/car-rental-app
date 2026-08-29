@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
+const DROPDOWN_LIMIT = 8;
+
 const timeAgo = (dateStr) => {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (seconds < 60) return 'just now';
@@ -71,6 +73,21 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
     }
   };
 
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    setNotifications((prev) => prev.filter((n) => n._id !== id));
+    try {
+      await api.delete(`/notifications/${id}`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleViewAll = () => {
+    setOpen(false);
+    navigate('/notifications');
+  };
+
   const s = {
     wrap: { position: 'relative' },
     btn: {
@@ -101,10 +118,18 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
     }),
     itemTitleRow: { display: 'flex', alignItems: 'center', gap: '6px' },
     dot: { width: '6px', height: '6px', borderRadius: '50%', background: isDark ? GOLD_DARK : GOLD, flexShrink: 0 },
-    itemTitle: { fontSize: '12px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    itemTitle: { fontSize: '12px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', flex: 1 },
     itemMsg: { fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '2px' },
     itemTime: { fontSize: '10px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '4px' },
+    deleteBtn: {
+      background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', flexShrink: 0,
+      color: isDark ? '#64748b' : '#9ca3af', fontSize: '14px', lineHeight: 1,
+    },
     empty: { padding: '24px 14px', textAlign: 'center', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
+    viewAllBtn: {
+      display: 'block', width: '100%', textAlign: 'center', padding: '10px', border: 'none', background: 'none',
+      color: isDark ? GOLD_DARK : GOLD, fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+    },
   };
 
   return (
@@ -126,16 +151,35 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
           {notifications.length === 0 ? (
             <div style={s.empty}>No notifications yet.</div>
           ) : (
-            notifications.map((n) => (
-              <button key={n._id} style={s.item(n.read)} onClick={() => handleItemClick(n)}>
-                <div style={s.itemTitleRow}>
-                  {!n.read && <span style={s.dot} />}
-                  <span style={s.itemTitle}>{n.title}</span>
+            <>
+              {notifications.slice(0, DROPDOWN_LIMIT).map((n) => (
+                <div
+                  key={n._id}
+                  style={s.item(n.read)}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleItemClick(n)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) handleItemClick(n); }}
+                >
+                  <div style={s.itemTitleRow}>
+                    {!n.read && <span style={s.dot} />}
+                    <span style={s.itemTitle}>{n.title}</span>
+                    <button
+                      type="button"
+                      className="icon-toggle-btn"
+                      style={s.deleteBtn}
+                      onClick={(e) => handleDelete(e, n._id)}
+                      aria-label="Delete notification"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  {n.message && <div style={s.itemMsg}>{n.message}</div>}
+                  <div style={s.itemTime}>{timeAgo(n.createdAt)}</div>
                 </div>
-                {n.message && <div style={s.itemMsg}>{n.message}</div>}
-                <div style={s.itemTime}>{timeAgo(n.createdAt)}</div>
-              </button>
-            ))
+              ))}
+              <button style={s.viewAllBtn} onClick={handleViewAll}>View All</button>
+            </>
           )}
         </div>
       )}

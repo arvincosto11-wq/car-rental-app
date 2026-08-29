@@ -37,4 +37,14 @@ router.put('/read-all', protect, async (req, res) => {
   }
 });
 
+router.delete('/:id', protect, async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+    if (!notification) return res.status(404).json({ message: 'Notification not found' });
+    res.json({ message: 'Notification deleted.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 export default router;
