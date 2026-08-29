@@ -345,9 +345,10 @@ const CarDetail = () => {
 
   return (
     <div style={s.page}>
-      {/* Terms Modal */}
+      {/* Terms Modal — can open on top of the Booking Modal (step 3's Terms
+          link), so it needs a higher z-index to actually sit above it. */}
       {showTerms && (
-        <div style={s.modal}>
+        <div style={{ ...s.modal, zIndex: 1001 }}>
           <div style={s.modalContent} ref={termsModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="terms-modal-title">
             <h2 id="terms-modal-title" style={s.modalTitle}>Terms and Conditions</h2>
             <div style={s.modalText}>
@@ -379,9 +380,10 @@ const CarDetail = () => {
         </div>
       )}
 
-      {/* Refund Notice Modal */}
+      {/* Refund Notice Modal — opens from step 3 of the Booking Modal, so it
+          needs a higher z-index to sit above it instead of behind it. */}
       {showRefundNotice && (
-        <div style={s.modal}>
+        <div style={{ ...s.modal, zIndex: 1001 }}>
           <div style={s.modalContent} ref={refundNoticeModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-notice-title">
             <h2 id="refund-notice-title" style={s.modalTitle}>Before You Confirm</h2>
             <div style={s.modalText}>
