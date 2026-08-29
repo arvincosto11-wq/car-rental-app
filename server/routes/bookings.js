@@ -96,6 +96,8 @@ router.post('/', protect, async (req, res) => {
       payment: paymentType === 'full' ? 'paid' : 'offline'
     });
 
+    await notifyAdmins('New Booking Request', `${currentUser.name} requested to book ${car.brand} ${car.model}.`, '/admin/manage-bookings');
+
     res.status(201).json(booking);
   } catch (err) {
     res.status(500).json({ message: err.message });
