@@ -42,7 +42,14 @@ const RateBookings = () => {
 
   const styles = {
     container: { maxWidth: '700px', margin: '0 auto', padding: '32px' },
-    backLink: { fontSize: '13px', color: isDark ? GOLD_DARK : GOLD, textDecoration: 'none', fontWeight: '500' },
+    backLink: {
+      display: 'inline-flex', alignItems: 'center', gap: '6px',
+      padding: '8px 16px', fontSize: '13px', fontWeight: '600',
+      color: isDark ? '#f1f5f9' : '#374151',
+      background: isDark ? '#1e293b' : '#f3f4f6',
+      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '8px', textDecoration: 'none', marginBottom: '16px',
+    },
     title: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginTop: '10px', marginBottom: '4px' },
     subtitle: { fontSize: '14px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
     empty: { textAlign: 'center', padding: '48px', color: isDark ? '#94a3b8' : '#6b7280' },
@@ -68,7 +75,7 @@ const RateBookings = () => {
 
   return (
     <div style={styles.container}>
-      <Link to="/my-bookings" style={styles.backLink}>← Back to My Bookings</Link>
+      <Link to="/my-bookings" className="btn-like" style={styles.backLink}>← Back to My Bookings</Link>
       <h1 style={styles.title}>Rate My Bookings</h1>
       <p style={styles.subtitle}>Completed bookings you haven't rated yet.</p>
 
