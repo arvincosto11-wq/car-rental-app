@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -343,13 +344,27 @@ const CarDetail = () => {
     return true;
   });
 
+  const backdropMotion = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+    transition: { duration: 0.15 },
+  };
+  const modalMotion = {
+    initial: { opacity: 0, scale: 0.95, y: 10 },
+    animate: { opacity: 1, scale: 1, y: 0 },
+    exit: { opacity: 0, scale: 0.95, y: 10 },
+    transition: { duration: 0.18, ease: 'easeOut' },
+  };
+
   return (
     <div style={s.page}>
       {/* Terms Modal — can open on top of the Booking Modal (step 3's Terms
           link), so it needs a higher z-index to actually sit above it. */}
+      <AnimatePresence>
       {showTerms && (
-        <div style={{ ...s.modal, zIndex: 1001 }}>
-          <div style={s.modalContent} ref={termsModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="terms-modal-title">
+        <motion.div style={{ ...s.modal, zIndex: 1001 }} {...backdropMotion}>
+          <motion.div style={s.modalContent} {...modalMotion} ref={termsModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="terms-modal-title">
             <h2 id="terms-modal-title" style={s.modalTitle}>Terms and Conditions</h2>
             <div style={s.modalText}>
               <p><strong>1. Booking Policy</strong></p>
@@ -376,15 +391,17 @@ const CarDetail = () => {
             <button style={s.closeBtn} onClick={() => setShowTerms(false)}>
               I Understand — Close
             </button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Refund Notice Modal — opens from step 3 of the Booking Modal, so it
           needs a higher z-index to sit above it instead of behind it. */}
+      <AnimatePresence>
       {showRefundNotice && (
-        <div style={{ ...s.modal, zIndex: 1001 }}>
-          <div style={s.modalContent} ref={refundNoticeModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-notice-title">
+        <motion.div style={{ ...s.modal, zIndex: 1001 }} {...backdropMotion}>
+          <motion.div style={s.modalContent} {...modalMotion} ref={refundNoticeModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-notice-title">
             <h2 id="refund-notice-title" style={s.modalTitle}>Before You Confirm</h2>
             <div style={s.modalText}>
               <p>⚠️ <strong>Refund Policy:</strong> If you need to cancel this booking later, refunds deduct 50% of the amount you paid as a processing fee.</p>
@@ -400,16 +417,18 @@ const CarDetail = () => {
                 {booking ? 'Booking...' : 'Confirm Booking'}
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Booking Modal — hidden while Terms or the Refund Notice is stacked on
           top of it, since they're a different size and would otherwise show
           both panels' edges overlapping instead of one clean dialog. */}
+      <AnimatePresence>
       {showBookingModal && !showTerms && !showRefundNotice && (
-        <div style={s.modal}>
-          <div style={{ ...s.modalContent, maxWidth: '560px' }} ref={bookingModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="booking-modal-title">
+        <motion.div style={s.modal} {...backdropMotion}>
+          <motion.div style={{ ...s.modalContent, maxWidth: '560px' }} {...modalMotion} ref={bookingModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="booking-modal-title">
             <div style={s.modalHeader}>
               <h2 id="booking-modal-title" style={{ ...s.modalTitle, marginBottom: 0 }}>Book {car.brand} {car.model}</h2>
               <button type="button" className="icon-toggle-btn" aria-label="Close" style={s.modalCloseBtn} onClick={() => setShowBookingModal(false)}>✕</button>
@@ -428,8 +447,9 @@ const CarDetail = () => {
                   </div>
                 )}
 
+                <AnimatePresence mode="wait">
                 {step === 1 && (
-                  <>
+                  <motion.div key="step1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
                     <div style={s.summaryBar}>
                       <span>
                         {startDate && endDate
@@ -458,11 +478,11 @@ const CarDetail = () => {
                         Continue
                       </button>
                     </div>
-                  </>
+                  </motion.div>
                 )}
 
                 {step === 2 && (
-                  <>
+                  <motion.div key="step2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
                     <label style={s.label} id="cd-booking-type-label">Booking Type</label>
                     {supportedBookingTypes.length > 1 ? (
                       <div role="group" aria-labelledby="cd-booking-type-label" style={s.paymentOptions}>
@@ -550,11 +570,11 @@ const CarDetail = () => {
                       <button style={s.backStepBtn} onClick={() => goToStep(1)}>Back</button>
                       <button style={s.nextBtn} onClick={goToConfirmNext}>Continue</button>
                     </div>
-                  </>
+                  </motion.div>
                 )}
 
                 {step === 3 && (
-                  <>
+                  <motion.div key="step3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
                     <div style={s.termsRow}>
                       <input
                         id="cd-agree-terms"
@@ -584,13 +604,15 @@ const CarDetail = () => {
                     <p style={s.noCC}>
                       {paymentType === 'full' ? 'Full payment due now' : 'Remaining balance due upon vehicle pickup'} · Cash or GCash accepted
                     </p>
-                  </>
+                  </motion.div>
                 )}
+                </AnimatePresence>
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       <div style={s.container}>
         <button style={s.backBtn} onClick={() => navigate('/cars')}>

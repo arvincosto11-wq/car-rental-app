@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { MotionConfig } from 'motion/react';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIFeedbackProvider } from './context/UIFeedbackContext';
@@ -32,6 +33,7 @@ import NotFound from './pages/NotFound';
 
 function App() {
   return (
+    <MotionConfig reducedMotion="user">
     <ThemeProvider>
       <UIFeedbackProvider>
       <AuthProvider>
@@ -203,6 +205,7 @@ function App() {
       </AuthProvider>
       </UIFeedbackProvider>
     </ThemeProvider>
+    </MotionConfig>
   );
 }
 

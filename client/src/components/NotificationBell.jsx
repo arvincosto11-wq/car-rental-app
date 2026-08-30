@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
@@ -143,8 +144,15 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
         {unreadCount > 0 && <span style={s.badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
       </button>
 
+      <AnimatePresence>
       {open && (
-        <div style={s.panel}>
+        <motion.div
+          style={s.panel}
+          initial={{ opacity: 0, scale: 0.96, y: -6 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: -6 }}
+          transition={{ duration: 0.15, ease: 'easeOut' }}
+        >
           <div style={s.header}>
             <span style={s.headerTitle}>Notifications</span>
             {unreadCount > 0 && <button style={s.markAllBtn} onClick={handleMarkAllRead}>Mark all read</button>}
@@ -184,8 +192,9 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
               )}
             </>
           )}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 };
