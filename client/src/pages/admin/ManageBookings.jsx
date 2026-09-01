@@ -164,14 +164,23 @@ const ManageBookings = () => {
     // Bookings Calendar / Rate Clients, so returning from this filter reads
     // as a back action rather than another primary button.
     rescheduleBackLink: {
-      display: 'flex', alignItems: 'center',
-      padding: '9px 4px', fontSize: '13px', color: isDark ? GOLD_DARK : GOLD, fontWeight: '500',
+      display: 'inline-block', marginBottom: '12px',
+      padding: 0, fontSize: '13px', color: isDark ? GOLD_DARK : GOLD, fontWeight: '500',
       background: 'none', border: 'none', textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
     },
   };
 
   return (
     <AdminLayout activePage="Manage Bookings">
+      {!loading && rescheduleOnly && (
+        <button
+          type="button"
+          style={s.rescheduleBackLink}
+          onClick={() => { setRescheduleOnly(false); setPage(1); }}
+        >
+          ← Back to All Bookings
+        </button>
+      )}
       <div style={s.headerRow}>
         <div>
           <h1 style={s.title}>Manage Bookings</h1>
@@ -181,15 +190,6 @@ const ManageBookings = () => {
           <button style={s.calendarBtn} onClick={() => navigate('/admin/bookings-calendar')}>
             📅 Calendar View
           </button>
-          {!loading && rescheduleOnly && (
-            <button
-              type="button"
-              style={s.rescheduleBackLink}
-              onClick={() => { setRescheduleOnly(false); setPage(1); }}
-            >
-              ← Back to All Bookings
-            </button>
-          )}
           {!loading && !rescheduleOnly && pendingRescheduleCount > 0 && (
             <button
               type="button"
