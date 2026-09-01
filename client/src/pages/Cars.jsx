@@ -7,11 +7,12 @@ import Skeleton from '../components/Skeleton';
 import FavoriteButton from '../components/FavoriteButton';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
+import { GOLD, GOLD_DARK } from '../theme';
 
 const Cars = () => {
   usePageTitle('Vehicles');
   const { canFavorite, isFavorite, toggleFavorite } = useFavorites();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -25,8 +26,8 @@ const Cars = () => {
   const navigate = useNavigate();
 
   // Carried over from the homepage search box (if used) so a picked car's
-  // detail page can pre-fill its own date fields — the listing itself isn't
-  // filtered by these, see the note on Cars page date search.
+  // detail page can pre-fill its own date fields, and now also filters this
+  // listing itself down to vehicles actually free for that range.
   const pickupDate = searchParams.get('pickup') || '';
   const returnDate = searchParams.get('return') || '';
   const carDetailUrl = (carId) => {
@@ -37,10 +38,23 @@ const Cars = () => {
     return `/cars/${carId}?${params.toString()}`;
   };
 
+  const clearDates = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('pickup');
+    params.delete('return');
+    setSearchParams(params);
+  };
+
   useEffect(() => {
     const fetchCars = async () => {
+      setLoading(true);
       try {
-        const res = await api.get('/cars');
+        const params = {};
+        if (pickupDate && returnDate) {
+          params.startDate = pickupDate;
+          params.endDate = returnDate;
+        }
+        const res = await api.get('/cars', { params });
         setCars(res.data);
       } catch (err) {
         console.error(err);
@@ -49,7 +63,7 @@ const Cars = () => {
       }
     };
     fetchCars();
-  }, []);
+  }, [pickupDate, returnDate]);
 
   const filtered = cars
     .filter((car) => {
@@ -225,6 +239,10 @@ const Cars = () => {
       borderRadius: '20px',
     },
     dateNotice: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '10px',
       fontSize: '13px',
       color: isDark ? '#94a3b8' : '#6b7280',
       marginBottom: '16px',
@@ -233,6 +251,15 @@ const Cars = () => {
       borderRadius: '8px',
       padding: '10px 14px',
     },
+    clearDatesBtn: {
+      background: 'none',
+      border: 'none',
+      color: isDark ? GOLD_DARK : GOLD,
+      fontSize: '12px',
+      fontWeight: '700',
+      cursor: 'pointer',
+      flexShrink: 0,
+    },
   };
 
   return (
@@ -240,9 +267,12 @@ const Cars = () => {
       <h1 style={styles.title}>All Cars</h1>
 
       {(pickupDate || returnDate) && (
-        <p style={styles.dateNotice}>
-          📅 {pickupDate || '—'} to {returnDate || '—'} — pick a vehicle below and these dates will carry over to its booking form.
-        </p>
+        <div style={styles.dateNotice}>
+          <span>
+            📅 Showing vehicles available {pickupDate || '—'} to {returnDate || '—'} — pick one and these dates carry over to its booking form.
+          </span>
+          <button type="button" style={styles.clearDatesBtn} onClick={clearDates}>Clear dates</button>
+        </div>
       )}
 
       <div style={styles.filters}>

@@ -120,6 +120,21 @@ const ConsignorDashboard = () => {
     all: earnedBookings.reduce((sum, b) => sum + b.totalPrice, 0),
   };
 
+  // Same period window as the toggle above, broken down per vehicle so an
+  // owner with multiple cars can see which one is actually earning.
+  const periodCutoff = earningsPeriod === 'week' ? startOfWeek : earningsPeriod === 'month' ? startOfMonth : null;
+  const periodBookings = periodCutoff ? earnedBookings.filter((b) => new Date(b.createdAt) >= periodCutoff) : earnedBookings;
+  const perCarMap = {};
+  periodBookings.forEach((b) => {
+    const carId = b.car?._id;
+    if (!carId) return;
+    if (!perCarMap[carId]) perCarMap[carId] = { car: b.car, total: 0, count: 0 };
+    perCarMap[carId].total += b.totalPrice;
+    perCarMap[carId].count += 1;
+  });
+  const perCarEarnings = Object.values(perCarMap).sort((a, b) => b.total - a.total);
+  const maxCarEarning = perCarEarnings[0]?.total || 0;
+
   const s = {
     page: { minHeight: '100vh', background: isDark ? '#0f172a' : '#f9fafb' },
     container: { maxWidth: '900px', margin: '0 auto', padding: '32px' },
@@ -134,6 +149,15 @@ const ConsignorDashboard = () => {
     earningsBox: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '18px', marginBottom: '28px' },
     earningsLabel: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '10px' },
     earningsNum: { fontSize: '28px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, marginTop: '14px' },
+    perCarList: { marginTop: '18px', paddingTop: '16px', borderTop: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
+    perCarEmpty: { fontSize: '12px', color: isDark ? '#64748b' : '#9ca3af' },
+    perCarRow: { marginBottom: '12px' },
+    perCarTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px', gap: '10px' },
+    perCarName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    perCarCount: { fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginLeft: '6px', fontWeight: '400' },
+    perCarAmount: { fontSize: '13px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, whiteSpace: 'nowrap' },
+    perCarBarTrack: { height: '6px', borderRadius: '4px', background: isDark ? '#334155' : '#f3f4f6', overflow: 'hidden' },
+    perCarBarFill: (pct) => ({ height: '100%', width: `${pct}%`, borderRadius: '4px', background: isDark ? GOLD_DARK : GOLD }),
     periodToggleRow: { display: 'flex', gap: '8px' },
     periodBtn: (active) => ({
       padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
@@ -219,6 +243,27 @@ const ConsignorDashboard = () => {
             <button type="button" style={s.periodBtn(earningsPeriod === 'all')} onClick={() => setEarningsPeriod('all')}>All Time</button>
           </div>
           <div style={s.earningsNum}>₱{earnings[earningsPeriod].toLocaleString()}</div>
+
+          <div style={s.perCarList}>
+            {perCarEarnings.length === 0 ? (
+              <p style={s.perCarEmpty}>No earnings from any vehicle in this period yet.</p>
+            ) : (
+              perCarEarnings.map(({ car, total, count }) => (
+                <div key={car._id} style={s.perCarRow}>
+                  <div style={s.perCarTop}>
+                    <span style={s.perCarName}>
+                      {car.brand} {car.model}
+                      <span style={s.perCarCount}>{count} booking{count === 1 ? '' : 's'}</span>
+                    </span>
+                    <span style={s.perCarAmount}>₱{total.toLocaleString()}</span>
+                  </div>
+                  <div style={s.perCarBarTrack}>
+                    <div style={s.perCarBarFill(maxCarEarning > 0 ? (total / maxCarEarning) * 100 : 0)} />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {loading ? (

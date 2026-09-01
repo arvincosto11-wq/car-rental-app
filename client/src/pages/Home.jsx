@@ -19,6 +19,7 @@ const HERO_IMAGES = ['/hero-mayon.webp', '/hero-mayon-road.jpg', '/hero-winding-
 const Home = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [testimonials, setTestimonials] = useState([]);
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const [searchCategory, setSearchCategory] = useState('');
@@ -42,6 +43,18 @@ const Home = () => {
       }
     };
     fetchCars();
+  }, []);
+
+  useEffect(() => {
+    const fetchTestimonials = async () => {
+      try {
+        const res = await api.get('/cars/reviews/featured');
+        setTestimonials(res.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchTestimonials();
   }, []);
 
   const heroImages = HERO_IMAGES;
@@ -280,6 +293,33 @@ const Home = () => {
       fontWeight: '500',
       cursor: 'pointer',
     },
+    testimonialsSection: {
+      background: isDark ? '#1e293b' : '#f9fafb',
+      borderTop: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+    },
+    testimonialGrid: { gap: '20px' },
+    testimonialCard: {
+      background: isDark ? '#0f172a' : '#fff',
+      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      borderRadius: '12px',
+      padding: '20px',
+    },
+    testimonialComment: {
+      fontSize: '14px',
+      color: isDark ? '#cbd5e1' : '#374151',
+      lineHeight: '1.6',
+      margin: '10px 0 14px',
+    },
+    testimonialFooter: { display: 'flex', alignItems: 'center', gap: '10px' },
+    testimonialAvatar: {
+      width: '34px', height: '34px', borderRadius: '50%',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+      fontSize: '14px', fontWeight: '700', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    testimonialName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    testimonialCar: { fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280' },
     aboutSection: {
       background: isDark ? '#1e293b' : '#f9fafb',
       borderTop: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
@@ -537,6 +577,30 @@ const Home = () => {
           </button>
         </div>
       </div>
+
+      {/* Testimonials */}
+      {testimonials.length > 0 && (
+        <div style={{ ...styles.section, ...styles.testimonialsSection }}>
+          <h2 style={styles.sectionTitle}>What Renters Are Saying</h2>
+          <p style={styles.sectionSubtitle}>Real feedback from real trips across Albay.</p>
+
+          <div className="responsive-grid-3" style={styles.testimonialGrid}>
+            {testimonials.map((t) => (
+              <div key={t._id} style={styles.testimonialCard}>
+                <StarRating value={t.overall} size={13} readOnly />
+                <p style={styles.testimonialComment}>"{t.comment}"</p>
+                <div style={styles.testimonialFooter}>
+                  <span style={styles.testimonialAvatar}>{t.reviewerName.charAt(0)}</span>
+                  <div>
+                    <div style={styles.testimonialName}>{t.reviewerName}</div>
+                    {t.car && <div style={styles.testimonialCar}>{t.car.brand} {t.car.model}</div>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* About */}
       <div style={{ ...styles.section, ...styles.aboutSection }}>

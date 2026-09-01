@@ -9,9 +9,25 @@ const router = express.Router();
 // Get all cars (public) — archived cars are excluded everywhere they'd
 // normally show up, including the admin's own Manage Cars list, which uses
 // this same endpoint. See /archived below for the admin-only archived view.
+// Optional startDate/endDate narrows the list to vehicles with no confirmed
+// booking overlapping that range — used by the Cars/Home date search.
 router.get('/', async (req, res) => {
   try {
-    const cars = await Car.find({ archived: { $ne: true } });
+    const { startDate, endDate } = req.query;
+    let cars = await Car.find({ archived: { $ne: true } });
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const overlapping = await Booking.find({
+        status: 'confirmed',
+        startDate: { $lt: end },
+        endDate: { $gt: start },
+      }).select('car');
+      const bookedCarIds = new Set(overlapping.map((b) => b.car.toString()));
+      cars = cars.filter((c) => !bookedCarIds.has(c._id.toString()));
+    }
+
     res.json(cars);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -74,6 +90,38 @@ router.get('/reviews/all', protect, adminOnly, async (req, res) => {
       comment: b.carRating.comment,
       photos: b.carRating.photos || [],
       hidden: !!b.carRating.hidden,
+      ratedAt: b.carRating.ratedAt,
+    }));
+
+    res.json(reviews);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Public: a handful of the best-rated, commented reviews across all cars,
+// for homepage testimonials. Reviewer name is masked the same way as the
+// per-car reviews endpoint below.
+router.get('/reviews/featured', async (req, res) => {
+  try {
+    const bookings = await Booking.find({
+      'carRating.ratedAt': { $exists: true },
+      'carRating.hidden': { $ne: true },
+      'carRating.overall': { $gte: 4 },
+      'carRating.comment': { $nin: [null, ''] },
+    })
+      .populate('user', 'name')
+      .populate('car', 'brand model image')
+      .sort({ 'carRating.overall': -1, 'carRating.ratedAt': -1 })
+      .limit(6)
+      .select('carRating user car');
+
+    const reviews = bookings.map((b) => ({
+      _id: b._id,
+      reviewerName: maskReviewerName(b.user?.name),
+      car: b.car ? { _id: b.car._id, brand: b.car.brand, model: b.car.model, image: b.car.image } : null,
+      overall: b.carRating.overall,
+      comment: b.carRating.comment,
       ratedAt: b.carRating.ratedAt,
     }));
 
