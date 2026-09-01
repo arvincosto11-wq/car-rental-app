@@ -356,9 +356,9 @@ const ConsignorDashboard = () => {
                   <td style={s.td}><span style={s.payBadge}>{b.payment}</span></td>
                   <td style={s.td}>
                     {b.refundStatus === 'requested' ? (
-                      <span style={s.refundRequested}>Refund Requested</span>
+                      <span style={s.refundRequested}>Refund Requested (₱{b.refundAmount?.toLocaleString() ?? 0})</span>
                     ) : b.refundStatus === 'approved' ? (
-                      <span style={s.refundApproved}>Refund Approved</span>
+                      <span style={s.refundApproved}>Refund Approved (₱{b.refundAmount?.toLocaleString() ?? 0})</span>
                     ) : b.refundStatus === 'declined' ? (
                       <span style={s.refundDeclined}>Refund Declined</span>
                     ) : (

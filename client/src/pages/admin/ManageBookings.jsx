@@ -25,6 +25,7 @@ const ManageBookings = () => {
   const [ratingModalId, setRatingModalId] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [rescheduleOnly, setRescheduleOnly] = useState(false);
   const [page, setPage] = useState(1);
 
   useEffect(() => { fetchBookings(); }, []);
@@ -85,15 +86,17 @@ const ManageBookings = () => {
 
   const ratingBooking = bookings.find((b) => b._id === ratingModalId);
   const unratedClientCount = bookings.filter((b) => b.status === 'completed' && !b.clientRating?.ratedAt).length;
+  const pendingRescheduleCount = bookings.filter((b) => b.rescheduleRequest?.status === 'pending').length;
 
   const filteredBookings = bookings.filter((b) => {
     const matchStatus = statusFilter === 'all' ? true : b.status === statusFilter;
+    const matchReschedule = !rescheduleOnly || b.rescheduleRequest?.status === 'pending';
     const q = search.trim().toLowerCase();
     const matchSearch = !q
       || b.user?.name?.toLowerCase().includes(q)
       || b.user?.email?.toLowerCase().includes(q)
       || `${b.car?.brand} ${b.car?.model}`.toLowerCase().includes(q);
-    return matchStatus && matchSearch;
+    return matchStatus && matchReschedule && matchSearch;
   });
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
   const pageBookings = paginate(filteredBookings, page, PAGE_SIZE);
@@ -147,6 +150,18 @@ const ManageBookings = () => {
       border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600',
       cursor: 'pointer', whiteSpace: 'nowrap',
     },
+    rescheduleFilterBtn: (active) => ({
+      display: 'flex', alignItems: 'center', gap: '8px',
+      padding: '9px 16px', background: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#1e293b' : '#f3f4f6'),
+      color: active ? ON_GOLD : (isDark ? '#f1f5f9' : '#374151'),
+      border: `1px solid ${active ? 'transparent' : (isDark ? '#334155' : '#d1d5db')}`,
+      borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap',
+    }),
+    rescheduleFilterBadge: (active) => ({
+      background: active ? 'rgba(0,0,0,0.2)' : (isDark ? '#334155' : '#e5e7eb'),
+      color: active ? ON_GOLD : (isDark ? '#f1f5f9' : '#374151'),
+      fontSize: '11px', fontWeight: '700', borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
+    }),
   };
 
   return (
@@ -160,6 +175,16 @@ const ManageBookings = () => {
           <button style={s.calendarBtn} onClick={() => navigate('/admin/bookings-calendar')}>
             📅 Calendar View
           </button>
+          {!loading && pendingRescheduleCount > 0 && (
+            <button
+              style={s.rescheduleFilterBtn(rescheduleOnly)}
+              onClick={() => { setRescheduleOnly((v) => !v); setPage(1); }}
+              aria-pressed={rescheduleOnly}
+            >
+              🔄 Pending Reschedules
+              <span style={s.rescheduleFilterBadge(rescheduleOnly)}>{pendingRescheduleCount}</span>
+            </button>
+          )}
           {!loading && unratedClientCount > 0 && (
             <button style={s.rateClientsBtn} onClick={() => navigate('/admin/rate-clients')}>
               ⭐ Rate Clients
