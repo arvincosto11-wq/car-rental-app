@@ -267,7 +267,7 @@ const Cars = () => {
       <h1 style={styles.title}>All Cars</h1>
 
       {(pickupDate || returnDate) && (
-        <div style={styles.dateNotice}>
+        <div className="row-stack-sm" style={styles.dateNotice}>
           <span>
             📅 Showing vehicles available {pickupDate || '—'} to {returnDate || '—'} — pick one and these dates carry over to its booking form.
           </span>

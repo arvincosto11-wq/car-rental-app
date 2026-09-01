@@ -16,6 +16,7 @@ import RateBookings from './pages/RateBookings';
 import MyFavorites from './pages/MyFavorites';
 import Profile from './pages/Profile';
 import ConsignmentRegister from './pages/ConsignmentRegister';
+import Help from './pages/Help';
 import NotFound from './pages/NotFound';
 
 // Admin and consignor pages are only ever reached by those roles, and
@@ -58,6 +59,7 @@ function App() {
             <Route path="/login" element={<><Navbar /><Login /></>} />
             <Route path="/register" element={<><Navbar /><Register /></>} />
             <Route path="/consignment/register" element={<><Navbar /><ConsignmentRegister /></>} />
+            <Route path="/help" element={<><Navbar /><Help /></>} />
 
             {/* Client-only Routes */}
             <Route

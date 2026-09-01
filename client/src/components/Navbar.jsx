@@ -99,6 +99,7 @@ const Navbar = () => {
     ...(user && user.role === 'admin' ? [{ to: '/admin', label: 'Admin Dashboard' }] : []),
     ...(user && user.role === 'consignor' ? [{ to: '/consignor', label: 'My Vehicles' }] : []),
     ...(!user ? [{ to: '/consignment/register', label: 'List Your Car' }] : []),
+    { to: '/help', label: 'Help' },
   ];
 
   return (

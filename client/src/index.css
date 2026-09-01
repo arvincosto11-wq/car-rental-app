@@ -402,6 +402,19 @@ select:disabled {
   }
 }
 
+/* Same row-to-column collapse as .admin-row-stack, for non-admin pages
+   (e.g. the Cars page's active-date-filter banner with its Clear link). */
+.row-stack-sm {
+  display: flex;
+}
+@media (max-width: 560px) {
+  .row-stack-sm {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+}
+
 /* Navbar mobile menu */
 .navbar-nav-links,
 .navbar-auth-group {

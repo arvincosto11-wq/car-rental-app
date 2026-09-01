@@ -152,7 +152,7 @@ const ConsignorDashboard = () => {
     perCarList: { marginTop: '18px', paddingTop: '16px', borderTop: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
     perCarEmpty: { fontSize: '12px', color: isDark ? '#64748b' : '#9ca3af' },
     perCarRow: { marginBottom: '12px' },
-    perCarTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px', gap: '10px' },
+    perCarTop: { display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px', gap: '10px' },
     perCarName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     perCarCount: { fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginLeft: '6px', fontWeight: '400' },
     perCarAmount: { fontSize: '13px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, whiteSpace: 'nowrap' },
