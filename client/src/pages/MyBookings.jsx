@@ -6,9 +6,13 @@ import api from '../api';
 import StarRating from '../components/StarRating';
 import RatingModal from '../components/RatingModal';
 import { SkeletonListCard } from '../components/Skeleton';
+import Pagination from '../components/Pagination';
+import { paginate } from '../utils/paginate';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+
+const PAGE_SIZE = 10;
 
 const REFUND_REASONS = [
   'Change of travel plans – Trip was canceled, postponed, or dates changed.',
@@ -27,6 +31,7 @@ const MyBookings = () => {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
   const [refundModalId, setRefundModalId] = useState(null);
   const [refundReason, setRefundReason] = useState('');
   const [refundError, setRefundError] = useState('');
@@ -169,6 +174,10 @@ const MyBookings = () => {
   const totalSpent = bookings.reduce((sum, b) => sum + b.totalPrice, 0);
   const confirmedCount = bookings.filter((b) => b.status === 'confirmed').length;
   const unratedCount = bookings.filter((b) => b.status === 'completed' && !b.carRating?.ratedAt).length;
+
+  const totalPages = Math.max(1, Math.ceil(bookings.length / PAGE_SIZE));
+  const pageBookings = paginate(bookings, page, PAGE_SIZE);
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
   const styles = {
     container: { maxWidth: '900px', margin: '0 auto', padding: '32px' },
@@ -436,7 +445,7 @@ const MyBookings = () => {
         </div>
       ) : (
         <div style={styles.list}>
-          {bookings.map((booking, index) => (
+          {pageBookings.map((booking, i) => (
             <div key={booking._id} className="booking-card" style={styles.card}>
               <div style={styles.imgWrap}>
                 {booking.car?.image ? (
@@ -447,7 +456,7 @@ const MyBookings = () => {
               </div>
               <div style={styles.info}>
                 <div style={styles.topRow}>
-                  <span style={styles.bookingNum}>Booking #{index + 1}</span>
+                  <span style={styles.bookingNum}>Booking #{(page - 1) * PAGE_SIZE + i + 1}</span>
                   <span style={getStatusStyle(booking.status)}>
                     {booking.status}
                   </span>
@@ -513,6 +522,8 @@ const MyBookings = () => {
           ))}
         </div>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} isDark={isDark} />
 
       {refundModalId && activeBooking && (
         <div style={styles.modalOverlay}>

@@ -387,6 +387,9 @@ const CarDetail = () => {
               <br/>
               <p><strong>7. Late Returns</strong></p>
               <p>Late returns will be charged an additional fee equivalent to one day's rental rate per day of delay.</p>
+              <br/>
+              <p><strong>8. Rescheduling</strong></p>
+              <p>Instead of cancelling, you may request to move a pending or confirmed booking to different dates at no extra fee, as long as the new dates keep the same trip length and are approved by an admin. See My Bookings to request a reschedule.</p>
             </div>
             <button style={s.closeBtn} onClick={() => setShowTerms(false)}>
               I Understand — Close

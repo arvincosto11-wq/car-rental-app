@@ -412,6 +412,11 @@ router.put('/:id/reschedule', protect, adminOnly, async (req, res) => {
       booking.rescheduleRequest.status = 'approved';
       await booking.save();
       await notifyUser(booking.user, 'Reschedule Approved', 'Your booking has been moved to the new dates you requested.', '/my-bookings');
+
+      const car = await Car.findById(booking.car).select('brand model owner');
+      if (car?.owner) {
+        await notifyUser(car.owner, 'Booking Rescheduled', `A booking for your vehicle ${car.brand} ${car.model} was moved to new dates.`, '/consignor');
+      }
     } else {
       booking.rescheduleRequest.status = 'declined';
       booking.rescheduleRequest.adminNotes = adminNotes || '';
