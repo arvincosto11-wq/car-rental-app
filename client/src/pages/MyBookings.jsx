@@ -40,30 +40,6 @@ const overlapsBooked = (start, end, ranges) => {
   return ranges.some((r) => s < new Date(r.endDate).getTime() && e > new Date(r.startDate).getTime());
 };
 
-// Earliest same-length slot (starting tomorrow) that doesn't conflict with
-// an existing confirmed booking and isn't just the booking's current dates.
-const findNextAvailableSlot = (ranges, days, excludeStart, excludeEnd) => {
-  const candidate = new Date();
-  candidate.setDate(candidate.getDate() + 1);
-  candidate.setHours(0, 0, 0, 0);
-  const excludeStartVal = toDateValue(new Date(excludeStart));
-  const excludeEndVal = toDateValue(new Date(excludeEnd));
-
-  for (let i = 0; i < 365; i++) {
-    const start = new Date(candidate);
-    const end = new Date(candidate);
-    end.setDate(end.getDate() + days);
-    const startVal = toDateValue(start);
-    const endVal = toDateValue(end);
-    const isCurrent = startVal === excludeStartVal && endVal === excludeEndVal;
-    if (!isCurrent && !overlapsBooked(startVal, endVal, ranges)) {
-      return { start: startVal, end: endVal };
-    }
-    candidate.setDate(candidate.getDate() + 1);
-  }
-  return null;
-};
-
 const REFUND_REASONS = [
   'Change of travel plans – Trip was canceled, postponed, or dates changed.',
   'Personal reasons',
@@ -213,10 +189,6 @@ const MyBookings = () => {
 
   const rescheduleBooking = bookings.find((b) => b._id === rescheduleModalId);
   const rescheduleModalRef = useModalA11y(closeRescheduleModal, !!(rescheduleModalId && rescheduleBooking));
-  const suggestedSlot = rescheduleBooking
-    ? findNextAvailableSlot(bookedRangesForReschedule, rescheduleBooking.totalDays, rescheduleBooking.startDate, rescheduleBooking.endDate)
-    : null;
-  const suggestedSlotIsSelected = suggestedSlot && newStartDate === suggestedSlot.start && newEndDate === suggestedSlot.end;
 
   const activeBooking = bookings.find((b) => b._id === refundModalId);
   const refundPercentage = activeBooking ? getRefundPercentage(activeBooking.startDate) : 0;
@@ -402,15 +374,6 @@ const MyBookings = () => {
     },
     modalSub: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '14px', lineHeight: '1.5' },
     field: { marginBottom: '14px' },
-    suggestionBox: {
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap',
-      background: isDark ? 'rgba(232,161,0,0.1)' : '#fffbeb', border: `1px solid ${isDark ? '#5a4415' : '#fde68a'}`,
-      borderRadius: '8px', padding: '10px 12px', marginBottom: '14px', fontSize: '12px', color: isDark ? '#fbbf24' : '#92400e',
-    },
-    suggestionBtn: {
-      padding: '6px 12px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', cursor: 'pointer',
-      border: 'none', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, whiteSpace: 'nowrap', flexShrink: 0,
-    },
     rescheduleSelectedNote: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '-6px', marginBottom: '14px' },
     ratingSummary: { marginTop: '10px' },
     ratingScore: { fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
@@ -648,22 +611,6 @@ const MyBookings = () => {
             </p>
 
             {rescheduleError && <div style={styles.errorBox}>{rescheduleError}</div>}
-
-            {suggestedSlot && (
-              <div style={styles.suggestionBox}>
-                <span>
-                  💡 Next open {rescheduleBooking.totalDays}-day slot: {new Date(suggestedSlot.start).toLocaleDateString()} → {new Date(suggestedSlot.end).toLocaleDateString()}
-                </span>
-                <button
-                  type="button"
-                  style={styles.suggestionBtn}
-                  disabled={suggestedSlotIsSelected}
-                  onClick={() => { setRescheduleError(''); setNewStartDate(suggestedSlot.start); setNewEndDate(suggestedSlot.end); }}
-                >
-                  {suggestedSlotIsSelected ? 'Selected' : 'Use these dates'}
-                </button>
-              </div>
-            )}
 
             <div style={styles.field}>
               <AvailabilityCalendar

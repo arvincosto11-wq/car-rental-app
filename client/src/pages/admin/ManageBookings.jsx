@@ -150,18 +150,24 @@ const ManageBookings = () => {
       border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600',
       cursor: 'pointer', whiteSpace: 'nowrap',
     },
-    rescheduleFilterBtn: (active) => ({
+    rescheduleFilterBtn: {
       display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '9px 16px', background: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#1e293b' : '#f3f4f6'),
-      color: active ? ON_GOLD : (isDark ? '#f1f5f9' : '#374151'),
-      border: `1px solid ${active ? 'transparent' : (isDark ? '#334155' : '#d1d5db')}`,
+      padding: '9px 16px', background: isDark ? '#1e293b' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151',
+      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
       borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap',
-    }),
-    rescheduleFilterBadge: (active) => ({
-      background: active ? 'rgba(0,0,0,0.2)' : (isDark ? '#334155' : '#e5e7eb'),
-      color: active ? ON_GOLD : (isDark ? '#f1f5f9' : '#374151'),
+    },
+    rescheduleFilterBadge: {
+      background: isDark ? '#334155' : '#e5e7eb', color: isDark ? '#f1f5f9' : '#374151',
       fontSize: '11px', fontWeight: '700', borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
-    }),
+    },
+    // Same plain text-link style as the "← Back to Manage Bookings" links on
+    // Bookings Calendar / Rate Clients, so returning from this filter reads
+    // as a back action rather than another primary button.
+    rescheduleBackLink: {
+      display: 'flex', alignItems: 'center',
+      padding: '9px 4px', fontSize: '13px', color: isDark ? GOLD_DARK : GOLD, fontWeight: '500',
+      background: 'none', border: 'none', textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+    },
   };
 
   return (
@@ -175,20 +181,23 @@ const ManageBookings = () => {
           <button style={s.calendarBtn} onClick={() => navigate('/admin/bookings-calendar')}>
             📅 Calendar View
           </button>
-          {!loading && (pendingRescheduleCount > 0 || rescheduleOnly) && (
+          {!loading && rescheduleOnly && (
             <button
-              style={s.rescheduleFilterBtn(rescheduleOnly)}
-              onClick={() => { setRescheduleOnly((v) => !v); setPage(1); }}
-              aria-pressed={rescheduleOnly}
+              type="button"
+              style={s.rescheduleBackLink}
+              onClick={() => { setRescheduleOnly(false); setPage(1); }}
             >
-              {rescheduleOnly ? (
-                '← Back to All Bookings'
-              ) : (
-                <>
-                  🔄 Pending Reschedules
-                  <span style={s.rescheduleFilterBadge(rescheduleOnly)}>{pendingRescheduleCount}</span>
-                </>
-              )}
+              ← Back to All Bookings
+            </button>
+          )}
+          {!loading && !rescheduleOnly && pendingRescheduleCount > 0 && (
+            <button
+              type="button"
+              style={s.rescheduleFilterBtn}
+              onClick={() => { setRescheduleOnly(true); setPage(1); }}
+            >
+              🔄 Pending Reschedules
+              <span style={s.rescheduleFilterBadge}>{pendingRescheduleCount}</span>
             </button>
           )}
           {!loading && unratedClientCount > 0 && (
