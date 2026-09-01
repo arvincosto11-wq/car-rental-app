@@ -175,14 +175,20 @@ const ManageBookings = () => {
           <button style={s.calendarBtn} onClick={() => navigate('/admin/bookings-calendar')}>
             📅 Calendar View
           </button>
-          {!loading && pendingRescheduleCount > 0 && (
+          {!loading && (pendingRescheduleCount > 0 || rescheduleOnly) && (
             <button
               style={s.rescheduleFilterBtn(rescheduleOnly)}
               onClick={() => { setRescheduleOnly((v) => !v); setPage(1); }}
               aria-pressed={rescheduleOnly}
             >
-              🔄 Pending Reschedules
-              <span style={s.rescheduleFilterBadge(rescheduleOnly)}>{pendingRescheduleCount}</span>
+              {rescheduleOnly ? (
+                '← Back to All Bookings'
+              ) : (
+                <>
+                  🔄 Pending Reschedules
+                  <span style={s.rescheduleFilterBadge(rescheduleOnly)}>{pendingRescheduleCount}</span>
+                </>
+              )}
             </button>
           )}
           {!loading && unratedClientCount > 0 && (

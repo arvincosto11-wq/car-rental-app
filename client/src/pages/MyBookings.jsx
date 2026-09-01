@@ -7,6 +7,7 @@ import StarRating from '../components/StarRating';
 import RatingModal from '../components/RatingModal';
 import { SkeletonListCard } from '../components/Skeleton';
 import Pagination from '../components/Pagination';
+import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import { paginate } from '../utils/paginate';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
@@ -22,6 +23,45 @@ const getRefundPercentage = (startDate, now = new Date()) => {
   if (hoursUntilPickup >= 48) return 100;
   if (hoursUntilPickup >= 24) return 50;
   return 0;
+};
+
+// Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
+// the wrong day in timezones ahead of UTC, like PH).
+const toDateValue = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const overlapsBooked = (start, end, ranges) => {
+  const s = new Date(start).getTime();
+  const e = new Date(end).getTime();
+  return ranges.some((r) => s < new Date(r.endDate).getTime() && e > new Date(r.startDate).getTime());
+};
+
+// Earliest same-length slot (starting tomorrow) that doesn't conflict with
+// an existing confirmed booking and isn't just the booking's current dates.
+const findNextAvailableSlot = (ranges, days, excludeStart, excludeEnd) => {
+  const candidate = new Date();
+  candidate.setDate(candidate.getDate() + 1);
+  candidate.setHours(0, 0, 0, 0);
+  const excludeStartVal = toDateValue(new Date(excludeStart));
+  const excludeEndVal = toDateValue(new Date(excludeEnd));
+
+  for (let i = 0; i < 365; i++) {
+    const start = new Date(candidate);
+    const end = new Date(candidate);
+    end.setDate(end.getDate() + days);
+    const startVal = toDateValue(start);
+    const endVal = toDateValue(end);
+    const isCurrent = startVal === excludeStartVal && endVal === excludeEndVal;
+    if (!isCurrent && !overlapsBooked(startVal, endVal, ranges)) {
+      return { start: startVal, end: endVal };
+    }
+    candidate.setDate(candidate.getDate() + 1);
+  }
+  return null;
 };
 
 const REFUND_REASONS = [
@@ -52,6 +92,7 @@ const MyBookings = () => {
   const [newEndDate, setNewEndDate] = useState('');
   const [rescheduleError, setRescheduleError] = useState('');
   const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false);
+  const [bookedRangesForReschedule, setBookedRangesForReschedule] = useState([]);
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -123,11 +164,15 @@ const MyBookings = () => {
     }
   };
 
-  const openRescheduleModal = (bookingId) => {
-    setRescheduleModalId(bookingId);
+  const openRescheduleModal = (booking) => {
+    setRescheduleModalId(booking._id);
     setNewStartDate('');
     setNewEndDate('');
     setRescheduleError('');
+    setBookedRangesForReschedule([]);
+    api.get(`/cars/${booking.car._id}/booked-dates`)
+      .then((res) => setBookedRangesForReschedule(res.data))
+      .catch((err) => console.error(err));
   };
 
   const closeRescheduleModal = () => {
@@ -135,21 +180,22 @@ const MyBookings = () => {
     setRescheduleError('');
   };
 
-  const handleNewStartDateChange = (value) => {
-    setNewStartDate(value);
-    if (value && rescheduleBooking) {
-      const d = new Date(value);
-      d.setDate(d.getDate() + rescheduleBooking.totalDays);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      setNewEndDate(`${y}-${m}-${day}`);
-    }
+  const handleSelectRescheduleDay = (date) => {
+    setRescheduleError('');
+    const start = toDateValue(date);
+    const end = new Date(date);
+    end.setDate(end.getDate() + rescheduleBooking.totalDays);
+    setNewStartDate(start);
+    setNewEndDate(toDateValue(end));
   };
 
   const handleSubmitReschedule = async () => {
     if (!newStartDate || !newEndDate) {
-      setRescheduleError('Please select both dates.');
+      setRescheduleError('Tap a date on the calendar to pick your new pickup date.');
+      return;
+    }
+    if (overlapsBooked(newStartDate, newEndDate, bookedRangesForReschedule)) {
+      setRescheduleError('That range includes a date this vehicle is already booked for. Please pick a different start day.');
       return;
     }
     setRescheduleSubmitting(true);
@@ -167,6 +213,10 @@ const MyBookings = () => {
 
   const rescheduleBooking = bookings.find((b) => b._id === rescheduleModalId);
   const rescheduleModalRef = useModalA11y(closeRescheduleModal, !!(rescheduleModalId && rescheduleBooking));
+  const suggestedSlot = rescheduleBooking
+    ? findNextAvailableSlot(bookedRangesForReschedule, rescheduleBooking.totalDays, rescheduleBooking.startDate, rescheduleBooking.endDate)
+    : null;
+  const suggestedSlotIsSelected = suggestedSlot && newStartDate === suggestedSlot.start && newEndDate === suggestedSlot.end;
 
   const activeBooking = bookings.find((b) => b._id === refundModalId);
   const refundPercentage = activeBooking ? getRefundPercentage(activeBooking.startDate) : 0;
@@ -352,11 +402,16 @@ const MyBookings = () => {
     },
     modalSub: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '14px', lineHeight: '1.5' },
     field: { marginBottom: '14px' },
-    modalInput: {
-      width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-      borderRadius: '8px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#1a1a1a',
-      background: isDark ? '#0f172a' : '#fff', boxSizing: 'border-box',
+    suggestionBox: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap',
+      background: isDark ? 'rgba(232,161,0,0.1)' : '#fffbeb', border: `1px solid ${isDark ? '#5a4415' : '#fde68a'}`,
+      borderRadius: '8px', padding: '10px 12px', marginBottom: '14px', fontSize: '12px', color: isDark ? '#fbbf24' : '#92400e',
     },
+    suggestionBtn: {
+      padding: '6px 12px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', cursor: 'pointer',
+      border: 'none', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, whiteSpace: 'nowrap', flexShrink: 0,
+    },
+    rescheduleSelectedNote: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '-6px', marginBottom: '14px' },
     ratingSummary: { marginTop: '10px' },
     ratingScore: { fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     editRatingBtn: {
@@ -500,7 +555,7 @@ const MyBookings = () => {
                         Request Refund
                       </button>
                       {booking.rescheduleRequest?.status !== 'pending' && (
-                        <button style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking._id)}>
+                        <button style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
                           Reschedule
                         </button>
                       )}
@@ -584,43 +639,53 @@ const MyBookings = () => {
 
       {rescheduleModalId && rescheduleBooking && (
         <div style={styles.modalOverlay}>
-          <div style={styles.modalContent} ref={rescheduleModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="reschedule-modal-title">
+          <div style={{ ...styles.modalContent, maxWidth: '480px' }} ref={rescheduleModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="reschedule-modal-title">
             <h2 id="reschedule-modal-title" style={styles.modalTitle}>Request a Reschedule</h2>
             <p style={styles.modalSub}>
               Move this {rescheduleBooking.totalDays}-day trip to different dates. No fee — but it needs admin approval,
               and the new dates must total the same {rescheduleBooking.totalDays} day{rescheduleBooking.totalDays === 1 ? '' : 's'}.
+              Tap a start date below — the return date is set for you automatically.
             </p>
 
             {rescheduleError && <div style={styles.errorBox}>{rescheduleError}</div>}
 
+            {suggestedSlot && (
+              <div style={styles.suggestionBox}>
+                <span>
+                  💡 Next open {rescheduleBooking.totalDays}-day slot: {new Date(suggestedSlot.start).toLocaleDateString()} → {new Date(suggestedSlot.end).toLocaleDateString()}
+                </span>
+                <button
+                  type="button"
+                  style={styles.suggestionBtn}
+                  disabled={suggestedSlotIsSelected}
+                  onClick={() => { setRescheduleError(''); setNewStartDate(suggestedSlot.start); setNewEndDate(suggestedSlot.end); }}
+                >
+                  {suggestedSlotIsSelected ? 'Selected' : 'Use these dates'}
+                </button>
+              </div>
+            )}
+
             <div style={styles.field}>
-              <label style={styles.modalLabel} htmlFor="reschedule-start">New Pickup Date</label>
-              <input
-                id="reschedule-start"
-                type="date"
-                style={styles.modalInput}
-                value={newStartDate}
-                min={new Date().toISOString().split('T')[0]}
-                onChange={(e) => handleNewStartDateChange(e.target.value)}
+              <AvailabilityCalendar
+                bookedRanges={bookedRangesForReschedule}
+                selectedStart={newStartDate}
+                selectedEnd={newEndDate}
+                onSelectDay={handleSelectRescheduleDay}
+                isDark={isDark}
               />
             </div>
-            <div style={styles.field}>
-              <label style={styles.modalLabel} htmlFor="reschedule-end">New Return Date</label>
-              <input
-                id="reschedule-end"
-                type="date"
-                style={styles.modalInput}
-                value={newEndDate}
-                min={newStartDate}
-                onChange={(e) => setNewEndDate(e.target.value)}
-              />
-            </div>
+
+            {newStartDate && newEndDate && (
+              <p style={styles.rescheduleSelectedNote}>
+                Selected: {new Date(newStartDate).toLocaleDateString()} → {new Date(newEndDate).toLocaleDateString()}
+              </p>
+            )}
 
             <div style={styles.modalActions}>
               <button style={styles.modalCancelBtn} onClick={closeRescheduleModal} disabled={rescheduleSubmitting}>
                 Cancel
               </button>
-              <button style={styles.modalSubmitBtn} onClick={handleSubmitReschedule} disabled={rescheduleSubmitting}>
+              <button style={styles.modalSubmitBtn} onClick={handleSubmitReschedule} disabled={rescheduleSubmitting || !newStartDate}>
                 {rescheduleSubmitting ? 'Submitting...' : 'Submit Request'}
               </button>
             </div>
