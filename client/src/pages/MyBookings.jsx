@@ -351,6 +351,16 @@ const MyBookings = () => {
       borderRadius: '6px',
       cursor: 'pointer',
     },
+    bookAgainBtn: {
+      padding: '6px 14px',
+      fontSize: '12px',
+      fontWeight: '600',
+      background: isDark ? GOLD_DARK : GOLD,
+      color: ON_GOLD,
+      border: 'none',
+      borderRadius: '6px',
+      cursor: 'pointer',
+    },
     badgeReschedulePending: {
       background: '#fef3c7',
       color: '#92400e',
@@ -532,6 +542,13 @@ const MyBookings = () => {
                 )}
                 {booking.rescheduleRequest?.status === 'declined' && booking.rescheduleRequest.adminNotes && (
                   <p style={styles.refundNote}>Reschedule declined: {booking.rescheduleRequest.adminNotes}</p>
+                )}
+                {booking.status === 'completed' && (
+                  <div style={styles.actionsRow}>
+                    <button style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
+                      Book Again
+                    </button>
+                  </div>
                 )}
                 {booking.status === 'completed' && booking.carRating?.ratedAt && (
                   <div style={styles.ratingSummary}>

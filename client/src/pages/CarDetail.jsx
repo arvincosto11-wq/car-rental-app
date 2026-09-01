@@ -66,6 +66,14 @@ const CarDetail = () => {
     fetchCar();
   }, [id]);
 
+  // "Book Again" from My Bookings links here with ?book=true — open the
+  // wizard straight away instead of making them find the Book Now button.
+  useEffect(() => {
+    if (car && user && car.isAvailable !== false && searchParams.get('book') === 'true') {
+      setShowBookingModal(true);
+    }
+  }, [car]);
+
   useEffect(() => {
     const fetchReviews = async () => {
       try {
