@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MotionConfig } from 'motion/react';
 import { AuthProvider } from './context/AuthContext';
@@ -13,23 +14,33 @@ import Register from './pages/Register';
 import MyBookings from './pages/MyBookings';
 import RateBookings from './pages/RateBookings';
 import MyFavorites from './pages/MyFavorites';
-import AdminDashboard from './pages/admin/Dashboard';
-import Analytics from './pages/admin/Analytics';
-import AddCar from './pages/admin/AddCar';
-import ManageCars from './pages/admin/ManageCars';
-import ManageArchivedCars from './pages/admin/ManageArchivedCars';
-import ManageBookings from './pages/admin/ManageBookings';
-import BookingsCalendar from './pages/admin/BookingsCalendar';
-import ManageClients from './pages/admin/ManageClients';
-import ManageConsignments from './pages/admin/ManageConsignments';
-import ManageAvailabilityRequests from './pages/admin/ManageAvailabilityRequests';
-import RateClients from './pages/admin/RateClients';
-import ManageReviews from './pages/admin/ManageReviews';
 import Profile from './pages/Profile';
 import ConsignmentRegister from './pages/ConsignmentRegister';
-import ConsignorDashboard from './pages/consignor/ConsignorDashboard';
-import AddVehicle from './pages/consignor/AddVehicle';
 import NotFound from './pages/NotFound';
+
+// Admin and consignor pages are only ever reached by those roles, and
+// together they're the bulk of the app's code — lazy-loading them keeps
+// the public-facing bundle (Home/Cars/Car Detail) small for everyone else.
+const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
+const Analytics = lazy(() => import('./pages/admin/Analytics'));
+const AddCar = lazy(() => import('./pages/admin/AddCar'));
+const ManageCars = lazy(() => import('./pages/admin/ManageCars'));
+const ManageArchivedCars = lazy(() => import('./pages/admin/ManageArchivedCars'));
+const ManageBookings = lazy(() => import('./pages/admin/ManageBookings'));
+const BookingsCalendar = lazy(() => import('./pages/admin/BookingsCalendar'));
+const ManageClients = lazy(() => import('./pages/admin/ManageClients'));
+const ManageConsignments = lazy(() => import('./pages/admin/ManageConsignments'));
+const ManageAvailabilityRequests = lazy(() => import('./pages/admin/ManageAvailabilityRequests'));
+const RateClients = lazy(() => import('./pages/admin/RateClients'));
+const ManageReviews = lazy(() => import('./pages/admin/ManageReviews'));
+const ConsignorDashboard = lazy(() => import('./pages/consignor/ConsignorDashboard'));
+const AddVehicle = lazy(() => import('./pages/consignor/AddVehicle'));
+
+const PageLoading = () => (
+  <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>
+    Loading...
+  </div>
+);
 
 function App() {
   return (
@@ -38,6 +49,7 @@ function App() {
       <UIFeedbackProvider>
       <AuthProvider>
         <BrowserRouter>
+          <Suspense fallback={<PageLoading />}>
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<><Navbar /><Home /></>} />
@@ -201,6 +213,7 @@ function App() {
             {/* Catch-all */}
             <Route path="*" element={<><Navbar /><NotFound /></>} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </AuthProvider>
       </UIFeedbackProvider>
