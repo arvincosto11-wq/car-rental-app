@@ -63,6 +63,19 @@ const ManageBookings = () => {
     }
   };
 
+  const handleRescheduleDecision = async (id, decision) => {
+    try {
+      const res = await api.put(`/bookings/${id}/reschedule`, { decision });
+      if (res.data.rescheduleRequest?.adminNotes?.startsWith('Automatically declined')) {
+        toast.info(res.data.rescheduleRequest.adminNotes);
+      }
+      await fetchBookings();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Something went wrong updating this reschedule request.');
+    }
+  };
+
   const openRatingModal = (booking) => setRatingModalId(booking._id);
   const closeRatingModal = () => setRatingModalId(null);
   const handleRatingSubmitted = async () => {
@@ -184,12 +197,13 @@ const ManageBookings = () => {
               <th style={s.th}>Total</th>
               <th style={s.th}>Payment</th>
               <th style={s.th}>Refund</th>
+              <th style={s.th}>Reschedule</th>
               <th style={s.th}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : filteredBookings.length === 0 ? (
-              <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>No bookings match.</td></tr>
+            {loading ? <SkeletonTableRows isDark={isDark} columns={8} /> : filteredBookings.length === 0 ? (
+              <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>No bookings match.</td></tr>
             ) : pageBookings.map((booking) => (
               <tr key={booking._id}>
                 <td style={s.td}>
@@ -244,6 +258,25 @@ const ManageBookings = () => {
                     <span style={s.refundApproved}>Refund Approved</span>
                   ) : booking.refundStatus === 'declined' ? (
                     <span style={s.refundDeclined}>Refund Declined</span>
+                  ) : (
+                    <span style={{ color: isDark ? '#64748b' : '#9ca3af', fontSize: '12px' }}>—</span>
+                  )}
+                </td>
+                <td style={s.td}>
+                  {booking.rescheduleRequest?.status === 'pending' ? (
+                    <div>
+                      <div style={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px', maxWidth: '160px' }}>
+                        New: {new Date(booking.rescheduleRequest.newStartDate).toLocaleDateString()} to {new Date(booking.rescheduleRequest.newEndDate).toLocaleDateString()}
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button style={s.acceptBtn} onClick={() => handleRescheduleDecision(booking._id, 'approved')}>Accept</button>
+                        <button style={s.declineBtn} onClick={() => handleRescheduleDecision(booking._id, 'declined')}>Decline</button>
+                      </div>
+                    </div>
+                  ) : booking.rescheduleRequest?.status === 'approved' ? (
+                    <span style={s.refundApproved}>Rescheduled</span>
+                  ) : booking.rescheduleRequest?.status === 'declined' ? (
+                    <span style={s.refundDeclined}>Reschedule Declined</span>
                   ) : (
                     <span style={{ color: isDark ? '#64748b' : '#9ca3af', fontSize: '12px' }}>—</span>
                   )}

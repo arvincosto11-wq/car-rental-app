@@ -32,6 +32,11 @@ const MyBookings = () => {
   const [refundError, setRefundError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [ratingModalId, setRatingModalId] = useState(null);
+  const [rescheduleModalId, setRescheduleModalId] = useState(null);
+  const [newStartDate, setNewStartDate] = useState('');
+  const [newEndDate, setNewEndDate] = useState('');
+  const [rescheduleError, setRescheduleError] = useState('');
+  const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false);
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -102,6 +107,51 @@ const MyBookings = () => {
       setSubmitting(false);
     }
   };
+
+  const openRescheduleModal = (bookingId) => {
+    setRescheduleModalId(bookingId);
+    setNewStartDate('');
+    setNewEndDate('');
+    setRescheduleError('');
+  };
+
+  const closeRescheduleModal = () => {
+    setRescheduleModalId(null);
+    setRescheduleError('');
+  };
+
+  const handleNewStartDateChange = (value) => {
+    setNewStartDate(value);
+    if (value && rescheduleBooking) {
+      const d = new Date(value);
+      d.setDate(d.getDate() + rescheduleBooking.totalDays);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      setNewEndDate(`${y}-${m}-${day}`);
+    }
+  };
+
+  const handleSubmitReschedule = async () => {
+    if (!newStartDate || !newEndDate) {
+      setRescheduleError('Please select both dates.');
+      return;
+    }
+    setRescheduleSubmitting(true);
+    setRescheduleError('');
+    try {
+      const res = await api.post(`/bookings/${rescheduleModalId}/reschedule`, { newStartDate, newEndDate });
+      setBookings(bookings.map((b) => (b._id === rescheduleModalId ? { ...b, rescheduleRequest: res.data.rescheduleRequest } : b)));
+      closeRescheduleModal();
+    } catch (err) {
+      setRescheduleError(err.response?.data?.message || 'Failed to submit reschedule request');
+    } finally {
+      setRescheduleSubmitting(false);
+    }
+  };
+
+  const rescheduleBooking = bookings.find((b) => b._id === rescheduleModalId);
+  const rescheduleModalRef = useModalA11y(closeRescheduleModal, !!(rescheduleModalId && rescheduleBooking));
 
   const activeBooking = bookings.find((b) => b._id === refundModalId);
   const refundAmount = activeBooking ? Math.round(activeBooking.amountPaid * 0.5) : 0;
@@ -245,6 +295,45 @@ const MyBookings = () => {
       cursor: 'pointer',
     },
     refundNote: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '8px', fontStyle: 'italic' },
+    actionsRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' },
+    rescheduleBtn: {
+      padding: '6px 14px',
+      fontSize: '12px',
+      fontWeight: '500',
+      background: 'none',
+      color: isDark ? GOLD_DARK : GOLD,
+      border: `1px solid ${isDark ? GOLD_DARK : GOLD}`,
+      borderRadius: '6px',
+      cursor: 'pointer',
+    },
+    badgeReschedulePending: {
+      background: '#fef3c7',
+      color: '#92400e',
+      fontSize: '11px',
+      padding: '2px 10px',
+      borderRadius: '20px',
+    },
+    badgeRescheduleApproved: {
+      background: '#d1fae5',
+      color: '#065f46',
+      fontSize: '11px',
+      padding: '2px 10px',
+      borderRadius: '20px',
+    },
+    badgeRescheduleDeclined: {
+      background: '#fee2e2',
+      color: '#991b1b',
+      fontSize: '11px',
+      padding: '2px 10px',
+      borderRadius: '20px',
+    },
+    modalSub: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '14px', lineHeight: '1.5' },
+    field: { marginBottom: '14px' },
+    modalInput: {
+      width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '8px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#1a1a1a',
+      background: isDark ? '#0f172a' : '#fff', boxSizing: 'border-box',
+    },
     ratingSummary: { marginTop: '10px' },
     ratingScore: { fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     editRatingBtn: {
@@ -364,6 +453,12 @@ const MyBookings = () => {
                       {getRefundBadgeText(booking.refundStatus)}
                     </span>
                   )}
+                  {booking.rescheduleRequest?.status === 'pending' && (
+                    <span style={styles.badgeReschedulePending}>Reschedule Requested</span>
+                  )}
+                  {booking.rescheduleRequest?.status === 'declined' && (
+                    <span style={styles.badgeRescheduleDeclined}>Reschedule Declined</span>
+                  )}
                 </div>
                 <div style={styles.meta}>
                   📅 Rental Period: {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
@@ -377,12 +472,22 @@ const MyBookings = () => {
 
                 {(booking.status === 'pending' || booking.status === 'confirmed') &&
                   (!booking.refundStatus || booking.refundStatus === 'none') && (
-                    <button style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
-                      Request Refund
-                    </button>
+                    <div style={styles.actionsRow}>
+                      <button style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
+                        Request Refund
+                      </button>
+                      {booking.rescheduleRequest?.status !== 'pending' && (
+                        <button style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking._id)}>
+                          Reschedule
+                        </button>
+                      )}
+                    </div>
                 )}
                 {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved') && booking.refundReason && (
                   <p style={styles.refundNote}>Reason: {booking.refundReason}</p>
+                )}
+                {booking.rescheduleRequest?.status === 'declined' && booking.rescheduleRequest.adminNotes && (
+                  <p style={styles.refundNote}>Reschedule declined: {booking.rescheduleRequest.adminNotes}</p>
                 )}
                 {booking.status === 'completed' && booking.carRating?.ratedAt && (
                   <div style={styles.ratingSummary}>
@@ -437,6 +542,52 @@ const MyBookings = () => {
               </button>
               <button style={styles.modalSubmitBtn} onClick={handleSubmitRefund} disabled={submitting}>
                 {submitting ? 'Submitting...' : 'Submit Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rescheduleModalId && rescheduleBooking && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent} ref={rescheduleModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="reschedule-modal-title">
+            <h2 id="reschedule-modal-title" style={styles.modalTitle}>Request a Reschedule</h2>
+            <p style={styles.modalSub}>
+              Move this {rescheduleBooking.totalDays}-day trip to different dates. No fee — but it needs admin approval,
+              and the new dates must total the same {rescheduleBooking.totalDays} day{rescheduleBooking.totalDays === 1 ? '' : 's'}.
+            </p>
+
+            {rescheduleError && <div style={styles.errorBox}>{rescheduleError}</div>}
+
+            <div style={styles.field}>
+              <label style={styles.modalLabel} htmlFor="reschedule-start">New Pickup Date</label>
+              <input
+                id="reschedule-start"
+                type="date"
+                style={styles.modalInput}
+                value={newStartDate}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => handleNewStartDateChange(e.target.value)}
+              />
+            </div>
+            <div style={styles.field}>
+              <label style={styles.modalLabel} htmlFor="reschedule-end">New Return Date</label>
+              <input
+                id="reschedule-end"
+                type="date"
+                style={styles.modalInput}
+                value={newEndDate}
+                min={newStartDate}
+                onChange={(e) => setNewEndDate(e.target.value)}
+              />
+            </div>
+
+            <div style={styles.modalActions}>
+              <button style={styles.modalCancelBtn} onClick={closeRescheduleModal} disabled={rescheduleSubmitting}>
+                Cancel
+              </button>
+              <button style={styles.modalSubmitBtn} onClick={handleSubmitReschedule} disabled={rescheduleSubmitting}>
+                {rescheduleSubmitting ? 'Submitting...' : 'Submit Request'}
               </button>
             </div>
           </div>

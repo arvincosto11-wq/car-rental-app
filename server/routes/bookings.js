@@ -329,6 +329,102 @@ router.put('/:id/refund', protect, adminOnly, async (req, res) => {
   }
 });
 
+// Client requests to move their trip to different dates without cancelling.
+// Kept to the same trip length (no partial refund / extra charge to work
+// out) — the point is shifting when the trip happens, not changing its size.
+router.post('/:id/reschedule', protect, async (req, res) => {
+  try {
+    const { newStartDate, newEndDate, reason } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      return res.status(400).json({ message: 'This booking is not eligible for a reschedule.' });
+    }
+    if (booking.refundStatus !== 'none') {
+      return res.status(400).json({ message: 'This booking already has a refund request in progress.' });
+    }
+    if (booking.rescheduleRequest?.status === 'pending') {
+      return res.status(400).json({ message: 'You already have a pending reschedule request for this booking.' });
+    }
+
+    const start = new Date(newStartDate);
+    const end = new Date(newEndDate);
+    if (!newStartDate || !newEndDate || isNaN(start) || isNaN(end) || start >= end) {
+      return res.status(400).json({ message: 'Please provide a valid date range.' });
+    }
+    if (start < new Date()) {
+      return res.status(400).json({ message: 'The new pickup date must be in the future.' });
+    }
+    const newDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    if (newDays !== booking.totalDays) {
+      return res.status(400).json({ message: `Reschedule must keep the same trip length (${booking.totalDays} day${booking.totalDays === 1 ? '' : 's'}). Cancel and rebook instead if you need a different duration.` });
+    }
+    if (start.getTime() === new Date(booking.startDate).getTime() && end.getTime() === new Date(booking.endDate).getTime()) {
+      return res.status(400).json({ message: 'Those are already this booking\'s current dates.' });
+    }
+
+    const conflict = await findOverlappingBooking(booking.car, start, end, ['confirmed'], booking._id);
+    if (conflict) {
+      return res.status(400).json({ message: 'This vehicle is already booked for some of those dates. Please choose a different range.' });
+    }
+
+    booking.rescheduleRequest = {
+      status: 'pending', newStartDate: start, newEndDate: end,
+      reason: reason || '', adminNotes: '', requestedAt: new Date(),
+    };
+    await booking.save();
+
+    await notifyAdmins('New Reschedule Request', 'A client has requested to reschedule a booking.', '/admin/manage-bookings');
+
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin approves or declines a reschedule request
+router.put('/:id/reschedule', protect, adminOnly, async (req, res) => {
+  try {
+    const { decision, adminNotes } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.rescheduleRequest?.status !== 'pending') {
+      return res.status(400).json({ message: 'No pending reschedule request for this booking.' });
+    }
+
+    if (decision === 'approved') {
+      // Re-check right before committing — dates could have been claimed by
+      // another confirmed booking since the client's original request.
+      const conflict = await findOverlappingBooking(booking.car, booking.rescheduleRequest.newStartDate, booking.rescheduleRequest.newEndDate, ['confirmed'], booking._id);
+      if (conflict) {
+        booking.rescheduleRequest.status = 'declined';
+        booking.rescheduleRequest.adminNotes = 'Automatically declined: those dates were booked by someone else in the meantime.';
+        await booking.save();
+        await notifyUser(booking.user, 'Reschedule Declined', 'Your reschedule request could not be approved because those dates were booked in the meantime. Your original dates are unchanged.', '/my-bookings');
+        return res.json(booking);
+      }
+
+      booking.startDate = booking.rescheduleRequest.newStartDate;
+      booking.endDate = booking.rescheduleRequest.newEndDate;
+      booking.rescheduleRequest.status = 'approved';
+      await booking.save();
+      await notifyUser(booking.user, 'Reschedule Approved', 'Your booking has been moved to the new dates you requested.', '/my-bookings');
+    } else {
+      booking.rescheduleRequest.status = 'declined';
+      booking.rescheduleRequest.adminNotes = adminNotes || '';
+      await booking.save();
+      await notifyUser(booking.user, 'Reschedule Declined', `Your reschedule request was declined.${adminNotes ? ` Reason: ${adminNotes}` : ''}`, '/my-bookings');
+    }
+
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Client rates the car/service after the vehicle has been returned
 router.post('/:id/rate-car', protect, async (req, res) => {
   try {

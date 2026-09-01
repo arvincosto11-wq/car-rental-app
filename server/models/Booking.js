@@ -13,6 +13,14 @@ const bookingSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'pending' },
   refundStatus: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' },
   refundReason: { type: String, default: '' },
+  rescheduleRequest: {
+    status: { type: String, enum: ['none', 'pending', 'approved', 'declined'], default: 'none' },
+    newStartDate: { type: Date },
+    newEndDate: { type: Date },
+    reason: { type: String, default: '' },
+    adminNotes: { type: String, default: '' },
+    requestedAt: { type: Date },
+  },
   payment: { type: String, default: 'offline' },
   carRating: {
     vehicleCondition: { type: Number, min: 1, max: 5 },
