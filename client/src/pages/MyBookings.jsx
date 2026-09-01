@@ -284,7 +284,8 @@ const MyBookings = () => {
     carName: { fontSize: '14px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginTop: '6px' },
     carSub: { fontWeight: '400', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
     refundBtn: {
-      marginTop: '10px',
+      flex: '1 1 130px',
+      textAlign: 'center',
       padding: '6px 14px',
       fontSize: '12px',
       fontWeight: '500',
@@ -297,6 +298,8 @@ const MyBookings = () => {
     refundNote: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '8px', fontStyle: 'italic' },
     actionsRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' },
     rescheduleBtn: {
+      flex: '1 1 130px',
+      textAlign: 'center',
       padding: '6px 14px',
       fontSize: '12px',
       fontWeight: '500',
