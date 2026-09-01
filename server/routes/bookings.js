@@ -214,10 +214,13 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 
       if (conflict) {
         // Another booking already claimed overlapping dates. Don't allow this
-        // one to be confirmed too — send it straight to an approved refund instead.
+        // one to be confirmed too — send it straight to an approved refund
+        // instead. This is the platform's fault, not the client's choice to
+        // cancel, so it's always a full refund regardless of pickup timing.
         booking.status = 'cancelled';
         booking.refundStatus = 'approved';
         booking.refundReason = 'Automatically refunded: this vehicle was already booked for overlapping dates by another confirmed reservation.';
+        booking.refundAmount = booking.amountPaid;
         await booking.save();
 
         await notifyUser(booking.user, 'Booking Cancelled & Refunded', 'Your booking request could not be confirmed because the vehicle was already booked for those dates. It has been cancelled and automatically approved for a refund.', '/my-bookings');
@@ -233,18 +236,23 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       await booking.save();
 
       // Any other PENDING request for this car that overlaps these same dates
-      // has lost the race — auto-cancel and refund it. Pending requests for
-      // non-overlapping dates are untouched.
+      // has lost the race — auto-cancel and refund it in full (platform's
+      // fault, not the client's). Pending requests for non-overlapping dates
+      // are untouched. Pipeline update so refundAmount can copy amountPaid
+      // per-document, since it differs across the matched bookings.
       await Booking.updateMany(
         {
           car: booking.car, _id: { $ne: booking._id }, status: 'pending',
           startDate: { $lt: booking.endDate }, endDate: { $gt: booking.startDate },
         },
-        {
-          status: 'cancelled',
-          refundStatus: 'approved',
-          refundReason: 'Automatically refunded: another booking for overlapping dates was confirmed first.'
-        }
+        [{
+          $set: {
+            status: 'cancelled',
+            refundStatus: 'approved',
+            refundReason: 'Automatically refunded: another booking for overlapping dates was confirmed first.',
+            refundAmount: '$amountPaid',
+          },
+        }]
       );
 
       await notifyUser(booking.user, 'Booking Confirmed', 'Your booking has been confirmed. Check My Bookings for details.', '/my-bookings');
@@ -271,6 +279,16 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
   }
 });
 
+// Refund tiers based on how far out the pickup date is at the moment the
+// client requests the refund — not when an admin eventually gets to it, so
+// a slow approval can't quietly shrink what the client was promised.
+function getRefundPercentage(startDate, now = new Date()) {
+  const hoursUntilPickup = (new Date(startDate).getTime() - now.getTime()) / (1000 * 60 * 60);
+  if (hoursUntilPickup >= 48) return 100;
+  if (hoursUntilPickup >= 24) return 50;
+  return 0;
+}
+
 // Client requests a refund
 router.post('/:id/refund', protect, async (req, res) => {
   try {
@@ -287,8 +305,10 @@ router.post('/:id/refund', protect, async (req, res) => {
       return res.status(400).json({ message: 'A refund request already exists for this booking.' });
     }
 
+    const percentage = getRefundPercentage(booking.startDate);
     booking.refundStatus = 'requested';
     booking.refundReason = reason;
+    booking.refundAmount = Math.round(booking.amountPaid * (percentage / 100));
     await booking.save();
 
     await notifyAdmins('New Refund Request', 'A client has requested a refund for a booking.', '/admin/manage-bookings');
@@ -318,7 +338,7 @@ router.put('/:id/refund', protect, adminOnly, async (req, res) => {
     await booking.save();
 
     if (decision === 'approved') {
-      await notifyUser(booking.user, 'Refund Approved', 'Your refund request has been approved.', '/my-bookings');
+      await notifyUser(booking.user, 'Refund Approved', `Your refund of ₱${booking.refundAmount.toLocaleString()} has been approved.`, '/my-bookings');
     } else if (decision === 'declined') {
       await notifyUser(booking.user, 'Refund Declined', 'Your refund request has been declined.', '/my-bookings');
     }

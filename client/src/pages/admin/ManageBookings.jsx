@@ -246,6 +246,9 @@ const ManageBookings = () => {
                 <td style={s.td}>
                   {booking.refundStatus === 'requested' ? (
                     <div>
+                      <div style={{ fontSize: '12px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '2px' }}>
+                        ₱{booking.refundAmount?.toLocaleString() ?? 0}
+                      </div>
                       <div style={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px', maxWidth: '160px' }}>
                         {booking.refundReason}
                       </div>

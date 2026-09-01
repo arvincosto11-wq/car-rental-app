@@ -13,6 +13,10 @@ const bookingSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'pending' },
   refundStatus: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' },
   refundReason: { type: String, default: '' },
+  // Locked in at request time based on how far out the pickup date was —
+  // see getRefundPercentage in routes/bookings.js. Not recomputed later,
+  // so a slow admin approval can't shrink what the client was promised.
+  refundAmount: { type: Number, default: 0 },
   rescheduleRequest: {
     status: { type: String, enum: ['none', 'pending', 'approved', 'declined'], default: 'none' },
     newStartDate: { type: Date },
