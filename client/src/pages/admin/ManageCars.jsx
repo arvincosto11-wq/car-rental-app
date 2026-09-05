@@ -10,7 +10,17 @@ import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, GOLD_TINT_BORDER, GOLD_TINT_BORDER_DARK, ON_GOLD } from '../../theme';
 import usePageTitle from '../../hooks/usePageTitle';
 import ColorPicker from '../../components/ColorPicker';
+import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
+
+// Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
+// the wrong day in timezones ahead of UTC, like PH).
+const toDateValue = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
 
 const OTHER = '__other__';
 
@@ -80,6 +90,7 @@ const ManageCars = () => {
 
   const handleEdit = (car) => {
     setEditingCar(car._id);
+    setBlockForm({ startDate: '', endDate: '', reason: '' });
     setEditExistingPhotos(car.photos?.length ? car.photos : (car.image ? [{ url: car.image, fileId: car.imageFileId }] : []));
     setEditNewPhotos([]);
     setEditNewPhotoPreviews([]);
@@ -213,6 +224,24 @@ const ManageCars = () => {
     } finally {
       setUpdating(false);
     }
+  };
+
+  const handleSelectBlockDay = (date) => {
+    const clicked = toDateValue(date);
+
+    if (!blockForm.startDate || (blockForm.startDate && blockForm.endDate)) {
+      setBlockForm({ ...blockForm, startDate: clicked, endDate: '' });
+      return;
+    }
+    if (new Date(clicked).getTime() === new Date(blockForm.startDate).getTime()) {
+      setBlockForm({ ...blockForm, startDate: '', endDate: '' });
+      return;
+    }
+    if (new Date(clicked) < new Date(blockForm.startDate)) {
+      setBlockForm({ ...blockForm, startDate: clicked });
+      return;
+    }
+    setBlockForm({ ...blockForm, endDate: clicked });
   };
 
   const handleAddBlockedDate = async (carId) => {
@@ -536,11 +565,14 @@ const ManageCars = () => {
                             ))}
                           </div>
                         )}
-                        <div className="responsive-row-2" style={{ gap: '8px', marginTop: '8px' }}>
-                          <input aria-label="Block start date" type="date" style={styles.input}
-                            value={blockForm.startDate} onChange={(e) => setBlockForm({ ...blockForm, startDate: e.target.value })} />
-                          <input aria-label="Block end date" type="date" style={styles.input}
-                            value={blockForm.endDate} onChange={(e) => setBlockForm({ ...blockForm, endDate: e.target.value })} />
+                        <div style={{ marginTop: '8px' }}>
+                          <AvailabilityCalendar
+                            bookedRanges={car.blockedDates || []}
+                            selectedStart={blockForm.startDate}
+                            selectedEnd={blockForm.endDate}
+                            onSelectDay={handleSelectBlockDay}
+                            isDark={isDark}
+                          />
                         </div>
                         <input aria-label="Block reason" type="text" style={{ ...styles.input, marginTop: '8px' }} placeholder="Reason (optional, e.g. Maintenance)"
                           value={blockForm.reason} onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })} />
