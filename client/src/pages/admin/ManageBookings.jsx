@@ -342,7 +342,11 @@ const ManageBookings = () => {
                   )}
                 </td>
                 <td style={s.td}>
-                  {booking.status === 'confirmed' ? (
+                  {booking.refundStatus === 'requested' ? (
+                    <span style={{ fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', fontStyle: 'italic' }}>
+                      Resolve refund request first
+                    </span>
+                  ) : booking.status === 'confirmed' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={s.confirmed}>confirmed</span>
                       <button
