@@ -565,7 +565,7 @@ const ManageCars = () => {
                             ))}
                           </div>
                         )}
-                        <div style={{ marginTop: '8px' }}>
+                        <div style={{ marginTop: '8px', maxWidth: '340px' }}>
                           <AvailabilityCalendar
                             bookedRanges={car.blockedDates || []}
                             selectedStart={blockForm.startDate}
