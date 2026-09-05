@@ -1,10 +1,32 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import Car from '../models/Car.js';
 import Booking from '../models/Booking.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 
 const router = express.Router();
+
+// Best-effort role check for routes that stay public but still need to
+// show more to a logged-in admin (e.g. plate numbers) — never rejects the
+// request, just returns null if there's no/invalid token.
+function getRequestRole(req) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return null;
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET).role;
+  } catch {
+    return null;
+  }
+}
+
+// Plate number is confidential — only admin ever sees it. Consignors get
+// it from their own Consignment record instead, not from the live Car.
+function hidePlateNumber(car) {
+  const obj = car.toObject ? car.toObject() : { ...car };
+  delete obj.plateNumber;
+  return obj;
+}
 
 // Get all cars (public) — archived cars are excluded everywhere they'd
 // normally show up, including the admin's own Manage Cars list, which uses
@@ -26,6 +48,10 @@ router.get('/', async (req, res) => {
       }).select('car');
       const bookedCarIds = new Set(overlapping.map((b) => b.car.toString()));
       cars = cars.filter((c) => !bookedCarIds.has(c._id.toString()));
+    }
+
+    if (getRequestRole(req) !== 'admin') {
+      cars = cars.map(hidePlateNumber);
     }
 
     res.json(cars);
@@ -136,7 +162,7 @@ router.get('/:id', async (req, res) => {
   try {
     const car = await Car.findById(req.params.id);
     if (!car || car.archived) return res.status(404).json({ message: 'Car not found' });
-    res.json(car);
+    res.json(getRequestRole(req) === 'admin' ? car : hidePlateNumber(car));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

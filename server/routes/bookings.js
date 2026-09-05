@@ -159,8 +159,10 @@ router.post('/', protect, async (req, res) => {
 router.get('/my', protect, async (req, res) => {
   try {
     await autoCompleteExpiredBookings();
+    // Plate number is confidential — clients never see it, not even in the
+    // raw response, so it can't be read off the network tab either.
     const bookings = await Booking.find({ user: req.user.id })
-      .populate('car')
+      .populate('car', '-plateNumber')
       .sort({ createdAt: -1 });
     res.json(bookings);
   } catch (err) {

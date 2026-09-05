@@ -572,9 +572,6 @@ const MyBookings = () => {
                     {' '}· {booking.car?.year} · {booking.car?.category}
                   </span>
                 </div>
-                {(booking.status === 'confirmed' || booking.status === 'completed') && booking.car?.plateNumber && (
-                  <div style={styles.meta}>🚘 Plate Number: {booking.car.plateNumber}</div>
-                )}
 
                 {(booking.status === 'pending' || booking.status === 'confirmed') &&
                   (!booking.refundStatus || booking.refundStatus === 'none') && (
