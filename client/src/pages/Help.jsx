@@ -8,7 +8,7 @@ const FAQS = [
   },
   {
     q: 'What payment methods are accepted?',
-    a: 'Cash or GCash. You can pay a 20% downpayment now and the rest on pickup, or pay in full upfront.',
+    a: 'GCash, paid securely online through PayMongo at the time of booking. You can pay a 20% downpayment now and the rest (cash or GCash) on pickup, or pay in full upfront.',
   },
   {
     q: 'What is the cancellation and refund policy?',

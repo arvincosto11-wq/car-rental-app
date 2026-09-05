@@ -31,6 +31,11 @@ const bookingSchema = new mongoose.Schema({
   // the client to actually complete it on PayMongo's page.
   payment: { type: String, default: 'offline' },
   paymongoCheckoutSessionId: { type: String, default: '' },
+  // PayMongo's own payment id (e.g. pay_xxx) once the GCash payment succeeds
+  // — this is the reference to quote when looking a transaction up in the
+  // PayMongo dashboard or contacting their support, since GCash's own
+  // internal reference isn't exposed to merchants.
+  paymongoPaymentId: { type: String, default: '' },
   carRating: {
     vehicleCondition: { type: Number, min: 1, max: 5 },
     serviceQuality: { type: Number, min: 1, max: 5 },

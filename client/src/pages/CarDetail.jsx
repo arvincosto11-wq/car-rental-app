@@ -32,7 +32,6 @@ const CarDetail = () => {
   const [endDate, setEndDate] = useState(searchParams.get('return') || '');
   usePageTitle(car ? `${car.brand} ${car.model}` : 'Vehicle');
   const [paymentType, setPaymentType] = useState('downpayment');
-  const [paymentMethod, setPaymentMethod] = useState('offline');
   const [bookingType, setBookingType] = useState('with-driver');
   const [profile, setProfile] = useState(null);
   const [licenseNumber, setLicenseNumber] = useState('');
@@ -41,7 +40,6 @@ const CarDetail = () => {
   const [showTerms, setShowTerms] = useState(false);
   const [showRefundNotice, setShowRefundNotice] = useState(false);
   const [booking, setBooking] = useState(false);
-  const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -236,28 +234,15 @@ const CarDetail = () => {
         amountPaid: amountToPay,
         totalPrice,
         bookingType,
-        paymentMethod,
+        paymentMethod: 'gcash',
         ...(needsLicenseInput ? { licenseNumber, licenseExpiry } : {}),
       });
 
-      if (paymentMethod === 'gcash') {
-        const { data } = await api.post('/payments/gcash/checkout-session', { bookingId: res.data._id });
-        window.location.href = data.checkoutUrl;
-        return;
-      }
-
-      setShowRefundNotice(false);
-      setShowBookingModal(false);
-      if (paymentType === 'full') {
-        setSuccess(`Booking confirmed! Your full payment of ₱${amountToPay.toLocaleString()} has been received.`);
-      } else {
-        setSuccess(`Booking confirmed! You paid ₱${amountToPay.toLocaleString()} (20% downpayment) now. Remaining ₱${(totalPrice - downPayment).toLocaleString()} due upon pickup.`);
-      }
-      setTimeout(() => navigate('/my-bookings'), 2000);
+      const { data } = await api.post('/payments/gcash/checkout-session', { bookingId: res.data._id });
+      window.location.href = data.checkoutUrl;
     } catch (err) {
       setShowRefundNotice(false);
       setError(err.response?.data?.message || 'Booking failed');
-    } finally {
       setBooking(false);
     }
   };
@@ -324,7 +309,6 @@ const CarDetail = () => {
     breakdownTotal: { display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', borderTop: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, paddingTop: '8px', marginTop: '8px' },
     termsRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '14px', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
     termsLink: { color: isDark ? GOLD_DARK : GOLD, cursor: 'pointer', textDecoration: 'underline' },
-    success: { background: isDark ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: isDark ? '#86efac' : '#16a34a', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' },
     error: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' },
     bookBtn: { width: '100%', padding: '12px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
     noCC: { textAlign: 'center', fontSize: '12px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '8px' },
@@ -411,7 +395,7 @@ const CarDetail = () => {
               <p>The renter is liable for any damage to the vehicle during the rental period. Urban Wheels Car Rental reserves the right to charge for repairs.</p>
               <br/>
               <p><strong>6. Payment</strong></p>
-              <p>Accepted payment methods include cash, GCash, and credit/debit card. Full payment must be settled before the vehicle is released.</p>
+              <p>Your downpayment or full payment is collected online via GCash (through PayMongo) at the time of booking. If you chose the 20% downpayment option, the remaining balance must be settled in cash or GCash upon vehicle pickup.</p>
               <br/>
               <p><strong>7. Late Returns</strong></p>
               <p>Late returns will be charged an additional fee equivalent to one day's rental rate per day of delay.</p>
@@ -597,23 +581,7 @@ const CarDetail = () => {
                       </div>
                     </div>
 
-                    <label style={s.label} id="cd-payment-method-label">How will you pay?</label>
-                    <div role="group" aria-labelledby="cd-payment-method-label" style={s.paymentOptions}>
-                      <button
-                        style={s.paymentBtn(paymentMethod === 'offline')}
-                        onClick={() => setPaymentMethod('offline')}
-                      >
-                        Pay in Person
-                        <div style={{ fontSize: '12px', marginTop: '2px' }}>Cash or GCash</div>
-                      </button>
-                      <button
-                        style={s.paymentBtn(paymentMethod === 'gcash')}
-                        onClick={() => setPaymentMethod('gcash')}
-                      >
-                        Pay with GCash Now
-                        <div style={{ fontSize: '12px', marginTop: '2px' }}>via PayMongo</div>
-                      </button>
-                    </div>
+                    <p style={s.fieldHint}>💳 Paid via GCash (through PayMongo) — you'll be redirected to complete it after confirming.</p>
 
                     <div style={s.stepActions}>
                       <button style={s.backStepBtn} onClick={() => goToStep(1)}>Back</button>
@@ -647,15 +615,11 @@ const CarDetail = () => {
                         onClick={openRefundNotice}
                         disabled={booking || !agreedToTerms || car.isAvailable === false}
                       >
-                        {booking
-                          ? (paymentMethod === 'gcash' ? 'Redirecting to GCash...' : 'Booking...')
-                          : (paymentMethod === 'gcash' ? `Continue to GCash — Pay ₱${amountToPay.toLocaleString()}` : `Book Now — Pay ₱${amountToPay > 0 ? amountToPay.toLocaleString() : car.pricePerDay.toLocaleString()}`)}
+                        {booking ? 'Redirecting to GCash...' : `Continue to GCash — Pay ₱${amountToPay.toLocaleString()}`}
                       </button>
                     </div>
                     <p style={s.noCC}>
-                      {paymentMethod === 'gcash'
-                        ? "You'll be redirected to PayMongo to complete payment via GCash."
-                        : `${paymentType === 'full' ? 'Full payment due now' : 'Remaining balance due upon vehicle pickup'} · Cash or GCash accepted`}
+                      You'll be redirected to PayMongo to complete payment via GCash.
                     </p>
                   </motion.div>
                 )}
@@ -740,15 +704,14 @@ const CarDetail = () => {
             {car.isAvailable === false && (
               <div style={s.error}>This vehicle isn't currently listed for booking. Check back later or browse other cars.
               </div>)}
-            {success && <div style={s.success}>{success}</div>}
 
-            {car.isAvailable !== false && !success && (
+            {car.isAvailable !== false && (
               <>
                 <p style={s.fieldHint}>Pick your dates, choose a booking type, and confirm — takes about a minute.</p>
                 <button style={s.bookBtn} onClick={openBookingModal}>
                   Book Now
                 </button>
-                <p style={s.noCC}>Cash or GCash accepted</p>
+                <p style={s.noCC}>Paid securely via GCash</p>
               </>
             )}
           </div>

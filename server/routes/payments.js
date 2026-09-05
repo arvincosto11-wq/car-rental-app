@@ -88,15 +88,18 @@ async function reconcileBookingPayment(bookingId) {
 
   const session = await paymongoFetch(`/checkout_sessions/${booking.paymongoCheckoutSessionId}`);
   const payments = session.data.attributes.payments || [];
-  const paid = payments.some((p) => p.attributes?.status === 'paid');
+  const paidPayment = payments.find((p) => p.attributes?.status === 'paid');
 
-  if (paid && booking.payment !== 'paid') {
+  if (paidPayment && booking.payment !== 'paid') {
     booking.payment = 'paid';
+    // PayMongo's own payment id — the reference to quote for this
+    // transaction, since GCash's own internal reference isn't exposed to
+    // merchants through the API.
+    booking.paymongoPaymentId = paidPayment.id;
     await booking.save();
     await notifyUser(booking.user, 'Payment Received', 'Your GCash payment was received. Your booking is still awaiting admin confirmation.', '/my-bookings');
-  } else if (!paid && booking.payment === 'gcash_pending') {
-    // They backed out of the GCash page or it expired — fall back to the
-    // normal pay-in-person expectation rather than leaving it stuck.
+  } else if (!paidPayment && booking.payment === 'gcash_pending') {
+    // They backed out of the GCash page or it expired.
     booking.payment = 'offline';
     await booking.save();
   }

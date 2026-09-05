@@ -18,7 +18,7 @@ const PAGE_SIZE = 10;
 const formatPayment = (payment) => {
   if (payment === 'gcash_pending') return 'GCash pending';
   if (payment === 'paid') return 'Paid';
-  return 'Pay in person';
+  return 'Unpaid';
 };
 
 const ManageBookings = () => {
@@ -131,6 +131,7 @@ const ManageBookings = () => {
     clientMeta: { fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280' },
     carThumb: { width: '44px', height: '32px', background: isDark ? '#334155' : '#f3f4f6', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 },
     payBadge: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
+    paymentRef: { fontSize: '10px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '2px', fontFamily: 'monospace', wordBreak: 'break-all' },
     confirmed: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     cancelled: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     completed: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
@@ -288,7 +289,12 @@ const ManageBookings = () => {
                 </td>
                 <td style={s.td}>{new Date(booking.startDate).toLocaleDateString()} to {new Date(booking.endDate).toLocaleDateString()}</td>
                 <td style={s.td}>₱{booking.totalPrice}</td>
-                <td style={s.td}><span style={s.payBadge}>{formatPayment(booking.payment)}</span></td>
+                <td style={s.td}>
+                  <span style={s.payBadge}>{formatPayment(booking.payment)}</span>
+                  {booking.paymongoPaymentId && (
+                    <div style={s.paymentRef} title="PayMongo payment reference">{booking.paymongoPaymentId}</div>
+                  )}
+                </td>
                 <td style={s.td}>
                   {booking.refundStatus === 'requested' ? (
                     <div>

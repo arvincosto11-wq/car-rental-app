@@ -103,7 +103,7 @@ const MyBookings = () => {
         if (res.data.payment === 'paid') {
           toast.success('GCash payment received! Your booking is awaiting admin confirmation.');
         } else if (gcashResult === 'cancelled') {
-          toast.info('GCash payment cancelled. You can pay in person instead, or try again.');
+          toast.info('GCash payment cancelled. Your booking is still saved as pending — request a refund below if you no longer want it, or contact us to complete payment.');
         } else {
           toast.error("We couldn't confirm the GCash payment yet. Please check back shortly.");
         }

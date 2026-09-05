@@ -12,7 +12,7 @@ import api from '../../api';
 const formatPayment = (payment) => {
   if (payment === 'gcash_pending') return 'GCash pending';
   if (payment === 'paid') return 'Paid';
-  return 'Pay in person';
+  return 'Unpaid';
 };
 
 const ConsignorDashboard = () => {
