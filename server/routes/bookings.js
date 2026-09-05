@@ -64,6 +64,14 @@ async function findOverlappingBooking(carId, start, end, statuses, excludeId) {
   return Booking.findOne(query);
 }
 
+// Admin-set blocked ranges (maintenance, owner keeping the car for personal
+// use, etc.) are a hard block same as a confirmed booking's dates — just not
+// derived from an actual reservation. Not exposed to consignors for now.
+async function findBlockedRange(carId, start, end) {
+  const car = await Car.findById(carId).select('blockedDates');
+  return (car?.blockedDates || []).find((b) => new Date(b.startDate) < end && new Date(b.endDate) > start);
+}
+
 // Create booking
 router.post('/', protect, async (req, res) => {
     try {
@@ -107,6 +115,11 @@ router.post('/', protect, async (req, res) => {
     const confirmedOverlap = await findOverlappingBooking(carId, requestedStart, requestedEnd, ['confirmed']);
     if (confirmedOverlap) {
       return res.status(400).json({ message: 'This vehicle is already booked for some of the selected dates. Please choose different dates.' });
+    }
+
+    const blockedRange = await findBlockedRange(carId, requestedStart, requestedEnd);
+    if (blockedRange) {
+      return res.status(400).json({ message: 'This vehicle is not available during the selected dates. Please choose different dates.' });
     }
 
     // Self-drive bookings require a valid, unexpired driver's license on file.
@@ -222,18 +235,24 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       // this is the actual guard against double-booking now that availability
       // is per-date-range instead of one blanket flag on the car.
       const conflict = await findOverlappingBooking(booking.car, booking.startDate, booking.endDate, ['confirmed'], booking._id);
+      // Also re-check admin-blocked dates — the admin may have blocked this
+      // range after the client's request came in.
+      const blockedRange = !conflict ? await findBlockedRange(booking.car, booking.startDate, booking.endDate) : null;
 
-      if (conflict) {
-        // Another booking already claimed overlapping dates. Don't allow this
-        // one to be confirmed too — send it straight to an approved refund
-        // instead. This is the platform's fault, not the client's choice to
-        // cancel, so it's always a full refund regardless of pickup timing.
-        // The vehicle genuinely isn't available either way, so this cancels
-        // regardless of whether the real GCash refund below succeeds —
-        // a failure there just gets flagged for admin to handle manually.
+      if (conflict || blockedRange) {
+        // Another booking already claimed overlapping dates, or the admin
+        // blocked them. Don't allow this one to be confirmed too — send it
+        // straight to an approved refund instead. This is the platform's
+        // fault, not the client's choice to cancel, so it's always a full
+        // refund regardless of pickup timing. The vehicle genuinely isn't
+        // available either way, so this cancels regardless of whether the
+        // real GCash refund below succeeds — a failure there just gets
+        // flagged for admin to handle manually.
         booking.status = 'cancelled';
         booking.refundStatus = 'approved';
-        booking.refundReason = 'Automatically refunded: this vehicle was already booked for overlapping dates by another confirmed reservation.';
+        booking.refundReason = blockedRange
+          ? 'Automatically refunded: this vehicle is blocked for these dates.'
+          : 'Automatically refunded: this vehicle was already booked for overlapping dates by another confirmed reservation.';
         booking.refundAmount = booking.amountPaid;
         if (booking.payment === 'gcash_pending') booking.payment = 'offline';
         try {
@@ -244,12 +263,17 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         }
         await booking.save();
 
-        await notifyUser(booking.user, 'Booking Cancelled & Refunded', 'Your booking request could not be confirmed because the vehicle was already booked for those dates. It has been cancelled and automatically approved for a refund.', '/my-bookings');
+        const clientMessage = blockedRange
+          ? 'Your booking request could not be confirmed because the vehicle is blocked for those dates. It has been cancelled and automatically approved for a refund.'
+          : 'Your booking request could not be confirmed because the vehicle was already booked for those dates. It has been cancelled and automatically approved for a refund.';
+        await notifyUser(booking.user, 'Booking Cancelled & Refunded', clientMessage, '/my-bookings');
 
         return res.json({
           ...booking.toObject(),
           autoRefunded: true,
-          message: 'This vehicle was already booked for overlapping dates by another client. The request has been cancelled and automatically approved for refund.'
+          message: blockedRange
+            ? 'This vehicle is blocked for some of the selected dates. The request has been cancelled and automatically approved for refund.'
+            : 'This vehicle was already booked for overlapping dates by another client. The request has been cancelled and automatically approved for refund.'
         });
       }
 
@@ -439,6 +463,11 @@ router.post('/:id/reschedule', protect, async (req, res) => {
       return res.status(400).json({ message: 'This vehicle is already booked for some of those dates. Please choose a different range.' });
     }
 
+    const blockedRange = await findBlockedRange(booking.car, start, end);
+    if (blockedRange) {
+      return res.status(400).json({ message: 'This vehicle is not available during those dates. Please choose a different range.' });
+    }
+
     booking.rescheduleRequest = {
       status: 'pending', newStartDate: start, newEndDate: end,
       reason: reason || '', adminNotes: '', requestedAt: new Date(),
@@ -465,13 +494,17 @@ router.put('/:id/reschedule', protect, adminOnly, async (req, res) => {
 
     if (decision === 'approved') {
       // Re-check right before committing — dates could have been claimed by
-      // another confirmed booking since the client's original request.
+      // another confirmed booking (or blocked by admin) since the client's
+      // original request.
       const conflict = await findOverlappingBooking(booking.car, booking.rescheduleRequest.newStartDate, booking.rescheduleRequest.newEndDate, ['confirmed'], booking._id);
-      if (conflict) {
+      const blockedRange = !conflict ? await findBlockedRange(booking.car, booking.rescheduleRequest.newStartDate, booking.rescheduleRequest.newEndDate) : null;
+      if (conflict || blockedRange) {
         booking.rescheduleRequest.status = 'declined';
-        booking.rescheduleRequest.adminNotes = 'Automatically declined: those dates were booked by someone else in the meantime.';
+        booking.rescheduleRequest.adminNotes = blockedRange
+          ? 'Automatically declined: those dates are blocked.'
+          : 'Automatically declined: those dates were booked by someone else in the meantime.';
         await booking.save();
-        await notifyUser(booking.user, 'Reschedule Declined', 'Your reschedule request could not be approved because those dates were booked in the meantime. Your original dates are unchanged.', '/my-bookings');
+        await notifyUser(booking.user, 'Reschedule Declined', 'Your reschedule request could not be approved because those dates are no longer available. Your original dates are unchanged.', '/my-bookings');
         return res.json(booking);
       }
 

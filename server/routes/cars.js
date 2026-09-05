@@ -73,11 +73,63 @@ router.get('/archived', protect, adminOnly, async (req, res) => {
 // Public: confirmed booking date ranges for a car, so clients can see which
 // dates are already taken before booking. Only start/end dates are exposed —
 // no renter identity or booking details, since this is publicly reachable.
+// Admin-blocked ranges are merged in the same way — from the client's side
+// there's no difference between "someone else booked it" and "the admin
+// blocked it", both just mean the date can't be picked.
 router.get('/:id/booked-dates', async (req, res) => {
   try {
-    const bookings = await Booking.find({ car: req.params.id, status: 'confirmed' })
-      .select('startDate endDate');
-    res.json(bookings.map((b) => ({ startDate: b.startDate, endDate: b.endDate })));
+    const [bookings, car] = await Promise.all([
+      Booking.find({ car: req.params.id, status: 'confirmed' }).select('startDate endDate'),
+      Car.findById(req.params.id).select('blockedDates'),
+    ]);
+    const ranges = [
+      ...bookings.map((b) => ({ startDate: b.startDate, endDate: b.endDate })),
+      ...(car?.blockedDates || []).map((b) => ({ startDate: b.startDate, endDate: b.endDate })),
+    ];
+    res.json(ranges);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin: block a date range on a car (e.g. maintenance, owner keeping it for
+// personal use) — refuses if a confirmed booking already overlaps, since
+// that would contradict an existing commitment rather than prevent one.
+router.post('/:id/blocked-dates', protect, adminOnly, async (req, res) => {
+  try {
+    const { startDate, endDate, reason } = req.body;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (!startDate || !endDate || isNaN(start) || isNaN(end) || end <= start) {
+      return res.status(400).json({ message: 'Please provide a valid date range.' });
+    }
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+
+    const conflictingBooking = await Booking.findOne({
+      car: req.params.id, status: 'confirmed',
+      startDate: { $lt: end }, endDate: { $gt: start },
+    });
+    if (conflictingBooking) {
+      return res.status(400).json({ message: 'This vehicle already has a confirmed booking overlapping these dates.' });
+    }
+
+    car.blockedDates.push({ startDate: start, endDate: end, reason: reason || '' });
+    await car.save();
+    res.json(car);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin: remove a blocked date range
+router.delete('/:id/blocked-dates/:blockId', protect, adminOnly, async (req, res) => {
+  try {
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+    car.blockedDates = car.blockedDates.filter((b) => b._id.toString() !== req.params.blockId);
+    await car.save();
+    res.json(car);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

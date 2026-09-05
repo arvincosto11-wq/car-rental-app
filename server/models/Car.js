@@ -35,7 +35,17 @@ const carSchema = new mongoose.Schema({
     reason: { type: String, default: '' },
     requestedAt: { type: Date },
     adminNotes: { type: String, default: '' },
-  }
+  },
+  // Admin-set date ranges where this car can't be booked at all, regardless
+  // of whether anything is actually booked (e.g. scheduled maintenance, the
+  // owner keeping it for personal use) — a hard block same as a confirmed
+  // booking's dates, just not derived from an actual reservation. Not
+  // exposed to consignors for now, admin-only.
+  blockedDates: [{
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+    reason: { type: String, default: '' },
+  }],
 }, { timestamps: true });
 
 export default mongoose.model('Car', carSchema);

@@ -31,6 +31,8 @@ const ManageCars = () => {
   const [editBrandChoice, setEditBrandChoice] = useState('');
   const [editModelChoice, setEditModelChoice] = useState('');
   const [search, setSearch] = useState('');
+  const [blockForm, setBlockForm] = useState({ startDate: '', endDate: '', reason: '' });
+  const [blockSubmitting, setBlockSubmitting] = useState(false);
 
   const editBrandOrder = editVehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
   const editModelOptions = editBrandChoice && editBrandChoice !== OTHER
@@ -213,6 +215,33 @@ const ManageCars = () => {
     }
   };
 
+  const handleAddBlockedDate = async (carId) => {
+    if (!blockForm.startDate || !blockForm.endDate) {
+      toast.error('Please pick both a start and end date.');
+      return;
+    }
+    setBlockSubmitting(true);
+    try {
+      const res = await api.post(`/cars/${carId}/blocked-dates`, blockForm);
+      setCars(cars.map((c) => c._id === carId ? res.data : c));
+      setBlockForm({ startDate: '', endDate: '', reason: '' });
+      toast.success('Dates blocked.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to block those dates.');
+    } finally {
+      setBlockSubmitting(false);
+    }
+  };
+
+  const handleRemoveBlockedDate = async (carId, blockId) => {
+    try {
+      const res = await api.delete(`/cars/${carId}/blocked-dates/${blockId}`);
+      setCars(cars.map((c) => c._id === carId ? res.data : c));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove that blocked range.');
+    }
+  };
+
   const styles = {
     main: {},
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
@@ -266,6 +295,21 @@ const ManageCars = () => {
     }),
     categoryFixed: { padding: '8px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', background: isDark ? '#0f172a' : '#f9fafb', color: isDark ? '#94a3b8' : '#6b7280' },
     hint: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '4px' },
+    blockedList: { display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' },
+    blockedItem: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+      padding: '6px 10px', borderRadius: '6px', fontSize: '12px',
+      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fcd34d' : '#92400e',
+    },
+    blockedRemoveBtn: {
+      background: 'none', border: 'none', color: isDark ? '#fca5a5' : '#dc2626',
+      fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0,
+    },
+    blockAddBtn: {
+      marginTop: '8px', padding: '8px 16px', background: isDark ? '#0f172a' : '#f3f4f6',
+      color: isDark ? '#f1f5f9' : '#374151', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+    },
     searchInput: {
       width: '100%', maxWidth: '360px', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
       borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '18px',
@@ -475,6 +519,34 @@ const ManageCars = () => {
                             With Driver
                           </label>
                         </div>
+                      </div>
+                      <div style={styles.field}>
+                        <label style={styles.label}>Blocked Dates</label>
+                        <p style={styles.hint}>Blocks this vehicle from being booked during these ranges (e.g. maintenance). Saved immediately — not part of Save Changes below.</p>
+                        {car.blockedDates?.length > 0 && (
+                          <div style={styles.blockedList}>
+                            {car.blockedDates.map((b) => (
+                              <div key={b._id} style={styles.blockedItem}>
+                                <span>
+                                  {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                                  {b.reason ? ` · ${b.reason}` : ''}
+                                </span>
+                                <button type="button" style={styles.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(car._id, b._id)}>Remove</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="responsive-row-2" style={{ gap: '8px', marginTop: '8px' }}>
+                          <input aria-label="Block start date" type="date" style={styles.input}
+                            value={blockForm.startDate} onChange={(e) => setBlockForm({ ...blockForm, startDate: e.target.value })} />
+                          <input aria-label="Block end date" type="date" style={styles.input}
+                            value={blockForm.endDate} onChange={(e) => setBlockForm({ ...blockForm, endDate: e.target.value })} />
+                        </div>
+                        <input aria-label="Block reason" type="text" style={{ ...styles.input, marginTop: '8px' }} placeholder="Reason (optional, e.g. Maintenance)"
+                          value={blockForm.reason} onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })} />
+                        <button type="button" style={styles.blockAddBtn} onClick={() => handleAddBlockedDate(car._id)} disabled={blockSubmitting}>
+                          {blockSubmitting ? 'Blocking...' : 'Block These Dates'}
+                        </button>
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="mc-edit-description">Description</label>
