@@ -36,6 +36,12 @@ const bookingSchema = new mongoose.Schema({
   // PayMongo dashboard or contacting their support, since GCash's own
   // internal reference isn't exposed to merchants.
   paymongoPaymentId: { type: String, default: '' },
+  // Set once a refund is actually issued through PayMongo (not just marked
+  // approved in our own status) — see refundBookingPayment in
+  // utils/paymongo.js. Status is whatever PayMongo returns immediately
+  // (e.g. 'pending' or 'succeeded'); not tracked further via webhook yet.
+  paymongoRefundId: { type: String, default: '' },
+  paymongoRefundStatus: { type: String, default: '' },
   carRating: {
     vehicleCondition: { type: Number, min: 1, max: 5 },
     serviceQuality: { type: Number, min: 1, max: 5 },

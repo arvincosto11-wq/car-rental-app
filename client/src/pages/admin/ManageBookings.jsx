@@ -310,7 +310,12 @@ const ManageBookings = () => {
                       </div>
                     </div>
                   ) : booking.refundStatus === 'approved' ? (
-                    <span style={s.refundApproved}>Refund Approved</span>
+                    <div>
+                      <span style={s.refundApproved}>Refund Approved</span>
+                      {booking.paymongoRefundId && (
+                        <div style={s.paymentRef} title="PayMongo refund reference">{booking.paymongoRefundId}</div>
+                      )}
+                    </div>
                   ) : booking.refundStatus === 'declined' ? (
                     <span style={s.refundDeclined}>Refund Declined</span>
                   ) : (

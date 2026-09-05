@@ -5,6 +5,7 @@ import Car from '../models/Car.js';
 import User from '../models/User.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
+import { refundBookingPayment } from '../utils/paymongo.js';
 
 const router = express.Router();
 
@@ -217,10 +218,19 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         // one to be confirmed too — send it straight to an approved refund
         // instead. This is the platform's fault, not the client's choice to
         // cancel, so it's always a full refund regardless of pickup timing.
+        // The vehicle genuinely isn't available either way, so this cancels
+        // regardless of whether the real GCash refund below succeeds —
+        // a failure there just gets flagged for admin to handle manually.
         booking.status = 'cancelled';
         booking.refundStatus = 'approved';
         booking.refundReason = 'Automatically refunded: this vehicle was already booked for overlapping dates by another confirmed reservation.';
         booking.refundAmount = booking.amountPaid;
+        try {
+          await refundBookingPayment(booking);
+        } catch (err) {
+          console.error('Auto-refund failed for booking', booking._id.toString(), err.message);
+          await notifyAdmins('Manual Refund Needed', `Automatic GCash refund failed for a cancelled booking — please refund ₱${booking.amountPaid.toLocaleString()} manually.`, '/admin/manage-bookings');
+        }
         await booking.save();
 
         await notifyUser(booking.user, 'Booking Cancelled & Refunded', 'Your booking request could not be confirmed because the vehicle was already booked for those dates. It has been cancelled and automatically approved for a refund.', '/my-bookings');
@@ -238,22 +248,25 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       // Any other PENDING request for this car that overlaps these same dates
       // has lost the race — auto-cancel and refund it in full (platform's
       // fault, not the client's). Pending requests for non-overlapping dates
-      // are untouched. Pipeline update so refundAmount can copy amountPaid
-      // per-document, since it differs across the matched bookings.
-      await Booking.updateMany(
-        {
-          car: booking.car, _id: { $ne: booking._id }, status: 'pending',
-          startDate: { $lt: booking.endDate }, endDate: { $gt: booking.startDate },
-        },
-        [{
-          $set: {
-            status: 'cancelled',
-            refundStatus: 'approved',
-            refundReason: 'Automatically refunded: another booking for overlapping dates was confirmed first.',
-            refundAmount: '$amountPaid',
-          },
-        }]
-      );
+      // are untouched. Looped (not a bulk updateMany) so each one's real
+      // GCash charge can actually be reversed through PayMongo.
+      const overlappingPending = await Booking.find({
+        car: booking.car, _id: { $ne: booking._id }, status: 'pending',
+        startDate: { $lt: booking.endDate }, endDate: { $gt: booking.startDate },
+      });
+      for (const pending of overlappingPending) {
+        pending.status = 'cancelled';
+        pending.refundStatus = 'approved';
+        pending.refundReason = 'Automatically refunded: another booking for overlapping dates was confirmed first.';
+        pending.refundAmount = pending.amountPaid;
+        try {
+          await refundBookingPayment(pending);
+        } catch (err) {
+          console.error('Auto-refund failed for booking', pending._id.toString(), err.message);
+          await notifyAdmins('Manual Refund Needed', `Automatic GCash refund failed for a cancelled booking — please refund ₱${pending.amountPaid.toLocaleString()} manually.`, '/admin/manage-bookings');
+        }
+        await pending.save();
+      }
 
       await notifyUser(booking.user, 'Booking Confirmed', 'Your booking has been confirmed. Check My Bookings for details.', '/my-bookings');
       if (car.owner) {
@@ -329,12 +342,22 @@ router.put('/:id/refund', protect, adminOnly, async (req, res) => {
       return res.status(400).json({ message: 'No pending refund request for this booking.' });
     }
 
-    booking.refundStatus = decision;
-
     if (decision === 'approved') {
+      // Actually reverse the GCash charge through PayMongo — approving here
+      // used to just flip a status flag, but now that GCash is a real
+      // payment, this needs to move real money back. If it fails, don't
+      // cancel the booking or mark it refunded — surface the error so
+      // admin can retry rather than silently promising a refund that
+      // never happened.
+      try {
+        await refundBookingPayment(booking);
+      } catch (err) {
+        return res.status(502).json({ message: `Could not process the GCash refund automatically: ${err.message}. Nothing was changed — please retry.` });
+      }
       booking.status = 'cancelled';
     }
 
+    booking.refundStatus = decision;
     await booking.save();
 
     if (decision === 'approved') {

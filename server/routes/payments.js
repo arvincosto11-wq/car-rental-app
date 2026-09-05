@@ -3,31 +3,11 @@ import crypto from 'crypto';
 import Booking from '../models/Booking.js';
 import { protect } from '../middleware/auth.js';
 import { notifyUser } from '../utils/notify.js';
+import { paymongoFetch } from '../utils/paymongo.js';
 
 const router = express.Router();
 
-const PAYMONGO_API = 'https://api.paymongo.com/v1';
 const CLIENT_URL = process.env.CLIENT_URL || 'https://rent-a-ride-albay.vercel.app';
-
-function paymongoAuthHeader() {
-  return 'Basic ' + Buffer.from(`${process.env.PAYMONGO_SECRET_KEY}:`).toString('base64');
-}
-
-async function paymongoFetch(path, options = {}) {
-  const res = await fetch(`${PAYMONGO_API}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: paymongoAuthHeader(),
-      ...(options.headers || {}),
-    },
-  });
-  const json = await res.json();
-  if (!res.ok) {
-    throw new Error(json?.errors?.[0]?.detail || 'PayMongo request failed');
-  }
-  return json;
-}
 
 // Client starts an online GCash payment for a booking they already created
 // (status 'pending', payment 'gcash_pending'). Returns a PayMongo-hosted
