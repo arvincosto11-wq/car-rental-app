@@ -122,19 +122,8 @@ const ColorPicker = ({ id, value, onChange, isDark }) => {
             }}
           />
           {suggestion && (
-            <div style={{ marginTop: '6px', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' }}>
-              Did you mean{' '}
-              <button
-                type="button"
-                onClick={() => { setCustomMode(false); onChange(suggestion); }}
-                style={{
-                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                  color: accent, fontWeight: '600', fontSize: '12px', textDecoration: 'underline',
-                }}
-              >
-                {suggestion}
-              </button>
-              ?
+            <div style={{ marginTop: '6px', fontSize: '12px', color: isDark ? '#fca5a5' : '#dc2626' }}>
+              ⚠ Please enter a valid color.
             </div>
           )}
         </>

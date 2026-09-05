@@ -396,12 +396,12 @@ const ManageCars = () => {
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-year">Year</label>
-                          <input id="mc-edit-year" style={styles.input} type="text" inputMode="numeric" value={editForm.year}
+                          <input id="mc-edit-year" style={styles.input} type="text" inputMode="numeric" placeholder="e.g. 2022" value={editForm.year}
                             onChange={(e) => setEditForm({...editForm, year: sanitizeDigits(e.target.value, 4)})} />
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-price">Daily Price (₱)</label>
-                          <input id="mc-edit-price" style={styles.input} type="text" inputMode="decimal" value={editForm.pricePerDay}
+                          <input id="mc-edit-price" style={styles.input} type="text" inputMode="decimal" placeholder="e.g. 150" value={editForm.pricePerDay}
                             onChange={(e) => setEditForm({...editForm, pricePerDay: sanitizeDecimal(e.target.value, 8)})} />
                         </div>
                         <div style={styles.field}>
@@ -441,12 +441,12 @@ const ManageCars = () => {
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-seats">Seats</label>
-                          <input id="mc-edit-seats" style={styles.input} type="text" inputMode="numeric" value={editForm.seats}
+                          <input id="mc-edit-seats" style={styles.input} type="text" inputMode="numeric" placeholder="e.g. 5" value={editForm.seats}
                             onChange={(e) => setEditForm({...editForm, seats: sanitizeDigits(e.target.value, 2)})} />
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-plate">Plate Number</label>
-                          <input id="mc-edit-plate" style={styles.input} type="text" value={editForm.plateNumber}
+                          <input id="mc-edit-plate" style={styles.input} type="text" placeholder="e.g. ABC 1234" value={editForm.plateNumber}
                             onChange={(e) => setEditForm({...editForm, plateNumber: formatPlateNumber(e.target.value)})} />
                         </div>
                         <div style={styles.field}>
@@ -456,7 +456,7 @@ const ManageCars = () => {
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-mileage">Mileage (km)</label>
-                          <input id="mc-edit-mileage" style={styles.input} type="text" inputMode="numeric" value={editForm.mileage}
+                          <input id="mc-edit-mileage" style={styles.input} type="text" inputMode="numeric" placeholder="e.g. 35000" value={editForm.mileage}
                             onChange={(e) => setEditForm({...editForm, mileage: sanitizeDigits(e.target.value, 7)})} />
                         </div>
                       </div>
@@ -477,7 +477,7 @@ const ManageCars = () => {
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="mc-edit-description">Description</label>
-                        <textarea id="mc-edit-description" style={styles.textarea} value={editForm.description}
+                        <textarea id="mc-edit-description" style={styles.textarea} placeholder="e.g. A luxurious SUV..." value={editForm.description}
                           onChange={(e) => setEditForm({...editForm, description: e.target.value})} />
                       </div>
                       <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
