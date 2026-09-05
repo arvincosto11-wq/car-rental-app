@@ -173,8 +173,8 @@ const AddVehicle = () => {
     backLink: { fontSize: '13px', color: isDark ? GOLD_DARK : GOLD, textDecoration: 'none', marginBottom: '16px', display: 'inline-block' },
     form: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '24px' },
     error: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
-    row: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
-    row3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' },
+    row: { gap: '12px' },
+    row3: { gap: '12px' },
     field: { marginBottom: '16px' },
     fieldHint: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '4px' },
     checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer' },
@@ -197,8 +197,8 @@ const AddVehicle = () => {
     typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '16px' },
     typeToggleBtn: (active) => ({
       flex: 1, padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-      border: active ? `2px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#0f172a' : '#fff'),
+      border: active ? `2px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${isDark ? '#475569' : '#9ca3af'}`,
+      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#0f172a' : '#f9fafb'),
       color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#94a3b8' : '#374151'),
       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
     }),
@@ -231,7 +231,7 @@ const AddVehicle = () => {
                       </button>
                     </div>
 
-                    <div style={s.row}>
+                    <div className="responsive-row-2" style={s.row}>
                       <div style={s.field}>
                         <label style={s.label} htmlFor="av-brand">Brand</label>
                         <select id="av-brand" style={s.input} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
@@ -266,7 +266,7 @@ const AddVehicle = () => {
                       </div>
                     </div>
 
-                    <div style={s.row3}>
+                    <div className="responsive-row-3" style={s.row3}>
                       <div style={s.field}>
                         <label style={s.label} htmlFor="av-year">Year</label>
                         <input id="av-year" style={s.input} type="number" placeholder="e.g. 2022" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} required />
@@ -286,7 +286,7 @@ const AddVehicle = () => {
                       <input id="av-plate" style={s.input} type="text" placeholder="e.g. ABC 1234" value={form.plateNumber} onChange={(e) => setForm({ ...form, plateNumber: e.target.value })} required />
                     </div>
 
-                    <div style={s.row3}>
+                    <div className="responsive-row-3" style={s.row3}>
                       <div style={s.field}>
                         <label style={s.label} htmlFor="av-category">Category</label>
                         {vehicleType === 'motorcycle' ? (
@@ -357,7 +357,7 @@ const AddVehicle = () => {
 
                 {step === 2 && (
                   <motion.div key="step2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
-                    <div style={s.row}>
+                    <div className="responsive-row-2" style={s.row}>
                       <div style={s.field}>
                         <label style={s.label} htmlFor="av-or">OR (Official Receipt)</label>
                         <div style={s.upload}>
