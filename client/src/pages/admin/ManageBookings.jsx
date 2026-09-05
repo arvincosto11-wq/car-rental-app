@@ -94,6 +94,18 @@ const ManageBookings = () => {
   const unratedClientCount = bookings.filter((b) => b.status === 'completed' && !b.clientRating?.ratedAt).length;
   const pendingRescheduleCount = bookings.filter((b) => b.rescheduleRequest?.status === 'pending').length;
 
+  // Unpaid bookings never show up here at all (see filteredBookings below),
+  // so counts for the status tabs are scoped to paid bookings only —
+  // otherwise "All" would include bookings nothing else on this page shows.
+  const paidBookings = bookings.filter((b) => b.payment === 'paid');
+  const statusTabs = [
+    { value: 'all', label: 'All', count: paidBookings.length },
+    { value: 'pending', label: 'Pending', count: paidBookings.filter((b) => b.status === 'pending').length },
+    { value: 'confirmed', label: 'Confirmed', count: paidBookings.filter((b) => b.status === 'confirmed').length },
+    { value: 'completed', label: 'Completed', count: paidBookings.filter((b) => b.status === 'completed').length },
+    { value: 'cancelled', label: 'Cancelled', count: paidBookings.filter((b) => b.status === 'cancelled').length },
+  ];
+
   const filteredBookings = bookings.filter((b) => {
     // Unpaid bookings (checkout never completed) aren't shown at all —
     // there's nothing for admin to do with one until it's actually paid.
@@ -151,10 +163,18 @@ const ManageBookings = () => {
       flex: '1 1 220px', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px',
       fontSize: '13px', outline: 'none', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#f1f5f9' : '#111827',
     },
-    statusSelect: {
-      padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px',
-      fontSize: '13px', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#f1f5f9' : '#111827', cursor: 'pointer',
-    },
+    statusTabRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%' },
+    statusTab: (active) => ({
+      display: 'flex', alignItems: 'center', gap: '6px',
+      padding: '8px 16px', borderRadius: '999px', fontSize: '13px', fontWeight: '600',
+      border: active ? 'none' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#1e293b' : '#fff'),
+      color: active ? ON_GOLD : (isDark ? '#f1f5f9' : '#374151'),
+      cursor: 'pointer', whiteSpace: 'nowrap',
+    }),
+    statusTabCount: (active) => ({
+      fontSize: '12px', fontWeight: '600', opacity: active ? 0.85 : 0.6,
+    }),
     calendarBtn: {
       padding: '9px 16px', background: isDark ? '#1e293b' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151',
       border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600',
@@ -228,13 +248,25 @@ const ManageBookings = () => {
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
         />
-        <select style={s.statusSelect} value={statusFilter} aria-label="Filter by status" onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
-          <option value="all">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+      </div>
+
+      <div style={s.statusTabRow} role="tablist" aria-label="Filter by status">
+        {statusTabs.map((tab) => {
+          const active = statusFilter === tab.value;
+          return (
+            <button
+              key={tab.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              style={s.statusTab(active)}
+              onClick={() => { setStatusFilter(tab.value); setPage(1); }}
+            >
+              {tab.label}
+              <span style={s.statusTabCount(active)}>({tab.count})</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="table-scroll">
