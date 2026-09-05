@@ -101,10 +101,16 @@ const ColorPicker = ({ id, value, onChange, isDark }) => {
           onClick={() => setCustomMode(true)}
           style={{
             width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0, padding: 0, cursor: 'pointer',
-            background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)',
-            ...ring(customMode),
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: isDark ? '#0f172a' : '#fff',
+            border: `2px dashed ${customMode ? accent : (isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)')}`,
+            boxShadow: customMode ? `0 0 0 2px ${isDark ? '#0f172a' : '#fff'}, 0 0 0 4px ${accent}` : 'none',
+            color: customMode ? accent : (isDark ? '#94a3b8' : '#9ca3af'),
+            fontSize: '14px', fontWeight: 700, lineHeight: 1,
           }}
-        />
+        >
+          +
+        </button>
       </div>
       {customMode && (
         <>
