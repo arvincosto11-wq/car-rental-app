@@ -392,7 +392,7 @@ const CarDetail = () => {
               <p>The rented vehicle must be used only for lawful purposes. The renter is responsible for any traffic violations, fines, or damages incurred during the rental period.</p>
               <br/>
               <p><strong>4. Fuel Policy</strong></p>
-              <p>The vehicle will be provided with a full tank. The renter must return it with the same fuel level or pay the difference.</p>
+              <p>The vehicle must be returned with the same fuel level it had at pickup. If it is returned with less fuel, the difference will be charged to the renter.</p>
               <br/>
               <p><strong>5. Damage Policy</strong></p>
               <p>The renter is liable for any damage to the vehicle during the rental period. Urban Wheels Car Rental reserves the right to charge for repairs.</p>
@@ -425,6 +425,9 @@ const CarDetail = () => {
               <p>⚠️ <strong>Refund Policy:</strong> Cancellations made within 12 hours of booking are eligible for a full refund. Cancellations made 12–24 hours after booking are eligible for a 50% refund. No refund is issued after 24 hours.</p>
               <p style={{ marginTop: '10px' }}>
                 Since you are booking now, cancelling within the next 12 hours will entitle you to a full refund of ₱{amountToPay.toLocaleString()}.
+              </p>
+              <p style={{ marginTop: '10px' }}>
+                ⛽ <strong>Fuel Policy:</strong> Please return the vehicle with the same fuel level it had at pickup, or the difference will be charged to you.
               </p>
             </div>
             <div style={s.refundNoticeActions}>
