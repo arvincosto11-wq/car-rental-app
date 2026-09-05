@@ -420,7 +420,7 @@ select:disabled {
 .navbar-auth-group {
   display: flex;
 }
-.navbar-mobile-toggle {
+.navbar-mobile-toggle-group {
   display: none;
 }
 .navbar-mobile-menu {
@@ -431,7 +431,7 @@ select:disabled {
   .navbar-auth-group {
     display: none;
   }
-  .navbar-mobile-toggle { display: flex !important; }
+  .navbar-mobile-toggle-group { display: flex !important; }
   .navbar-mobile-menu.open {
     display: flex;
   }

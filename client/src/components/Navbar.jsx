@@ -252,25 +252,45 @@ const Navbar = () => {
           )}
         </div>
 
-        <button
-          className="navbar-mobile-toggle"
-          onClick={() => setMobileOpen((v) => !v)}
-          aria-label="Toggle menu"
-          style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '36px',
-            height: '36px',
-            borderRadius: '8px',
-            border: `1px solid ${btnBorder}`,
-            background: btnBg,
-            color: textColor,
-            fontSize: '16px',
-            cursor: 'pointer',
-          }}
-        >
-          {mobileOpen ? '✕' : '☰'}
-        </button>
+        <div className="navbar-mobile-toggle-group" style={{ gap: '8px' }}>
+          <button
+            className="navbar-mobile-theme-toggle"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+            style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              border: `1px solid ${btnBorder}`,
+              background: btnBg,
+              color: textColor,
+              cursor: 'pointer',
+            }}
+          >
+            <ThemeIcon dark={isDark} />
+          </button>
+          <button
+            className="navbar-mobile-toggle"
+            onClick={() => setMobileOpen((v) => !v)}
+            aria-label="Toggle menu"
+            style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              border: `1px solid ${btnBorder}`,
+              background: btnBg,
+              color: textColor,
+              fontSize: '16px',
+              cursor: 'pointer',
+            }}
+          >
+            {mobileOpen ? '✕' : '☰'}
+          </button>
+        </div>
       </div>
 
       <div className={`navbar-mobile-menu${mobileOpen ? ' open' : ''}`} style={{
@@ -282,10 +302,6 @@ const Navbar = () => {
         {navLinks.map((link) => (
           <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)} style={mobileLinkStyle}>{link.label}</Link>
         ))}
-
-        <button onClick={() => { toggleTheme(); }} style={{ ...mobileLinkStyle, display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', width: '100%' }}>
-          <ThemeIcon dark={isDark} /> {isDark ? 'Light Mode' : 'Dark Mode'}
-        </button>
 
         {user ? (
           <>
