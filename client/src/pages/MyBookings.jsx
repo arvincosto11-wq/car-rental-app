@@ -65,6 +65,7 @@ const MyBookings = () => {
   const [refundReason, setRefundReason] = useState('');
   const [refundError, setRefundError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [retryingPaymentId, setRetryingPaymentId] = useState(null);
   const [ratingModalId, setRatingModalId] = useState(null);
   const [rescheduleModalId, setRescheduleModalId] = useState(null);
   const [newStartDate, setNewStartDate] = useState('');
@@ -170,6 +171,21 @@ const MyBookings = () => {
       setRefundError(err.response?.data?.message || 'Failed to submit refund request');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Re-attempts GCash payment for a booking that already exists but never
+  // completed payment (abandoned/cancelled checkout) — same endpoint the
+  // original booking flow uses, just re-run for the same booking instead
+  // of creating a new one.
+  const handleRetryPayment = async (bookingId) => {
+    setRetryingPaymentId(bookingId);
+    try {
+      const { data } = await api.post('/payments/gcash/checkout-session', { bookingId });
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not start the GCash payment. Please try again.');
+      setRetryingPaymentId(null);
     }
   };
 
@@ -570,11 +586,28 @@ const MyBookings = () => {
                       )}
                     </div>
                 )}
+                {(booking.status === 'pending' || booking.status === 'confirmed') &&
+                  booking.payment !== 'paid' &&
+                  booking.refundStatus !== 'requested' && (
+                    <div style={styles.actionsRow}>
+                      <button
+                        style={styles.bookAgainBtn}
+                        onClick={() => handleRetryPayment(booking._id)}
+                        disabled={retryingPaymentId === booking._id}
+                      >
+                        {retryingPaymentId === booking._id ? 'Redirecting...' : 'Retry GCash Payment'}
+                      </button>
+                    </div>
+                )}
                 {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved') && (
                   <p style={styles.refundNote}>
                     {booking.refundStatus === 'requested' ? 'Pending refund' : 'Refund'}: ₱{booking.refundAmount?.toLocaleString() ?? 0}
                     {booking.refundReason ? ` — Reason: ${booking.refundReason}` : ''}
+                    {booking.paymongoRefundId ? ` — Ref: ${booking.paymongoRefundId}` : ''}
                   </p>
+                )}
+                {booking.payment === 'paid' && booking.paymongoPaymentId && (
+                  <p style={styles.refundNote}>Payment reference: {booking.paymongoPaymentId}</p>
                 )}
                 {booking.rescheduleRequest?.status === 'declined' && booking.rescheduleRequest.adminNotes && (
                   <p style={styles.refundNote}>Reschedule declined: {booking.rescheduleRequest.adminNotes}</p>
