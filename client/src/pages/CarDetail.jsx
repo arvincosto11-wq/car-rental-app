@@ -128,17 +128,6 @@ const CarDetail = () => {
   const downPayment = Math.ceil(totalPrice * 0.20);
   const amountToPay = paymentType === 'downpayment' ? downPayment : totalPrice;
 
-  // Mirrors getRefundPercentage in server/routes/bookings.js — shown as a
-  // preview here; the server locks in the real amount when a refund is
-  // actually requested later.
-  const refundPercentage = (() => {
-    if (!startDate) return 0;
-    const hoursUntilPickup = (new Date(startDate).getTime() - Date.now()) / (1000 * 60 * 60);
-    if (hoursUntilPickup >= 48) return 100;
-    if (hoursUntilPickup >= 24) return 50;
-    return 0;
-  })();
-
   const overlapsBookedDates = (start, end) => {
     const s = new Date(start).getTime();
     const e = new Date(end).getTime();
@@ -383,7 +372,7 @@ const CarDetail = () => {
               <p>A minimum of 20% downpayment is required to confirm your booking. The remaining balance must be paid upon vehicle pickup.</p>
               <br/>
               <p><strong>2. Cancellation Policy</strong></p>
-              <p>Refund amount depends on how far in advance you cancel: 48 or more hours before pickup, you receive a full refund. Between 24 and 48 hours before pickup, refunds are 50% of the amount paid. Within 24 hours of pickup — or after your pickup date has passed — bookings are non-refundable.</p>
+              <p>Refund amount depends on how long ago you made the booking, not your pickup date: cancel within 12 hours of booking for a full refund, within 12 to 24 hours for a 50% refund, or after 24 hours for no refund.</p>
               <br/>
               <p><strong>3. Vehicle Usage</strong></p>
               <p>The rented vehicle must be used only for lawful purposes. The renter is responsible for any traffic violations, fines, or damages incurred during the rental period.</p>
@@ -419,9 +408,9 @@ const CarDetail = () => {
           <motion.div style={s.modalContent} {...modalMotion} ref={refundNoticeModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-notice-title">
             <h2 id="refund-notice-title" style={s.modalTitle}>Before You Confirm</h2>
             <div style={s.modalText}>
-              <p>⚠️ <strong>Refund Policy:</strong> Refunds depend on how far ahead of pickup you cancel — full refund 48+ hours before, 50% between 24–48 hours, and no refund within 24 hours (or after pickup).</p>
+              <p>⚠️ <strong>Refund Policy:</strong> Refunds depend on how long ago you booked, not your pickup date — cancel within 12 hours of booking for a full refund, within 12–24 hours for 50%, or after 24 hours for no refund.</p>
               <p style={{ marginTop: '10px' }}>
-                Based on your selected pickup date, cancelling right now would currently qualify for a {refundPercentage}% refund — approximately ₱{Math.round(amountToPay * (refundPercentage / 100)).toLocaleString()} of the ₱{amountToPay.toLocaleString()} you're about to pay. That eligibility only improves the further out your pickup date is.
+                Since you're confirming right now, cancelling within the next 12 hours would get you back the full ₱{amountToPay.toLocaleString()} you're about to pay.
               </p>
             </div>
             <div style={s.refundNoticeActions}>

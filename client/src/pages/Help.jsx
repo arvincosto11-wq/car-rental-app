@@ -12,7 +12,7 @@ const FAQS = [
   },
   {
     q: 'What is the cancellation and refund policy?',
-    a: 'You can request a refund on any pending or confirmed booking from My Bookings. Refunds deduct 50% of the amount you paid as a processing fee, and an admin needs to approve the request before it\'s finalized.',
+    a: 'You can request a refund on any pending or confirmed booking from My Bookings, up until the vehicle is picked up. The amount depends on how long ago you booked, not your pickup date: cancel within 12 hours of booking for a full refund, within 12–24 hours for 50%, or after 24 hours for no refund. An admin needs to approve the request before it\'s finalized.',
   },
   {
     q: 'Can I change my booking dates without cancelling?',

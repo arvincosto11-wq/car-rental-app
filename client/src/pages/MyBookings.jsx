@@ -16,13 +16,13 @@ import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
 const PAGE_SIZE = 10;
 
-// Mirrors getRefundPercentage in server/routes/bookings.js — this is only
-// a preview shown before submitting; the server locks in the real amount
-// at request time.
-const getRefundPercentage = (startDate, now = new Date()) => {
-  const hoursUntilPickup = (new Date(startDate).getTime() - now.getTime()) / (1000 * 60 * 60);
-  if (hoursUntilPickup >= 48) return 100;
-  if (hoursUntilPickup >= 24) return 50;
+// Mirrors getRefundPercentage in server/routes/bookings.js (based on time
+// since the booking was made, not the pickup date) — this is only a preview
+// shown before submitting; the server locks in the real amount at request time.
+const getRefundPercentage = (createdAt, now = new Date()) => {
+  const hoursSinceBooking = (now.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
+  if (hoursSinceBooking <= 12) return 100;
+  if (hoursSinceBooking <= 24) return 50;
   return 0;
 };
 
@@ -224,7 +224,7 @@ const MyBookings = () => {
   const rescheduleModalRef = useModalA11y(closeRescheduleModal, !!(rescheduleModalId && rescheduleBooking));
 
   const activeBooking = bookings.find((b) => b._id === refundModalId);
-  const refundPercentage = activeBooking ? getRefundPercentage(activeBooking.startDate) : 0;
+  const refundPercentage = activeBooking ? getRefundPercentage(activeBooking.createdAt) : 0;
   const refundAmount = activeBooking ? Math.round(activeBooking.amountPaid * (refundPercentage / 100)) : 0;
   const refundModalRef = useModalA11y(closeRefundModal, !!(refundModalId && activeBooking));
 
@@ -617,11 +617,11 @@ const MyBookings = () => {
 
             <div style={styles.warningBox}>
               {refundPercentage === 100 ? (
-                <>✅ Your pickup date is 48+ hours away, so this qualifies for a <strong>full refund</strong>.</>
+                <>✅ You booked less than 12 hours ago, so this qualifies for a <strong>full refund</strong>.</>
               ) : refundPercentage === 50 ? (
-                <>⚠️ Your pickup date is within 48 hours, so this qualifies for a <strong>50% refund</strong> only.</>
+                <>⚠️ It's been 12–24 hours since you booked, so this qualifies for a <strong>50% refund</strong> only.</>
               ) : (
-                <>⚠️ Your pickup date is within 24 hours (or has already passed), so this booking is <strong>not eligible for a refund</strong>.</>
+                <>⚠️ It's been more than 24 hours since you booked, so this booking is <strong>not eligible for a refund</strong>.</>
               )}
               {' '}You paid ₱{activeBooking.amountPaid}, so you would receive approximately ₱{refundAmount} back if approved.
             </div>

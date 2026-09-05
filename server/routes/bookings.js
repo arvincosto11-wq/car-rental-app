@@ -292,13 +292,16 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
   }
 });
 
-// Refund tiers based on how far out the pickup date is at the moment the
-// client requests the refund — not when an admin eventually gets to it, so
-// a slow approval can't quietly shrink what the client was promised.
-function getRefundPercentage(startDate, now = new Date()) {
-  const hoursUntilPickup = (new Date(startDate).getTime() - now.getTime()) / (1000 * 60 * 60);
-  if (hoursUntilPickup >= 48) return 100;
-  if (hoursUntilPickup >= 24) return 50;
+// Refund tiers based on how long ago the booking was MADE — not the pickup
+// date at all. A short cooling-off window (full refund) for a quick change
+// of mind, tapering off the longer the client sits on the booking before
+// cancelling. Computed at request time, not when an admin eventually gets
+// to it, so a slow approval can't quietly shrink what the client was
+// promised.
+function getRefundPercentage(createdAt, now = new Date()) {
+  const hoursSinceBooking = (now.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
+  if (hoursSinceBooking <= 12) return 100;
+  if (hoursSinceBooking <= 24) return 50;
   return 0;
 }
 
@@ -318,7 +321,7 @@ router.post('/:id/refund', protect, async (req, res) => {
       return res.status(400).json({ message: 'A refund request already exists for this booking.' });
     }
 
-    const percentage = getRefundPercentage(booking.startDate);
+    const percentage = getRefundPercentage(booking.createdAt);
     booking.refundStatus = 'requested';
     booking.refundReason = reason;
     booking.refundAmount = Math.round(booking.amountPaid * (percentage / 100));
