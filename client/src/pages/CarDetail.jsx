@@ -408,9 +408,9 @@ const CarDetail = () => {
           <motion.div style={s.modalContent} {...modalMotion} ref={refundNoticeModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-notice-title">
             <h2 id="refund-notice-title" style={s.modalTitle}>Before You Confirm</h2>
             <div style={s.modalText}>
-              <p>⚠️ <strong>Refund Policy:</strong> Refunds depend on how long ago you booked, not your pickup date — cancel within 12 hours of booking for a full refund, within 12–24 hours for 50%, or after 24 hours for no refund.</p>
+              <p>⚠️ <strong>Refund Policy:</strong> Cancellations made within 12 hours of booking are eligible for a full refund. Cancellations made 12–24 hours after booking are eligible for a 50% refund. No refund is issued after 24 hours.</p>
               <p style={{ marginTop: '10px' }}>
-                Since you're confirming right now, cancelling within the next 12 hours would get you back the full ₱{amountToPay.toLocaleString()} you're about to pay.
+                Since you are booking now, cancelling within the next 12 hours will entitle you to a full refund of ₱{amountToPay.toLocaleString()}.
               </p>
             </div>
             <div style={s.refundNoticeActions}>
