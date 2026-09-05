@@ -11,8 +11,19 @@ const carSchema = new mongoose.Schema({
   seats: { type: Number, required: true },
   availableBookingTypes: { type: [String], enum: ['self-drive', 'with-driver'], default: ['self-drive', 'with-driver'] },
   description: { type: String, default: '' },
+  // Not required at the schema level (would break saves on cars added
+  // before this field existed) — plate number is enforced in the Add
+  // Vehicle form instead for anything created going forward.
+  plateNumber: { type: String, default: '' },
+  color: { type: String, default: '' },
+  mileage: { type: Number },
   image: { type: String, default: '' },
   imageFileId: { type: String, default: '' },
+  // Full photo set (image/imageFileId above is just photos[0], kept as its
+  // own field since most of the app only ever needs one thumbnail). Cars
+  // created before this existed just have an empty array here — Car Detail
+  // falls back to the single `image` for those.
+  photos: [{ url: String, fileId: String }],
   isAvailable: { type: Boolean, default: true },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   avgRating: { type: Number, default: 0 },

@@ -23,6 +23,7 @@ const CarDetail = () => {
   const { canFavorite, isFavorite, toggleFavorite } = useFavorites();
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewFilter, setReviewFilter] = useState('all');
@@ -50,6 +51,7 @@ const CarDetail = () => {
   const bookingModalRef = useModalA11y(() => setShowBookingModal(false), showBookingModal);
 
   useEffect(() => {
+    setActivePhotoIndex(0);
     const fetchCar = async () => {
       try {
         const res = await api.get(`/cars/${id}`);
@@ -244,6 +246,13 @@ const CarDetail = () => {
     imgWrap: { width: '100%', height: '300px', borderRadius: '12px', overflow: 'hidden', background: isDark ? '#334155' : '#f3f4f6', marginBottom: '16px' },
     img: { width: '100%', height: '100%', objectFit: 'cover' },
     noImg: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#64748b' : '#9ca3af' },
+    thumbRow: { display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto' },
+    thumbBtn: (active) => ({
+      flexShrink: 0, width: '64px', height: '48px', borderRadius: '8px', overflow: 'hidden', padding: 0, cursor: 'pointer',
+      border: `2px solid ${active ? (isDark ? GOLD_DARK : GOLD) : 'transparent'}`,
+      opacity: active ? 1 : 0.7,
+    }),
+    thumbImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
     carName: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
     carSub: { fontSize: '15px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '20px' },
     metaGrid: { gap: '12px', marginBottom: '20px' },
@@ -337,6 +346,11 @@ const CarDetail = () => {
     </div>
   );
   if (!car) return <div style={s.page}><p style={{ textAlign: 'center', padding: '40px', color: isDark ? '#94a3b8' : '#6b7280' }}>Car not found.</p></div>;
+
+  // Cars added before multi-photo support just have the single `image`
+  // field — fall back to that as a one-item gallery.
+  const galleryPhotos = car.photos?.length ? car.photos : (car.image ? [{ url: car.image }] : []);
+  const activePhoto = galleryPhotos[activePhotoIndex] || galleryPhotos[0];
 
   const filteredReviews = reviews.filter((r) => {
     if (reviewFilter === 'with-comments') return !!r.comment;
@@ -629,12 +643,28 @@ const CarDetail = () => {
           {/* Left */}
           <div>
             <div style={s.imgWrap}>
-              {car.image ? (
-                <img src={car.image} alt={car.model} style={s.img} />
+              {activePhoto ? (
+                <img src={activePhoto.url} alt={car.model} style={s.img} />
               ) : (
                 <div style={s.noImg}>No Image</div>
               )}
             </div>
+            {galleryPhotos.length > 1 && (
+              <div style={s.thumbRow}>
+                {galleryPhotos.map((photo, i) => (
+                  <button
+                    key={photo.fileId || photo.url || i}
+                    type="button"
+                    style={s.thumbBtn(i === activePhotoIndex)}
+                    onClick={() => setActivePhotoIndex(i)}
+                    aria-label={`View photo ${i + 1}`}
+                    aria-current={i === activePhotoIndex}
+                  >
+                    <img src={photo.url} alt="" style={s.thumbImg} />
+                  </button>
+                ))}
+              </div>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
               <h1 style={s.carName}>{car.brand} {car.model}</h1>
               <FavoriteButton

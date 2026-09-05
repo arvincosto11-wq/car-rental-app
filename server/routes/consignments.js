@@ -143,8 +143,12 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         fuelType: consignment.fuelType,
         seats: consignment.seats,
         description: consignment.description,
+        plateNumber: consignment.plateNumber || '',
+        color: consignment.color || '',
+        mileage: consignment.mileage,
         image: consignment.vehiclePhotos?.[0]?.url || '',
         imageFileId: consignment.vehiclePhotos?.[0]?.fileId || '',
+        photos: consignment.vehiclePhotos || [],
         isAvailable: true,
         owner: consignment.owner,
         availableBookingTypes: consignment.availableBookingTypes?.length ? consignment.availableBookingTypes : ['self-drive', 'with-driver']

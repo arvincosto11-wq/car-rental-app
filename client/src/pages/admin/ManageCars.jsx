@@ -21,8 +21,9 @@ const ManageCars = () => {
   const [loading, setLoading] = useState(true);
   const [editingCar, setEditingCar] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [editImage, setEditImage] = useState(null);
-  const [editImagePreview, setEditImagePreview] = useState('');
+  const [editExistingPhotos, setEditExistingPhotos] = useState([]);
+  const [editNewPhotos, setEditNewPhotos] = useState([]);
+  const [editNewPhotoPreviews, setEditNewPhotoPreviews] = useState([]);
   const [updating, setUpdating] = useState(false);
   const [editVehicleType, setEditVehicleType] = useState('car');
   const [editBrandChoice, setEditBrandChoice] = useState('');
@@ -75,8 +76,9 @@ const ManageCars = () => {
 
   const handleEdit = (car) => {
     setEditingCar(car._id);
-    setEditImagePreview(car.image || '');
-    setEditImage(null);
+    setEditExistingPhotos(car.photos?.length ? car.photos : (car.image ? [{ url: car.image, fileId: car.imageFileId }] : []));
+    setEditNewPhotos([]);
+    setEditNewPhotoPreviews([]);
     setEditForm({
       brand: car.brand,
       model: car.model,
@@ -87,6 +89,9 @@ const ManageCars = () => {
       fuelType: car.fuelType,
       seats: car.seats,
       description: car.description,
+      plateNumber: car.plateNumber || '',
+      color: car.color || '',
+      mileage: car.mileage ?? '',
       image: car.image,
       imageFileId: car.imageFileId,
       availableBookingTypes: car.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver'],
@@ -139,12 +144,20 @@ const ManageCars = () => {
     setEditForm({ ...editForm, availableBookingTypes: updated });
   };
 
-  const handleEditImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setEditImage(file);
-      setEditImagePreview(URL.createObjectURL(file));
-    }
+  const handleEditPhotosChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setEditNewPhotos((prev) => [...prev, ...files]);
+    setEditNewPhotoPreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
+  };
+
+  const removeExistingPhoto = (index) => {
+    setEditExistingPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeNewPhoto = (index) => {
+    setEditNewPhotos((prev) => prev.filter((_, i) => i !== index));
+    setEditNewPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const uploadToImageKit = async (file) => {
@@ -177,17 +190,20 @@ const ManageCars = () => {
     try {
       let updatedForm = { ...editForm };
 
-      if (editImage) {
-        const uploaded = await uploadToImageKit(editImage);
-        updatedForm.image = uploaded.url;
-        updatedForm.imageFileId = uploaded.fileId;
+      const uploadedNew = [];
+      for (const file of editNewPhotos) {
+        uploadedNew.push(await uploadToImageKit(file));
       }
+      const finalPhotos = [...editExistingPhotos, ...uploadedNew];
+      updatedForm.photos = finalPhotos;
+      updatedForm.image = finalPhotos[0]?.url || '';
+      updatedForm.imageFileId = finalPhotos[0]?.fileId || '';
 
       const res = await api.put(`/cars/${id}`, updatedForm);
       setCars(cars.map((c) => c._id === id ? res.data : c));
       setEditingCar(null);
-      setEditImage(null);
-      setEditImagePreview('');
+      setEditNewPhotos([]);
+      setEditNewPhotoPreviews([]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -221,6 +237,14 @@ const ManageCars = () => {
     imagePlaceholder: { textAlign: 'center', padding: '16px' },
     imagePreview: { width: '100%', height: '100%', objectFit: 'cover' },
     fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
+    photoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '8px', marginTop: '10px' },
+    photoThumbWrap: { position: 'relative', width: '100%', height: '70px', borderRadius: '8px', overflow: 'hidden' },
+    photoThumb: { width: '100%', height: '100%', objectFit: 'cover' },
+    removePhotoBtn: {
+      position: 'absolute', top: '2px', right: '2px', width: '20px', height: '20px',
+      borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff',
+      fontSize: '13px', lineHeight: '20px', cursor: 'pointer', padding: 0,
+    },
     editGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '12px' },
     field: { marginBottom: '8px' },
     label: { display: 'block', fontSize: '12px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '4px', fontWeight: '500' },
@@ -297,33 +321,42 @@ const ManageCars = () => {
                         </button>
                       </div>
 
-                      {/* Image Upload */}
+                      {/* Photos */}
                       <div style={styles.field}>
-                        <label style={styles.label} htmlFor="mc-edit-image">Car Image</label>
+                        <label style={styles.label} htmlFor="mc-edit-photos">Car Photos</label>
                         <div style={styles.imageUpload}>
-                          {editImagePreview ? (
-                            <img src={editImagePreview} alt="preview" style={styles.imagePreview} />
-                          ) : (
-                            <div style={styles.imagePlaceholder}>
-                              <span style={{ fontSize: '28px' }}>🚗</span>
-                              <p style={{ fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '6px' }}>
-                                Click to upload new image
-                              </p>
-                            </div>
-                          )}
+                          <div style={styles.imagePlaceholder}>
+                            <span style={{ fontSize: '28px' }}>🚗</span>
+                            <p style={{ fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '6px' }}>
+                              Click to add photos
+                            </p>
+                          </div>
                           <input
-                            id="mc-edit-image"
+                            id="mc-edit-photos"
                             type="file"
                             accept="image/*"
-                            onChange={handleEditImageChange}
+                            multiple
+                            onChange={handleEditPhotosChange}
                             style={styles.fileInput}
                           />
                         </div>
-                        {editImagePreview && (
-                          <p style={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '4px' }}>
-                            Click image to change it
-                          </p>
+                        {(editExistingPhotos.length > 0 || editNewPhotoPreviews.length > 0) && (
+                          <div style={styles.photoGrid}>
+                            {editExistingPhotos.map((photo, i) => (
+                              <div key={photo.fileId || photo.url || i} style={styles.photoThumbWrap}>
+                                <img src={photo.url} alt={`Existing ${i + 1}`} style={styles.photoThumb} />
+                                <button type="button" style={styles.removePhotoBtn} onClick={() => removeExistingPhoto(i)} aria-label={`Remove existing photo ${i + 1}`}>×</button>
+                              </div>
+                            ))}
+                            {editNewPhotoPreviews.map((src, i) => (
+                              <div key={src} style={styles.photoThumbWrap}>
+                                <img src={src} alt={`New ${i + 1}`} style={styles.photoThumb} />
+                                <button type="button" style={styles.removePhotoBtn} onClick={() => removeNewPhoto(i)} aria-label={`Remove new photo ${i + 1}`}>×</button>
+                              </div>
+                            ))}
+                          </div>
                         )}
+                        <p style={styles.hint}>The first photo shown here becomes the cover image everywhere else in the app.</p>
                       </div>
 
                       <div style={styles.editGrid}>
@@ -409,6 +442,21 @@ const ManageCars = () => {
                           <input id="mc-edit-seats" style={styles.input} type="number" value={editForm.seats}
                             onChange={(e) => setEditForm({...editForm, seats: e.target.value})} />
                         </div>
+                        <div style={styles.field}>
+                          <label style={styles.label} htmlFor="mc-edit-plate">Plate Number</label>
+                          <input id="mc-edit-plate" style={styles.input} type="text" value={editForm.plateNumber}
+                            onChange={(e) => setEditForm({...editForm, plateNumber: e.target.value})} />
+                        </div>
+                        <div style={styles.field}>
+                          <label style={styles.label} htmlFor="mc-edit-color">Color</label>
+                          <input id="mc-edit-color" style={styles.input} type="text" value={editForm.color}
+                            onChange={(e) => setEditForm({...editForm, color: e.target.value})} />
+                        </div>
+                        <div style={styles.field}>
+                          <label style={styles.label} htmlFor="mc-edit-mileage">Mileage (km)</label>
+                          <input id="mc-edit-mileage" style={styles.input} type="number" value={editForm.mileage}
+                            onChange={(e) => setEditForm({...editForm, mileage: e.target.value})} />
+                        </div>
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label} id="mc-edit-booking-types-label">Available Booking Types</label>
@@ -450,7 +498,7 @@ const ManageCars = () => {
                       </div>
                       <div style={styles.carInfo}>
                         <div style={styles.carName}>{car.brand} {car.model}</div>
-                        <div style={styles.carSub}>{car.seats} · {car.transmission} · {car.category}</div>
+                        <div style={styles.carSub}>{car.seats} · {car.transmission} · {car.category} · {car.plateNumber || 'No plate on file'}</div>
                         {car.ratingCount > 0 ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
                             <StarRating value={car.avgRating} size={12} readOnly />

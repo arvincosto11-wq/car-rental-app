@@ -15,13 +15,13 @@ const AddCar = () => {
   const [form, setForm] = useState({
     brand: '', model: '', year: '', pricePerDay: '',
     category: '', transmission: '', fuelType: '',
-    seats: '', description: '',
+    seats: '', description: '', plateNumber: '', color: '', mileage: '',
   });
   const [brandChoice, setBrandChoice] = useState('');
   const [modelChoice, setModelChoice] = useState('');
   const [bookingTypes, setBookingTypes] = useState({ 'self-drive': true, 'with-driver': true });
-  const [image, setImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
+  const [photos, setPhotos] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -62,9 +62,16 @@ const AddCar = () => {
     setForm({ ...form, model: value, category: autoCategory });
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) { setImage(file); setImagePreview(URL.createObjectURL(file)); }
+  const handlePhotosChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setPhotos((prev) => [...prev, ...files]);
+    setPhotoPreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
+  };
+
+  const removePhoto = (index) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const uploadToImageKit = async (file) => {
@@ -103,19 +110,26 @@ const AddCar = () => {
       setError('Please select a category.');
       return;
     }
+    if (!form.plateNumber.trim()) {
+      setError('Please enter the plate number.');
+      return;
+    }
 
     setLoading(true);
     try {
-      let imageUrl = '';
-      let imageFileId = '';
-      if (image) {
-        const uploaded = await uploadToImageKit(image);
-        imageUrl = uploaded.url;
-        imageFileId = uploaded.fileId;
+      const uploadedPhotos = [];
+      for (const file of photos) {
+        uploadedPhotos.push(await uploadToImageKit(file));
       }
-      await api.post('/cars', { ...form, image: imageUrl, imageFileId, availableBookingTypes: selectedBookingTypes });
+      await api.post('/cars', {
+        ...form,
+        image: uploadedPhotos[0]?.url || '',
+        imageFileId: uploadedPhotos[0]?.fileId || '',
+        photos: uploadedPhotos,
+        availableBookingTypes: selectedBookingTypes,
+      });
       setSuccess('Vehicle added successfully!');
-      setForm({ brand: '', model: '', year: '', pricePerDay: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '', transmission: '', fuelType: '', seats: '', description: '' });
+      setForm({ brand: '', model: '', year: '', pricePerDay: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '', transmission: '', fuelType: '', seats: '', description: '', plateNumber: '', color: '', mileage: '' });
       setBrandChoice('');
       setModelChoice('');
       setBookingTypes(
@@ -123,8 +137,8 @@ const AddCar = () => {
           ? { 'self-drive': true, 'with-driver': false }
           : { 'self-drive': true, 'with-driver': true }
       );
-      setImage(null);
-      setImagePreview('');
+      setPhotos([]);
+      setPhotoPreviews([]);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to add vehicle');
     } finally {
@@ -147,6 +161,14 @@ const AddCar = () => {
     imagePlaceholder: { textAlign: 'center', padding: '16px' },
     imagePreview: { width: '100%', height: '100%', objectFit: 'cover' },
     fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
+    photoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '8px', marginTop: '10px' },
+    photoThumbWrap: { position: 'relative', width: '100%', height: '70px', borderRadius: '8px', overflow: 'hidden' },
+    photoThumb: { width: '100%', height: '100%', objectFit: 'cover' },
+    removePhotoBtn: {
+      position: 'absolute', top: '2px', right: '2px', width: '20px', height: '20px',
+      borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff',
+      fontSize: '13px', lineHeight: '20px', cursor: 'pointer', padding: 0,
+    },
     btn: { padding: '10px 28px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' },
     checkboxRow: { display: 'flex', gap: '20px', alignItems: 'center' },
     checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer' },
@@ -179,18 +201,24 @@ const AddCar = () => {
         </div>
 
         <div style={s.field}>
-          <label style={s.label} htmlFor="ac-image">Vehicle Image</label>
+          <label style={s.label} htmlFor="ac-photos">Vehicle Photos (multiple angles recommended)</label>
           <div style={s.imageUpload}>
-            {imagePreview ? (
-              <img src={imagePreview} alt="preview" style={s.imagePreview} />
-            ) : (
-              <div style={s.imagePlaceholder}>
-                <span style={{ fontSize: '32px' }}>{vehicleType === 'motorcycle' ? '🏍️' : '🚗'}</span>
-                <p style={{ fontSize: '13px', color: isDark ? '#64748b' : '#6b7280', marginTop: '8px' }}>Click to upload</p>
-              </div>
-            )}
-            <input id="ac-image" type="file" accept="image/*" onChange={handleImageChange} style={s.fileInput} />
+            <div style={s.imagePlaceholder}>
+              <span style={{ fontSize: '32px' }}>{vehicleType === 'motorcycle' ? '🏍️' : '🚗'}</span>
+              <p style={{ fontSize: '13px', color: isDark ? '#64748b' : '#6b7280', marginTop: '8px' }}>Click to add photos</p>
+            </div>
+            <input id="ac-photos" type="file" accept="image/*" multiple onChange={handlePhotosChange} style={s.fileInput} />
           </div>
+          {photoPreviews.length > 0 && (
+            <div style={s.photoGrid}>
+              {photoPreviews.map((src, i) => (
+                <div key={i} style={s.photoThumbWrap}>
+                  <img src={src} alt={`Vehicle ${i + 1}`} style={s.photoThumb} />
+                  <button type="button" style={s.removePhotoBtn} onClick={() => removePhoto(i)} aria-label={`Remove photo ${i + 1}`}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={s.row}>
@@ -251,6 +279,12 @@ const AddCar = () => {
           <div style={s.field}><label style={s.label} htmlFor="ac-year">Year</label><input id="ac-year" style={s.input} type="number" placeholder="e.g. 2022" value={form.year} onChange={(e) => setForm({...form, year: e.target.value})} required /></div>
           <div style={s.field}><label style={s.label} htmlFor="ac-price">Daily Price (₱)</label><input id="ac-price" style={s.input} type="number" placeholder="e.g. 150" value={form.pricePerDay} onChange={(e) => setForm({...form, pricePerDay: e.target.value})} required /></div>
           <div style={s.field}><label style={s.label} htmlFor="ac-seats">Seating Capacity</label><input id="ac-seats" style={s.input} type="number" placeholder={vehicleType === 'motorcycle' ? 'e.g. 2' : 'e.g. 5'} value={form.seats} onChange={(e) => setForm({...form, seats: e.target.value})} required /></div>
+        </div>
+
+        <div style={s.row}>
+          <div style={s.field}><label style={s.label} htmlFor="ac-plate">Plate Number</label><input id="ac-plate" style={s.input} type="text" placeholder="e.g. ABC 1234" value={form.plateNumber} onChange={(e) => setForm({...form, plateNumber: e.target.value})} required /></div>
+          <div style={s.field}><label style={s.label} htmlFor="ac-color">Color</label><input id="ac-color" style={s.input} type="text" placeholder="e.g. White" value={form.color} onChange={(e) => setForm({...form, color: e.target.value})} /></div>
+          <div style={s.field}><label style={s.label} htmlFor="ac-mileage">Mileage (km)</label><input id="ac-mileage" style={s.input} type="number" placeholder="e.g. 35000" value={form.mileage} onChange={(e) => setForm({...form, mileage: e.target.value})} /></div>
         </div>
 
         <div style={s.row}>
