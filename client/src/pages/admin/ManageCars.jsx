@@ -229,6 +229,7 @@ const ManageCars = () => {
     carPrice: { fontSize: '14px', fontWeight: '500', color: isDark ? '#f1f5f9' : '#1a1a1a', minWidth: '80px' },
     available: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     unavailable: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
+    staleFlag: { background: '#fef3c7', color: '#92400e', fontSize: '10px', padding: '2px 8px', borderRadius: '20px', marginLeft: '4px', fontWeight: '600', cursor: 'help' },
     actions: { display: 'flex', gap: '6px' },
     editBtn: { padding: '5px 12px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT, border: `1px solid ${isDark ? GOLD_TINT_BORDER_DARK : GOLD_TINT_BORDER}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? GOLD_DARK : GOLD },
     toggleBtn: { padding: '5px 12px', background: isDark ? '#0f172a' : '#f3f4f6', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#f1f5f9' : '#1a1a1a' },
@@ -514,6 +515,14 @@ const ManageCars = () => {
                       <span style={car.isAvailable ? styles.available : styles.unavailable}>
                         {car.isAvailable ? 'Available' : 'Unavailable'}
                       </span>
+                      {!car.isAvailable && !car.availabilityRequest?.requestedAt && (
+                        <span
+                          style={styles.staleFlag}
+                          title="Hidden without a consignor unavailability request on file — worth double-checking this isn't left over from a past bug rather than a deliberate hide."
+                        >
+                          ⚠ Check
+                        </span>
+                      )}
                       <div className="admin-row-actions" style={styles.actions}>
                         <button style={styles.editBtn} onClick={() => handleEdit(car)}>Edit</button>
                         <button style={styles.toggleBtn} onClick={() => handleToggle(car)}>
