@@ -26,9 +26,41 @@ export const CAR_COLORS = [
 // blocking legitimate custom colors the preset list doesn't cover.
 const sanitize = (raw) => raw.replace(/[^a-zA-Z\s-]/g, '').slice(0, 30);
 
+// Classic edit-distance, used to catch typos like "bloack" -> "Black".
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+// Nearest preset color name for a typed string, within a typo-sized distance.
+function suggestColor(typed) {
+  const t = typed.trim().toLowerCase();
+  if (t.length < 3) return null;
+  let best = null;
+  let bestDist = Infinity;
+  for (const c of CAR_COLORS) {
+    const name = c.name.toLowerCase();
+    if (name === t) return null;
+    const dist = levenshtein(t, name);
+    if (dist < bestDist) { bestDist = dist; best = c.name; }
+  }
+  const threshold = t.length <= 4 ? 1 : 2;
+  return bestDist <= threshold ? best : null;
+}
+
 const ColorPicker = ({ id, value, onChange, isDark }) => {
   const matchesPreset = CAR_COLORS.some((c) => c.name.toLowerCase() === (value || '').trim().toLowerCase());
   const [customMode, setCustomMode] = useState(!!value && !matchesPreset);
+  const suggestion = customMode ? suggestColor(value || '') : null;
 
   useEffect(() => {
     if (value && !CAR_COLORS.some((c) => c.name.toLowerCase() === value.trim().toLowerCase())) {
@@ -75,19 +107,37 @@ const ColorPicker = ({ id, value, onChange, isDark }) => {
         />
       </div>
       {customMode && (
-        <input
-          id={id}
-          type="text"
-          placeholder="Type a color name, e.g. Pearl White"
-          value={value}
-          onChange={(e) => onChange(sanitize(e.target.value))}
-          style={{
-            width: '100%', marginTop: '8px', padding: '8px 10px',
-            border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-            borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
-            color: isDark ? '#f1f5f9' : '#111827', background: isDark ? '#0f172a' : '#fff',
-          }}
-        />
+        <>
+          <input
+            id={id}
+            type="text"
+            placeholder="Type a color name, e.g. Pearl White"
+            value={value}
+            onChange={(e) => onChange(sanitize(e.target.value))}
+            style={{
+              width: '100%', marginTop: '8px', padding: '8px 10px',
+              border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+              borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+              color: isDark ? '#f1f5f9' : '#111827', background: isDark ? '#0f172a' : '#fff',
+            }}
+          />
+          {suggestion && (
+            <div style={{ marginTop: '6px', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' }}>
+              Did you mean{' '}
+              <button
+                type="button"
+                onClick={() => { setCustomMode(false); onChange(suggestion); }}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  color: accent, fontWeight: '600', fontSize: '12px', textDecoration: 'underline',
+                }}
+              >
+                {suggestion}
+              </button>
+              ?
+            </div>
+          )}
+        </>
       )}
     </div>
   );

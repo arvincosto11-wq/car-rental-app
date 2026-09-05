@@ -10,6 +10,7 @@ import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, GOLD_TINT_BORDER, GOLD_TINT_BORDER_DARK, ON_GOLD } from '../../theme';
 import usePageTitle from '../../hooks/usePageTitle';
 import ColorPicker from '../../components/ColorPicker';
+import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
 
 const OTHER = '__other__';
 
@@ -395,13 +396,13 @@ const ManageCars = () => {
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-year">Year</label>
-                          <input id="mc-edit-year" style={styles.input} type="number" value={editForm.year}
-                            onChange={(e) => setEditForm({...editForm, year: e.target.value})} />
+                          <input id="mc-edit-year" style={styles.input} type="text" inputMode="numeric" value={editForm.year}
+                            onChange={(e) => setEditForm({...editForm, year: sanitizeDigits(e.target.value, 4)})} />
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-price">Daily Price (₱)</label>
-                          <input id="mc-edit-price" style={styles.input} type="number" value={editForm.pricePerDay}
-                            onChange={(e) => setEditForm({...editForm, pricePerDay: e.target.value})} />
+                          <input id="mc-edit-price" style={styles.input} type="text" inputMode="decimal" value={editForm.pricePerDay}
+                            onChange={(e) => setEditForm({...editForm, pricePerDay: sanitizeDecimal(e.target.value, 8)})} />
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-category">Category</label>
@@ -440,13 +441,13 @@ const ManageCars = () => {
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-seats">Seats</label>
-                          <input id="mc-edit-seats" style={styles.input} type="number" value={editForm.seats}
-                            onChange={(e) => setEditForm({...editForm, seats: e.target.value})} />
+                          <input id="mc-edit-seats" style={styles.input} type="text" inputMode="numeric" value={editForm.seats}
+                            onChange={(e) => setEditForm({...editForm, seats: sanitizeDigits(e.target.value, 2)})} />
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-plate">Plate Number</label>
                           <input id="mc-edit-plate" style={styles.input} type="text" value={editForm.plateNumber}
-                            onChange={(e) => setEditForm({...editForm, plateNumber: e.target.value})} />
+                            onChange={(e) => setEditForm({...editForm, plateNumber: formatPlateNumber(e.target.value)})} />
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-color">Color</label>
@@ -455,8 +456,8 @@ const ManageCars = () => {
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-mileage">Mileage (km)</label>
-                          <input id="mc-edit-mileage" style={styles.input} type="number" value={editForm.mileage}
-                            onChange={(e) => setEditForm({...editForm, mileage: e.target.value})} />
+                          <input id="mc-edit-mileage" style={styles.input} type="text" inputMode="numeric" value={editForm.mileage}
+                            onChange={(e) => setEditForm({...editForm, mileage: sanitizeDigits(e.target.value, 7)})} />
                         </div>
                       </div>
                       <div style={styles.field}>

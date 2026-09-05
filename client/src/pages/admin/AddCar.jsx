@@ -6,6 +6,7 @@ import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../../theme';
 import usePageTitle from '../../hooks/usePageTitle';
 import ColorPicker from '../../components/ColorPicker';
+import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
 
 const OTHER = '__other__';
 
@@ -277,15 +278,15 @@ const AddCar = () => {
         </div>
 
         <div style={s.row}>
-          <div style={s.field}><label style={s.label} htmlFor="ac-year">Year</label><input id="ac-year" style={s.input} type="number" placeholder="e.g. 2022" value={form.year} onChange={(e) => setForm({...form, year: e.target.value})} required /></div>
-          <div style={s.field}><label style={s.label} htmlFor="ac-price">Daily Price (₱)</label><input id="ac-price" style={s.input} type="number" placeholder="e.g. 150" value={form.pricePerDay} onChange={(e) => setForm({...form, pricePerDay: e.target.value})} required /></div>
-          <div style={s.field}><label style={s.label} htmlFor="ac-seats">Seating Capacity</label><input id="ac-seats" style={s.input} type="number" placeholder={vehicleType === 'motorcycle' ? 'e.g. 2' : 'e.g. 5'} value={form.seats} onChange={(e) => setForm({...form, seats: e.target.value})} required /></div>
+          <div style={s.field}><label style={s.label} htmlFor="ac-year">Year</label><input id="ac-year" style={s.input} type="text" inputMode="numeric" placeholder="e.g. 2022" value={form.year} onChange={(e) => setForm({...form, year: sanitizeDigits(e.target.value, 4)})} required /></div>
+          <div style={s.field}><label style={s.label} htmlFor="ac-price">Daily Price (₱)</label><input id="ac-price" style={s.input} type="text" inputMode="decimal" placeholder="e.g. 150" value={form.pricePerDay} onChange={(e) => setForm({...form, pricePerDay: sanitizeDecimal(e.target.value, 8)})} required /></div>
+          <div style={s.field}><label style={s.label} htmlFor="ac-seats">Seating Capacity</label><input id="ac-seats" style={s.input} type="text" inputMode="numeric" placeholder={vehicleType === 'motorcycle' ? 'e.g. 2' : 'e.g. 5'} value={form.seats} onChange={(e) => setForm({...form, seats: sanitizeDigits(e.target.value, 2)})} required /></div>
         </div>
 
         <div style={s.row}>
-          <div style={s.field}><label style={s.label} htmlFor="ac-plate">Plate Number</label><input id="ac-plate" style={s.input} type="text" placeholder="e.g. ABC 1234" value={form.plateNumber} onChange={(e) => setForm({...form, plateNumber: e.target.value})} required /></div>
+          <div style={s.field}><label style={s.label} htmlFor="ac-plate">Plate Number</label><input id="ac-plate" style={s.input} type="text" placeholder="e.g. ABC 1234" value={form.plateNumber} onChange={(e) => setForm({...form, plateNumber: formatPlateNumber(e.target.value)})} required /></div>
           <div style={s.field}><label style={s.label} htmlFor="ac-color">Color</label><ColorPicker id="ac-color" isDark={isDark} value={form.color} onChange={(color) => setForm({...form, color})} /></div>
-          <div style={s.field}><label style={s.label} htmlFor="ac-mileage">Mileage (km)</label><input id="ac-mileage" style={s.input} type="number" placeholder="e.g. 35000" value={form.mileage} onChange={(e) => setForm({...form, mileage: e.target.value})} /></div>
+          <div style={s.field}><label style={s.label} htmlFor="ac-mileage">Mileage (km)</label><input id="ac-mileage" style={s.input} type="text" inputMode="numeric" placeholder="e.g. 35000" value={form.mileage} onChange={(e) => setForm({...form, mileage: sanitizeDigits(e.target.value, 7)})} /></div>
         </div>
 
         <div style={s.row}>
