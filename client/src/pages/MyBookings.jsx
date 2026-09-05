@@ -559,7 +559,7 @@ const MyBookings = () => {
                   {booking.rescheduleRequest?.status === 'declined' && (
                     <span style={styles.badgeRescheduleDeclined}>Reschedule Declined</span>
                   )}
-                  {booking.payment === 'gcash_pending' && (
+                  {booking.payment === 'gcash_pending' && booking.status !== 'cancelled' && (
                     <span style={styles.badgeRefundRequested}>GCash Pending</span>
                   )}
                 </div>

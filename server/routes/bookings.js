@@ -205,6 +205,10 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     const previousStatus = booking.status;
 
     if (status === 'confirmed' && previousStatus !== 'confirmed') {
+      if (booking.payment !== 'paid') {
+        return res.status(400).json({ message: 'This booking cannot be confirmed until the GCash payment is completed.' });
+      }
+
       const car = await Car.findById(booking.car);
       if (!car) return res.status(404).json({ message: 'Car not found' });
 
@@ -225,6 +229,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         booking.refundStatus = 'approved';
         booking.refundReason = 'Automatically refunded: this vehicle was already booked for overlapping dates by another confirmed reservation.';
         booking.refundAmount = booking.amountPaid;
+        if (booking.payment === 'gcash_pending') booking.payment = 'offline';
         try {
           await refundBookingPayment(booking);
         } catch (err) {
@@ -259,6 +264,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         pending.refundStatus = 'approved';
         pending.refundReason = 'Automatically refunded: another booking for overlapping dates was confirmed first.';
         pending.refundAmount = pending.amountPaid;
+        if (pending.payment === 'gcash_pending') pending.payment = 'offline';
         try {
           await refundBookingPayment(pending);
         } catch (err) {
@@ -277,6 +283,11 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     }
 
     booking.status = status;
+    if (status === 'cancelled' && booking.payment === 'gcash_pending') {
+      // Never actually paid — nothing to refund, and it shouldn't keep
+      // showing as "GCash Pending" once the booking is dead.
+      booking.payment = 'offline';
+    }
     await booking.save();
 
     if (status === 'cancelled' && previousStatus !== 'cancelled') {
@@ -358,6 +369,11 @@ router.put('/:id/refund', protect, adminOnly, async (req, res) => {
         return res.status(502).json({ message: `Could not process the GCash refund automatically: ${err.message}. Nothing was changed — please retry.` });
       }
       booking.status = 'cancelled';
+      if (booking.payment === 'gcash_pending') {
+        // Never actually paid — refundBookingPayment no-op'd (nothing to
+        // reverse), and it shouldn't keep showing "GCash Pending" now dead.
+        booking.payment = 'offline';
+      }
     }
 
     booking.refundStatus = decision;

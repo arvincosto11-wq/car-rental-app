@@ -370,11 +370,18 @@ const ManageBookings = () => {
                       )}
                     </div>
                   ) : (
-                    <select style={s.select} value={booking.status} aria-label="Update booking status" onChange={(e) => handleStatus(booking._id, e.target.value)}>
-                      <option value="pending">Pending</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
+                    <div>
+                      <select style={s.select} value={booking.status} aria-label="Update booking status" onChange={(e) => handleStatus(booking._id, e.target.value)}>
+                        <option value="pending">Pending</option>
+                        <option value="confirmed" disabled={booking.payment !== 'paid'}>Confirmed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                      {booking.payment !== 'paid' && (
+                        <div style={{ fontSize: '10px', color: isDark ? '#94a3b8' : '#6b7280', fontStyle: 'italic', marginTop: '4px' }}>
+                          Awaiting GCash payment
+                        </div>
+                      )}
+                    </div>
                   )}
                 </td>
               </tr>
