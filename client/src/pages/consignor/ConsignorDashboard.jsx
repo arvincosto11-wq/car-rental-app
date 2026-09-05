@@ -96,32 +96,10 @@ const ConsignorDashboard = () => {
     }
   };
 
-  // Submitted is always "done" — a Consignment record only exists once it's
-  // been submitted. Declined branches off the review step instead of
-  // continuing to an "Approved" step that never happened.
-  const applicationSteps = (status) => [
-    { label: 'Submitted', state: 'done' },
-    { label: status === 'pending' ? 'Under Review' : 'Reviewed', state: status === 'pending' ? 'active' : 'done' },
-    status === 'declined'
-      ? { label: 'Declined', state: 'declined' }
-      : { label: 'Approved', state: status === 'approved' ? 'done' : 'upcoming' },
-  ];
-
-  const renderApplicationSteps = (status) => {
-    const steps = applicationSteps(status);
-    return (
-      <div style={s.stepRow}>
-        {steps.map((step, i) => (
-          <div key={step.label} style={s.stepItemWrap}>
-            <div style={s.stepItem}>
-              <div style={s.stepCircle(step.state)}>{step.state === 'done' ? '✓' : step.state === 'declined' ? '✕' : i + 1}</div>
-              <span style={s.stepLabel(step.state)}>{step.label}</span>
-            </div>
-            {i < steps.length - 1 && <div style={s.stepLine(step.state === 'done')} />}
-          </div>
-        ))}
-      </div>
-    );
+  const getStatusStyle = (status) => {
+    if (status === 'approved') return s.badgeApproved;
+    if (status === 'declined') return s.badgeDeclined;
+    return s.badgePending;
   };
 
   const getBookingBadge = (status) => {
@@ -201,36 +179,10 @@ const ConsignorDashboard = () => {
     info: { flex: 1 },
     carName: { fontSize: '15px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '2px' },
     carSub: { fontSize: '12px', color: isDark ? '#94a3b8' : '#9ca3af', marginBottom: '8px' },
+    badgeRow: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' },
     badgePending: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
-    // Compact horizontal version of the booking wizard's step indicator
-    // (see BookingSteps.jsx), used here to show an application's progress
-    // through Submitted -> Under Review -> Approved (or a Declined branch).
-    stepRow: { display: 'flex', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap' },
-    stepItemWrap: { display: 'flex', alignItems: 'center' },
-    stepItem: { display: 'flex', alignItems: 'center', gap: '6px' },
-    stepCircle: (state) => ({
-      width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '10px', fontWeight: '700', boxSizing: 'border-box',
-      background: state === 'done' ? (isDark ? GOLD_DARK : GOLD)
-        : state === 'declined' ? '#dc2626'
-        : isDark ? '#0f172a' : '#fff',
-      color: state === 'done' ? ON_GOLD
-        : state === 'declined' ? '#fff'
-        : state === 'active' ? (isDark ? GOLD_DARK : GOLD)
-        : (isDark ? '#64748b' : '#9ca3af'),
-      border: state === 'active' ? `2px solid ${isDark ? GOLD_DARK : GOLD}`
-        : state === 'upcoming' ? `2px solid ${isDark ? '#334155' : '#e5e7eb'}` : 'none',
-    }),
-    stepLabel: (state) => ({
-      fontSize: '11px', marginRight: '10px', whiteSpace: 'nowrap',
-      fontWeight: state === 'upcoming' ? '400' : '600',
-      color: state === 'declined' ? '#dc2626' : state === 'upcoming' ? (isDark ? '#64748b' : '#9ca3af') : (isDark ? '#f1f5f9' : '#1a1a1a'),
-    }),
-    stepLine: (done) => ({
-      width: '20px', height: '2px', marginRight: '10px',
-      background: done ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#334155' : '#e5e7eb'),
-    }),
+    badgeApproved: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
+    badgeDeclined: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
     price: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280' },
     notesBox: { marginTop: '8px', fontSize: '12px', color: isDark ? '#fca5a5' : '#991b1b', background: isDark ? 'rgba(220,38,38,0.1)' : '#fef2f2', padding: '8px 10px', borderRadius: '6px' },
     cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' },
@@ -334,7 +286,9 @@ const ConsignorDashboard = () => {
                 {c.vehiclePhotos?.[0]?.url && <img src={c.vehiclePhotos[0].url} alt="" style={s.thumbImg} />}
               </div>
               <div style={s.info}>
-                {renderApplicationSteps(c.status)}
+                <div style={s.badgeRow}>
+                  <span style={getStatusStyle(c.status)}>{c.status}</span>
+                </div>
                 <div style={s.carName}>{c.brand} {c.model} ({c.year})</div>
                 <div style={s.carSub}>{c.plateNumber} · {c.category} · {c.transmission}</div>
                 <div style={s.price}>Suggested price: ₱{c.suggestedPricePerDay}/day</div>
