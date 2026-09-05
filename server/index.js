@@ -9,6 +9,7 @@ import imagekitRoutes from './routes/imagekit.js';
 import userRoutes from './routes/users.js';
 import consignmentRoutes from './routes/consignments.js';
 import notificationRoutes from './routes/notifications.js';
+import paymentsRoutes, { handlePaymongoWebhook } from './routes/payments.js';
 
 dotenv.config();
 
@@ -29,6 +30,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+// Must come before express.json() below — PayMongo signs the exact raw
+// bytes of the request body, and re-serializing through JSON.parse/stringify
+// would break signature verification.
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), handlePaymongoWebhook);
+
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
@@ -38,6 +44,7 @@ app.use('/api/imagekit', imagekitRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/consignments', consignmentRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/payments', paymentsRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: '🚗 Car Rental API is running!' });

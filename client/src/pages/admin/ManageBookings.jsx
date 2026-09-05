@@ -15,6 +15,12 @@ import api from '../../api';
 const LOW_RATING_THRESHOLD = 3;
 const PAGE_SIZE = 10;
 
+const formatPayment = (payment) => {
+  if (payment === 'gcash_pending') return 'GCash pending';
+  if (payment === 'paid') return 'Paid';
+  return 'Pay in person';
+};
+
 const ManageBookings = () => {
   usePageTitle('Manage Bookings');
   const { isDark } = useTheme();
@@ -282,7 +288,7 @@ const ManageBookings = () => {
                 </td>
                 <td style={s.td}>{new Date(booking.startDate).toLocaleDateString()} to {new Date(booking.endDate).toLocaleDateString()}</td>
                 <td style={s.td}>₱{booking.totalPrice}</td>
-                <td style={s.td}><span style={s.payBadge}>{booking.payment}</span></td>
+                <td style={s.td}><span style={s.payBadge}>{formatPayment(booking.payment)}</span></td>
                 <td style={s.td}>
                   {booking.refundStatus === 'requested' ? (
                     <div>

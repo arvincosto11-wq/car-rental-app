@@ -66,7 +66,7 @@ async function findOverlappingBooking(carId, start, end, statuses, excludeId) {
 // Create booking
 router.post('/', protect, async (req, res) => {
     try {
-    const { carId, startDate, endDate, paymentType, amountPaid, totalPrice, bookingType, licenseNumber, licenseExpiry } = req.body;
+    const { carId, startDate, endDate, paymentType, amountPaid, totalPrice, bookingType, licenseNumber, licenseExpiry, paymentMethod } = req.body;
 
     const currentUser = await User.findById(req.user.id);
     if (currentUser?.isBlocked) {
@@ -139,7 +139,7 @@ router.post('/', protect, async (req, res) => {
       amountPaid,
       paymentType,
       bookingType: bookingType || 'with-driver',
-      payment: paymentType === 'full' ? 'paid' : 'offline'
+      payment: paymentMethod === 'gcash' ? 'gcash_pending' : (paymentType === 'full' ? 'paid' : 'offline')
     });
 
     await notifyAdmins('New Booking Request', `${currentUser.name} requested to book ${car.brand} ${car.model}.`, '/admin/manage-bookings');

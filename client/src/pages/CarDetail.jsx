@@ -32,6 +32,7 @@ const CarDetail = () => {
   const [endDate, setEndDate] = useState(searchParams.get('return') || '');
   usePageTitle(car ? `${car.brand} ${car.model}` : 'Vehicle');
   const [paymentType, setPaymentType] = useState('downpayment');
+  const [paymentMethod, setPaymentMethod] = useState('offline');
   const [bookingType, setBookingType] = useState('with-driver');
   const [profile, setProfile] = useState(null);
   const [licenseNumber, setLicenseNumber] = useState('');
@@ -227,7 +228,7 @@ const CarDetail = () => {
     setBooking(true);
     setError('');
     try {
-      await api.post('/bookings', {
+      const res = await api.post('/bookings', {
         carId: id,
         startDate,
         endDate,
@@ -235,9 +236,17 @@ const CarDetail = () => {
         amountPaid: amountToPay,
         totalPrice,
         bookingType,
+        paymentMethod,
         ...(needsLicenseInput ? { licenseNumber, licenseExpiry } : {}),
       });
-                  setShowRefundNotice(false);
+
+      if (paymentMethod === 'gcash') {
+        const { data } = await api.post('/payments/gcash/checkout-session', { bookingId: res.data._id });
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+
+      setShowRefundNotice(false);
       setShowBookingModal(false);
       if (paymentType === 'full') {
         setSuccess(`Booking confirmed! Your full payment of ₱${amountToPay.toLocaleString()} has been received.`);
@@ -588,6 +597,24 @@ const CarDetail = () => {
                       </div>
                     </div>
 
+                    <label style={s.label} id="cd-payment-method-label">How will you pay?</label>
+                    <div role="group" aria-labelledby="cd-payment-method-label" style={s.paymentOptions}>
+                      <button
+                        style={s.paymentBtn(paymentMethod === 'offline')}
+                        onClick={() => setPaymentMethod('offline')}
+                      >
+                        Pay in Person
+                        <div style={{ fontSize: '12px', marginTop: '2px' }}>Cash or GCash</div>
+                      </button>
+                      <button
+                        style={s.paymentBtn(paymentMethod === 'gcash')}
+                        onClick={() => setPaymentMethod('gcash')}
+                      >
+                        Pay with GCash Now
+                        <div style={{ fontSize: '12px', marginTop: '2px' }}>via PayMongo</div>
+                      </button>
+                    </div>
+
                     <div style={s.stepActions}>
                       <button style={s.backStepBtn} onClick={() => goToStep(1)}>Back</button>
                       <button style={s.nextBtn} onClick={goToConfirmNext}>Continue</button>
@@ -620,11 +647,15 @@ const CarDetail = () => {
                         onClick={openRefundNotice}
                         disabled={booking || !agreedToTerms || car.isAvailable === false}
                       >
-                        {booking ? 'Booking...' : `Book Now — Pay ₱${amountToPay > 0 ? amountToPay.toLocaleString() : car.pricePerDay.toLocaleString()}`}
+                        {booking
+                          ? (paymentMethod === 'gcash' ? 'Redirecting to GCash...' : 'Booking...')
+                          : (paymentMethod === 'gcash' ? `Continue to GCash — Pay ₱${amountToPay.toLocaleString()}` : `Book Now — Pay ₱${amountToPay > 0 ? amountToPay.toLocaleString() : car.pricePerDay.toLocaleString()}`)}
                       </button>
                     </div>
                     <p style={s.noCC}>
-                      {paymentType === 'full' ? 'Full payment due now' : 'Remaining balance due upon vehicle pickup'} · Cash or GCash accepted
+                      {paymentMethod === 'gcash'
+                        ? "You'll be redirected to PayMongo to complete payment via GCash."
+                        : `${paymentType === 'full' ? 'Full payment due now' : 'Remaining balance due upon vehicle pickup'} · Cash or GCash accepted`}
                     </p>
                   </motion.div>
                 )}

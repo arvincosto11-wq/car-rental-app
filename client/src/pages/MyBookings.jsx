@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useUIFeedback } from '../context/UIFeedbackContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
 import RatingModal from '../components/RatingModal';
@@ -54,7 +55,9 @@ const MyBookings = () => {
   usePageTitle('My Bookings');
   const { user } = useAuth();
   const { isDark } = useTheme();
+  const { toast } = useUIFeedback();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -84,6 +87,36 @@ const MyBookings = () => {
     };
     fetchBookings();
   }, [user]);
+
+  // Landed back here from the PayMongo GCash redirect — check the real
+  // payment status right away instead of waiting on the webhook, then drop
+  // the query params so a page refresh doesn't re-trigger this.
+  useEffect(() => {
+    if (!user) return;
+    const gcashResult = searchParams.get('gcash');
+    const bookingId = searchParams.get('bookingId');
+    if (!gcashResult || !bookingId) return;
+
+    const checkStatus = async () => {
+      try {
+        const res = await api.get(`/payments/gcash/status/${bookingId}`);
+        if (res.data.payment === 'paid') {
+          toast.success('GCash payment received! Your booking is awaiting admin confirmation.');
+        } else if (gcashResult === 'cancelled') {
+          toast.info('GCash payment cancelled. You can pay in person instead, or try again.');
+        } else {
+          toast.error("We couldn't confirm the GCash payment yet. Please check back shortly.");
+        }
+        const res2 = await api.get('/bookings/my');
+        setBookings(res2.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setSearchParams({}, { replace: true });
+      }
+    };
+    checkStatus();
+  }, [user, searchParams]);
 
   const getStatusStyle = (status) => {
     if (status === 'confirmed') return styles.badgeConfirmed;
@@ -509,6 +542,9 @@ const MyBookings = () => {
                   )}
                   {booking.rescheduleRequest?.status === 'declined' && (
                     <span style={styles.badgeRescheduleDeclined}>Reschedule Declined</span>
+                  )}
+                  {booking.payment === 'gcash_pending' && (
+                    <span style={styles.badgeRefundRequested}>GCash Pending</span>
                   )}
                 </div>
                 <div style={styles.meta}>

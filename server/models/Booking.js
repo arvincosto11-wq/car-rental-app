@@ -25,7 +25,12 @@ const bookingSchema = new mongoose.Schema({
     adminNotes: { type: String, default: '' },
     requestedAt: { type: Date },
   },
+  // 'offline' = pay in person (cash/GCash, unverified), 'paid' = settled
+  // (either the existing "paid in full" assumption, or a verified online
+  // GCash payment), 'gcash_pending' = checkout session created, awaiting
+  // the client to actually complete it on PayMongo's page.
   payment: { type: String, default: 'offline' },
+  paymongoCheckoutSessionId: { type: String, default: '' },
   carRating: {
     vehicleCondition: { type: Number, min: 1, max: 5 },
     serviceQuality: { type: Number, min: 1, max: 5 },

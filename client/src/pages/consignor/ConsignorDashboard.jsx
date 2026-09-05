@@ -9,6 +9,12 @@ import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
 
+const formatPayment = (payment) => {
+  if (payment === 'gcash_pending') return 'GCash pending';
+  if (payment === 'paid') return 'Paid';
+  return 'Pay in person';
+};
+
 const ConsignorDashboard = () => {
   usePageTitle('My Vehicles');
   const { user } = useAuth();
@@ -353,7 +359,7 @@ const ConsignorDashboard = () => {
                   </td>
                   <td style={s.td}>{new Date(b.startDate).toLocaleDateString()} to {new Date(b.endDate).toLocaleDateString()}</td>
                   <td style={s.td}>₱{b.totalPrice}</td>
-                  <td style={s.td}><span style={s.payBadge}>{b.payment}</span></td>
+                  <td style={s.td}><span style={s.payBadge}>{formatPayment(b.payment)}</span></td>
                   <td style={s.td}>
                     {b.refundStatus === 'requested' ? (
                       <span style={s.refundRequested}>Refund Requested (₱{b.refundAmount?.toLocaleString() ?? 0})</span>
