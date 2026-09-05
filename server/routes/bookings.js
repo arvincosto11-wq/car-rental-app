@@ -143,7 +143,11 @@ router.post('/', protect, async (req, res) => {
       payment: paymentMethod === 'gcash' ? 'gcash_pending' : (paymentType === 'full' ? 'paid' : 'offline')
     });
 
-    await notifyAdmins('New Booking Request', `${currentUser.name} requested to book ${car.brand} ${car.model}.`, '/admin/manage-bookings');
+    // Admin isn't notified yet here — Manage Bookings only shows paid
+    // bookings, so pinging admin about one that might never even get paid
+    // for would just point them at something they can't find. The
+    // notification fires once payment actually succeeds instead — see
+    // reconcileBookingPayment in routes/payments.js.
 
     res.status(201).json(booking);
   } catch (err) {

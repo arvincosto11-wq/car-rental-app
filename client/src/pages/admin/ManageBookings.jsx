@@ -95,6 +95,9 @@ const ManageBookings = () => {
   const pendingRescheduleCount = bookings.filter((b) => b.rescheduleRequest?.status === 'pending').length;
 
   const filteredBookings = bookings.filter((b) => {
+    // Unpaid bookings (checkout never completed) aren't shown at all —
+    // there's nothing for admin to do with one until it's actually paid.
+    if (b.payment !== 'paid') return false;
     const matchStatus = statusFilter === 'all' ? true : b.status === statusFilter;
     const matchReschedule = !rescheduleOnly || b.rescheduleRequest?.status === 'pending';
     const q = search.trim().toLowerCase();

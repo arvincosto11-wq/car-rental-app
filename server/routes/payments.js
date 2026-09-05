@@ -2,7 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import Booking from '../models/Booking.js';
 import { protect } from '../middleware/auth.js';
-import { notifyUser } from '../utils/notify.js';
+import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { paymongoFetch } from '../utils/paymongo.js';
 
 const router = express.Router();
@@ -63,7 +63,7 @@ router.post('/gcash/checkout-session', protect, async (req, res) => {
 // check, for the case where a client pays and closes the tab without
 // coming back to the site.
 async function reconcileBookingPayment(bookingId) {
-  const booking = await Booking.findById(bookingId);
+  const booking = await Booking.findById(bookingId).populate('user', 'name').populate('car', 'brand model');
   if (!booking || !booking.paymongoCheckoutSessionId) return null;
 
   const session = await paymongoFetch(`/checkout_sessions/${booking.paymongoCheckoutSessionId}`);
@@ -77,7 +77,11 @@ async function reconcileBookingPayment(bookingId) {
     // merchants through the API.
     booking.paymongoPaymentId = paidPayment.id;
     await booking.save();
-    await notifyUser(booking.user, 'Payment Received', 'Your GCash payment was received. Your booking is still awaiting admin confirmation.', '/my-bookings');
+    await notifyUser(booking.user._id, 'Payment Received', 'Your GCash payment was received. Your booking is still awaiting admin confirmation.', '/my-bookings');
+    // Only notify admin once there's actually a paid booking to act on —
+    // Manage Bookings doesn't show unpaid ones, so pinging admin any
+    // earlier would point them at something they can't find.
+    await notifyAdmins('New Booking Request', `${booking.user?.name || 'A client'} paid for a booking on ${booking.car?.brand || ''} ${booking.car?.model || ''}.`.replace(/\s+/g, ' '), '/admin/manage-bookings');
   } else if (!paidPayment && booking.payment === 'gcash_pending') {
     // They backed out of the GCash page or it expired.
     booking.payment = 'offline';
