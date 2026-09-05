@@ -90,6 +90,27 @@ async function reconcileBookingPayment(bookingId) {
   return booking;
 }
 
+// A refund we created starts out 'pending' (PayMongo's synchronous creation
+// response) and can later resolve to 'succeeded' or 'failed' asynchronously —
+// this re-checks the real status directly, the same authoritative pattern as
+// reconcileBookingPayment above. Looked up by paymongoRefundId since refunds
+// don't carry booking metadata the way checkout sessions do.
+async function reconcileBookingRefund(refundId) {
+  const booking = await Booking.findOne({ paymongoRefundId: refundId }).populate('user', 'name');
+  if (!booking) return null;
+
+  const refund = await paymongoFetch(`/refunds/${refundId}`);
+  const status = refund.data.attributes.status;
+  if (status !== booking.paymongoRefundStatus) {
+    booking.paymongoRefundStatus = status;
+    await booking.save();
+    if (status === 'failed') {
+      await notifyAdmins('Manual Refund Needed', `A GCash refund for ${booking.user?.name || 'a client'}'s booking failed after being created and needs manual follow-up (refund ${refundId}).`, '/admin/manage-bookings');
+    }
+  }
+  return booking;
+}
+
 // Client lands back on My Bookings after the PayMongo redirect (success or
 // cancel) — check the real status immediately instead of waiting on the
 // webhook, which can lag by a few seconds.
@@ -144,7 +165,14 @@ export async function handlePaymongoWebhook(req, res) {
     const eventType = event?.data?.attributes?.type || '';
     const resource = event?.data?.attributes?.data;
 
-    if (eventType.includes('paid')) {
+    if (eventType.includes('refund')) {
+      const refundId = resource?.id;
+      if (refundId) {
+        await reconcileBookingRefund(refundId).catch((err) => console.error('PayMongo webhook refund reconcile failed:', err.message));
+      } else {
+        console.log('PayMongo webhook: could not find a refund id in event type', eventType, JSON.stringify(event).slice(0, 800));
+      }
+    } else if (eventType.includes('paid')) {
       const bookingId = resource?.attributes?.metadata?.bookingId || resource?.attributes?.reference_number;
       if (bookingId) {
         await reconcileBookingPayment(bookingId).catch((err) => console.error('PayMongo webhook reconcile failed:', err.message));
