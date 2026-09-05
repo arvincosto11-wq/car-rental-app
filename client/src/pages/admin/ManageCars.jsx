@@ -9,6 +9,7 @@ import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, GOLD_TINT_BORDER, GOLD_TINT_BORDER_DARK, ON_GOLD } from '../../theme';
 import usePageTitle from '../../hooks/usePageTitle';
+import ColorPicker from '../../components/ColorPicker';
 
 const OTHER = '__other__';
 
@@ -449,8 +450,8 @@ const ManageCars = () => {
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-color">Color</label>
-                          <input id="mc-edit-color" style={styles.input} type="text" value={editForm.color}
-                            onChange={(e) => setEditForm({...editForm, color: e.target.value})} />
+                          <ColorPicker id="mc-edit-color" isDark={isDark} value={editForm.color}
+                            onChange={(color) => setEditForm({...editForm, color})} />
                         </div>
                         <div style={styles.field}>
                           <label style={styles.label} htmlFor="mc-edit-mileage">Mileage (km)</label>

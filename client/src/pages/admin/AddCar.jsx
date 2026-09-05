@@ -5,6 +5,7 @@ import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../../theme';
 import usePageTitle from '../../hooks/usePageTitle';
+import ColorPicker from '../../components/ColorPicker';
 
 const OTHER = '__other__';
 
@@ -283,7 +284,7 @@ const AddCar = () => {
 
         <div style={s.row}>
           <div style={s.field}><label style={s.label} htmlFor="ac-plate">Plate Number</label><input id="ac-plate" style={s.input} type="text" placeholder="e.g. ABC 1234" value={form.plateNumber} onChange={(e) => setForm({...form, plateNumber: e.target.value})} required /></div>
-          <div style={s.field}><label style={s.label} htmlFor="ac-color">Color</label><input id="ac-color" style={s.input} type="text" placeholder="e.g. White" value={form.color} onChange={(e) => setForm({...form, color: e.target.value})} /></div>
+          <div style={s.field}><label style={s.label} htmlFor="ac-color">Color</label><ColorPicker id="ac-color" isDark={isDark} value={form.color} onChange={(color) => setForm({...form, color})} /></div>
           <div style={s.field}><label style={s.label} htmlFor="ac-mileage">Mileage (km)</label><input id="ac-mileage" style={s.input} type="number" placeholder="e.g. 35000" value={form.mileage} onChange={(e) => setForm({...form, mileage: e.target.value})} /></div>
         </div>
 
