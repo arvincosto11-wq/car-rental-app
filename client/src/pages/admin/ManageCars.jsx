@@ -43,6 +43,7 @@ const ManageCars = () => {
   const [search, setSearch] = useState('');
   const [blockForm, setBlockForm] = useState({ startDate: '', endDate: '', reason: '' });
   const [blockSubmitting, setBlockSubmitting] = useState(false);
+  const [blockPickerOpen, setBlockPickerOpen] = useState(false);
 
   const editBrandOrder = editVehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
   const editModelOptions = editBrandChoice && editBrandChoice !== OTHER
@@ -91,6 +92,7 @@ const ManageCars = () => {
   const handleEdit = (car) => {
     setEditingCar(car._id);
     setBlockForm({ startDate: '', endDate: '', reason: '' });
+    setBlockPickerOpen(false);
     setEditExistingPhotos(car.photos?.length ? car.photos : (car.image ? [{ url: car.image, fileId: car.imageFileId }] : []));
     setEditNewPhotos([]);
     setEditNewPhotoPreviews([]);
@@ -254,6 +256,7 @@ const ManageCars = () => {
       const res = await api.post(`/cars/${carId}/blocked-dates`, blockForm);
       setCars(cars.map((c) => c._id === carId ? res.data : c));
       setBlockForm({ startDate: '', endDate: '', reason: '' });
+      setBlockPickerOpen(false);
       toast.success('Dates blocked.');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to block those dates.');
@@ -292,7 +295,7 @@ const ManageCars = () => {
     editBtn: { padding: '5px 12px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT, border: `1px solid ${isDark ? GOLD_TINT_BORDER_DARK : GOLD_TINT_BORDER}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? GOLD_DARK : GOLD },
     toggleBtn: { padding: '5px 12px', background: isDark ? '#0f172a' : '#f3f4f6', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     archiveBtn: { padding: '5px 12px', background: isDark ? '#0f172a' : '#f3f4f6', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    editForm: { padding: '20px' },
+    editForm: { padding: '20px', maxWidth: '960px' },
     editTitle: { fontSize: '16px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '16px' },
     imageUpload: { position: 'relative', width: '200px', height: '140px', border: `2px dashed ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#0f172a' : '#fff' },
     imagePlaceholder: { textAlign: 'center', padding: '16px' },
@@ -335,7 +338,17 @@ const ManageCars = () => {
       fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0,
     },
     blockAddBtn: {
+      padding: '8px 16px', background: isDark ? GOLD_DARK : GOLD,
+      color: ON_GOLD, border: 'none',
+      borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+    },
+    blockToggleBtn: {
       marginTop: '8px', padding: '8px 16px', background: isDark ? '#0f172a' : '#f3f4f6',
+      color: isDark ? '#f1f5f9' : '#374151', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+    },
+    blockCancelBtn: {
+      padding: '8px 16px', background: isDark ? '#0f172a' : '#f3f4f6',
       color: isDark ? '#f1f5f9' : '#374151', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
       borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
     },
@@ -565,20 +578,34 @@ const ManageCars = () => {
                             ))}
                           </div>
                         )}
-                        <div style={{ marginTop: '8px', maxWidth: '340px' }}>
-                          <AvailabilityCalendar
-                            bookedRanges={car.blockedDates || []}
-                            selectedStart={blockForm.startDate}
-                            selectedEnd={blockForm.endDate}
-                            onSelectDay={handleSelectBlockDay}
-                            isDark={isDark}
-                          />
-                        </div>
-                        <input aria-label="Block reason" type="text" style={{ ...styles.input, marginTop: '8px' }} placeholder="Reason (optional, e.g. Maintenance)"
-                          value={blockForm.reason} onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })} />
-                        <button type="button" style={styles.blockAddBtn} onClick={() => handleAddBlockedDate(car._id)} disabled={blockSubmitting}>
-                          {blockSubmitting ? 'Blocking...' : 'Block These Dates'}
-                        </button>
+                        {blockPickerOpen === car._id ? (
+                          <>
+                            <div style={{ marginTop: '8px', maxWidth: '340px' }}>
+                              <AvailabilityCalendar
+                                bookedRanges={car.blockedDates || []}
+                                selectedStart={blockForm.startDate}
+                                selectedEnd={blockForm.endDate}
+                                onSelectDay={handleSelectBlockDay}
+                                isDark={isDark}
+                              />
+                            </div>
+                            <input aria-label="Block reason" type="text" style={{ ...styles.input, marginTop: '8px', maxWidth: '340px' }} placeholder="Reason (optional, e.g. Maintenance)"
+                              value={blockForm.reason} onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })} />
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                              <button type="button" style={styles.blockAddBtn} onClick={() => handleAddBlockedDate(car._id)} disabled={blockSubmitting}>
+                                {blockSubmitting ? 'Blocking...' : 'Block These Dates'}
+                              </button>
+                              <button type="button" style={styles.blockCancelBtn}
+                                onClick={() => { setBlockPickerOpen(false); setBlockForm({ startDate: '', endDate: '', reason: '' }); }}>
+                                Cancel
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <button type="button" style={styles.blockToggleBtn} onClick={() => setBlockPickerOpen(car._id)}>
+                            📅 Add Blocked Dates
+                          </button>
+                        )}
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="mc-edit-description">Description</label>
