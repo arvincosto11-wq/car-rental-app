@@ -170,14 +170,14 @@ export async function handlePaymongoWebhook(req, res) {
       if (refundId) {
         await reconcileBookingRefund(refundId).catch((err) => console.error('PayMongo webhook refund reconcile failed:', err.message));
       } else {
-        console.log('PayMongo webhook: could not find a refund id in event type', eventType, JSON.stringify(event).slice(0, 800));
+        console.error('PayMongo webhook: could not find a refund id in event type', eventType, JSON.stringify(event).slice(0, 800));
       }
     } else if (eventType.includes('paid')) {
       const bookingId = resource?.attributes?.metadata?.bookingId || resource?.attributes?.reference_number;
       if (bookingId) {
         await reconcileBookingPayment(bookingId).catch((err) => console.error('PayMongo webhook reconcile failed:', err.message));
       } else {
-        console.log('PayMongo webhook: could not find a bookingId in event type', eventType, JSON.stringify(event).slice(0, 800));
+        console.error('PayMongo webhook: could not find a bookingId in event type', eventType, JSON.stringify(event).slice(0, 800));
       }
     }
 

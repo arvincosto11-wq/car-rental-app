@@ -75,7 +75,7 @@ async function findBlockedRange(carId, start, end) {
 // Create booking
 router.post('/', protect, async (req, res) => {
     try {
-    const { carId, startDate, endDate, paymentType, amountPaid, totalPrice, bookingType, licenseNumber, licenseExpiry, paymentMethod } = req.body;
+    const { carId, startDate, endDate, paymentType, bookingType, licenseNumber, licenseExpiry, paymentMethod } = req.body;
 
     const currentUser = await User.findById(req.user.id);
     if (currentUser?.isBlocked) {
@@ -143,17 +143,25 @@ router.post('/', protect, async (req, res) => {
     const end = requestedEnd;
     const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
+    // Price and amount due are computed server-side from the car's real
+    // price, never trusted from the client — otherwise a tampered request
+    // could set amountPaid to whatever it wants and still get a "paid"
+    // booking through GCash for a fraction of the real cost.
+    const computedTotalPrice = totalDays * car.pricePerDay;
+    const validPaymentType = paymentType === 'full' ? 'full' : 'downpayment';
+    const computedAmountPaid = validPaymentType === 'full' ? computedTotalPrice : Math.ceil(computedTotalPrice * 0.20);
+
     const booking = await Booking.create({
       user: req.user.id,
       car: carId,
       startDate: start,
       endDate: end,
       totalDays,
-      totalPrice,
-      amountPaid,
-      paymentType,
+      totalPrice: computedTotalPrice,
+      amountPaid: computedAmountPaid,
+      paymentType: validPaymentType,
       bookingType: bookingType || 'with-driver',
-      payment: paymentMethod === 'gcash' ? 'gcash_pending' : (paymentType === 'full' ? 'paid' : 'offline')
+      payment: paymentMethod === 'gcash' ? 'gcash_pending' : (validPaymentType === 'full' ? 'paid' : 'offline')
     });
 
     // Admin isn't notified yet here — Manage Bookings only shows paid
@@ -222,6 +230,18 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
     const previousStatus = booking.status;
+
+    // Only forward transitions are allowed here — reverting a booking (e.g.
+    // sending 'pending' for an already-confirmed one) would skip the
+    // payment/overlap guards below that only run on the way INTO a status,
+    // not out of it. completed/cancelled are terminal.
+    const ALLOWED_TRANSITIONS = {
+      pending: ['confirmed', 'cancelled'],
+      confirmed: ['cancelled', 'completed'],
+    };
+    if (status !== previousStatus && !(ALLOWED_TRANSITIONS[previousStatus] || []).includes(status)) {
+      return res.status(400).json({ message: `This booking's status cannot be changed from ${previousStatus} to ${status}.` });
+    }
 
     if (status === 'confirmed' && previousStatus !== 'confirmed') {
       if (booking.payment !== 'paid') {
