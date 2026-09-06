@@ -9,6 +9,7 @@ import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, GOLD_TINT_BORDER, GOLD_TINT_BORDER_DARK, ON_GOLD } from '../../theme';
 import usePageTitle from '../../hooks/usePageTitle';
+import useModalA11y from '../../hooks/useModalA11y';
 import ColorPicker from '../../components/ColorPicker';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
@@ -44,6 +45,10 @@ const ManageCars = () => {
   const [blockForm, setBlockForm] = useState({ startDate: '', endDate: '', reason: '' });
   const [blockSubmitting, setBlockSubmitting] = useState(false);
   const [blockPickerOpen, setBlockPickerOpen] = useState(false);
+
+  const editingCarData = cars.find((c) => c._id === editingCar) || null;
+  const closeEditModal = () => setEditingCar(null);
+  const editModalRef = useModalA11y(closeEditModal, !!editingCarData);
 
   const editBrandOrder = editVehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
   const editModelOptions = editBrandChoice && editBrandChoice !== OTHER
@@ -295,7 +300,23 @@ const ManageCars = () => {
     editBtn: { padding: '5px 12px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT, border: `1px solid ${isDark ? GOLD_TINT_BORDER_DARK : GOLD_TINT_BORDER}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? GOLD_DARK : GOLD },
     toggleBtn: { padding: '5px 12px', background: isDark ? '#0f172a' : '#f3f4f6', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#f1f5f9' : '#1a1a1a' },
     archiveBtn: { padding: '5px 12px', background: isDark ? '#0f172a' : '#f3f4f6', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    editForm: { padding: '20px', maxWidth: '960px' },
+    editForm: { maxWidth: '960px' },
+    editModalOverlay: {
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300,
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+      padding: '40px 16px', overflowY: 'auto',
+    },
+    editModalCard: {
+      position: 'relative', width: '100%', maxWidth: '960px',
+      background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      borderRadius: '12px', padding: '24px', outline: 'none',
+    },
+    editModalCloseBtn: {
+      position: 'absolute', top: '16px', right: '16px', width: '32px', height: '32px',
+      borderRadius: '50%', border: 'none', background: isDark ? '#0f172a' : '#f3f4f6',
+      color: isDark ? '#f1f5f9' : '#374151', fontSize: '16px', cursor: 'pointer',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    },
     editTitle: { fontSize: '16px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '16px' },
     imageUpload: { position: 'relative', width: '200px', height: '140px', border: `2px dashed ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#0f172a' : '#fff' },
     imagePlaceholder: { textAlign: 'center', padding: '16px' },
@@ -397,231 +418,6 @@ const ManageCars = () => {
             <div>
               {filteredCars.map((car) => (
                 <div key={car._id} style={styles.carCard}>
-                  {editingCar === car._id ? (
-                    <div style={styles.editForm}>
-                      <h3 style={styles.editTitle}>Edit Car</h3>
-
-                      <div style={styles.typeToggleRow}>
-                        <button type="button" style={styles.typeToggleBtn(editVehicleType === 'car')} onClick={() => handleEditVehicleTypeChange('car')}>
-                          🚗 Car
-                        </button>
-                        <button type="button" style={styles.typeToggleBtn(editVehicleType === 'motorcycle')} onClick={() => handleEditVehicleTypeChange('motorcycle')}>
-                          🏍️ Motorcycle
-                        </button>
-                      </div>
-
-                      {/* Photos */}
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="mc-edit-photos">Car Photos</label>
-                        <div style={styles.imageUpload}>
-                          <div style={styles.imagePlaceholder}>
-                            <span style={{ fontSize: '28px' }}>🚗</span>
-                            <p style={{ fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '6px' }}>
-                              Click to add photos
-                            </p>
-                          </div>
-                          <input
-                            id="mc-edit-photos"
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={handleEditPhotosChange}
-                            style={styles.fileInput}
-                          />
-                        </div>
-                        {(editExistingPhotos.length > 0 || editNewPhotoPreviews.length > 0) && (
-                          <div style={styles.photoGrid}>
-                            {editExistingPhotos.map((photo, i) => (
-                              <div key={photo.fileId || photo.url || i} style={styles.photoThumbWrap}>
-                                <img src={photo.url} alt={`Existing ${i + 1}`} style={styles.photoThumb} />
-                                <button type="button" style={styles.removePhotoBtn} onClick={() => removeExistingPhoto(i)} aria-label={`Remove existing photo ${i + 1}`}>×</button>
-                              </div>
-                            ))}
-                            {editNewPhotoPreviews.map((src, i) => (
-                              <div key={src} style={styles.photoThumbWrap}>
-                                <img src={src} alt={`New ${i + 1}`} style={styles.photoThumb} />
-                                <button type="button" style={styles.removePhotoBtn} onClick={() => removeNewPhoto(i)} aria-label={`Remove new photo ${i + 1}`}>×</button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <p style={styles.hint}>The first photo shown here becomes the cover image everywhere else in the app.</p>
-                      </div>
-
-                      <div style={styles.editGrid}>
-                        <div style={styles.field}>
-                          <label style={styles.label} htmlFor="mc-edit-brand">Brand</label>
-                          <select id="mc-edit-brand" style={styles.input} value={editBrandChoice} onChange={(e) => handleEditBrandChoiceChange(e.target.value)}>
-                            <option value="">Select brand</option>
-                            {editBrandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
-                            <option value={OTHER}>Other (type manually)</option>
-                          </select>
-                          {editBrandChoice === OTHER && (
-                            <input aria-label="Brand name" style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
-                              value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })} />
-                          )}
-                        </div>
-                        <div style={styles.field}>
-                          <label style={styles.label} htmlFor="mc-edit-model">Model</label>
-                          {editBrandChoice && editBrandChoice !== OTHER ? (
-                            <>
-                              <select id="mc-edit-model" style={styles.input} value={editModelChoice} onChange={(e) => handleEditModelChoiceChange(e.target.value)}>
-                                <option value="">Select model</option>
-                                {editModelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
-                                <option value={OTHER}>Other (type manually)</option>
-                              </select>
-                              {editModelChoice === OTHER && (
-                                <input aria-label="Model name" style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
-                                  value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })} />
-                              )}
-                            </>
-                          ) : (
-                            <input id="mc-edit-model" style={styles.input} type="text" placeholder={editBrandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
-                              value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
-                              disabled={!editBrandChoice} />
-                          )}
-                        </div>
-                        <div style={styles.field}>
-                          <label style={styles.label} htmlFor="mc-edit-year">Year</label>
-                          <input id="mc-edit-year" style={styles.input} type="text" inputMode="numeric" placeholder="e.g. 2022" value={editForm.year}
-                            onChange={(e) => setEditForm({...editForm, year: sanitizeDigits(e.target.value, 4)})} />
-                        </div>
-                        <div style={styles.field}>
-                          <label style={styles.label} htmlFor="mc-edit-price">Daily Price (₱)</label>
-                          <input id="mc-edit-price" style={styles.input} type="text" inputMode="decimal" placeholder="e.g. 150" value={editForm.pricePerDay}
-                            onChange={(e) => setEditForm({...editForm, pricePerDay: sanitizeDecimal(e.target.value, 8)})} />
-                        </div>
-                        <div style={styles.field}>
-                          <label style={styles.label} htmlFor="mc-edit-category">Category</label>
-                          {editVehicleType === 'motorcycle' ? (
-                            <div id="mc-edit-category" style={styles.categoryFixed}>Motorcycle</div>
-                          ) : (
-                            <>
-                              <select id="mc-edit-category" style={styles.input} value={editForm.category}
-                                onChange={(e) => setEditForm({...editForm, category: e.target.value})}>
-                                <option value="">Select category</option>
-                                {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
-                              </select>
-                              <p style={styles.hint}>
-                                {editModelChoice && editModelChoice !== OTHER
-                                  ? "Auto-filled based on the model you picked — change it if it's not right."
-                                  : 'Pick a listed model to auto-fill this, or choose manually.'}
-                              </p>
-                            </>
-                          )}
-                        </div>
-                        <div style={styles.field}>
-                          <label style={styles.label} htmlFor="mc-edit-transmission">Transmission</label>
-                          <select id="mc-edit-transmission" style={styles.input} value={editForm.transmission}
-                            onChange={(e) => setEditForm({...editForm, transmission: e.target.value})}>
-                            <option>Automatic</option><option>Manual</option>
-                            <option>Semi-Automatic</option>
-                          </select>
-                        </div>
-                        <div style={styles.field}>
-                          <label style={styles.label} htmlFor="mc-edit-fuel">Fuel Type</label>
-                          <select id="mc-edit-fuel" style={styles.input} value={editForm.fuelType}
-                            onChange={(e) => setEditForm({...editForm, fuelType: e.target.value})}>
-                            <option>Petrol</option><option>Diesel</option>
-                            <option>Electric</option><option>Hybrid</option>
-                          </select>
-                        </div>
-                        <div style={styles.field}>
-                          <label style={styles.label} htmlFor="mc-edit-seats">Seats</label>
-                          <input id="mc-edit-seats" style={styles.input} type="text" inputMode="numeric" placeholder="e.g. 5" value={editForm.seats}
-                            onChange={(e) => setEditForm({...editForm, seats: sanitizeDigits(e.target.value, 2)})} />
-                        </div>
-                        <div style={styles.field}>
-                          <label style={styles.label} htmlFor="mc-edit-plate">Plate Number</label>
-                          <input id="mc-edit-plate" style={styles.input} type="text" placeholder="e.g. ABC 1234" value={editForm.plateNumber}
-                            onChange={(e) => setEditForm({...editForm, plateNumber: formatPlateNumber(e.target.value)})} />
-                        </div>
-                        <div style={styles.field}>
-                          <label style={styles.label} htmlFor="mc-edit-color">Color</label>
-                          <ColorPicker id="mc-edit-color" isDark={isDark} value={editForm.color}
-                            onChange={(color) => setEditForm({...editForm, color})} />
-                        </div>
-                        <div style={styles.field}>
-                          <label style={styles.label} htmlFor="mc-edit-mileage">Mileage (km)</label>
-                          <input id="mc-edit-mileage" style={styles.input} type="text" inputMode="numeric" placeholder="e.g. 35000" value={editForm.mileage}
-                            onChange={(e) => setEditForm({...editForm, mileage: sanitizeDigits(e.target.value, 7)})} />
-                        </div>
-                      </div>
-                      <div style={styles.field}>
-                        <label style={styles.label} id="mc-edit-booking-types-label">Available Booking Types</label>
-                        <div role="group" aria-labelledby="mc-edit-booking-types-label" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                          <label style={styles.checkboxLabel}>
-                            <input type="checkbox" checked={(editForm.availableBookingTypes || []).includes('self-drive')}
-                              onChange={() => toggleEditBookingType('self-drive')} />
-                            Self Drive
-                          </label>
-                          <label style={styles.checkboxLabel}>
-                            <input type="checkbox" checked={(editForm.availableBookingTypes || []).includes('with-driver')}
-                              onChange={() => toggleEditBookingType('with-driver')} />
-                            With Driver
-                          </label>
-                        </div>
-                      </div>
-                      <div style={styles.field}>
-                        <label style={styles.label}>Blocked Dates</label>
-                        <p style={styles.hint}>Blocks this vehicle from being booked during these ranges (e.g. maintenance). Saved immediately — not part of Save Changes below.</p>
-                        {car.blockedDates?.length > 0 && (
-                          <div style={styles.blockedList}>
-                            {car.blockedDates.map((b) => (
-                              <div key={b._id} style={styles.blockedItem}>
-                                <span>
-                                  {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
-                                  {b.reason ? ` · ${b.reason}` : ''}
-                                </span>
-                                <button type="button" style={styles.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(car._id, b._id)}>Remove</button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {blockPickerOpen === car._id ? (
-                          <>
-                            <div style={{ marginTop: '8px', maxWidth: '340px' }}>
-                              <AvailabilityCalendar
-                                bookedRanges={car.blockedDates || []}
-                                selectedStart={blockForm.startDate}
-                                selectedEnd={blockForm.endDate}
-                                onSelectDay={handleSelectBlockDay}
-                                isDark={isDark}
-                              />
-                            </div>
-                            <input aria-label="Block reason" type="text" style={{ ...styles.input, marginTop: '8px', maxWidth: '340px' }} placeholder="Reason (optional, e.g. Maintenance)"
-                              value={blockForm.reason} onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })} />
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                              <button type="button" style={styles.blockAddBtn} onClick={() => handleAddBlockedDate(car._id)} disabled={blockSubmitting}>
-                                {blockSubmitting ? 'Blocking...' : 'Block These Dates'}
-                              </button>
-                              <button type="button" style={styles.blockCancelBtn}
-                                onClick={() => { setBlockPickerOpen(false); setBlockForm({ startDate: '', endDate: '', reason: '' }); }}>
-                                Cancel
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <button type="button" style={styles.blockToggleBtn} onClick={() => setBlockPickerOpen(car._id)}>
-                            📅 Add Blocked Dates
-                          </button>
-                        )}
-                      </div>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="mc-edit-description">Description</label>
-                        <textarea id="mc-edit-description" style={styles.textarea} placeholder="e.g. A luxurious SUV..." value={editForm.description}
-                          onChange={(e) => setEditForm({...editForm, description: e.target.value})} />
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                        <button style={styles.saveBtn} onClick={() => handleUpdate(car._id)} disabled={updating}>
-                          {updating ? 'Saving...' : 'Save Changes'}
-                        </button>
-                        <button style={styles.cancelBtn} onClick={() => setEditingCar(null)}>
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
                     <div className="admin-row-stack" style={styles.carRow}>
                       <div style={styles.carThumbWrap}>
                         {car.image ? (
@@ -662,12 +458,253 @@ const ManageCars = () => {
                         <button style={styles.archiveBtn} onClick={() => handleArchive(car._id)}>Archive</button>
                       </div>
                     </div>
-                  )}
                 </div>
               ))}
             </div>
           )}
       </div>
+
+      {editingCarData && (() => {
+        const car = editingCarData;
+        return (
+          <div style={styles.editModalOverlay} onClick={closeEditModal}>
+            <div
+              style={styles.editModalCard}
+              ref={editModalRef}
+              tabIndex={-1}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="edit-car-modal-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button type="button" style={styles.editModalCloseBtn} aria-label="Close" onClick={closeEditModal}>✕</button>
+              <div style={styles.editForm}>
+                <h3 id="edit-car-modal-title" style={styles.editTitle}>Edit Car</h3>
+
+                <div style={styles.typeToggleRow}>
+                  <button type="button" style={styles.typeToggleBtn(editVehicleType === 'car')} onClick={() => handleEditVehicleTypeChange('car')}>
+                    🚗 Car
+                  </button>
+                  <button type="button" style={styles.typeToggleBtn(editVehicleType === 'motorcycle')} onClick={() => handleEditVehicleTypeChange('motorcycle')}>
+                    🏍️ Motorcycle
+                  </button>
+                </div>
+
+                {/* Photos */}
+                <div style={styles.field}>
+                  <label style={styles.label} htmlFor="mc-edit-photos">Car Photos</label>
+                  <div style={styles.imageUpload}>
+                    <div style={styles.imagePlaceholder}>
+                      <span style={{ fontSize: '28px' }}>🚗</span>
+                      <p style={{ fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '6px' }}>
+                        Click to add photos
+                      </p>
+                    </div>
+                    <input
+                      id="mc-edit-photos"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleEditPhotosChange}
+                      style={styles.fileInput}
+                    />
+                  </div>
+                  {(editExistingPhotos.length > 0 || editNewPhotoPreviews.length > 0) && (
+                    <div style={styles.photoGrid}>
+                      {editExistingPhotos.map((photo, i) => (
+                        <div key={photo.fileId || photo.url || i} style={styles.photoThumbWrap}>
+                          <img src={photo.url} alt={`Existing ${i + 1}`} style={styles.photoThumb} />
+                          <button type="button" style={styles.removePhotoBtn} onClick={() => removeExistingPhoto(i)} aria-label={`Remove existing photo ${i + 1}`}>×</button>
+                        </div>
+                      ))}
+                      {editNewPhotoPreviews.map((src, i) => (
+                        <div key={src} style={styles.photoThumbWrap}>
+                          <img src={src} alt={`New ${i + 1}`} style={styles.photoThumb} />
+                          <button type="button" style={styles.removePhotoBtn} onClick={() => removeNewPhoto(i)} aria-label={`Remove new photo ${i + 1}`}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p style={styles.hint}>The first photo shown here becomes the cover image everywhere else in the app.</p>
+                </div>
+
+                <div style={styles.editGrid}>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-brand">Brand</label>
+                    <select id="mc-edit-brand" style={styles.input} value={editBrandChoice} onChange={(e) => handleEditBrandChoiceChange(e.target.value)}>
+                      <option value="">Select brand</option>
+                      {editBrandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
+                      <option value={OTHER}>Other (type manually)</option>
+                    </select>
+                    {editBrandChoice === OTHER && (
+                      <input aria-label="Brand name" style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
+                        value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })} />
+                    )}
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-model">Model</label>
+                    {editBrandChoice && editBrandChoice !== OTHER ? (
+                      <>
+                        <select id="mc-edit-model" style={styles.input} value={editModelChoice} onChange={(e) => handleEditModelChoiceChange(e.target.value)}>
+                          <option value="">Select model</option>
+                          {editModelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
+                          <option value={OTHER}>Other (type manually)</option>
+                        </select>
+                        {editModelChoice === OTHER && (
+                          <input aria-label="Model name" style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
+                            value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })} />
+                        )}
+                      </>
+                    ) : (
+                      <input id="mc-edit-model" style={styles.input} type="text" placeholder={editBrandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
+                        value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
+                        disabled={!editBrandChoice} />
+                    )}
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-year">Year</label>
+                    <input id="mc-edit-year" style={styles.input} type="text" inputMode="numeric" placeholder="e.g. 2022" value={editForm.year}
+                      onChange={(e) => setEditForm({...editForm, year: sanitizeDigits(e.target.value, 4)})} />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-price">Daily Price (₱)</label>
+                    <input id="mc-edit-price" style={styles.input} type="text" inputMode="decimal" placeholder="e.g. 150" value={editForm.pricePerDay}
+                      onChange={(e) => setEditForm({...editForm, pricePerDay: sanitizeDecimal(e.target.value, 8)})} />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-category">Category</label>
+                    {editVehicleType === 'motorcycle' ? (
+                      <div id="mc-edit-category" style={styles.categoryFixed}>Motorcycle</div>
+                    ) : (
+                      <>
+                        <select id="mc-edit-category" style={styles.input} value={editForm.category}
+                          onChange={(e) => setEditForm({...editForm, category: e.target.value})}>
+                          <option value="">Select category</option>
+                          {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
+                        </select>
+                        <p style={styles.hint}>
+                          {editModelChoice && editModelChoice !== OTHER
+                            ? "Auto-filled based on the model you picked — change it if it's not right."
+                            : 'Pick a listed model to auto-fill this, or choose manually.'}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-transmission">Transmission</label>
+                    <select id="mc-edit-transmission" style={styles.input} value={editForm.transmission}
+                      onChange={(e) => setEditForm({...editForm, transmission: e.target.value})}>
+                      <option>Automatic</option><option>Manual</option>
+                      <option>Semi-Automatic</option>
+                    </select>
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-fuel">Fuel Type</label>
+                    <select id="mc-edit-fuel" style={styles.input} value={editForm.fuelType}
+                      onChange={(e) => setEditForm({...editForm, fuelType: e.target.value})}>
+                      <option>Petrol</option><option>Diesel</option>
+                      <option>Electric</option><option>Hybrid</option>
+                    </select>
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-seats">Seats</label>
+                    <input id="mc-edit-seats" style={styles.input} type="text" inputMode="numeric" placeholder="e.g. 5" value={editForm.seats}
+                      onChange={(e) => setEditForm({...editForm, seats: sanitizeDigits(e.target.value, 2)})} />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-plate">Plate Number</label>
+                    <input id="mc-edit-plate" style={styles.input} type="text" placeholder="e.g. ABC 1234" value={editForm.plateNumber}
+                      onChange={(e) => setEditForm({...editForm, plateNumber: formatPlateNumber(e.target.value)})} />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-color">Color</label>
+                    <ColorPicker id="mc-edit-color" isDark={isDark} value={editForm.color}
+                      onChange={(color) => setEditForm({...editForm, color})} />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-mileage">Mileage (km)</label>
+                    <input id="mc-edit-mileage" style={styles.input} type="text" inputMode="numeric" placeholder="e.g. 35000" value={editForm.mileage}
+                      onChange={(e) => setEditForm({...editForm, mileage: sanitizeDigits(e.target.value, 7)})} />
+                  </div>
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label} id="mc-edit-booking-types-label">Available Booking Types</label>
+                  <div role="group" aria-labelledby="mc-edit-booking-types-label" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                    <label style={styles.checkboxLabel}>
+                      <input type="checkbox" checked={(editForm.availableBookingTypes || []).includes('self-drive')}
+                        onChange={() => toggleEditBookingType('self-drive')} />
+                      Self Drive
+                    </label>
+                    <label style={styles.checkboxLabel}>
+                      <input type="checkbox" checked={(editForm.availableBookingTypes || []).includes('with-driver')}
+                        onChange={() => toggleEditBookingType('with-driver')} />
+                      With Driver
+                    </label>
+                  </div>
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>Blocked Dates</label>
+                  <p style={styles.hint}>Blocks this vehicle from being booked during these ranges (e.g. maintenance). Saved immediately — not part of Save Changes below.</p>
+                  {car.blockedDates?.length > 0 && (
+                    <div style={styles.blockedList}>
+                      {car.blockedDates.map((b) => (
+                        <div key={b._id} style={styles.blockedItem}>
+                          <span>
+                            {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                            {b.reason ? ` · ${b.reason}` : ''}
+                          </span>
+                          <button type="button" style={styles.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(car._id, b._id)}>Remove</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {blockPickerOpen === car._id ? (
+                    <>
+                      <div style={{ marginTop: '8px', maxWidth: '340px' }}>
+                        <AvailabilityCalendar
+                          bookedRanges={car.blockedDates || []}
+                          selectedStart={blockForm.startDate}
+                          selectedEnd={blockForm.endDate}
+                          onSelectDay={handleSelectBlockDay}
+                          isDark={isDark}
+                        />
+                      </div>
+                      <input aria-label="Block reason" type="text" style={{ ...styles.input, marginTop: '8px', maxWidth: '340px' }} placeholder="Reason (optional, e.g. Maintenance)"
+                        value={blockForm.reason} onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })} />
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <button type="button" style={styles.blockAddBtn} onClick={() => handleAddBlockedDate(car._id)} disabled={blockSubmitting}>
+                          {blockSubmitting ? 'Blocking...' : 'Block These Dates'}
+                        </button>
+                        <button type="button" style={styles.blockCancelBtn}
+                          onClick={() => { setBlockPickerOpen(false); setBlockForm({ startDate: '', endDate: '', reason: '' }); }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <button type="button" style={styles.blockToggleBtn} onClick={() => setBlockPickerOpen(car._id)}>
+                      📅 Add Blocked Dates
+                    </button>
+                  )}
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label} htmlFor="mc-edit-description">Description</label>
+                  <textarea id="mc-edit-description" style={styles.textarea} placeholder="e.g. A luxurious SUV..." value={editForm.description}
+                    onChange={(e) => setEditForm({...editForm, description: e.target.value})} />
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button style={styles.saveBtn} onClick={() => handleUpdate(car._id)} disabled={updating}>
+                    {updating ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button style={styles.cancelBtn} onClick={closeEditModal}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </AdminLayout>
   );
 };
