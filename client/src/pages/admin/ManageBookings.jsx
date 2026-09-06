@@ -384,13 +384,19 @@ const ManageBookings = () => {
                   ) : booking.status === 'confirmed' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={s.confirmed}>confirmed</span>
-                      <button
-                        style={s.returnBtn}
-                        onClick={() => handleStatus(booking._id, 'completed')}
-                        title="Only needed for an early return — this completes automatically the day after the return date."
-                      >
-                        Mark as Returned
-                      </button>
+                      {new Date() >= new Date(booking.startDate) ? (
+                        <button
+                          style={s.returnBtn}
+                          onClick={() => handleStatus(booking._id, 'completed')}
+                          title="Only needed for an early return — this completes automatically the day after the return date."
+                        >
+                          Mark as Returned
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', fontStyle: 'italic' }}>
+                          Pickup {new Date(booking.startDate).toLocaleDateString()}
+                        </span>
+                      )}
                     </div>
                   ) : booking.status === 'cancelled' ? (
                     <span style={s.cancelled}>cancelled</span>

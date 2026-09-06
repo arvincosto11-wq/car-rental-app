@@ -312,6 +312,14 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       return res.json(booking);
     }
 
+    // Can't return a vehicle that hasn't even been picked up yet — this is
+    // "Mark as Returned" for an early return, not a way to skip ahead.
+    if (status === 'completed' && previousStatus !== 'completed') {
+      if (new Date() < new Date(booking.startDate)) {
+        return res.status(400).json({ message: 'This booking cannot be marked as returned before its pickup date.' });
+      }
+    }
+
     booking.status = status;
     if (status === 'cancelled' && booking.payment === 'gcash_pending') {
       // Never actually paid — nothing to refund, and it shouldn't keep
