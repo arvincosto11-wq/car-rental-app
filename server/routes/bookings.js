@@ -304,7 +304,17 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         await pending.save();
       }
 
-      await notifyUser(booking.user, 'Booking Confirmed', 'Your booking has been confirmed. Check My Bookings for details.', '/my-bookings');
+      const pickupStr = new Date(booking.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const returnStr = new Date(booking.endDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const pickupReminder = booking.bookingType === 'self-drive'
+        ? "Bring a valid ID and your driver's license to pick up the vehicle."
+        : 'Your driver will meet you at the pickup location.';
+      await notifyUser(
+        booking.user,
+        'Booking Confirmed',
+        `Your ${car.brand} ${car.model} booking is confirmed. Pickup: ${pickupStr}. Return: ${returnStr}. ${pickupReminder}`,
+        '/my-bookings'
+      );
       if (car.owner) {
         await notifyUser(car.owner, 'Vehicle Booked', `Your vehicle ${car.brand} ${car.model} has a new confirmed booking.`, '/consignor');
       }

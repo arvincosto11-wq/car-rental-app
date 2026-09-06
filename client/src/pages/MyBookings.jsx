@@ -387,6 +387,12 @@ const MyBookings = () => {
       cursor: 'pointer',
     },
     refundNote: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '8px', fontStyle: 'italic' },
+    pickupReminder: {
+      fontSize: '12px', marginTop: '8px', padding: '8px 12px', borderRadius: '8px', lineHeight: '1.5',
+      background: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4',
+      color: isDark ? '#86efac' : '#166534',
+      border: `1px solid ${isDark ? 'rgba(22,163,74,0.3)' : '#bbf7d0'}`,
+    },
     actionsRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' },
     rescheduleBtn: {
       flex: '1 1 130px',
@@ -572,6 +578,18 @@ const MyBookings = () => {
                     {' '}· {booking.car?.year} · {booking.car?.category}
                   </span>
                 </div>
+
+                {booking.status === 'confirmed' && (
+                  <div style={styles.pickupReminder}>
+                    🚗 <strong>Pickup:</strong> {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    <br />
+                    ⏳ <strong>Return:</strong> {new Date(booking.endDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    <br />
+                    {booking.bookingType === 'self-drive'
+                      ? "Bring a valid ID and your driver's license to pick up the vehicle."
+                      : 'Your driver will meet you at the pickup location.'}
+                  </div>
+                )}
 
                 {(booking.status === 'pending' || booking.status === 'confirmed') &&
                   (!booking.refundStatus || booking.refundStatus === 'none') && (
