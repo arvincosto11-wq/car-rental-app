@@ -25,7 +25,7 @@ const ManageBookings = () => {
   usePageTitle('Manage Bookings');
   const { isDark } = useTheme();
   const navigate = useNavigate();
-  const { toast } = useUIFeedback();
+  const { toast, confirm } = useUIFeedback();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ratingModalId, setRatingModalId] = useState(null);
@@ -58,6 +58,18 @@ const ManageBookings = () => {
       console.error(err);
       toast.error(err.response?.data?.message || 'Something went wrong updating this booking.');
     }
+  };
+
+  const handleMarkReturned = async (booking) => {
+    const isEarly = new Date() < new Date(booking.endDate);
+    if (isEarly) {
+      const ok = await confirm(
+        `The scheduled return date is ${new Date(booking.endDate).toLocaleDateString()}. Only confirm if the vehicle has actually been returned early.`,
+        { confirmLabel: 'Yes, mark as returned', cancelLabel: 'Cancel' }
+      );
+      if (!ok) return;
+    }
+    await handleStatus(booking._id, 'completed');
   };
 
   const handleRefundDecision = async (id, decision) => {
@@ -387,7 +399,7 @@ const ManageBookings = () => {
                       {new Date() >= new Date(booking.startDate) ? (
                         <button
                           style={s.returnBtn}
-                          onClick={() => handleStatus(booking._id, 'completed')}
+                          onClick={() => handleMarkReturned(booking)}
                           title="Only needed for an early return — this completes automatically the day after the return date."
                         >
                           Mark as Returned
