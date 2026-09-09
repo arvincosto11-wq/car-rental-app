@@ -7,8 +7,10 @@ import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 import LocationAddressFields from '../components/LocationAddressFields';
 import PasswordInput from '../components/PasswordInput';
+import OtpInput from '../components/OtpInput';
 import BookingSteps from '../components/BookingSteps';
 import usePageTitle from '../hooks/usePageTitle';
+import useResendCooldown from '../hooks/useResendCooldown';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -44,6 +46,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [sendingCode, setSendingCode] = useState(false);
+  const [resendCooldown, startResendCooldown] = useResendCooldown();
   const { login } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
@@ -115,6 +118,7 @@ const Register = () => {
     setError('');
     try {
       await api.post('/auth/send-verification-code', { email: form.email });
+      startResendCooldown();
       return true;
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send the verification code. Please try again.');
@@ -570,20 +574,11 @@ const Register = () => {
                     </p>
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="reg-verify-code">Verification Code</label>
-                      <input
-                        id="reg-verify-code"
-                        style={styles.input}
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="123456"
-                        maxLength={6}
-                        value={verificationCode}
-                        onChange={(e) => setVerificationCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                      />
+                      <OtpInput value={verificationCode} onChange={setVerificationCode} isDark={isDark} />
                     </div>
-                    <button type="button" className="text-link-btn" style={{ ...styles.footerLink, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}
-                      onClick={sendVerificationCode} disabled={sendingCode}>
-                      {sendingCode ? 'Resending...' : "Didn't get it? Resend code"}
+                    <button type="button" className="text-link-btn" style={{ ...styles.footerLink, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: resendCooldown > 0 ? 'default' : 'pointer' }}
+                      onClick={sendVerificationCode} disabled={sendingCode || resendCooldown > 0}>
+                      {sendingCode ? 'Resending...' : resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Didn't get it? Resend code"}
                     </button>
 
                     <div style={styles.stepActions}>

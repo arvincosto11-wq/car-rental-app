@@ -3,7 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import PasswordInput from '../components/PasswordInput';
+import OtpInput from '../components/OtpInput';
 import usePageTitle from '../hooks/usePageTitle';
+import useResendCooldown from '../hooks/useResendCooldown';
 import api from '../api';
 
 const ForgotPassword = () => {
@@ -19,6 +21,7 @@ const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [resendCooldown, startResendCooldown] = useResendCooldown();
 
   const handleSendCode = async (e) => {
     e.preventDefault();
@@ -27,6 +30,7 @@ const ForgotPassword = () => {
     try {
       const res = await api.post('/auth/forgot-password', { email });
       setNotice(res.data.message);
+      startResendCooldown();
       setStep('reset');
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong. Please try again.');
@@ -41,6 +45,7 @@ const ForgotPassword = () => {
     try {
       const res = await api.post('/auth/forgot-password', { email });
       setNotice(res.data.message);
+      startResendCooldown();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to resend the code.');
     } finally {
@@ -136,12 +141,11 @@ const ForgotPassword = () => {
           <form onSubmit={handleReset}>
             <div style={styles.field}>
               <label style={styles.label} htmlFor="fp-code">Verification Code</label>
-              <input id="fp-code" style={styles.input} type="text" inputMode="numeric" maxLength={6} placeholder="123456"
-                value={code} onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} />
+              <OtpInput value={code} onChange={setCode} isDark={isDark} />
             </div>
-            <button type="button" className="text-link-btn" style={{ background: 'none', border: 'none', padding: 0, marginBottom: '16px', font: 'inherit', color: isDark ? GOLD_DARK : GOLD, cursor: 'pointer' }}
-              onClick={handleResendCode} disabled={loading}>
-              {loading ? 'Resending...' : "Didn't get it? Resend code"}
+            <button type="button" className="text-link-btn" style={{ background: 'none', border: 'none', padding: 0, marginBottom: '16px', font: 'inherit', color: isDark ? GOLD_DARK : GOLD, cursor: resendCooldown > 0 ? 'default' : 'pointer' }}
+              onClick={handleResendCode} disabled={loading || resendCooldown > 0}>
+              {loading ? 'Resending...' : resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Didn't get it? Resend code"}
             </button>
             <div style={styles.field}>
               <label style={styles.label} htmlFor="fp-new-password">New Password</label>

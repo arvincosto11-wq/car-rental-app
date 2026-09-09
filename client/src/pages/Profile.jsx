@@ -5,7 +5,9 @@ import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import Skeleton from '../components/Skeleton';
 import PasswordInput from '../components/PasswordInput';
+import OtpInput from '../components/OtpInput';
 import usePageTitle from '../hooks/usePageTitle';
+import useResendCooldown from '../hooks/useResendCooldown';
 import api from '../api';
 
 const Profile = () => {
@@ -29,6 +31,7 @@ const Profile = () => {
   const [pwSuccess, setPwSuccess] = useState('');
   const [pwStep, setPwStep] = useState('form');
   const [pwCode, setPwCode] = useState('');
+  const [pwResendCooldown, startPwResendCooldown] = useResendCooldown();
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -122,6 +125,7 @@ const Profile = () => {
     setPwSaving(true);
     try {
       await api.post('/auth/change-password/send-code', { currentPassword: pwForm.currentPassword });
+      startPwResendCooldown();
       setPwStep('verify');
     } catch (err) {
       setPwError(err.response?.data?.message || 'Something went wrong sending the verification code.');
@@ -135,6 +139,7 @@ const Profile = () => {
     setPwSaving(true);
     try {
       await api.post('/auth/change-password/send-code', { currentPassword: pwForm.currentPassword });
+      startPwResendCooldown();
     } catch (err) {
       setPwError(err.response?.data?.message || 'Failed to resend the code.');
     } finally {
@@ -404,12 +409,11 @@ const Profile = () => {
               </p>
               <div style={s.field}>
                 <label style={s.label} htmlFor="pw-code">Verification Code</label>
-                <input id="pw-code" style={s.input} type="text" inputMode="numeric" maxLength={6} placeholder="123456"
-                  value={pwCode} onChange={(e) => setPwCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} />
+                <OtpInput value={pwCode} onChange={setPwCode} isDark={isDark} />
               </div>
-              <button type="button" className="text-link-btn" style={{ background: 'none', border: 'none', padding: 0, marginBottom: '14px', font: 'inherit', color: isDark ? GOLD_DARK : GOLD, cursor: 'pointer' }}
-                onClick={handleResendPasswordCode} disabled={pwSaving}>
-                {pwSaving ? 'Resending...' : "Didn't get it? Resend code"}
+              <button type="button" className="text-link-btn" style={{ background: 'none', border: 'none', padding: 0, marginBottom: '14px', font: 'inherit', color: isDark ? GOLD_DARK : GOLD, cursor: pwResendCooldown > 0 ? 'default' : 'pointer' }}
+                onClick={handleResendPasswordCode} disabled={pwSaving || pwResendCooldown > 0}>
+                {pwSaving ? 'Resending...' : pwResendCooldown > 0 ? `Resend code in ${pwResendCooldown}s` : "Didn't get it? Resend code"}
               </button>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button type="submit" style={s.saveBtn} disabled={pwSaving}>
