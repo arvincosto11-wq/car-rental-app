@@ -4,8 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import PasswordInput from '../components/PasswordInput';
+import GoogleAuthButton from '../components/GoogleAuthButton';
 import usePageTitle from '../hooks/usePageTitle';
 import api from '../api';
+
+const GOOGLE_CONFIGURED = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const Login = () => {
   usePageTitle('Login');
@@ -110,6 +113,11 @@ const Login = () => {
       textDecoration: 'none',
       fontWeight: '500',
     },
+    divider: {
+      display: 'flex', alignItems: 'center', gap: '10px',
+      margin: '18px 0', fontSize: '12px', color: isDark ? '#64748b' : '#9ca3af',
+    },
+    dividerLine: { flex: 1, height: '1px', background: isDark ? '#334155' : '#e5e7eb' },
   };
 
   return (
@@ -119,6 +127,17 @@ const Login = () => {
         <p style={styles.subtitle}>Login to your account</p>
 
         {error && <div style={styles.error}>{error}</div>}
+
+        {GOOGLE_CONFIGURED && (
+          <>
+            <GoogleAuthButton onError={setError} isDark={isDark} />
+            <div style={styles.divider}>
+              <span style={styles.dividerLine} />
+              or continue with email
+              <span style={styles.dividerLine} />
+            </div>
+          </>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div style={styles.field}>

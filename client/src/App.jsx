@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MotionConfig } from 'motion/react';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIFeedbackProvider } from './context/UIFeedbackContext';
@@ -49,6 +50,7 @@ function App() {
     <ThemeProvider>
       <UIFeedbackProvider>
       <AuthProvider>
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
         <BrowserRouter>
           <Suspense fallback={<PageLoading />}>
           <Routes>
@@ -217,6 +219,7 @@ function App() {
           </Routes>
           </Suspense>
         </BrowserRouter>
+        </GoogleOAuthProvider>
       </AuthProvider>
       </UIFeedbackProvider>
     </ThemeProvider>
