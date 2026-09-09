@@ -25,6 +25,7 @@ const ConsignmentRegister = () => {
     category: '', transmission: '', fuelType: '', seats: '',
     suggestedPricePerDay: '', description: '',
   });
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const [validIdImage, setValidIdImage] = useState(null);
   const [validIdPreview, setValidIdPreview] = useState('');
@@ -87,6 +88,7 @@ const ConsignmentRegister = () => {
     if (!form.name.trim()) { setError('Please enter your full name.'); return false; }
     if (!form.email.trim()) { setError('Please enter your email.'); return false; }
     if (!form.password || form.password.length < 8) { setError('Password must be at least 8 characters.'); return false; }
+    if (form.password !== confirmPassword) { setError('Password and confirmation do not match.'); return false; }
     if (!PHONE_REGEX.test(form.phone)) { setError('Please enter a valid Philippine phone number (e.g. 09171234567 or +639171234567)'); return false; }
     if (!form.address.trim()) { setError('Please complete your address.'); return false; }
     if (!validIdImage) { setError('Please upload a photo of your valid ID.'); return false; }
@@ -318,6 +320,11 @@ const ConsignmentRegister = () => {
                         <input id="cr-password" style={styles.input} type="password" placeholder="Create a password (min. 8 characters)"
                           value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} />
                       </div>
+                    </div>
+                    <div style={styles.field}>
+                      <label style={styles.label} htmlFor="cr-confirm-password">Confirm Password</label>
+                      <input id="cr-confirm-password" style={styles.input} type="password" placeholder="Re-enter your password"
+                        value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={8} />
                     </div>
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="cr-phone">Phone Number</label>

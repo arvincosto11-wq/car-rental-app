@@ -62,7 +62,35 @@ router.put('/me', protect, async (req, res) => {
   }
 });
 
-// Change the logged-in user's password (requires their current password)
+// Sends a code to the logged-in user's own email before they're allowed to
+// change their password — requires the correct current password first so a
+// code isn't wasted (and the owner isn't emailed) over a wrong guess.
+router.post('/change-password/send-code', protect, verificationLimiter, async (req, res) => {
+  try {
+    const { currentPassword } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const match = await bcrypt.compare(currentPassword || '', user.password);
+    if (!match) return res.status(400).json({ message: 'Current password is incorrect.' });
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    await EmailVerification.findOneAndUpdate(
+      { email: user.email },
+      { email: user.email, code, attempts: 0, verified: false, expiresAt: new Date(Date.now() + VERIFICATION_CODE_TTL_MS) },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    await sendVerificationCodeEmail(user.email, code);
+    res.json({ message: 'Verification code sent.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Change the logged-in user's password — requires the current password AND
+// a code confirmed via POST /verify-email-code first (that endpoint marks
+// EmailVerification.verified for whatever email the code matched; this
+// route just checks that flag rather than re-checking the raw code).
 router.put('/change-password', protect, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -76,8 +104,14 @@ router.put('/change-password', protect, async (req, res) => {
     const match = await bcrypt.compare(currentPassword || '', user.password);
     if (!match) return res.status(400).json({ message: 'Current password is incorrect.' });
 
+    const verification = await EmailVerification.findOne({ email: user.email });
+    if (!verification?.verified || verification.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'Please verify your email before changing your password.' });
+    }
+
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
+    await EmailVerification.deleteOne({ email: user.email });
     res.json({ message: 'Password updated successfully.' });
   } catch (err) {
     res.status(500).json({ message: err.message });

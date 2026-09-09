@@ -26,6 +26,8 @@ const Profile = () => {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState('');
+  const [pwStep, setPwStep] = useState('form');
+  const [pwCode, setPwCode] = useState('');
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -101,7 +103,10 @@ const Profile = () => {
     }
   };
 
-  const handleChangePassword = async (e) => {
+  // Step 1: validate the new password client-side and confirm the current
+  // password is actually correct server-side, then send a code to the
+  // account's own email — nothing changes yet.
+  const handleRequestPasswordChange = async (e) => {
     e.preventDefault();
     setPwError('');
     setPwSuccess('');
@@ -115,18 +120,58 @@ const Profile = () => {
     }
     setPwSaving(true);
     try {
+      await api.post('/auth/change-password/send-code', { currentPassword: pwForm.currentPassword });
+      setPwStep('verify');
+    } catch (err) {
+      setPwError(err.response?.data?.message || 'Something went wrong sending the verification code.');
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
+  const handleResendPasswordCode = async () => {
+    setPwError('');
+    setPwSaving(true);
+    try {
+      await api.post('/auth/change-password/send-code', { currentPassword: pwForm.currentPassword });
+    } catch (err) {
+      setPwError(err.response?.data?.message || 'Failed to resend the code.');
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
+  // Step 2: confirm the code, then actually change the password.
+  const handleConfirmPasswordChange = async (e) => {
+    e.preventDefault();
+    setPwError('');
+    if (!pwCode.trim()) {
+      setPwError('Please enter the code sent to your email.');
+      return;
+    }
+    setPwSaving(true);
+    try {
+      await api.post('/auth/verify-email-code', { email: profile.email, code: pwCode.trim() });
       await api.put('/auth/change-password', {
         currentPassword: pwForm.currentPassword,
         newPassword: pwForm.newPassword,
       });
       setPwSuccess('Password updated.');
       setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setPwCode('');
+      setPwStep('form');
       setTimeout(() => setPwSuccess(''), 3000);
     } catch (err) {
       setPwError(err.response?.data?.message || 'Something went wrong changing your password.');
     } finally {
       setPwSaving(false);
     }
+  };
+
+  const cancelPasswordVerify = () => {
+    setPwStep('form');
+    setPwCode('');
+    setPwError('');
   };
 
   const s = {
@@ -328,28 +373,53 @@ const Profile = () => {
           {pwSuccess && <div style={s.formSuccess}>{pwSuccess}</div>}
           {pwError && <div style={s.formError}>{pwError}</div>}
 
-          <form onSubmit={handleChangePassword}>
-            <div style={s.field}>
-              <label style={s.label} htmlFor="pw-current">Current Password</label>
-              <input id="pw-current" style={s.input} type="password" value={pwForm.currentPassword}
-                onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })} required />
-            </div>
-            <div className="responsive-row-2" style={s.row}>
+          {pwStep === 'form' ? (
+            <form onSubmit={handleRequestPasswordChange}>
               <div style={s.field}>
-                <label style={s.label} htmlFor="pw-new">New Password</label>
-                <input id="pw-new" style={s.input} type="password" value={pwForm.newPassword} minLength={8}
-                  onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} required />
+                <label style={s.label} htmlFor="pw-current">Current Password</label>
+                <input id="pw-current" style={s.input} type="password" value={pwForm.currentPassword}
+                  onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })} required />
               </div>
+              <div className="responsive-row-2" style={s.row}>
+                <div style={s.field}>
+                  <label style={s.label} htmlFor="pw-new">New Password</label>
+                  <input id="pw-new" style={s.input} type="password" value={pwForm.newPassword} minLength={8}
+                    onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} required />
+                </div>
+                <div style={s.field}>
+                  <label style={s.label} htmlFor="pw-confirm">Confirm New Password</label>
+                  <input id="pw-confirm" style={s.input} type="password" value={pwForm.confirmPassword} minLength={8}
+                    onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })} required />
+                </div>
+              </div>
+              <button type="submit" style={s.saveBtn} disabled={pwSaving}>
+                {pwSaving ? 'Sending code...' : 'Continue'}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleConfirmPasswordChange}>
+              <p style={{ ...s.subtitle, marginBottom: '12px' }}>
+                We sent a 6-digit code to <strong>{profile.email}</strong>. Enter it below to finish changing your password.
+              </p>
               <div style={s.field}>
-                <label style={s.label} htmlFor="pw-confirm">Confirm New Password</label>
-                <input id="pw-confirm" style={s.input} type="password" value={pwForm.confirmPassword} minLength={8}
-                  onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })} required />
+                <label style={s.label} htmlFor="pw-code">Verification Code</label>
+                <input id="pw-code" style={s.input} type="text" inputMode="numeric" maxLength={6} placeholder="123456"
+                  value={pwCode} onChange={(e) => setPwCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} />
               </div>
-            </div>
-            <button type="submit" style={s.saveBtn} disabled={pwSaving}>
-              {pwSaving ? 'Updating...' : 'Update Password'}
-            </button>
-          </form>
+              <button type="button" className="text-link-btn" style={{ background: 'none', border: 'none', padding: 0, marginBottom: '14px', font: 'inherit', color: isDark ? GOLD_DARK : GOLD, cursor: 'pointer' }}
+                onClick={handleResendPasswordCode} disabled={pwSaving}>
+                {pwSaving ? 'Resending...' : "Didn't get it? Resend code"}
+              </button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button type="submit" style={s.saveBtn} disabled={pwSaving}>
+                  {pwSaving ? 'Updating...' : 'Confirm & Update Password'}
+                </button>
+                <button type="button" style={s.cancelBtn} onClick={cancelPasswordVerify} disabled={pwSaving}>
+                  Back
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>
