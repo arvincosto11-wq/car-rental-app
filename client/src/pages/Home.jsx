@@ -44,7 +44,7 @@ const Home = () => {
     if (heroImages.length < 2) return;
     const timer = setInterval(() => {
       setHeroSlide((prev) => (prev + 1) % heroImages.length);
-    }, 5000);
+    }, 3500);
     return () => clearInterval(timer);
   }, [heroImages.length]);
 
