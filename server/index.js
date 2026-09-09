@@ -10,6 +10,7 @@ import userRoutes from './routes/users.js';
 import consignmentRoutes from './routes/consignments.js';
 import notificationRoutes from './routes/notifications.js';
 import paymentsRoutes, { handlePaymongoWebhook } from './routes/payments.js';
+import adminStatsRoutes from './routes/adminStats.js';
 
 dotenv.config();
 
@@ -45,6 +46,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/consignments', consignmentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api/admin', adminStatsRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: '🚗 Car Rental API is running!' });

@@ -142,6 +142,25 @@ button.text-link-btn:not(:disabled):active {
   text-decoration: underline;
 }
 
+/* Small "this needs attention" dot — admin sidebar, status tabs, etc. A
+   gentle pulse on the halo makes it noticeable without being alarming. */
+.pending-dot {
+  position: relative;
+}
+.pending-dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.5;
+  animation: pending-dot-pulse 1.8s ease-out infinite;
+}
+@keyframes pending-dot-pulse {
+  0% { transform: scale(0.6); opacity: 0.5; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   button:not(:disabled),
   .btn-like {
@@ -153,6 +172,10 @@ button.text-link-btn:not(:disabled):active {
   .btn-like:active {
     transform: none;
     box-shadow: none;
+  }
+  .pending-dot::after {
+    animation: none;
+    display: none;
   }
 }
 

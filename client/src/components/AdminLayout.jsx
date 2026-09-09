@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { useNotifications } from '../context/NotificationContext';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 import NotificationBell from './NotificationBell';
+import useAdminPendingCounts from '../hooks/useAdminPendingCounts';
 
 const AdminLayout = ({ children, activePage }) => {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const { unreadCountFor } = useNotifications();
+  const { counts } = useAdminPendingCounts();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -28,10 +28,7 @@ const AdminLayout = ({ children, activePage }) => {
     adminName: { textAlign: 'center', fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '24px' },
     sideItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', fontSize: '13px', color: isDark ? '#94a3b8' : '#4b5563', textDecoration: 'none' },
     sideItemActive: { background: isDark ? GOLD_TINT_DARK : GOLD_TINT, color: isDark ? GOLD_DARK : GOLD, borderLeft: `3px solid ${isDark ? GOLD_DARK : GOLD}` },
-    sideBadge: {
-      minWidth: '18px', height: '18px', borderRadius: '20px', background: '#dc2626', color: '#fff',
-      fontSize: '10px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px',
-    },
+    sideDot: { width: '8px', height: '8px', borderRadius: '50%', background: '#dc2626', flexShrink: 0 },
   };
 
     const sideLinks = [
@@ -81,14 +78,11 @@ const AdminLayout = ({ children, activePage }) => {
           <div style={s.adminName}>{user?.name}</div>
           <nav>
             {sideLinks.map((link) => {
-              // '/admin' (Dashboard) is a prefix of every other admin link
-              // below, so it's excluded here — otherwise it'd double-count
-              // every other section's notifications as its own.
-              const count = link.to === '/admin' ? 0 : unreadCountFor(link.to);
+              const count = counts[link.to] || 0;
               return (
                 <Link key={link.to} to={link.to} onClick={() => setSidebarOpen(false)} style={activePage === link.label ? { ...s.sideItem, ...s.sideItemActive } : s.sideItem}>
                   {link.label}
-                  {count > 0 && <span style={s.sideBadge}>{count > 9 ? '9+' : count}</span>}
+                  {count > 0 && <span className="pending-dot" style={s.sideDot} title={`${count} needs attention`} />}
                 </Link>
               );
             })}

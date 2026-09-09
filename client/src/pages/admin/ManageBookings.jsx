@@ -187,6 +187,7 @@ const ManageBookings = () => {
     statusTabCount: (active) => ({
       fontSize: '12px', fontWeight: '600', opacity: active ? 0.85 : 0.6,
     }),
+    statusTabDot: { width: '7px', height: '7px', borderRadius: '50%', background: '#dc2626', flexShrink: 0 },
     calendarBtn: {
       padding: '9px 16px', background: isDark ? '#1e293b' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151',
       border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600',
@@ -274,6 +275,7 @@ const ManageBookings = () => {
               style={s.statusTab(active)}
               onClick={() => { setStatusFilter(tab.value); setPage(1); }}
             >
+              {tab.value === 'pending' && tab.count > 0 && <span className="pending-dot" style={s.statusTabDot} />}
               {tab.label}
               <span style={s.statusTabCount(active)}>({tab.count})</span>
             </button>
