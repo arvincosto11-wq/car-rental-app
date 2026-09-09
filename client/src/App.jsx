@@ -11,6 +11,7 @@ import Cars from './pages/Cars';
 import CarDetail from './pages/CarDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import MyBookings from './pages/MyBookings';
 import RateBookings from './pages/RateBookings';
 import MyFavorites from './pages/MyFavorites';
@@ -58,6 +59,7 @@ function App() {
             <Route path="/cars/:id" element={<><Navbar /><CarDetail /></>} />
             <Route path="/login" element={<><Navbar /><Login /></>} />
             <Route path="/register" element={<><Navbar /><Register /></>} />
+            <Route path="/forgot-password" element={<><Navbar /><ForgotPassword /></>} />
             <Route path="/consignment/register" element={<><Navbar /><ConsignmentRegister /></>} />
             <Route path="/help" element={<><Navbar /><Help /></>} />
 

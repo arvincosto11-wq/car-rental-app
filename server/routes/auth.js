@@ -80,8 +80,61 @@ router.post('/change-password/send-code', protect, verificationLimiter, async (r
       { email: user.email, code, attempts: 0, verified: false, expiresAt: new Date(Date.now() + VERIFICATION_CODE_TTL_MS) },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
-    await sendVerificationCodeEmail(user.email, code);
+    await sendVerificationCodeEmail(user.email, code, 'change-password');
     res.json({ message: 'Verification code sent.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Forgot password — sends a code if an account exists for that email, but
+// always returns the same generic response either way so the response
+// itself can't be used to enumerate which emails are registered.
+router.post('/forgot-password', verificationLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!EMAIL_REGEX.test(email || '')) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+
+    const user = await User.findOne({ email });
+    if (user) {
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      await EmailVerification.findOneAndUpdate(
+        { email },
+        { email, code, attempts: 0, verified: false, expiresAt: new Date(Date.now() + VERIFICATION_CODE_TTL_MS) },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+      await sendVerificationCodeEmail(email, code, 'reset-password');
+    }
+
+    res.json({ message: 'If an account exists with that email, a verification code has been sent.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Reset password — requires a code already confirmed via
+// POST /verify-email-code (same verified-flag gate used everywhere else).
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters.' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: 'Invalid request.' });
+
+    const verification = await EmailVerification.findOne({ email });
+    if (!verification?.verified || verification.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'Please verify your email before resetting your password.' });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    await EmailVerification.deleteOne({ email });
+    res.json({ message: 'Password reset successfully.' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

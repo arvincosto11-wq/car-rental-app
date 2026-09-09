@@ -144,6 +144,9 @@ const Login = () => {
               required
               isDark={isDark}
             />
+            <p style={{ textAlign: 'right', marginTop: '6px' }}>
+              <Link to="/forgot-password" style={{ ...styles.footerLink, fontSize: '12px' }}>Forgot password?</Link>
+            </p>
           </div>
           <button style={styles.btn} type="submit" disabled={loading}>
             {loading ? 'Logging in...' : 'Login'}
