@@ -62,6 +62,16 @@ input, select, textarea {
   background-color: var(--input-bg);
 }
 
+/* The <select> box above inherits the theme fine, but its dropdown list is
+   made of <option> elements, which don't cascade the same way — Chromium
+   renders them with its own default (white bg, black text) unless styled
+   directly. Without this, every dropdown in dark mode showed a jarring
+   light popup no matter how the closed box looked. */
+option {
+  color: var(--input-text);
+  background-color: var(--input-bg);
+}
+
 h1, h2, h3, h4, h5, h6 {
   color: var(--text);
 }
