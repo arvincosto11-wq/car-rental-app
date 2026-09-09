@@ -1,13 +1,16 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // Resend's shared sandbox sender — works without owning/verifying a custom
 // domain, which this project doesn't have. Fine for a capstone; a real
 // business would verify its own domain instead.
 const FROM = 'Rent-a-Ride Albay <onboarding@resend.dev>';
 
 export async function sendVerificationCodeEmail(email, code) {
+  // Built lazily, not at module load — the Resend SDK throws synchronously
+  // if the key is missing, and this file is imported at server startup, so
+  // building it eagerly would crash the entire app over one missing env
+  // var instead of just failing this one request.
+  const resend = new Resend(process.env.RESEND_API_KEY);
   await resend.emails.send({
     from: FROM,
     to: email,
