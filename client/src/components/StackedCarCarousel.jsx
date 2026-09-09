@@ -48,12 +48,12 @@ const StackedCarCarousel = ({ isDark }) => {
   const s = {
     outer: { overflow: 'hidden', padding: '10px 0' },
     wrap: {
-      position: 'relative', width: 'min(560px, 94vw)', height: '300px',
+      position: 'relative', width: 'min(820px, 96vw)', height: '400px',
       margin: '0 auto',
     },
     glow: {
-      position: 'absolute', top: '-70px', left: '50%', transform: 'translateX(-50%)',
-      width: '560px', height: '440px', borderRadius: '50%', pointerEvents: 'none',
+      position: 'absolute', top: '-90px', left: '50%', transform: 'translateX(-50%)',
+      width: '820px', height: '620px', borderRadius: '50%', pointerEvents: 'none',
       background: isDark
         ? 'radial-gradient(circle, rgba(232,161,0,0.28) 0%, rgba(232,161,0,0) 70%)'
         : 'radial-gradient(circle, rgba(184,121,10,0.22) 0%, rgba(184,121,10,0) 70%)',
@@ -67,17 +67,17 @@ const StackedCarCarousel = ({ isDark }) => {
       position: 'absolute', top: 0, left: '23%', width: '54%',
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '16px', overflow: 'hidden',
-      boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.5)' : '0 12px 32px rgba(0,0,0,0.12)',
+      borderRadius: '18px', overflow: 'hidden',
+      boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.5)' : '0 16px 40px rgba(0,0,0,0.12)',
       cursor: 'pointer',
     },
-    imgWrap: { width: '100%', height: '170px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
+    imgWrap: { width: '100%', height: '250px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
     img: { width: '100%', height: '100%', objectFit: 'cover' },
-    body: { padding: '14px 16px' },
-    name: { fontSize: '15px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '2px' },
-    sub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '8px' },
-    price: { fontSize: '14px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD },
-    priceUnit: { fontSize: '12px', fontWeight: '400', color: isDark ? '#b0b3b8' : '#6b7280' },
+    body: { padding: '20px 22px' },
+    name: { fontSize: '20px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '3px' },
+    sub: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '10px' },
+    price: { fontSize: '18px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD },
+    priceUnit: { fontSize: '13px', fontWeight: '400', color: isDark ? '#b0b3b8' : '#6b7280' },
     dots: { display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '18px' },
     dot: (active) => ({
       width: active ? '18px' : '6px', height: '6px', borderRadius: '4px',
