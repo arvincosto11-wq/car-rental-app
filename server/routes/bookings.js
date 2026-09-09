@@ -75,7 +75,7 @@ async function findBlockedRange(carId, start, end) {
 // Create booking
 router.post('/', protect, async (req, res) => {
     try {
-    const { carId, startDate, endDate, paymentType, bookingType, licenseNumber, licenseExpiry, paymentMethod } = req.body;
+    const { carId, startDate, endDate, paymentType, bookingType, paymentMethod } = req.body;
 
     const currentUser = await User.findById(req.user.id);
     if (currentUser?.isBlocked) {
@@ -122,20 +122,23 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({ message: 'This vehicle is not available during the selected dates. Please choose different dates.' });
     }
 
-    // Self-drive bookings require a valid, unexpired driver's license on file.
-    // If the client just entered one on the booking form, save it to their profile first.
+    // Self-drive requires a valid, unexpired license on file, a photo of a
+    // valid ID uploaded, AND admin approval — license/expiry alone can be
+    // fabricated, so idVerified (set by admin after reviewing the photo) is
+    // the real gate. All three are managed from the client's own Profile,
+    // never accepted inline here.
     if (bookingType === 'self-drive') {
-      if (licenseNumber && licenseExpiry) {
-        currentUser.licenseNumber = licenseNumber;
-        currentUser.licenseExpiry = licenseExpiry;
-        await currentUser.save();
-      }
-
       if (!currentUser.licenseNumber || !currentUser.licenseExpiry) {
-        return res.status(400).json({ message: "A driver's license is required to book self-drive." });
+        return res.status(400).json({ message: "A driver's license is required to book self-drive. Please add it in your Profile." });
       }
       if (new Date(currentUser.licenseExpiry) < new Date()) {
-        return res.status(400).json({ message: 'Your driver\'s license has expired. Please update it to book self-drive.' });
+        return res.status(400).json({ message: "Your driver's license has expired. Please update it in your Profile." });
+      }
+      if (!currentUser.validIdImage) {
+        return res.status(400).json({ message: 'Please upload a photo of your valid ID in your Profile before booking self-drive.' });
+      }
+      if (!currentUser.idVerified) {
+        return res.status(400).json({ message: 'Your ID is still pending verification by our team. You can book self-drive once it is approved.' });
       }
     }
 

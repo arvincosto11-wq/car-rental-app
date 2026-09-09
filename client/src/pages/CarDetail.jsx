@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import StarRating from '../components/StarRating';
@@ -35,8 +35,6 @@ const CarDetail = () => {
   const [paymentType, setPaymentType] = useState('downpayment');
   const [bookingType, setBookingType] = useState('with-driver');
   const [profile, setProfile] = useState(null);
-  const [licenseNumber, setLicenseNumber] = useState('');
-  const [licenseExpiry, setLicenseExpiry] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showRefundNotice, setShowRefundNotice] = useState(false);
@@ -114,13 +112,13 @@ const CarDetail = () => {
     fetchProfile();
   }, [user]);
 
-  const hasValidLicense = !!(
-    profile?.licenseNumber &&
-    profile?.licenseExpiry &&
-    new Date(profile.licenseExpiry) >= new Date()
-  );
+  // Self-drive is only bookable once admin has verified the client's ID —
+  // having a license number/expiry and an uploaded ID photo on file isn't
+  // enough on its own, since either could be fabricated. All three are
+  // managed from Profile, not inline in this wizard.
+  const isSelfDriveEligible = !!profile?.idVerified;
   const supportedBookingTypes = car?.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver'];
-  const needsLicenseInput = bookingType === 'self-drive' && !hasValidLicense;
+  const selfDriveBlocked = bookingType === 'self-drive' && !isSelfDriveEligible;
 
   const totalDays = startDate && endDate
     ? Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24))
@@ -189,13 +187,8 @@ const CarDetail = () => {
   };
 
   const goToConfirmNext = () => {
-    if (needsLicenseInput) {
-      if (!licenseNumber.trim() || !licenseExpiry) {
-        return setError("Please provide your driver's license details to book self-drive.");
-      }
-      if (new Date(licenseExpiry) < new Date()) {
-        return setError('That license expiry date has already passed. Please enter a valid, unexpired license.');
-      }
+    if (selfDriveBlocked) {
+      return setError("Self-drive isn't available on your account yet — see the notice above for what's needed.");
     }
     setError('');
     setStep(3);
@@ -226,7 +219,6 @@ const CarDetail = () => {
         totalPrice,
         bookingType,
         paymentMethod: 'gcash',
-        ...(needsLicenseInput ? { licenseNumber, licenseExpiry } : {}),
       });
 
       const { data } = await api.post('/payments/gcash/checkout-session', { bookingId: res.data._id });
@@ -530,21 +522,23 @@ const CarDetail = () => {
                       </p>
                     )}
 
-                    {needsLicenseInput && (
+                    {supportedBookingTypes.includes('self-drive') && (
+                      <p style={s.fieldHint}>
+                        📋 Self-drive bookings require a valid ID and driver's license, verified by our team beforehand — manage these in your{' '}
+                        <Link to="/profile" style={{ color: isDark ? GOLD_DARK : GOLD }}>Profile</Link>.
+                      </p>
+                    )}
+
+                    {selfDriveBlocked && (
                       <div style={s.licenseBox}>
                         <p style={s.licenseNote}>
-                          Self-drive requires a valid driver's license on file. Add yours below to continue.
+                          {!profile?.validIdImage
+                            ? "Self-drive isn't available yet — please add your driver's license and upload a photo of a valid ID in your Profile, then wait for our team to verify it."
+                            : "Your ID is uploaded and pending verification by our team. You'll be able to book self-drive once it's approved."}
                         </p>
-                        <div style={s.field}>
-                          <label style={s.label} htmlFor="cd-license-number">Driver's License Number</label>
-                          <input id="cd-license-number" style={s.input} type="text" placeholder="e.g. N03-12-123456"
-                            value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
-                        </div>
-                        <div style={s.field}>
-                          <label style={s.label} htmlFor="cd-license-expiry">License Expiry Date</label>
-                          <input id="cd-license-expiry" style={s.input} type="date" value={licenseExpiry}
-                            onChange={(e) => setLicenseExpiry(e.target.value)} />
-                        </div>
+                        <Link to="/profile" style={{ ...s.paymentBtn(true), display: 'inline-block', textDecoration: 'none' }}>
+                          Go to Profile
+                        </Link>
                       </div>
                     )}
 
