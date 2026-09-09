@@ -115,8 +115,8 @@ const Login = () => {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>Welcome back</h1>
-        <p style={styles.subtitle}>Login to your account</p>
+        <h1 style={styles.title}>Log In</h1>
+        <p style={styles.subtitle}>Enter your details to access your account</p>
 
         {error && <div style={styles.error}>{error}</div>}
 
