@@ -16,7 +16,7 @@ const router = express.Router();
 // actually handled.
 router.get('/pending-counts', protect, adminOnly, async (req, res) => {
   try {
-    const [pendingBookings, refundRequests, rescheduleRequests, pendingClients, pendingConsignments, pendingAvailability] = await Promise.all([
+    const [pendingBookings, refundRequests, rescheduleRequests, pendingClients, pendingConsignments, pendingAvailability, pendingBlockedDates] = await Promise.all([
       Booking.countDocuments({ status: 'pending', payment: 'paid' }),
       Booking.countDocuments({ refundStatus: 'requested' }),
       Booking.countDocuments({ 'rescheduleRequest.status': 'pending' }),
@@ -27,12 +27,20 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
       User.countDocuments({ role: 'user', validIdImage: { $ne: '' }, idVerified: false }),
       Consignment.countDocuments({ status: 'pending' }),
       Car.countDocuments({ 'availabilityRequest.status': 'pending' }),
+      // A car can have several pending blocked-date ranges at once (unlike
+      // the single-slot availabilityRequest), so this counts individual
+      // requests via $unwind rather than cars.
+      Car.aggregate([
+        { $unwind: '$blockedDates' },
+        { $match: { 'blockedDates.status': 'pending' } },
+        { $count: 'count' },
+      ]),
     ]);
     res.json({
       '/admin/manage-bookings': pendingBookings + refundRequests + rescheduleRequests,
       '/admin/manage-clients': pendingClients,
       '/admin/manage-consignments': pendingConsignments,
-      '/admin/availability-requests': pendingAvailability,
+      '/admin/availability-requests': pendingAvailability + (pendingBlockedDates[0]?.count || 0),
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -375,6 +375,7 @@ const ManageCars = () => {
       background: 'none', border: 'none', color: isDark ? '#fca5a5' : '#dc2626',
       fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0,
     },
+    blockedStatusTag: { fontSize: '10px', fontWeight: '700', padding: '1px 8px', borderRadius: '20px', background: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)', marginLeft: '6px' },
     blockAddBtn: {
       padding: '8px 16px', background: isDark ? GOLD_DARK : GOLD,
       color: ON_GOLD, border: 'none',
@@ -668,7 +669,7 @@ const ManageCars = () => {
                 </div>
                 <div style={styles.field}>
                   <label style={styles.label}>Blocked Dates</label>
-                  <p style={styles.hint}>Blocks this vehicle from being booked during these ranges (e.g. maintenance). Saved immediately — not part of Save Changes below.</p>
+                  <p style={styles.hint}>Blocks this vehicle from being booked during these ranges (e.g. maintenance). Dates you add here are saved immediately — not part of Save Changes below. Consignor-submitted ranges need a decision on Availability Requests before they take effect.</p>
                   {car.blockedDates?.length > 0 && (
                     <div style={styles.blockedList}>
                       {car.blockedDates.map((b) => (
@@ -676,6 +677,8 @@ const ManageCars = () => {
                           <span>
                             {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
                             {b.reason ? ` · ${b.reason}` : ''}
+                            {b.status === 'pending' && <span style={styles.blockedStatusTag}>Pending Approval</span>}
+                            {b.status === 'declined' && <span style={styles.blockedStatusTag}>Declined</span>}
                           </span>
                           <button type="button" style={styles.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(car._id, b._id)}>Remove</button>
                         </div>

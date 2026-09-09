@@ -64,12 +64,13 @@ async function findOverlappingBooking(carId, start, end, statuses, excludeId) {
   return Booking.findOne(query);
 }
 
-// Admin-set blocked ranges (maintenance, owner keeping the car for personal
-// use, etc.) are a hard block same as a confirmed booking's dates — just not
-// derived from an actual reservation. Not exposed to consignors for now.
+// Blocked ranges (maintenance, owner keeping the car for personal use, etc.)
+// are a hard block same as a confirmed booking's dates — just not derived
+// from an actual reservation. Only 'approved' ranges count — a consignor's
+// pending request has no effect until an admin signs off on it.
 async function findBlockedRange(carId, start, end) {
   const car = await Car.findById(carId).select('blockedDates');
-  return (car?.blockedDates || []).find((b) => new Date(b.startDate) < end && new Date(b.endDate) > start);
+  return (car?.blockedDates || []).find((b) => b.status === 'approved' && new Date(b.startDate) < end && new Date(b.endDate) > start);
 }
 
 // Create booking

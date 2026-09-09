@@ -44,15 +44,23 @@ const carSchema = new mongoose.Schema({
     requestedAt: { type: Date },
     adminNotes: { type: String, default: '' },
   },
-  // Admin-set date ranges where this car can't be booked at all, regardless
-  // of whether anything is actually booked (e.g. scheduled maintenance, the
+  // Date ranges where this car can't be booked at all, regardless of
+  // whether anything is actually booked (e.g. scheduled maintenance, the
   // owner keeping it for personal use) — a hard block same as a confirmed
-  // booking's dates, just not derived from an actual reservation. Not
-  // exposed to consignors for now, admin-only.
+  // booking's dates, just not derived from an actual reservation.
+  // Admin-added ranges apply immediately (status: 'approved'). A
+  // consignor blocking their own car needs admin sign-off first — the
+  // range sits as 'pending' and has zero effect on booking/availability
+  // until approved, same reasoning as availabilityRequest above: a
+  // consignor shouldn't be able to unilaterally take booking capacity
+  // offline without review.
   blockedDates: [{
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     reason: { type: String, default: '' },
+    status: { type: String, enum: ['approved', 'pending', 'declined'], default: 'approved' },
+    requestedBy: { type: String, enum: ['admin', 'consignor'], default: 'admin' },
+    adminNotes: { type: String, default: '' },
   }],
 }, { timestamps: true });
 

@@ -84,7 +84,9 @@ router.get('/:id/booked-dates', async (req, res) => {
     ]);
     const ranges = [
       ...bookings.map((b) => ({ startDate: b.startDate, endDate: b.endDate })),
-      ...(car?.blockedDates || []).map((b) => ({ startDate: b.startDate, endDate: b.endDate })),
+      ...(car?.blockedDates || [])
+        .filter((b) => b.status === 'approved')
+        .map((b) => ({ startDate: b.startDate, endDate: b.endDate })),
     ];
     res.json(ranges);
   } catch (err) {
@@ -92,16 +94,19 @@ router.get('/:id/booked-dates', async (req, res) => {
   }
 });
 
-// Admin, or the consignor who owns the vehicle: block a date range (e.g.
-// maintenance, owner keeping it for personal use) — refuses if a confirmed
-// booking already overlaps, since that would contradict an existing
-// commitment rather than prevent one.
+// Admin: block a date range immediately. Consignor (owning the vehicle):
+// submits the same request, but it saves as 'pending' and needs admin
+// approval before it actually affects availability — see
+// PUT /:id/blocked-dates/:blockId/decision below. Either way, refuses if a
+// confirmed booking already overlaps, since that would contradict an
+// existing commitment rather than prevent one.
 router.post('/:id/blocked-dates', protect, async (req, res) => {
   try {
     const car = await Car.findById(req.params.id);
     if (!car) return res.status(404).json({ message: 'Car not found' });
     const isOwner = car.owner && car.owner.toString() === req.user.id;
-    if (req.user.role !== 'admin' && !(req.user.role === 'consignor' && isOwner)) {
+    const isConsignor = req.user.role === 'consignor' && isOwner;
+    if (req.user.role !== 'admin' && !isConsignor) {
       return res.status(403).json({ message: 'You can only manage blocked dates for your own vehicles.' });
     }
 
@@ -120,9 +125,87 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
       return res.status(400).json({ message: 'This vehicle already has a confirmed booking overlapping these dates.' });
     }
 
-    car.blockedDates.push({ startDate: start, endDate: end, reason: reason || '' });
+    car.blockedDates.push({
+      startDate: start, endDate: end, reason: reason || '',
+      status: isConsignor ? 'pending' : 'approved',
+      requestedBy: isConsignor ? 'consignor' : 'admin',
+    });
     await car.save();
+
+    if (isConsignor) {
+      await notifyAdmins('New Blocked Date Request', `A consignor requested to block dates on "${car.brand} ${car.model}".`, '/admin/availability-requests');
+    }
+
     res.json(car);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin approves or declines a consignor's pending blocked-date request
+router.put('/:id/blocked-dates/:blockId/decision', protect, adminOnly, async (req, res) => {
+  try {
+    const { decision, adminNotes } = req.body;
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+
+    const block = car.blockedDates.id(req.params.blockId);
+    if (!block || block.status !== 'pending') {
+      return res.status(400).json({ message: 'No pending request for this date range.' });
+    }
+
+    if (decision === 'approved') {
+      const conflictingBooking = await Booking.findOne({
+        car: car._id, status: 'confirmed',
+        startDate: { $lt: block.endDate }, endDate: { $gt: block.startDate },
+      });
+      if (conflictingBooking) {
+        return res.status(400).json({ message: 'This vehicle now has a confirmed booking overlapping these dates — decline instead.' });
+      }
+      block.status = 'approved';
+      block.adminNotes = '';
+    } else {
+      block.status = 'declined';
+      block.adminNotes = adminNotes || '';
+    }
+    await car.save();
+
+    if (decision === 'approved') {
+      await notifyUser(car.owner, 'Blocked Dates Approved', `Your blocked dates for "${car.brand} ${car.model}" have been approved.`, '/consignor');
+    } else {
+      await notifyUser(car.owner, 'Blocked Dates Declined', `Your blocked-date request for "${car.brand} ${car.model}" was declined.${adminNotes ? ` Reason: ${adminNotes}` : ''}`, '/consignor');
+    }
+
+    res.json(car);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// List every car with at least one pending consignor blocked-date request
+// (admin only) — flattened to one row per request since a car can have
+// several pending ranges at once, unlike the single-slot availabilityRequest.
+router.get('/blocked-date-requests', protect, adminOnly, async (req, res) => {
+  try {
+    const cars = await Car.find({ 'blockedDates.status': 'pending' }).populate('owner', 'name email');
+    const requests = [];
+    cars.forEach((car) => {
+      car.blockedDates.forEach((block) => {
+        if (block.status !== 'pending') return;
+        requests.push({
+          _id: block._id,
+          carId: car._id,
+          brand: car.brand,
+          model: car.model,
+          image: car.image,
+          owner: car.owner,
+          startDate: block.startDate,
+          endDate: block.endDate,
+          reason: block.reason,
+        });
+      });
+    });
+    res.json(requests);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

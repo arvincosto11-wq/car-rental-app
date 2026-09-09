@@ -139,7 +139,7 @@ const ConsignorDashboard = () => {
       setConsignments((prev) => prev.map((c) => c.linkedCar?._id === carId ? { ...c, linkedCar: res.data } : c));
       setBlockForm({ startDate: '', endDate: '', reason: '' });
       setBlockPickerOpen(false);
-      toast.success('Dates blocked.');
+      toast.success('Blocked dates submitted for admin approval.');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to block those dates.');
     } finally {
@@ -254,6 +254,8 @@ const ConsignorDashboard = () => {
     blockHint: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '8px' },
     blockedList: { display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' },
     blockedItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fcd34d' : '#92400e' },
+    blockedItemDeclined: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', color: isDark ? '#fca5a5' : '#991b1b' },
+    blockedStatusTag: { fontSize: '10px', fontWeight: '700', padding: '1px 8px', borderRadius: '20px', background: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)', flexShrink: 0, marginLeft: '6px' },
     blockedRemoveBtn: { background: 'none', border: 'none', color: isDark ? '#fca5a5' : '#dc2626', fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0 },
     blockReasonInput: { width: '100%', maxWidth: '320px', padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', marginTop: '8px', color: isDark ? '#e4e6eb' : '#1a1a1a', background: isDark ? '#18191a' : '#fff', boxSizing: 'border-box' },
     blockAddBtn: { padding: '8px 16px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
@@ -392,12 +394,19 @@ const ConsignorDashboard = () => {
                       {c.linkedCar.blockedDates?.length > 0 && (
                         <div style={s.blockedList}>
                           {c.linkedCar.blockedDates.map((b) => (
-                            <div key={b._id} style={s.blockedItem}>
-                              <span>
-                                {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
-                                {b.reason ? ` · ${b.reason}` : ''}
-                              </span>
-                              <button type="button" style={s.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(c.linkedCar._id, b._id)}>Remove</button>
+                            <div key={b._id}>
+                              <div style={b.status === 'declined' ? s.blockedItemDeclined : s.blockedItem}>
+                                <span>
+                                  {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                                  {b.reason ? ` · ${b.reason}` : ''}
+                                  {b.status === 'pending' && <span style={s.blockedStatusTag}>Pending Approval</span>}
+                                  {b.status === 'declined' && <span style={s.blockedStatusTag}>Declined</span>}
+                                </span>
+                                <button type="button" style={s.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(c.linkedCar._id, b._id)}>Remove</button>
+                              </div>
+                              {b.status === 'declined' && b.adminNotes && (
+                                <div style={s.notesBox}>Reason: {b.adminNotes}</div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -406,7 +415,7 @@ const ConsignorDashboard = () => {
                         <>
                           <div style={{ marginTop: '8px', maxWidth: '320px' }}>
                             <AvailabilityCalendar
-                              bookedRanges={c.linkedCar.blockedDates || []}
+                              bookedRanges={(c.linkedCar.blockedDates || []).filter((b) => b.status !== 'declined')}
                               selectedStart={blockForm.startDate}
                               selectedEnd={blockForm.endDate}
                               onSelectDay={handleSelectBlockDay}
