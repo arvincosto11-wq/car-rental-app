@@ -22,7 +22,11 @@ const validators = {
   password: (v) => (!v ? '' : v.length < 8 ? 'Password must be at least 8 characters.' : ''),
 };
 
-const REGISTER_STEPS = ['Account', 'Verify Email', 'Contact & ID', 'Emergency Contact'];
+// Verification is the LAST step, after every other field is already filled
+// out — so a code is only ever sent once someone is genuinely finishing
+// registration, and the account is only ever created once it's confirmed,
+// never from just an email on its own.
+const REGISTER_STEPS = ['Account', 'Contact & ID', 'Emergency Contact', 'Verify Email'];
 const GOOGLE_CONFIGURED = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const Register = () => {
@@ -42,7 +46,6 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [sendingCode, setSendingCode] = useState(false);
-  const [verifyingCode, setVerifyingCode] = useState(false);
   const { login } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
@@ -93,39 +96,41 @@ const Register = () => {
     return true;
   };
 
+  const validateStep3 = () => {
+    const next = { emergencyContactNumber: validators.emergencyContactNumber(form.emergencyContactNumber) };
+    setFieldErrors((prev) => ({ ...prev, ...next }));
+    if (!form.emergencyContactName.trim() || !form.emergencyContactNumber.trim() || Object.values(next).some(Boolean)) {
+      setError('Please fill in your emergency contact details before continuing.');
+      return false;
+    }
+    setError('');
+    return true;
+  };
+
+  const goToStep2Next = () => { if (validateStep1()) setStep(2); };
+  const goToStep3Next = () => { if (validateStep2()) setStep(3); };
+
+  // Sends (or resends) the code, without moving steps itself — the caller
+  // decides what to do once it knows whether sending actually succeeded.
   const sendVerificationCode = async () => {
     setSendingCode(true);
     setError('');
     try {
       await api.post('/auth/send-verification-code', { email: form.email });
-      setStep(2);
+      return true;
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send the verification code. Please try again.');
+      return false;
     } finally {
       setSendingCode(false);
     }
   };
 
-  const goToStep2Next = () => { if (validateStep1()) sendVerificationCode(); };
-
-  const handleVerifyCode = async () => {
-    if (!verificationCode.trim()) {
-      setError('Please enter the code we sent to your email.');
-      return;
-    }
-    setVerifyingCode(true);
-    setError('');
-    try {
-      await api.post('/auth/verify-email-code', { email: form.email, code: verificationCode.trim() });
-      setStep(3);
-    } catch (err) {
-      setError(err.response?.data?.message || 'That code is incorrect. Please try again.');
-    } finally {
-      setVerifyingCode(false);
-    }
+  const goToStep4Next = async () => {
+    if (!validateStep3()) return;
+    const sent = await sendVerificationCode();
+    if (sent) setStep(4);
   };
-
-  const goToStep4Next = () => { if (validateStep2()) setStep(4); };
 
   const handleIdImageChange = (e) => {
     const file = e.target.files[0];
@@ -150,9 +155,16 @@ const Register = () => {
     return { url: data.url, fileId: data.fileId };
   };
 
+  // The final step's submit does double duty: confirm the code, and only
+  // once that succeeds does the account actually get created.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!verificationCode.trim()) {
+      setError('Please enter the code we sent to your email.');
+      return;
+    }
 
     const nextFieldErrors = {
       email: validators.email(form.email),
@@ -166,8 +178,11 @@ const Register = () => {
       setError('Please fix the highlighted fields before continuing.');
       return;
     }
+
     setLoading(true);
     try {
+      await api.post('/auth/verify-email-code', { email: form.email, code: verificationCode.trim() });
+
       let uploaded = { url: '', fileId: '' };
       if (validIdImage) {
         uploaded = await uploadToImageKit(validIdImage);
@@ -442,8 +457,8 @@ const Register = () => {
                     </div>
 
                     <div style={styles.stepActions}>
-                      <button type="button" style={styles.nextBtn} onClick={goToStep2Next} disabled={sendingCode}>
-                        {sendingCode ? 'Sending code...' : 'Continue'}
+                      <button type="button" style={styles.nextBtn} onClick={goToStep2Next}>
+                        Continue
                       </button>
                     </div>
                   </motion.div>
@@ -451,40 +466,6 @@ const Register = () => {
 
                 {step === 2 && (
                   <motion.div key="step2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
-                    <p style={{ ...styles.subtitle, marginBottom: '16px' }}>
-                      We sent a 6-digit code to <strong>{form.email}</strong>. Enter it below to verify your email.
-                    </p>
-                    <div style={styles.field}>
-                      <label style={styles.label} htmlFor="reg-verify-code">Verification Code</label>
-                      <input
-                        id="reg-verify-code"
-                        style={styles.input}
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="123456"
-                        maxLength={6}
-                        value={verificationCode}
-                        onChange={(e) => setVerificationCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                      />
-                    </div>
-                    <button type="button" style={{ ...styles.footerLink, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}
-                      onClick={sendVerificationCode} disabled={sendingCode}>
-                      {sendingCode ? 'Resending...' : "Didn't get it? Resend code"}
-                    </button>
-
-                    <div style={styles.stepActions}>
-                      <button type="button" style={styles.backBtn} onClick={() => goToStep(1)}>
-                        Back
-                      </button>
-                      <button type="button" style={styles.nextBtn} onClick={handleVerifyCode} disabled={verifyingCode}>
-                        {verifyingCode ? 'Verifying...' : 'Verify'}
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-
-                {step === 3 && (
-                  <motion.div key="step3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="reg-phone">Phone Number</label>
                       <input
@@ -550,18 +531,18 @@ const Register = () => {
                     </div>
 
                     <div style={styles.stepActions}>
-                      <button type="button" style={styles.backBtn} onClick={() => goToStep(2)}>
+                      <button type="button" style={styles.backBtn} onClick={() => goToStep(1)}>
                         Back
                       </button>
-                      <button type="button" style={styles.nextBtn} onClick={goToStep4Next}>
+                      <button type="button" style={styles.nextBtn} onClick={goToStep3Next}>
                         Continue
                       </button>
                     </div>
                   </motion.div>
                 )}
 
-                {step === 4 && (
-                  <motion.div key="step4" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
+                {step === 3 && (
+                  <motion.div key="step3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
                     <div className="responsive-row-2" style={styles.row}>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="reg-emergency-name">Emergency Contact Name</label>
@@ -594,11 +575,45 @@ const Register = () => {
                     </div>
 
                     <div style={styles.stepActions}>
+                      <button type="button" style={styles.backBtn} onClick={() => goToStep(2)}>
+                        Back
+                      </button>
+                      <button type="button" style={styles.nextBtn} onClick={goToStep4Next} disabled={sendingCode}>
+                        {sendingCode ? 'Sending code...' : 'Continue'}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {step === 4 && (
+                  <motion.div key="step4" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
+                    <p style={{ ...styles.subtitle, marginBottom: '16px' }}>
+                      We sent a 6-digit code to <strong>{form.email}</strong>. Enter it below to finish creating your account.
+                    </p>
+                    <div style={styles.field}>
+                      <label style={styles.label} htmlFor="reg-verify-code">Verification Code</label>
+                      <input
+                        id="reg-verify-code"
+                        style={styles.input}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="123456"
+                        maxLength={6}
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                      />
+                    </div>
+                    <button type="button" style={{ ...styles.footerLink, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}
+                      onClick={sendVerificationCode} disabled={sendingCode}>
+                      {sendingCode ? 'Resending...' : "Didn't get it? Resend code"}
+                    </button>
+
+                    <div style={styles.stepActions}>
                       <button type="button" style={styles.backBtn} onClick={() => goToStep(3)}>
                         Back
                       </button>
                       <button style={styles.nextBtn} type="submit" disabled={loading}>
-                        {loading ? 'Creating account...' : 'Register'}
+                        {loading ? 'Verifying & creating account...' : 'Verify & Create Account'}
                       </button>
                     </div>
                   </motion.div>
