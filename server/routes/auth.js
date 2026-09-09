@@ -2,7 +2,6 @@ import express from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import EmailVerification from '../models/EmailVerification.js';
 import { protect } from '../middleware/auth.js';
@@ -12,7 +11,6 @@ import { sendVerificationCodeEmail } from '../utils/email.js';
 const router = express.Router();
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
 const VERIFIED_WINDOW_MS = 30 * 60 * 1000;
 
@@ -224,24 +222,33 @@ router.post('/login', loginLimiter, async (req, res) => {
   }
 });
 
-// Sign in (or sign up) with Google. The client sends the ID token Google
-// Identity Services hands it after the user picks their account — we verify
-// that token directly with Google rather than trusting anything else in the
+// Sign in (or sign up) with Google. The client uses a custom-styled button
+// (not Google's own pre-built widget, which auto-personalizes to "Sign in
+// as <name>" once a Google session is active) and hands us the access token
+// from that flow — we look up the identity it belongs to directly from
+// Google's own userinfo endpoint rather than trusting anything else in the
 // request, so there's no way to forge an email/identity here.
 router.post('/google', loginLimiter, async (req, res) => {
   try {
-    const { credential } = req.body;
-    if (!credential) return res.status(400).json({ message: 'Missing Google credential.' });
+    const { accessToken } = req.body;
+    if (!accessToken) return res.status(400).json({ message: 'Missing Google access token.' });
 
     let payload;
     try {
-      const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
-      payload = ticket.getPayload();
+      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!userInfoRes.ok) throw new Error('Invalid access token');
+      payload = await userInfoRes.json();
     } catch {
       return res.status(400).json({ message: 'Invalid Google credential.' });
     }
 
-    if (!payload?.email || !payload.email_verified) {
+    // Google's userinfo endpoint returns email_verified as either a real
+    // boolean or the string "true"/"false" depending on version — check
+    // both so a stringified "false" can't be treated as truthy.
+    const emailVerified = payload?.email_verified === true || payload?.email_verified === 'true';
+    if (!payload?.email || !emailVerified) {
       return res.status(400).json({ message: 'Your Google account email is not verified.' });
     }
 
