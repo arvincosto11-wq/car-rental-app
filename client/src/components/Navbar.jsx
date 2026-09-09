@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useNotifications } from '../context/NotificationContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import NotificationBell from './NotificationBell';
 
@@ -28,6 +29,7 @@ const ThemeIcon = ({ dark, size = 16 }) => (
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { unreadCountFor } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -92,6 +94,15 @@ const Navbar = () => {
     padding: '10px 0',
     borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}`,
   };
+  const navBadgeStyle = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    minWidth: '16px', height: '16px', borderRadius: '20px', background: '#dc2626', color: '#fff',
+    fontSize: '10px', fontWeight: '700', padding: '0 4px', marginLeft: '5px',
+  };
+
+  // '/' would match every notification link via startsWith (they're all
+  // absolute paths), so Home is deliberately excluded from ever badging.
+  const navBadgeCount = (to) => (to === '/' ? 0 : unreadCountFor(to));
 
   const navLinks = [
     ...(!user || user.role !== 'consignor' ? [{ to: '/', label: 'Home' }, { to: '/cars', label: 'Vehicles' }] : []),
@@ -133,9 +144,15 @@ const Navbar = () => {
         </Link>
 
         <div className="navbar-nav-links" style={{ gap: '24px', alignItems: 'center' }}>
-          {navLinks.map((link) => (
-            <Link key={link.to} to={link.to} className="nav-link" style={navLinkStyle}>{link.label}</Link>
-          ))}
+          {navLinks.map((link) => {
+            const count = navBadgeCount(link.to);
+            return (
+              <Link key={link.to} to={link.to} className="nav-link" style={navLinkStyle}>
+                {link.label}
+                {count > 0 && <span style={navBadgeStyle}>{count > 9 ? '9+' : count}</span>}
+              </Link>
+            );
+          })}
         </div>
 
         <div className="navbar-auth-group" style={{ gap: '8px', alignItems: 'center' }}>
@@ -299,9 +316,15 @@ const Navbar = () => {
         background: menuBg,
         borderTop: `1px solid ${menuBorder}`,
       }}>
-        {navLinks.map((link) => (
-          <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)} style={mobileLinkStyle}>{link.label}</Link>
-        ))}
+        {navLinks.map((link) => {
+          const count = navBadgeCount(link.to);
+          return (
+            <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)} style={mobileLinkStyle}>
+              {link.label}
+              {count > 0 && <span style={navBadgeStyle}>{count > 9 ? '9+' : count}</span>}
+            </Link>
+          );
+        })}
 
         {user ? (
           <>

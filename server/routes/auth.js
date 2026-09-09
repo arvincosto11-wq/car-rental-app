@@ -6,6 +6,7 @@ import EmailVerification from '../models/EmailVerification.js';
 import { protect } from '../middleware/auth.js';
 import { loginLimiter, registerLimiter, verificationLimiter } from '../middleware/rateLimit.js';
 import { sendVerificationCodeEmail } from '../utils/email.js';
+import { notifyAdmins } from '../utils/notify.js';
 
 const router = express.Router();
 
@@ -48,13 +49,19 @@ router.put('/me', protect, async (req, res) => {
     if (emergencyContactNumber !== undefined) user.emergencyContactNumber = emergencyContactNumber;
 
     // If they upload a new ID photo, it needs to be re-verified by admin
+    let idNeedsVerification = false;
     if (validIdImage && validIdImage !== user.validIdImage) {
       user.validIdImage = validIdImage;
       user.validIdImageFileId = validIdImageFileId || '';
       user.idVerified = false;
+      idNeedsVerification = true;
     }
 
     await user.save();
+
+    if (idNeedsVerification) {
+      await notifyAdmins('ID Verification Needed', `${user.name} uploaded a new ID photo and needs verification.`, '/admin/manage-clients');
+    }
     const { password, ...safeUser } = user.toObject();
     res.json(safeUser);
   } catch (err) {
@@ -267,6 +274,10 @@ router.post('/register', registerLimiter, async (req, res) => {
     });
 
     await EmailVerification.deleteOne({ email });
+
+    if (validIdImage) {
+      await notifyAdmins('ID Verification Needed', `${user.name} uploaded an ID photo and needs verification.`, '/admin/manage-clients');
+    }
 
     const token = jwt.sign(
       { id: user._id, role: user.role },

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api';
+import { useNotifications } from '../context/NotificationContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
 const DROPDOWN_LIMIT = 8;
@@ -19,29 +19,14 @@ const timeAgo = (dateStr) => {
 };
 
 // Bell icon + unread badge + dropdown, used in both the client/consignor
-// Navbar and the admin top bar. Polls periodically so a badge appears
-// without the user needing to refresh.
+// Navbar and the admin top bar. Notification data itself comes from
+// NotificationContext (shared with any nav item badges), not fetched here.
 const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState([]);
+  const { notifications, unreadCount, markRead, markAllRead, deleteNotification } = useNotifications();
   const [open, setOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const ref = useRef(null);
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await api.get('/notifications');
-      setNotifications(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -54,38 +39,15 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
   const handleItemClick = async (n) => {
     setOpen(false);
-    if (!n.read) {
-      setNotifications(notifications.map((x) => (x._id === n._id ? { ...x, read: true } : x)));
-      try {
-        await api.put(`/notifications/${n._id}/read`);
-      } catch (err) {
-        console.error(err);
-      }
-    }
+    if (!n.read) markRead(n._id);
     if (n.link) navigate(n.link);
   };
 
-  const handleMarkAllRead = async () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
-    try {
-      await api.put('/notifications/read-all');
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleDelete = async (e, id) => {
+  const handleDelete = (e, id) => {
     e.stopPropagation();
-    setNotifications((prev) => prev.filter((n) => n._id !== id));
-    try {
-      await api.delete(`/notifications/${id}`);
-    } catch (err) {
-      console.error(err);
-    }
+    deleteNotification(id);
   };
 
   const handleViewAll = () => setShowAll(true);
@@ -155,7 +117,7 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
         >
           <div style={s.header}>
             <span style={s.headerTitle}>Notifications</span>
-            {unreadCount > 0 && <button style={s.markAllBtn} onClick={handleMarkAllRead}>Mark all read</button>}
+            {unreadCount > 0 && <button style={s.markAllBtn} onClick={markAllRead}>Mark all read</button>}
           </div>
           {notifications.length === 0 ? (
             <div style={s.empty}>No notifications yet.</div>

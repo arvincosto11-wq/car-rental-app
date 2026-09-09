@@ -4,6 +4,7 @@ import { MotionConfig } from 'motion/react';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIFeedbackProvider } from './context/UIFeedbackContext';
+import { NotificationProvider } from './context/NotificationContext';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
@@ -50,6 +51,7 @@ function App() {
     <ThemeProvider>
       <UIFeedbackProvider>
       <AuthProvider>
+        <NotificationProvider>
         <BrowserRouter>
           <Suspense fallback={<PageLoading />}>
           <Routes>
@@ -219,6 +221,7 @@ function App() {
           </Routes>
           </Suspense>
         </BrowserRouter>
+        </NotificationProvider>
       </AuthProvider>
       </UIFeedbackProvider>
     </ThemeProvider>

@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useNotifications } from '../context/NotificationContext';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 import NotificationBell from './NotificationBell';
 
 const AdminLayout = ({ children, activePage }) => {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { unreadCountFor } = useNotifications();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -24,8 +26,12 @@ const AdminLayout = ({ children, activePage }) => {
     sidebar: { background: isDark ? '#1e293b' : '#fff', borderRight: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, padding: '24px 0', minHeight: 'calc(100vh - 45px)' },
     avatar: { width: '48px', height: '48px', borderRadius: '50%', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '600', margin: '0 auto 8px' },
     adminName: { textAlign: 'center', fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '24px' },
-    sideItem: { display: 'block', padding: '10px 20px', fontSize: '13px', color: isDark ? '#94a3b8' : '#4b5563', textDecoration: 'none' },
+    sideItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', fontSize: '13px', color: isDark ? '#94a3b8' : '#4b5563', textDecoration: 'none' },
     sideItemActive: { background: isDark ? GOLD_TINT_DARK : GOLD_TINT, color: isDark ? GOLD_DARK : GOLD, borderLeft: `3px solid ${isDark ? GOLD_DARK : GOLD}` },
+    sideBadge: {
+      minWidth: '18px', height: '18px', borderRadius: '20px', background: '#dc2626', color: '#fff',
+      fontSize: '10px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px',
+    },
   };
 
     const sideLinks = [
@@ -74,11 +80,18 @@ const AdminLayout = ({ children, activePage }) => {
           <div style={s.avatar}>{user?.name?.charAt(0).toUpperCase()}</div>
           <div style={s.adminName}>{user?.name}</div>
           <nav>
-            {sideLinks.map((link) => (
-              <Link key={link.to} to={link.to} onClick={() => setSidebarOpen(false)} style={activePage === link.label ? { ...s.sideItem, ...s.sideItemActive } : s.sideItem}>
-                {link.label}
-              </Link>
-            ))}
+            {sideLinks.map((link) => {
+              // '/admin' (Dashboard) is a prefix of every other admin link
+              // below, so it's excluded here — otherwise it'd double-count
+              // every other section's notifications as its own.
+              const count = link.to === '/admin' ? 0 : unreadCountFor(link.to);
+              return (
+                <Link key={link.to} to={link.to} onClick={() => setSidebarOpen(false)} style={activePage === link.label ? { ...s.sideItem, ...s.sideItemActive } : s.sideItem}>
+                  {link.label}
+                  {count > 0 && <span style={s.sideBadge}>{count > 9 ? '9+' : count}</span>}
+                </Link>
+              );
+            })}
           </nav>
         </div>
         <div style={{ padding: '28px 32px', minWidth: 0 }}>{children}</div>
