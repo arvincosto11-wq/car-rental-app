@@ -60,6 +60,7 @@ const MyBookings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [refundModalId, setRefundModalId] = useState(null);
   const [refundReason, setRefundReason] = useState('');
@@ -257,8 +258,20 @@ const MyBookings = () => {
   const confirmedCount = bookings.filter((b) => b.status === 'confirmed').length;
   const unratedCount = bookings.filter((b) => b.status === 'completed' && !b.carRating?.ratedAt).length;
 
-  const totalPages = Math.max(1, Math.ceil(bookings.length / PAGE_SIZE));
-  const pageBookings = paginate(bookings, page, PAGE_SIZE);
+  // "Upcoming" here is the same underlying 'confirmed' status Manage Bookings
+  // uses — just relabeled for how a client actually thinks about a booking
+  // that's been accepted and is waiting on pickup.
+  const statusTabs = [
+    { value: 'all', label: 'All', count: bookings.length },
+    { value: 'pending', label: 'Pending', count: bookings.filter((b) => b.status === 'pending').length },
+    { value: 'confirmed', label: 'Upcoming', count: bookings.filter((b) => b.status === 'confirmed').length },
+    { value: 'completed', label: 'Completed', count: bookings.filter((b) => b.status === 'completed').length },
+    { value: 'cancelled', label: 'Cancelled', count: bookings.filter((b) => b.status === 'cancelled').length },
+  ];
+  const filteredBookings = statusFilter === 'all' ? bookings : bookings.filter((b) => b.status === statusFilter);
+
+  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
+  const pageBookings = paginate(filteredBookings, page, PAGE_SIZE);
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
   const styles = {
@@ -280,6 +293,19 @@ const MyBookings = () => {
     statCard: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '18px' },
     statLabel: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px' },
     statNum: { fontSize: '26px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    statusTabRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' },
+    statusTab: (active) => ({
+      display: 'flex', alignItems: 'center', gap: '6px',
+      padding: '8px 16px', borderRadius: '999px', fontSize: '13px', fontWeight: '600',
+      border: active ? 'none' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#1e293b' : '#fff'),
+      color: active ? ON_GOLD : (isDark ? '#f1f5f9' : '#374151'),
+      cursor: 'pointer', whiteSpace: 'nowrap',
+    }),
+    statusTabCount: (active) => ({
+      fontSize: '12px', fontWeight: '600', opacity: active ? 0.85 : 0.6,
+    }),
+    statusTabDot: { width: '7px', height: '7px', borderRadius: '50%', background: '#dc2626', flexShrink: 0 },
     empty: { textAlign: 'center', padding: '48px', color: isDark ? '#94a3b8' : '#6b7280' },
     browseBtn: {
       marginTop: '16px',
@@ -528,6 +554,28 @@ const MyBookings = () => {
         </div>
       )}
 
+      {!loading && bookings.length > 0 && (
+        <div style={styles.statusTabRow} role="tablist" aria-label="Filter by status">
+          {statusTabs.map((tab) => {
+            const active = statusFilter === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                style={styles.statusTab(active)}
+                onClick={() => { setStatusFilter(tab.value); setPage(1); }}
+              >
+                {tab.value === 'pending' && tab.count > 0 && <span className="pending-dot" style={styles.statusTabDot} />}
+                {tab.label}
+                <span style={styles.statusTabCount(active)}>({tab.count})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {loading ? (
         <SkeletonListCard isDark={isDark} />
       ) : bookings.length === 0 ? (
@@ -536,6 +584,10 @@ const MyBookings = () => {
           <button style={styles.browseBtn} onClick={() => navigate('/cars')}>
             Browse Cars
           </button>
+        </div>
+      ) : filteredBookings.length === 0 ? (
+        <div style={styles.empty}>
+          <p>No {statusTabs.find((t) => t.value === statusFilter)?.label.toLowerCase()} bookings.</p>
         </div>
       ) : (
         <div style={styles.list}>
