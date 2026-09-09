@@ -59,8 +59,12 @@ const StackedCarCarousel = ({ isDark }) => {
         : 'radial-gradient(circle, rgba(184,121,10,0.22) 0%, rgba(184,121,10,0) 70%)',
       filter: 'blur(20px)',
     },
+    // Sized as a percentage of `wrap` (23% + 54% + 23% = 100%, so the card
+    // sits centered) rather than mixing px/vw clamps with a negative
+    // margin — that combination inverted itself on wide viewports and
+    // shoved every card hundreds of pixels off-frame.
     card: {
-      position: 'absolute', top: 0, left: '50%', width: 'min(280px, 68vw)', marginLeft: 'min(-140px, -34vw)',
+      position: 'absolute', top: 0, left: '23%', width: '54%',
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '16px', overflow: 'hidden',
