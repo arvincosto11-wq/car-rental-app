@@ -32,6 +32,10 @@ const carSchema = new mongoose.Schema({
   archivedAt: { type: Date },
   availabilityRequest: {
     status: { type: String, enum: ['none', 'pending', 'declined'], default: 'none' },
+    // Which direction this request is asking for — a consignor needs admin
+    // sign-off both to hide a listed car AND to bring it back, so both
+    // directions flow through this same request object.
+    type: { type: String, enum: ['unavailable', 'available'], default: 'unavailable' },
     reason: { type: String, default: '' },
     requestedAt: { type: Date },
     adminNotes: { type: String, default: '' },

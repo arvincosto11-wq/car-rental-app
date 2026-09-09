@@ -5,12 +5,14 @@ import { SkeletonTableRows } from '../../components/Skeleton';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
+import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
 
 const ManageAvailabilityRequests = () => {
   usePageTitle('Availability Requests');
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
+  const { refetch: refetchPendingCounts } = useAdminPendingCounts();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [declineModalId, setDeclineModalId] = useState(null);
@@ -36,6 +38,7 @@ const ManageAvailabilityRequests = () => {
     try {
       await api.put(`/cars/${id}/availability-request`, { decision: 'approved' });
       await fetchData();
+      refetchPendingCounts();
       toast.success('Request approved.');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Something went wrong approving this request.');
@@ -59,6 +62,7 @@ const ManageAvailabilityRequests = () => {
     try {
       await api.put(`/cars/${declineModalId}/availability-request`, { decision: 'declined', adminNotes: declineReason });
       await fetchData();
+      refetchPendingCounts();
       closeDeclineModal();
       toast.info('Request declined.');
     } catch (err) {
@@ -80,6 +84,8 @@ const ManageAvailabilityRequests = () => {
     carThumb: { width: '48px', height: '36px', borderRadius: '6px', overflow: 'hidden', background: isDark ? '#334155' : '#f3f4f6', flexShrink: 0 },
     reason: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', maxWidth: '220px' },
     empty: { fontSize: '13px', color: isDark ? '#64748b' : '#9ca3af', padding: '24px 0', textAlign: 'center' },
+    typeAvailable: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
+    typeUnavailable: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
     actions: { display: 'flex', gap: '6px' },
     approveBtn: { padding: '5px 12px', fontSize: '12px', border: 'none', borderRadius: '6px', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     declineBtn: { padding: '5px 12px', fontSize: '12px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
@@ -96,7 +102,7 @@ const ManageAvailabilityRequests = () => {
   return (
     <AdminLayout activePage="Availability Requests">
       <h1 style={s.title}>Availability Requests</h1>
-      <p style={s.subtitle}>Consignors need your approval before taking a vehicle off the platform.</p>
+      <p style={s.subtitle}>Consignors need your approval before taking a vehicle off the platform, or bringing it back.</p>
 
       {loading ? (
         <div className="table-scroll">
@@ -111,7 +117,7 @@ const ManageAvailabilityRequests = () => {
               </tr>
             </thead>
             <tbody>
-              <SkeletonTableRows isDark={isDark} columns={5} />
+              <SkeletonTableRows isDark={isDark} columns={6} />
             </tbody>
           </table>
         </div>
@@ -124,6 +130,7 @@ const ManageAvailabilityRequests = () => {
             <tr>
               <th style={s.th}>Owner</th>
               <th style={s.th}>Vehicle</th>
+              <th style={s.th}>Request</th>
               <th style={s.th}>Reason</th>
               <th style={s.th}>Requested</th>
               <th style={s.th}>Actions</th>
@@ -143,6 +150,11 @@ const ManageAvailabilityRequests = () => {
                     </div>
                     <span>{car.brand} {car.model}</span>
                   </div>
+                </td>
+                <td style={s.td}>
+                  <span style={car.availabilityRequest?.type === 'available' ? s.typeAvailable : s.typeUnavailable}>
+                    {car.availabilityRequest?.type === 'available' ? 'Mark Available' : 'Mark Unavailable'}
+                  </span>
                 </td>
                 <td style={s.td}>
                   <span style={s.reason}>{car.availabilityRequest?.reason || '—'}</span>

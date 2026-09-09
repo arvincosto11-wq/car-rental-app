@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
+import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
@@ -13,6 +14,15 @@ const formatPayment = (payment) => {
   if (payment === 'gcash_pending') return 'GCash pending';
   if (payment === 'paid') return 'Paid';
   return 'Unpaid';
+};
+
+// Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
+// the wrong day in timezones ahead of UTC, like PH).
+const toDateValue = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 };
 
 const ConsignorDashboard = () => {
@@ -30,6 +40,9 @@ const ConsignorDashboard = () => {
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestError, setRequestError] = useState('');
   const [earningsPeriod, setEarningsPeriod] = useState('month');
+  const [blockForm, setBlockForm] = useState({ startDate: '', endDate: '', reason: '' });
+  const [blockPickerOpen, setBlockPickerOpen] = useState(false);
+  const [blockSubmitting, setBlockSubmitting] = useState(false);
   const requestModalRef = useModalA11y(() => setRequestModalCarId(null), !!requestModalCarId);
 
   useEffect(() => {
@@ -60,21 +73,13 @@ const ConsignorDashboard = () => {
     }
   };
 
-  const handleToggleAvailability = async (car) => {
-    if (car.isAvailable) {
-      setRequestModalCarId(car._id);
-      setRequestReason('');
-      setRequestError('');
-      return;
-    }
-    try {
-      await api.put(`/cars/${car._id}/toggle`);
-      fetchConsignments();
-      toast.success('Vehicle marked available.');
-    } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || 'Something went wrong updating availability.');
-    }
+  // Both directions now need admin sign-off — bringing a vehicle back into
+  // public listings is reviewed the same way as taking it down, so this
+  // always opens the request modal instead of flipping isAvailable directly.
+  const handleToggleAvailability = (car) => {
+    setRequestModalCarId(car._id);
+    setRequestReason('');
+    setRequestError('');
   };
 
   const closeRequestModal = () => {
@@ -93,6 +98,52 @@ const ConsignorDashboard = () => {
       setRequestError(err.response?.data?.message || 'Something went wrong submitting this request.');
     } finally {
       setRequestSubmitting(false);
+    }
+  };
+
+  const handleSelectBlockDay = (date) => {
+    const clicked = toDateValue(date);
+
+    if (!blockForm.startDate || (blockForm.startDate && blockForm.endDate)) {
+      setBlockForm({ ...blockForm, startDate: clicked, endDate: '' });
+      return;
+    }
+    if (new Date(clicked).getTime() === new Date(blockForm.startDate).getTime()) {
+      setBlockForm({ ...blockForm, startDate: '', endDate: '' });
+      return;
+    }
+    if (new Date(clicked) < new Date(blockForm.startDate)) {
+      setBlockForm({ ...blockForm, startDate: clicked });
+      return;
+    }
+    setBlockForm({ ...blockForm, endDate: clicked });
+  };
+
+  const handleAddBlockedDate = async (carId) => {
+    if (!blockForm.startDate || !blockForm.endDate) {
+      toast.error('Please pick both a start and end date.');
+      return;
+    }
+    setBlockSubmitting(true);
+    try {
+      const res = await api.post(`/cars/${carId}/blocked-dates`, blockForm);
+      setConsignments((prev) => prev.map((c) => c.linkedCar?._id === carId ? { ...c, linkedCar: res.data } : c));
+      setBlockForm({ startDate: '', endDate: '', reason: '' });
+      setBlockPickerOpen(false);
+      toast.success('Dates blocked.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to block those dates.');
+    } finally {
+      setBlockSubmitting(false);
+    }
+  };
+
+  const handleRemoveBlockedDate = async (carId, blockId) => {
+    try {
+      const res = await api.delete(`/cars/${carId}/blocked-dates/${blockId}`);
+      setConsignments((prev) => prev.map((c) => c.linkedCar?._id === carId ? { ...c, linkedCar: res.data } : c));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove that blocked range.');
     }
   };
 
@@ -189,6 +240,16 @@ const ConsignorDashboard = () => {
     availableTag: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
     unavailableTag: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
     toggleBtn: { padding: '6px 14px', fontSize: '12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer', fontWeight: '500' },
+    blockSection: { marginTop: '14px', paddingTop: '14px', borderTop: `1px solid ${isDark ? '#334155' : '#f3f4f6'}` },
+    blockLabel: { fontSize: '12px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#374151', marginBottom: '4px' },
+    blockHint: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', marginBottom: '8px' },
+    blockedList: { display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' },
+    blockedItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fcd34d' : '#92400e' },
+    blockedRemoveBtn: { background: 'none', border: 'none', color: isDark ? '#fca5a5' : '#dc2626', fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0 },
+    blockReasonInput: { width: '100%', maxWidth: '320px', padding: '8px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', marginTop: '8px', color: isDark ? '#f1f5f9' : '#1a1a1a', background: isDark ? '#0f172a' : '#fff', boxSizing: 'border-box' },
+    blockAddBtn: { padding: '8px 16px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+    blockToggleBtn: { marginTop: '4px', padding: '8px 16px', background: isDark ? '#0f172a' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+    blockCancelBtn: { padding: '8px 16px', background: isDark ? '#0f172a' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
     sectionTitle: { fontSize: '20px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginTop: '36px', marginBottom: '4px' },
     sectionSubtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '16px' },
     table: { width: '100%', borderCollapse: 'collapse', background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
@@ -311,10 +372,65 @@ const ConsignorDashboard = () => {
                     </div>
                     {c.linkedCar.availabilityRequest?.status === 'declined' && (
                       <div style={s.notesBox}>
-                        Your request to mark this vehicle unavailable was declined
+                        Your request to mark this vehicle {c.linkedCar.availabilityRequest.type === 'available' ? 'available' : 'unavailable'} was declined
                         {c.linkedCar.availabilityRequest.adminNotes ? `: ${c.linkedCar.availabilityRequest.adminNotes}` : '.'}
                       </div>
                     )}
+
+                    <div style={s.blockSection}>
+                      <div style={s.blockLabel}>Blocked Dates</div>
+                      <p style={s.blockHint}>Block off dates this vehicle can't be booked (e.g. maintenance, personal use).</p>
+                      {c.linkedCar.blockedDates?.length > 0 && (
+                        <div style={s.blockedList}>
+                          {c.linkedCar.blockedDates.map((b) => (
+                            <div key={b._id} style={s.blockedItem}>
+                              <span>
+                                {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                                {b.reason ? ` · ${b.reason}` : ''}
+                              </span>
+                              <button type="button" style={s.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(c.linkedCar._id, b._id)}>Remove</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {blockPickerOpen === c.linkedCar._id ? (
+                        <>
+                          <div style={{ marginTop: '8px', maxWidth: '320px' }}>
+                            <AvailabilityCalendar
+                              bookedRanges={c.linkedCar.blockedDates || []}
+                              selectedStart={blockForm.startDate}
+                              selectedEnd={blockForm.endDate}
+                              onSelectDay={handleSelectBlockDay}
+                              isDark={isDark}
+                            />
+                          </div>
+                          <input
+                            aria-label="Block reason"
+                            type="text"
+                            style={s.blockReasonInput}
+                            placeholder="Reason (optional, e.g. Maintenance)"
+                            value={blockForm.reason}
+                            onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })}
+                          />
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                            <button type="button" style={s.blockAddBtn} onClick={() => handleAddBlockedDate(c.linkedCar._id)} disabled={blockSubmitting}>
+                              {blockSubmitting ? 'Blocking...' : 'Block These Dates'}
+                            </button>
+                            <button
+                              type="button"
+                              style={s.blockCancelBtn}
+                              onClick={() => { setBlockPickerOpen(false); setBlockForm({ startDate: '', endDate: '', reason: '' }); }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <button type="button" style={s.blockToggleBtn} onClick={() => setBlockPickerOpen(c.linkedCar._id)}>
+                          📅 Add Blocked Dates
+                        </button>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
@@ -380,12 +496,19 @@ const ConsignorDashboard = () => {
         )}
       </div>
 
-      {requestModalCarId && (
+      {requestModalCarId && (() => {
+        const targetCar = consignments.find((c) => c.linkedCar?._id === requestModalCarId)?.linkedCar;
+        const goingAvailable = targetCar && !targetCar.isAvailable;
+        return (
         <div style={s.modalOverlay}>
           <div style={s.modalContent} ref={requestModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="request-modal-title">
-            <h2 id="request-modal-title" style={s.modalTitle}>Request to Mark Unavailable</h2>
+            <h2 id="request-modal-title" style={s.modalTitle}>
+              Request to Mark {goingAvailable ? 'Available' : 'Unavailable'}
+            </h2>
             <p style={s.modalSub}>
-              This vehicle will stay bookable until an admin reviews and approves your request.
+              {goingAvailable
+                ? 'This vehicle will stay hidden from listings until an admin reviews and approves your request.'
+                : 'This vehicle will stay bookable until an admin reviews and approves your request.'}
             </p>
 
             {requestError && <div style={s.errorBox}>{requestError}</div>}
@@ -410,7 +533,8 @@ const ConsignorDashboard = () => {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

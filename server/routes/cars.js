@@ -92,19 +92,25 @@ router.get('/:id/booked-dates', async (req, res) => {
   }
 });
 
-// Admin: block a date range on a car (e.g. maintenance, owner keeping it for
-// personal use) — refuses if a confirmed booking already overlaps, since
-// that would contradict an existing commitment rather than prevent one.
-router.post('/:id/blocked-dates', protect, adminOnly, async (req, res) => {
+// Admin, or the consignor who owns the vehicle: block a date range (e.g.
+// maintenance, owner keeping it for personal use) — refuses if a confirmed
+// booking already overlaps, since that would contradict an existing
+// commitment rather than prevent one.
+router.post('/:id/blocked-dates', protect, async (req, res) => {
   try {
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+    const isOwner = car.owner && car.owner.toString() === req.user.id;
+    if (req.user.role !== 'admin' && !(req.user.role === 'consignor' && isOwner)) {
+      return res.status(403).json({ message: 'You can only manage blocked dates for your own vehicles.' });
+    }
+
     const { startDate, endDate, reason } = req.body;
     const start = new Date(startDate);
     const end = new Date(endDate);
     if (!startDate || !endDate || isNaN(start) || isNaN(end) || end <= start) {
       return res.status(400).json({ message: 'Please provide a valid date range.' });
     }
-    const car = await Car.findById(req.params.id);
-    if (!car) return res.status(404).json({ message: 'Car not found' });
 
     const conflictingBooking = await Booking.findOne({
       car: req.params.id, status: 'confirmed',
@@ -122,11 +128,15 @@ router.post('/:id/blocked-dates', protect, adminOnly, async (req, res) => {
   }
 });
 
-// Admin: remove a blocked date range
-router.delete('/:id/blocked-dates/:blockId', protect, adminOnly, async (req, res) => {
+// Admin, or the consignor who owns the vehicle: remove a blocked date range
+router.delete('/:id/blocked-dates/:blockId', protect, async (req, res) => {
   try {
     const car = await Car.findById(req.params.id);
     if (!car) return res.status(404).json({ message: 'Car not found' });
+    const isOwner = car.owner && car.owner.toString() === req.user.id;
+    if (req.user.role !== 'admin' && !(req.user.role === 'consignor' && isOwner)) {
+      return res.status(403).json({ message: 'You can only manage blocked dates for your own vehicles.' });
+    }
     car.blockedDates = car.blockedDates.filter((b) => b._id.toString() !== req.params.blockId);
     await car.save();
     res.json(car);
@@ -333,6 +343,9 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
 
 // Toggle availability for a car the logged-in consignor owns.
 // Going unavailable requires admin approval; re-listing as available is instant.
+// Both directions (going unavailable AND coming back available) need admin
+// sign-off — a consignor can't unilaterally pull a car off the platform or
+// put it back into public listings without review.
 router.put('/:id/toggle', protect, consignorOnly, async (req, res) => {
   try {
     const car = await Car.findById(req.params.id);
@@ -340,28 +353,21 @@ router.put('/:id/toggle', protect, consignorOnly, async (req, res) => {
     if (!car.owner || car.owner.toString() !== req.user.id) {
       return res.status(403).json({ message: 'You can only manage your own vehicles' });
     }
-
-    if (car.isAvailable) {
-      if (car.availabilityRequest?.status === 'pending') {
-        return res.status(400).json({ message: 'You already have a pending request for this vehicle.' });
-      }
-      car.availabilityRequest = { status: 'pending', reason: req.body.reason || '', requestedAt: new Date(), adminNotes: '' };
-      await car.save();
-      await notifyAdmins('New Availability Request', `A consignor requested to mark "${car.brand} ${car.model}" unavailable.`, '/admin/availability-requests');
-      return res.json(car);
-    } else {
-      car.isAvailable = true;
-      car.availabilityRequest = { status: 'none', reason: '', requestedAt: null, adminNotes: '' };
+    if (car.availabilityRequest?.status === 'pending') {
+      return res.status(400).json({ message: 'You already have a pending request for this vehicle.' });
     }
 
+    const requestType = car.isAvailable ? 'unavailable' : 'available';
+    car.availabilityRequest = { status: 'pending', type: requestType, reason: req.body.reason || '', requestedAt: new Date(), adminNotes: '' };
     await car.save();
+    await notifyAdmins('New Availability Request', `A consignor requested to mark "${car.brand} ${car.model}" ${requestType}.`, '/admin/availability-requests');
     res.json(car);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Admin approves or declines a consignor's request to make their car unavailable
+// Admin approves or declines a consignor's request to change their car's availability
 router.put('/:id/availability-request', protect, adminOnly, async (req, res) => {
   try {
     const { decision, adminNotes } = req.body;
@@ -371,10 +377,11 @@ router.put('/:id/availability-request', protect, adminOnly, async (req, res) => 
       return res.status(400).json({ message: 'No pending request for this vehicle.' });
     }
 
+    const requestType = car.availabilityRequest.type || 'unavailable';
+
     if (decision === 'approved') {
-      car.isAvailable = false;
-      car.availabilityRequest.status = 'none';
-      car.availabilityRequest.adminNotes = '';
+      car.isAvailable = requestType === 'available';
+      car.availabilityRequest = { status: 'none', type: 'unavailable', reason: '', requestedAt: null, adminNotes: '' };
     } else {
       car.availabilityRequest.status = 'declined';
       car.availabilityRequest.adminNotes = adminNotes || '';
@@ -383,9 +390,9 @@ router.put('/:id/availability-request', protect, adminOnly, async (req, res) => 
     await car.save();
 
     if (decision === 'approved') {
-      await notifyUser(car.owner, 'Availability Request Approved', `Your request to mark "${car.brand} ${car.model}" unavailable has been approved.`, '/consignor');
+      await notifyUser(car.owner, 'Availability Request Approved', `Your request to mark "${car.brand} ${car.model}" ${requestType} has been approved.`, '/consignor');
     } else {
-      await notifyUser(car.owner, 'Availability Request Declined', `Your request to mark "${car.brand} ${car.model}" unavailable was declined.${adminNotes ? ` Reason: ${adminNotes}` : ''}`, '/consignor');
+      await notifyUser(car.owner, 'Availability Request Declined', `Your request to mark "${car.brand} ${car.model}" ${requestType} was declined.${adminNotes ? ` Reason: ${adminNotes}` : ''}`, '/consignor');
     }
 
     res.json(car);

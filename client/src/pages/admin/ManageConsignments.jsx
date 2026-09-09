@@ -8,6 +8,7 @@ import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
+import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
 
 const PAGE_SIZE = 10;
@@ -16,6 +17,7 @@ const ManageConsignments = () => {
   usePageTitle('Manage Consignments');
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
+  const { refetch: refetchPendingCounts } = useAdminPendingCounts();
   const [consignments, setConsignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
@@ -57,6 +59,7 @@ const ManageConsignments = () => {
     try {
       await api.put(`/consignments/${id}`, { decision: 'approved' });
       await fetchData();
+      refetchPendingCounts();
       closeModal();
       toast.success('Application approved and vehicle listed.');
     } catch (err) {
@@ -72,6 +75,7 @@ const ManageConsignments = () => {
     try {
       await api.put(`/consignments/${id}`, { decision: 'declined', adminNotes: declineReason });
       await fetchData();
+      refetchPendingCounts();
       closeModal();
       toast.info('Application declined.');
     } catch (err) {

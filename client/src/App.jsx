@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIFeedbackProvider } from './context/UIFeedbackContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { AdminPendingCountsProvider } from './context/AdminPendingCountsContext';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
@@ -52,6 +53,7 @@ function App() {
       <UIFeedbackProvider>
       <AuthProvider>
         <NotificationProvider>
+        <AdminPendingCountsProvider>
         <BrowserRouter>
           <Suspense fallback={<PageLoading />}>
           <Routes>
@@ -221,6 +223,7 @@ function App() {
           </Routes>
           </Suspense>
         </BrowserRouter>
+        </AdminPendingCountsProvider>
         </NotificationProvider>
       </AuthProvider>
       </UIFeedbackProvider>

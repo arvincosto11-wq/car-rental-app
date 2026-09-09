@@ -10,6 +10,7 @@ import { paginate } from '../../utils/paginate';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import usePageTitle from '../../hooks/usePageTitle';
+import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
 
 const LOW_RATING_THRESHOLD = 3;
@@ -26,6 +27,7 @@ const ManageBookings = () => {
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const { toast, confirm } = useUIFeedback();
+  const { refetch: refetchPendingCounts } = useAdminPendingCounts();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ratingModalId, setRatingModalId] = useState(null);
@@ -54,6 +56,7 @@ const ManageBookings = () => {
         toast.info(res.data.message);
       }
       await fetchBookings();
+      refetchPendingCounts();
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Something went wrong updating this booking.');
@@ -76,6 +79,7 @@ const ManageBookings = () => {
     try {
       await api.put(`/bookings/${id}/refund`, { decision });
       await fetchBookings();
+      refetchPendingCounts();
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Something went wrong updating this refund.');
@@ -89,6 +93,7 @@ const ManageBookings = () => {
         toast.info(res.data.rescheduleRequest.adminNotes);
       }
       await fetchBookings();
+      refetchPendingCounts();
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Something went wrong updating this reschedule request.');

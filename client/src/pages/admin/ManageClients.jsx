@@ -6,6 +6,7 @@ import Pagination from '../../components/Pagination';
 import { paginate } from '../../utils/paginate';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
+import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
 
 const PAGE_SIZE = 10;
@@ -13,6 +14,7 @@ const PAGE_SIZE = 10;
 const ManageClients = () => {
   usePageTitle('Manage Clients');
   const { isDark } = useTheme();
+  const { refetch: refetchPendingCounts } = useAdminPendingCounts();
   const [clients, setClients] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +43,7 @@ const ManageClients = () => {
     try {
       await api.put(`/users/${id}/verify`, { verified: !currentStatus });
       fetchData();
+      refetchPendingCounts();
     } catch (err) {
       console.error(err);
     }

@@ -20,7 +20,11 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
       Booking.countDocuments({ status: 'pending', payment: 'paid' }),
       Booking.countDocuments({ refundStatus: 'requested' }),
       Booking.countDocuments({ 'rescheduleRequest.status': 'pending' }),
-      User.countDocuments({ validIdImage: { $ne: '' }, idVerified: false }),
+      // Scoped to role: 'user' — Manage Clients only ever lists and can
+      // verify plain clients, not consignors. Counting consignors here too
+      // made this badge permanently stuck, since there was no way to ever
+      // resolve them from that page.
+      User.countDocuments({ role: 'user', validIdImage: { $ne: '' }, idVerified: false }),
       Consignment.countDocuments({ status: 'pending' }),
       Car.countDocuments({ 'availabilityRequest.status': 'pending' }),
     ]);
