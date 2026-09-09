@@ -82,39 +82,39 @@ const Dashboard = () => {
   };
 
   const s = {
-    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
-    subtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
+    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
+    subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
     statsRow: { gap: '14px', marginBottom: '24px' },
-    statCard: { background: isDark ? '#1e293b' : '#f3f4f6', borderRadius: '10px', padding: '16px', border: `1px solid ${isDark ? '#334155' : 'transparent'}` },
-    statLabel: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px' },
-    statNum: { fontSize: '24px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    statCard: { background: isDark ? '#242526' : '#f3f4f6', borderRadius: '10px', padding: '16px', border: `1px solid ${isDark ? '#3a3b3c' : 'transparent'}` },
+    statLabel: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px' },
+    statNum: { fontSize: '24px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     grid: { gap: '16px' },
-    box: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '18px' },
-    boxTitle: { fontSize: '15px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
-    boxSubtitle: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '14px' },
-    bookingRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}` },
-    bookingIcon: { width: '30px', height: '30px', background: isDark ? '#334155' : '#f3f4f6', borderRadius: '6px', flexShrink: 0, overflow: 'hidden' },
-    bookingName: { fontSize: '13px', fontWeight: '500', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    bookingDate: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af' },
-    bookingPrice: { marginLeft: 'auto', fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    box: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', padding: '18px' },
+    boxTitle: { fontSize: '15px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
+    boxSubtitle: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px' },
+    bookingRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
+    bookingIcon: { width: '30px', height: '30px', background: isDark ? '#3a3b3c' : '#f3f4f6', borderRadius: '6px', flexShrink: 0, overflow: 'hidden' },
+    bookingName: { fontSize: '13px', fontWeight: '500', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    bookingDate: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
+    bookingPrice: { marginLeft: 'auto', fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     badgeConfirmed: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     badgePending: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     revenueNum: { fontSize: '32px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, marginTop: '16px' },
     periodToggleRow: { display: 'flex', gap: '8px', marginTop: '4px' },
     trendWrap: { marginTop: '20px' },
-    trendLabel: { fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px', fontWeight: '500' },
+    trendLabel: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px', fontWeight: '500' },
     periodBtn: (active) => ({
       padding: '6px 14px',
       borderRadius: '20px',
       fontSize: '12px',
       fontWeight: '600',
-      border: active ? 'none' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      border: active ? 'none' : `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       background: active ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
-      color: active ? ON_GOLD : (isDark ? '#94a3b8' : '#6b7280'),
+      color: active ? ON_GOLD : (isDark ? '#b0b3b8' : '#6b7280'),
       cursor: 'pointer',
     }),
-    topRatedRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}` },
-    topRatedThumb: { width: '44px', height: '32px', borderRadius: '6px', overflow: 'hidden', background: isDark ? '#334155' : '#f3f4f6', flexShrink: 0 },
+    topRatedRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
+    topRatedThumb: { width: '44px', height: '32px', borderRadius: '6px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', flexShrink: 0 },
   };
 
   return (
@@ -157,7 +157,7 @@ const Dashboard = () => {
               <div style={s.boxTitle}>Recent Bookings</div>
               <div style={s.boxSubtitle}>Latest customer bookings</div>
               {recentBookings.length === 0 ? (
-                <p style={{ color: isDark ? '#94a3b8' : '#6b7280', fontSize: '13px' }}>No bookings yet.</p>
+                <p style={{ color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '13px' }}>No bookings yet.</p>
               ) : recentBookings.map((b) => (
                 <div key={b._id} style={s.bookingRow}>
                   <div style={s.bookingIcon}>
@@ -196,7 +196,7 @@ const Dashboard = () => {
             <div style={s.boxTitle}>Top Rated Cars</div>
             <div style={s.boxSubtitle}>Your best-reviewed vehicles</div>
             {topRatedCars.length === 0 ? (
-              <p style={{ color: isDark ? '#94a3b8' : '#6b7280', fontSize: '13px' }}>No reviews yet.</p>
+              <p style={{ color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '13px' }}>No reviews yet.</p>
             ) : topRatedCars.map((car) => (
               <div key={car._id} style={s.topRatedRow}>
                 <div style={s.topRatedThumb}>

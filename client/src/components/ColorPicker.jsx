@@ -70,7 +70,7 @@ const ColorPicker = ({ id, value, onChange, isDark }) => {
 
   const accent = isDark ? GOLD_DARK : GOLD;
   const ring = (selected) => selected
-    ? { border: `2px solid ${accent}`, boxShadow: `0 0 0 2px ${isDark ? '#0f172a' : '#fff'}, 0 0 0 4px ${accent}` }
+    ? { border: `2px solid ${accent}`, boxShadow: `0 0 0 2px ${isDark ? '#18191a' : '#fff'}, 0 0 0 4px ${accent}` }
     : { border: `2px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}` };
 
   return (
@@ -102,10 +102,10 @@ const ColorPicker = ({ id, value, onChange, isDark }) => {
           style={{
             width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0, padding: 0, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: isDark ? '#0f172a' : '#fff',
+            background: isDark ? '#18191a' : '#fff',
             border: `2px dashed ${customMode ? accent : (isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)')}`,
-            boxShadow: customMode ? `0 0 0 2px ${isDark ? '#0f172a' : '#fff'}, 0 0 0 4px ${accent}` : 'none',
-            color: customMode ? accent : (isDark ? '#94a3b8' : '#9ca3af'),
+            boxShadow: customMode ? `0 0 0 2px ${isDark ? '#18191a' : '#fff'}, 0 0 0 4px ${accent}` : 'none',
+            color: customMode ? accent : (isDark ? '#b0b3b8' : '#9ca3af'),
             fontSize: '14px', fontWeight: 700, lineHeight: 1,
           }}
         >
@@ -122,9 +122,9 @@ const ColorPicker = ({ id, value, onChange, isDark }) => {
             onChange={(e) => onChange(sanitize(e.target.value))}
             style={{
               width: '100%', marginTop: '8px', padding: '8px 10px',
-              border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+              border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
               borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
-              color: isDark ? '#f1f5f9' : '#111827', background: isDark ? '#0f172a' : '#fff',
+              color: isDark ? '#e4e6eb' : '#111827', background: isDark ? '#18191a' : '#fff',
             }}
           />
           {suggestion && (

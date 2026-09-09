@@ -281,25 +281,25 @@ const ManageCars = () => {
 
   const styles = {
     main: {},
-    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
-    subtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
-    carCard: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', marginBottom: '12px', overflow: 'hidden' },
+    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
+    subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
+    carCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', marginBottom: '12px', overflow: 'hidden' },
     carRow: { display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 16px' },
-    carThumbWrap: { width: '60px', height: '44px', borderRadius: '8px', overflow: 'hidden', background: isDark ? '#334155' : '#f3f4f6', flexShrink: 0 },
+    carThumbWrap: { width: '60px', height: '44px', borderRadius: '8px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', flexShrink: 0 },
     carThumbImg: { width: '100%', height: '100%', objectFit: 'cover' },
-    carThumb: { width: '100%', height: '100%', background: isDark ? '#334155' : '#f3f4f6' },
+    carThumb: { width: '100%', height: '100%', background: isDark ? '#3a3b3c' : '#f3f4f6' },
     carInfo: { flex: 1 },
-    carName: { fontSize: '14px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    carSub: { fontSize: '12px', color: isDark ? '#94a3b8' : '#9ca3af', marginTop: '2px' },
-    carRatingText: { fontSize: '11px', color: isDark ? '#94a3b8' : '#9ca3af', marginTop: '4px' },
-    carPrice: { fontSize: '14px', fontWeight: '500', color: isDark ? '#f1f5f9' : '#1a1a1a', minWidth: '80px' },
+    carName: { fontSize: '14px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    carSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#9ca3af', marginTop: '2px' },
+    carRatingText: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#9ca3af', marginTop: '4px' },
+    carPrice: { fontSize: '14px', fontWeight: '500', color: isDark ? '#e4e6eb' : '#1a1a1a', minWidth: '80px' },
     available: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     unavailable: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     staleFlag: { background: '#fef3c7', color: '#92400e', fontSize: '10px', padding: '2px 8px', borderRadius: '20px', marginLeft: '4px', fontWeight: '600', cursor: 'help' },
     actions: { display: 'flex', gap: '6px' },
     editBtn: { padding: '5px 12px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT, border: `1px solid ${isDark ? GOLD_TINT_BORDER_DARK : GOLD_TINT_BORDER}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? GOLD_DARK : GOLD },
-    toggleBtn: { padding: '5px 12px', background: isDark ? '#0f172a' : '#f3f4f6', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    archiveBtn: { padding: '5px 12px', background: isDark ? '#0f172a' : '#f3f4f6', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    toggleBtn: { padding: '5px 12px', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    archiveBtn: { padding: '5px 12px', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     editForm: { maxWidth: '960px' },
     editModalOverlay: {
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300,
@@ -308,17 +308,17 @@ const ManageCars = () => {
     },
     editModalCard: {
       position: 'relative', width: '100%', maxWidth: '960px',
-      background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '12px', padding: '24px', outline: 'none',
     },
     editModalCloseBtn: {
       position: 'absolute', top: '16px', right: '16px', width: '32px', height: '32px',
-      borderRadius: '50%', border: 'none', background: isDark ? '#0f172a' : '#f3f4f6',
-      color: isDark ? '#f1f5f9' : '#374151', fontSize: '16px', cursor: 'pointer',
+      borderRadius: '50%', border: 'none', background: isDark ? '#18191a' : '#f3f4f6',
+      color: isDark ? '#e4e6eb' : '#374151', fontSize: '16px', cursor: 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     },
-    editTitle: { fontSize: '16px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '16px' },
-    imageUpload: { position: 'relative', width: '200px', height: '140px', border: `2px dashed ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#0f172a' : '#fff' },
+    editTitle: { fontSize: '16px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '16px' },
+    imageUpload: { position: 'relative', width: '200px', height: '140px', border: `2px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#18191a' : '#fff' },
     imagePlaceholder: { textAlign: 'center', padding: '16px' },
     imagePreview: { width: '100%', height: '100%', objectFit: 'cover' },
     fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
@@ -332,22 +332,22 @@ const ManageCars = () => {
     },
     editGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '12px' },
     field: { marginBottom: '8px' },
-    label: { display: 'block', fontSize: '12px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '4px', fontWeight: '500' },
-    input: { width: '100%', padding: '8px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', color: isDark ? '#f1f5f9' : '#111827', background: isDark ? '#0f172a' : '#fff' },
-    textarea: { width: '100%', padding: '8px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '60px', resize: 'vertical', color: isDark ? '#f1f5f9' : '#111827', background: isDark ? '#0f172a' : '#fff' },
+    label: { display: 'block', fontSize: '12px', color: isDark ? '#b0b3b8' : '#374151', marginBottom: '4px', fontWeight: '500' },
+    input: { width: '100%', padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', color: isDark ? '#e4e6eb' : '#111827', background: isDark ? '#18191a' : '#fff' },
+    textarea: { width: '100%', padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '60px', resize: 'vertical', color: isDark ? '#e4e6eb' : '#111827', background: isDark ? '#18191a' : '#fff' },
     saveBtn: { padding: '8px 20px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
-    cancelBtn: { padding: '8px 20px', background: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
-    checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer' },
+    cancelBtn: { padding: '8px 20px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
+    checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#e4e6eb' : '#374151', cursor: 'pointer' },
     typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '16px' },
     typeToggleBtn: (active) => ({
       flex: 1, padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-      border: active ? `2px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#0f172a' : '#fff'),
-      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#94a3b8' : '#374151'),
+      border: active ? `2px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#18191a' : '#fff'),
+      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#b0b3b8' : '#374151'),
       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
     }),
-    categoryFixed: { padding: '8px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', background: isDark ? '#0f172a' : '#f9fafb', color: isDark ? '#94a3b8' : '#6b7280' },
-    hint: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '4px' },
+    categoryFixed: { padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', background: isDark ? '#18191a' : '#f9fafb', color: isDark ? '#b0b3b8' : '#6b7280' },
+    hint: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '4px' },
     blockedList: { display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' },
     blockedItem: {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
@@ -364,24 +364,24 @@ const ManageCars = () => {
       borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
     },
     blockToggleBtn: {
-      marginTop: '8px', padding: '8px 16px', background: isDark ? '#0f172a' : '#f3f4f6',
-      color: isDark ? '#f1f5f9' : '#374151', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      marginTop: '8px', padding: '8px 16px', background: isDark ? '#18191a' : '#f3f4f6',
+      color: isDark ? '#e4e6eb' : '#374151', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
     },
     blockCancelBtn: {
-      padding: '8px 16px', background: isDark ? '#0f172a' : '#f3f4f6',
-      color: isDark ? '#f1f5f9' : '#374151', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      padding: '8px 16px', background: isDark ? '#18191a' : '#f3f4f6',
+      color: isDark ? '#e4e6eb' : '#374151', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
     },
     searchInput: {
-      width: '100%', maxWidth: '360px', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      width: '100%', maxWidth: '360px', padding: '9px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '18px',
-      background: isDark ? '#1e293b' : '#fff', color: isDark ? '#f1f5f9' : '#111827',
+      background: isDark ? '#242526' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
     },
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '18px' },
     archivedLinkBtn: {
-      padding: '9px 16px', background: isDark ? '#1e293b' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151',
-      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+      padding: '9px 16px', background: isDark ? '#242526' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600',
       cursor: 'pointer', whiteSpace: 'nowrap',
     },
   };
@@ -413,7 +413,7 @@ const ManageCars = () => {
             onChange={(e) => setSearch(e.target.value)}
           />
           {loading ? <SkeletonListCard isDark={isDark} count={4} /> : filteredCars.length === 0 ? (
-            <p style={{ color: isDark ? '#94a3b8' : '#6b7280', fontSize: '13px' }}>No cars match.</p>
+            <p style={{ color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '13px' }}>No cars match.</p>
           ) : (
             <div>
               {filteredCars.map((car) => (
@@ -496,7 +496,7 @@ const ManageCars = () => {
                   <div style={styles.imageUpload}>
                     <div style={styles.imagePlaceholder}>
                       <span style={{ fontSize: '28px' }}>🚗</span>
-                      <p style={{ fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '6px' }}>
+                      <p style={{ fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '6px' }}>
                         Click to add photos
                       </p>
                     </div>

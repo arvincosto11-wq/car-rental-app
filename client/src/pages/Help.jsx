@@ -41,19 +41,19 @@ const Help = () => {
   const { isDark } = useTheme();
 
   const s = {
-    page: { minHeight: '100vh', background: isDark ? '#0f172a' : '#f9fafb' },
+    page: { minHeight: '100vh', background: isDark ? '#18191a' : '#f9fafb' },
     container: { maxWidth: '760px', margin: '0 auto', padding: '48px 32px' },
-    title: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '8px', textAlign: 'center' },
-    subtitle: { fontSize: '14px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '32px', textAlign: 'center' },
+    title: { fontSize: '28px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '8px', textAlign: 'center' },
+    subtitle: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '32px', textAlign: 'center' },
     item: {
-      background: isDark ? '#1e293b' : '#fff',
-      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '10px',
       padding: '14px 18px',
       marginBottom: '10px',
     },
-    question: { fontSize: '14px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', cursor: 'pointer', listStyle: 'none' },
-    answer: { fontSize: '13px', color: isDark ? '#94a3b8' : '#4b5563', lineHeight: '1.6', marginTop: '10px' },
+    question: { fontSize: '14px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', cursor: 'pointer', listStyle: 'none' },
+    answer: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#4b5563', lineHeight: '1.6', marginTop: '10px' },
   };
 
   return (

@@ -57,12 +57,12 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
   const grid = buildGrid(cursor.getFullYear(), cursor.getMonth());
 
   const s = {
-    wrap: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '14px' },
+    wrap: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', padding: '14px' },
     navRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' },
-    navBtn: { background: 'none', border: 'none', fontSize: '16px', color: isDark ? '#94a3b8' : '#6b7280', cursor: 'pointer', padding: '2px 8px' },
-    monthLabel: { fontSize: '13px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    navBtn: { background: 'none', border: 'none', fontSize: '16px', color: isDark ? '#b0b3b8' : '#6b7280', cursor: 'pointer', padding: '2px 8px' },
+    monthLabel: { fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px' },
-    weekday: { textAlign: 'center', fontSize: '10px', fontWeight: '700', color: isDark ? '#64748b' : '#9ca3af', padding: '2px 0' },
+    weekday: { textAlign: 'center', fontSize: '10px', fontWeight: '700', color: isDark ? '#8a8d91' : '#9ca3af', padding: '2px 0' },
     day: (inMonth, booked, selected, past, clickable) => ({
       aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: '11px', borderRadius: '6px', fontWeight: selected ? '700' : '500',
@@ -75,7 +75,7 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
       pointerEvents: clickable ? 'auto' : 'none',
     }),
     legendRow: { display: 'flex', gap: '14px', marginTop: '10px', flexWrap: 'wrap' },
-    legendItem: { display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280' },
+    legendItem: { display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
     legendDot: (bg) => ({ width: '9px', height: '9px', borderRadius: '3px', background: bg, flexShrink: 0 }),
   };
 

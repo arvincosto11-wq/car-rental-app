@@ -64,9 +64,9 @@ const OtpInput = ({ length = 6, value, onChange, isDark, autoFocus = true }) => 
             borderRadius: '8px', outline: 'none', boxSizing: 'border-box',
             border: focusedIndex === i
               ? `2px solid ${isDark ? GOLD_DARK : GOLD}`
-              : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-            background: isDark ? '#0f172a' : '#fff',
-            color: isDark ? '#f1f5f9' : '#111827',
+              : `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+            background: isDark ? '#18191a' : '#fff',
+            color: isDark ? '#e4e6eb' : '#111827',
           }}
         />
       ))}

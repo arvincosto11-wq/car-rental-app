@@ -38,9 +38,9 @@ const RevenueTrendChart = ({ data, isDark, barColor, barColorHover, formatValue,
 
   const maxValue = Math.max(...data.map((d) => d.value), 0);
   const scaleMax = niceMax(maxValue);
-  const gridColor = isDark ? '#334155' : '#e5e7eb';
-  const axisTextColor = isDark ? '#64748b' : '#9ca3af';
-  const labelColor = isDark ? '#f1f5f9' : '#1a1a1a';
+  const gridColor = isDark ? '#3a3b3c' : '#e5e7eb';
+  const axisTextColor = isDark ? '#8a8d91' : '#9ca3af';
+  const labelColor = isDark ? '#e4e6eb' : '#1a1a1a';
 
   const bandWidth = chartW / data.length;
   const barWidth = Math.min(24, bandWidth - 10);
@@ -89,8 +89,8 @@ const RevenueTrendChart = ({ data, isDark, barColor, barColorHover, formatValue,
 
             {isActive && (
               <g>
-                <rect x={Math.min(Math.max(x + barWidth / 2 - 42, padLeft), width - padRight - 84)} y={Math.max(y - 32, padTop)} width="84" height="24" rx="6" fill={isDark ? '#f1f5f9' : '#1a1a1a'} />
-                <text x={Math.min(Math.max(x + barWidth / 2, padLeft + 42), width - padRight - 42)} y={Math.max(y - 32, padTop) + 16} textAnchor="middle" fontSize="11" fontWeight="700" fill={isDark ? '#0f172a' : '#ffffff'}>
+                <rect x={Math.min(Math.max(x + barWidth / 2 - 42, padLeft), width - padRight - 84)} y={Math.max(y - 32, padTop)} width="84" height="24" rx="6" fill={isDark ? '#e4e6eb' : '#1a1a1a'} />
+                <text x={Math.min(Math.max(x + barWidth / 2, padLeft + 42), width - padRight - 42)} y={Math.max(y - 32, padTop) + 16} textAnchor="middle" fontSize="11" fontWeight="700" fill={isDark ? '#18191a' : '#ffffff'}>
                   {format(d.value)}
                 </text>
               </g>

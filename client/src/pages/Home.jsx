@@ -152,20 +152,20 @@ const Home = () => {
       gap: '0',
       maxWidth: '820px',
       margin: '0 auto',
-      background: isDark ? '#1e293b' : '#fff',
-      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '12px',
       overflow: 'hidden',
     },
     searchField: {
       flex: 1,
       padding: '12px 16px',
-      borderRight: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      borderRight: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
     searchLabel: {
       display: 'block',
       fontSize: '11px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
       marginBottom: '4px',
       fontWeight: '500',
     },
@@ -174,7 +174,7 @@ const Home = () => {
       border: 'none',
       outline: 'none',
       fontSize: '13px',
-      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
       background: 'transparent',
     },
     searchBtn: {
@@ -197,13 +197,13 @@ const Home = () => {
     sectionTitle: {
       fontSize: '28px',
       fontWeight: '700',
-      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
       textAlign: 'center',
       marginBottom: '8px',
     },
     sectionSubtitle: {
       fontSize: '14px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
       textAlign: 'center',
       marginBottom: '32px',
     },
@@ -211,8 +211,8 @@ const Home = () => {
       gap: '20px',
     },
     card: {
-      background: isDark ? '#1e293b' : '#fff',
-      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '12px',
       overflow: 'hidden',
       cursor: 'pointer',
@@ -221,7 +221,7 @@ const Home = () => {
     imgWrap: {
       position: 'relative',
       height: '160px',
-      background: isDark ? '#334155' : '#f3f4f6',
+      background: isDark ? '#3a3b3c' : '#f3f4f6',
     },
     img: { width: '100%', height: '100%', objectFit: 'cover' },
     noImg: {
@@ -230,7 +230,7 @@ const Home = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: isDark ? '#64748b' : '#9ca3af',
+      color: isDark ? '#8a8d91' : '#9ca3af',
       fontSize: '13px',
     },
     availBadge: {
@@ -257,12 +257,12 @@ const Home = () => {
     carName: {
       fontSize: '16px',
       fontWeight: '600',
-      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
       marginBottom: '4px',
     },
     carSub: {
       fontSize: '13px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
       marginBottom: '10px',
     },
     ratingRow: {
@@ -273,7 +273,7 @@ const Home = () => {
     },
     ratingText: {
       fontSize: '12px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
       fontWeight: '500',
     },
     carMeta: {
@@ -281,7 +281,7 @@ const Home = () => {
       gridTemplateColumns: '1fr 1fr',
       gap: '4px',
       fontSize: '12px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
     },
     viewAllBtn: {
       padding: '12px 32px',
@@ -294,14 +294,14 @@ const Home = () => {
       cursor: 'pointer',
     },
     testimonialsSection: {
-      background: isDark ? '#1e293b' : '#f9fafb',
-      borderTop: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
-      borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: isDark ? '#242526' : '#f9fafb',
+      borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
     testimonialGrid: { gap: '20px' },
     testimonialCard: {
-      background: isDark ? '#0f172a' : '#fff',
-      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: isDark ? '#18191a' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '12px',
       padding: '20px',
     },
@@ -318,12 +318,12 @@ const Home = () => {
       fontSize: '14px', fontWeight: '700', display: 'flex',
       alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    testimonialName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    testimonialCar: { fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280' },
+    testimonialName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    testimonialCar: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
     aboutSection: {
-      background: isDark ? '#1e293b' : '#f9fafb',
-      borderTop: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
-      borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: isDark ? '#242526' : '#f9fafb',
+      borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
     aboutText: {
       maxWidth: '700px',
@@ -352,16 +352,16 @@ const Home = () => {
     featureTitle: {
       fontSize: '14px',
       fontWeight: '700',
-      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
       marginBottom: '4px',
     },
     featureText: {
       fontSize: '12.5px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
       lineHeight: '1.5',
     },
     contactSection: {
-      background: isDark ? '#0f172a' : '#17130e',
+      background: isDark ? '#18191a' : '#17130e',
       padding: '48px 32px',
       color: '#f2eee6',
     },
@@ -513,9 +513,9 @@ const Home = () => {
         </p>
 
         {loading ? (
-          <p style={{ textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>Loading cars...</p>
+          <p style={{ textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280' }}>Loading cars...</p>
         ) : cars.length === 0 ? (
-          <p style={{ textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>No cars available yet.</p>
+          <p style={{ textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280' }}>No cars available yet.</p>
         ) : (
           <div className="responsive-grid-3" style={styles.grid}>
             {cars.map((car) => (

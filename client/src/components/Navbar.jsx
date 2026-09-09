@@ -73,12 +73,12 @@ const Navbar = () => {
   // the real light/dark theme preference — a photo background needs light
   // text either way. Once scrolled (or on any non-Home page) it falls back
   // to the normal theme-aware colors.
-  const textColor = transparent ? '#ffffff' : (isDark ? '#f1f5f9' : '#1a1a1a');
-  const mutedColor = transparent ? 'rgba(255,255,255,0.85)' : (isDark ? '#94a3b8' : '#4b5563');
-  const btnBg = transparent ? 'rgba(255,255,255,0.15)' : (isDark ? '#1e293b' : '#f9fafb');
-  const btnBorder = transparent ? 'rgba(255,255,255,0.4)' : (isDark ? '#334155' : '#d1d5db');
-  const menuBg = isDark ? '#1e293b' : '#fff';
-  const menuBorder = isDark ? '#334155' : '#e5e7eb';
+  const textColor = transparent ? '#ffffff' : (isDark ? '#e4e6eb' : '#1a1a1a');
+  const mutedColor = transparent ? 'rgba(255,255,255,0.85)' : (isDark ? '#b0b3b8' : '#4b5563');
+  const btnBg = transparent ? 'rgba(255,255,255,0.15)' : (isDark ? '#242526' : '#f9fafb');
+  const btnBorder = transparent ? 'rgba(255,255,255,0.4)' : (isDark ? '#3a3b3c' : '#d1d5db');
+  const menuBg = isDark ? '#242526' : '#fff';
+  const menuBorder = isDark ? '#3a3b3c' : '#e5e7eb';
 
   const navLinkStyle = {
     textDecoration: 'none',
@@ -89,10 +89,10 @@ const Navbar = () => {
   };
   const mobileLinkStyle = {
     textDecoration: 'none',
-    color: isDark ? '#94a3b8' : '#4b5563',
+    color: isDark ? '#b0b3b8' : '#4b5563',
     fontSize: '14px',
     padding: '10px 0',
-    borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}`,
+    borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`,
   };
   const navBadgeStyle = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -120,8 +120,8 @@ const Navbar = () => {
       left: 0,
       right: 0,
       zIndex: 100,
-      borderBottom: transparent ? 'none' : `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
-      background: transparent ? 'transparent' : (isDark ? '#0f172a' : '#ffffff'),
+      borderBottom: transparent ? 'none' : `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      background: transparent ? 'transparent' : (isDark ? '#18191a' : '#ffffff'),
       transition: 'background 0.25s ease, border-color 0.25s ease',
     }}>
       <div style={{
@@ -221,8 +221,8 @@ const Navbar = () => {
                       padding: '10px 16px',
                       textDecoration: 'none',
                       fontSize: '13px',
-                      color: isDark ? '#f1f5f9' : '#1a1a1a',
-                      borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}`,
+                      color: isDark ? '#e4e6eb' : '#1a1a1a',
+                      borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`,
                     }}
                   >
                     Profile

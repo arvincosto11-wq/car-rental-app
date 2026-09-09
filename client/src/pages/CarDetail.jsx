@@ -231,13 +231,13 @@ const CarDetail = () => {
   };
 
   const s = {
-    page: { minHeight: '100vh', background: isDark ? '#0f172a' : '#f9fafb' },
+    page: { minHeight: '100vh', background: isDark ? '#18191a' : '#f9fafb' },
     container: { maxWidth: '1100px', margin: '0 auto', padding: '24px 32px' },
-    backBtn: { background: 'none', border: 'none', color: isDark ? '#94a3b8' : '#6b7280', fontSize: '14px', cursor: 'pointer', marginBottom: '20px', padding: 0 },
+    backBtn: { background: 'none', border: 'none', color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '14px', cursor: 'pointer', marginBottom: '20px', padding: 0 },
     layout: { gap: '32px' },
-    imgWrap: { width: '100%', height: '300px', borderRadius: '12px', overflow: 'hidden', background: isDark ? '#334155' : '#f3f4f6', marginBottom: '16px' },
+    imgWrap: { width: '100%', height: '300px', borderRadius: '12px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', marginBottom: '16px' },
     img: { width: '100%', height: '100%', objectFit: 'cover' },
-    noImg: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#64748b' : '#9ca3af' },
+    noImg: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#8a8d91' : '#9ca3af' },
     thumbRow: { display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto' },
     thumbBtn: (active) => ({
       flexShrink: 0, width: '64px', height: '48px', borderRadius: '8px', overflow: 'hidden', padding: 0, cursor: 'pointer',
@@ -245,81 +245,81 @@ const CarDetail = () => {
       opacity: active ? 1 : 0.7,
     }),
     thumbImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
-    carName: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
-    carSub: { fontSize: '15px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '20px' },
+    carName: { fontSize: '28px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
+    carSub: { fontSize: '15px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '20px' },
     metaGrid: { gap: '12px', marginBottom: '20px' },
-    metaItem: { background: isDark ? '#1e293b' : '#f9fafb', padding: '12px', borderRadius: '8px', textAlign: 'center', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
-    metaLabel: { display: 'block', fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '4px' },
-    metaValue: { fontSize: '14px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    description: { fontSize: '14px', color: isDark ? '#94a3b8' : '#4b5563', lineHeight: '1.6' },
+    metaItem: { background: isDark ? '#242526' : '#f9fafb', padding: '12px', borderRadius: '8px', textAlign: 'center', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
+    metaLabel: { display: 'block', fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '4px' },
+    metaValue: { fontSize: '14px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    description: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#4b5563', lineHeight: '1.6' },
     reviewsSection: { marginTop: '40px', maxWidth: '760px' },
-    reviewsTitle: { fontSize: '20px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
-    reviewsSubtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '18px' },
-    reviewCard: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '16px', marginBottom: '12px' },
+    reviewsTitle: { fontSize: '20px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
+    reviewsSubtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '18px' },
+    reviewCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', padding: '16px', marginBottom: '12px' },
     reviewHeader: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' },
     reviewAvatar: { width: '30px', height: '30px', borderRadius: '50%', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-    reviewerName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    reviewDate: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af' },
+    reviewerName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    reviewDate: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
     reviewComment: { fontSize: '13px', color: isDark ? '#cbd5e1' : '#374151', lineHeight: '1.5', marginTop: '8px' },
-    reviewEmpty: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280' },
+    reviewEmpty: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280' },
     reviewFilterRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' },
     reviewFilterBtn: (active) => ({
       padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
-      border: active ? 'none' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      border: active ? 'none' : `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       background: active ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
-      color: active ? ON_GOLD : (isDark ? '#94a3b8' : '#6b7280'),
+      color: active ? ON_GOLD : (isDark ? '#b0b3b8' : '#6b7280'),
       cursor: 'pointer', whiteSpace: 'nowrap',
     }),
     reviewPhotoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: '8px', marginTop: '10px', maxWidth: '360px' },
     reviewPhoto: { width: '100%', height: '64px', objectFit: 'cover', borderRadius: '8px' },
-    bookingCard: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', padding: '20px', height: 'fit-content' },
+    bookingCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', padding: '20px', height: 'fit-content' },
     priceRow: { display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '16px' },
-    price: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    perDay: { fontSize: '14px', color: isDark ? '#94a3b8' : '#6b7280' },
+    price: { fontSize: '28px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    perDay: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280' },
     field: { marginBottom: '14px' },
-    label: { display: 'block', fontSize: '13px', color: isDark ? '#94a3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
-    input: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#1a1a1a' },
+    label: { display: 'block', fontSize: '13px', color: isDark ? '#b0b3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
+    input: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     paymentOptions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' },
     paymentBtn: (active) => ({
       padding: '10px',
       borderRadius: '8px',
-      border: `2px solid ${active ? (isDark ? GOLD_DARK : GOLD) : isDark ? '#334155' : '#d1d5db'}`,
+      border: `2px solid ${active ? (isDark ? GOLD_DARK : GOLD) : isDark ? '#3a3b3c' : '#d1d5db'}`,
       background: active ? (isDark ? 'rgba(232,161,0,0.15)' : '#faedc7') : 'transparent',
-      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#94a3b8' : '#6b7280'),
+      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#b0b3b8' : '#6b7280'),
       cursor: 'pointer',
       fontSize: '13px',
       fontWeight: active ? '600' : '400',
       textAlign: 'center',
     }),
-    priceBreakdown: { background: isDark ? '#0f172a' : '#f9fafb', borderRadius: '8px', padding: '12px', marginBottom: '14px', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
+    priceBreakdown: { background: isDark ? '#18191a' : '#f9fafb', borderRadius: '8px', padding: '12px', marginBottom: '14px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
     licenseBox: { background: isDark ? 'rgba(37,99,235,0.1)' : '#eff6ff', border: `1px solid ${isDark ? '#1e40af' : '#bfdbfe'}`, borderRadius: '8px', padding: '12px', marginBottom: '14px' },
     licenseNote: { fontSize: '12px', color: isDark ? '#93c5fd' : '#1e40af', marginBottom: '10px', marginTop: 0 },
-    fieldHint: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '14px' },
-    breakdownRow: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px' },
-    breakdownTotal: { display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', borderTop: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, paddingTop: '8px', marginTop: '8px' },
-    termsRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '14px', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
+    fieldHint: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px' },
+    breakdownRow: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px' },
+    breakdownTotal: { display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, paddingTop: '8px', marginTop: '8px' },
+    termsRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '14px', fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
     termsLink: { color: isDark ? GOLD_DARK : GOLD, cursor: 'pointer', textDecoration: 'underline' },
     error: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' },
     bookBtn: { width: '100%', padding: '12px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
-    noCC: { textAlign: 'center', fontSize: '12px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '8px' },
+    noCC: { textAlign: 'center', fontSize: '12px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '8px' },
     stepActions: { display: 'flex', gap: '10px', marginTop: '18px' },
     nextBtn: { flex: 1, padding: '11px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
-    backStepBtn: { padding: '11px 18px', background: 'none', color: isDark ? '#94a3b8' : '#6b7280', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' },
+    backStepBtn: { padding: '11px 18px', background: 'none', color: isDark ? '#b0b3b8' : '#6b7280', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' },
     summaryBar: {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
-      background: isDark ? '#0f172a' : '#f9fafb', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: isDark ? '#18191a' : '#f9fafb', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '8px', padding: '10px 12px', marginBottom: '16px', fontSize: '12px', color: isDark ? '#cbd5e1' : '#374151',
     },
     summaryEditBtn: { background: 'none', border: 'none', color: isDark ? GOLD_DARK : GOLD, fontSize: '12px', fontWeight: '700', cursor: 'pointer', padding: 0 },
     modal: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-    modalContent: { background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '500px', width: '90%', maxHeight: '80vh', overflow: 'auto' },
-    modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '16px' },
+    modalContent: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '500px', width: '90%', maxHeight: '80vh', overflow: 'auto' },
+    modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '16px' },
     modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '16px' },
-    modalCloseBtn: { background: 'none', border: 'none', fontSize: '20px', lineHeight: 1, cursor: 'pointer', color: isDark ? '#94a3b8' : '#6b7280', padding: '2px' },
-    modalText: { fontSize: '13px', color: isDark ? '#94a3b8' : '#4b5563', lineHeight: '1.8' },
+    modalCloseBtn: { background: 'none', border: 'none', fontSize: '20px', lineHeight: 1, cursor: 'pointer', color: isDark ? '#b0b3b8' : '#6b7280', padding: '2px' },
+    modalText: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#4b5563', lineHeight: '1.8' },
     closeBtn: { marginTop: '16px', padding: '10px 24px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', width: '100%' },
     refundNoticeActions: { display: 'flex', gap: '10px', marginTop: '20px' },
-    refundNoticeCancel: { flex: 1, padding: '10px', background: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
+    refundNoticeCancel: { flex: 1, padding: '10px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
     refundNoticeConfirm: { flex: 1, padding: '10px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
   };
 
@@ -337,7 +337,7 @@ const CarDetail = () => {
       </div>
     </div>
   );
-  if (!car) return <div style={s.page}><p style={{ textAlign: 'center', padding: '40px', color: isDark ? '#94a3b8' : '#6b7280' }}>Car not found.</p></div>;
+  if (!car) return <div style={s.page}><p style={{ textAlign: 'center', padding: '40px', color: isDark ? '#b0b3b8' : '#6b7280' }}>Car not found.</p></div>;
 
   // Cars added before multi-photo support just have the single `image`
   // field — fall back to that as a one-item gallery.
@@ -670,22 +670,22 @@ const CarDetail = () => {
                 isFavorite={isFavorite(car._id)}
                 onToggle={toggleFavorite}
                 size={38}
-                style={{ background: isDark ? '#1e293b' : '#f3f4f6', color: isFavorite(car._id) ? '#ef4444' : (isDark ? '#94a3b8' : '#6b7280'), flexShrink: 0 }}
+                style={{ background: isDark ? '#242526' : '#f3f4f6', color: isFavorite(car._id) ? '#ef4444' : (isDark ? '#b0b3b8' : '#6b7280'), flexShrink: 0 }}
               />
             </div>
             <p style={s.carSub}>{car.category} · {car.year}</p>
             {car.ratingCount > 0 ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', marginTop: '-8px' }}>
                 <StarRating value={car.avgRating} size={16} readOnly />
-                <span style={{ fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' }}>
+                <span style={{ fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' }}>
                   {car.avgRating.toFixed(1)}
                 </span>
-                <span style={{ fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280' }}>
+                <span style={{ fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280' }}>
                   ({car.ratingCount} review{car.ratingCount === 1 ? '' : 's'})
                 </span>
               </div>
             ) : (
-              <p style={{ fontSize: '13px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '-8px', marginBottom: '16px' }}>
+              <p style={{ fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '-8px', marginBottom: '16px' }}>
                 No reviews yet
               </p>
             )}
@@ -782,7 +782,7 @@ const CarDetail = () => {
                   </div>
                   <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <StarRating value={r.overall} size={14} readOnly />
-                    <span style={{ fontSize: '12px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' }}>{r.overall.toFixed(1)}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' }}>{r.overall.toFixed(1)}</span>
                   </div>
                 </div>
                 {r.comment && <p style={s.reviewComment}>{r.comment}</p>}

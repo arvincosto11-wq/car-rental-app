@@ -7,7 +7,7 @@ const Skeleton = ({ width = '100%', height = '16px', radius = '6px', isDark, sty
       height,
       borderRadius: radius,
       background: isDark
-        ? 'linear-gradient(90deg, #1e293b 25%, #334155 37%, #1e293b 63%)'
+        ? 'linear-gradient(90deg, #242526 25%, #3a3b3c 37%, #242526 63%)'
         : 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 37%, #e5e7eb 63%)',
       backgroundSize: '400% 100%',
       ...style,
@@ -25,8 +25,8 @@ export const SkeletonListCard = ({ isDark, count = 3 }) => (
         key={i}
         style={{
           display: 'flex', gap: '16px', alignItems: 'center', padding: '16px',
-          border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px',
-          background: isDark ? '#1e293b' : '#fff',
+          border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px',
+          background: isDark ? '#242526' : '#fff',
         }}
       >
         <Skeleton width="100px" height="70px" radius="8px" isDark={isDark} style={{ flexShrink: 0 }} />

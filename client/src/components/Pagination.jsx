@@ -8,12 +8,12 @@ const Pagination = ({ page, totalPages, onPageChange, isDark }) => {
     row: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', marginTop: '18px' },
     btn: (disabled) => ({
       padding: '7px 16px', fontSize: '13px', fontWeight: '600', borderRadius: '8px', cursor: disabled ? 'not-allowed' : 'pointer',
-      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-      background: disabled ? (isDark ? '#1e293b' : '#f9fafb') : (isDark ? GOLD_DARK : GOLD),
-      color: disabled ? (isDark ? '#475569' : '#9ca3af') : ON_GOLD,
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      background: disabled ? (isDark ? '#242526' : '#f9fafb') : (isDark ? GOLD_DARK : GOLD),
+      color: disabled ? (isDark ? '#4e4f50' : '#9ca3af') : ON_GOLD,
       opacity: disabled ? 0.6 : 1,
     }),
-    label: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', fontVariantNumeric: 'tabular-nums' },
+    label: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', fontVariantNumeric: 'tabular-nums' },
   };
 
   return (

@@ -36,27 +36,27 @@ const MyFavorites = () => {
 
   const styles = {
     container: { maxWidth: '1200px', margin: '0 auto', padding: '32px' },
-    title: { fontSize: '28px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
-    subtitle: { fontSize: '14px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
-    empty: { textAlign: 'center', padding: '48px', color: isDark ? '#94a3b8' : '#6b7280' },
+    title: { fontSize: '28px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
+    subtitle: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
+    empty: { textAlign: 'center', padding: '48px', color: isDark ? '#b0b3b8' : '#6b7280' },
     browseBtn: {
       marginTop: '16px', padding: '10px 24px', background: isDark ? '#e8a100' : '#b8790a', color: '#17130e',
       border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer',
     },
     grid: { gap: '20px' },
-    skeletonCard: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', overflow: 'hidden' },
+    skeletonCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', overflow: 'hidden' },
     skeletonBody: { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' },
-    card: { background: isDark ? '#1e293b' : '#fff', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' },
-    imgWrap: { position: 'relative', height: '160px', background: isDark ? '#334155' : '#f3f4f6' },
+    card: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' },
+    imgWrap: { position: 'relative', height: '160px', background: isDark ? '#3a3b3c' : '#f3f4f6' },
     img: { width: '100%', height: '100%', objectFit: 'cover' },
-    noImg: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#64748b' : '#9ca3af', fontSize: '13px' },
+    noImg: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#8a8d91' : '#9ca3af', fontSize: '13px' },
     availBadge: { position: 'absolute', top: '10px', left: '10px', background: '#16a34a', color: '#fff', fontSize: '11px', padding: '3px 10px', borderRadius: '20px' },
     priceBadge: { position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '12px', padding: '3px 10px', borderRadius: '6px' },
     cardBody: { padding: '14px 16px' },
-    carName: { fontSize: '16px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
-    carSub: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '10px' },
+    carName: { fontSize: '16px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
+    carSub: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '10px' },
     ratingRow: { display: 'flex', alignItems: 'center', gap: '6px' },
-    ratingText: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', fontWeight: '500' },
+    ratingText: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', fontWeight: '500' },
   };
 
   return (

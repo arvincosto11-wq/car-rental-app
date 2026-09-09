@@ -29,16 +29,16 @@ body {
 }
 
 body.dark {
-  --bg: #0f172a;
-  --bg-secondary: #1e293b;
-  --text: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --border: #334155;
-  --card-bg: #1e293b;
-  --input-bg: #1e293b;
-  --input-text: #f1f5f9;
-  --navbar-bg: #0f172a;
-  --sidebar-bg: #0f172a;
+  --bg: #18191a;
+  --bg-secondary: #242526;
+  --text: #e4e6eb;
+  --text-secondary: #b0b3b8;
+  --border: #3a3b3c;
+  --card-bg: #242526;
+  --input-bg: #242526;
+  --input-text: #e4e6eb;
+  --navbar-bg: #18191a;
+  --sidebar-bg: #18191a;
 }
 
 #root {
@@ -88,7 +88,7 @@ img {
 }
 
 body.dark ::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: #4e4f50;
 }
 
 /* Interaction feedback for every real button in the app (and a handful of

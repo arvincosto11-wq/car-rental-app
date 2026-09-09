@@ -143,8 +143,8 @@ const ManageBookings = () => {
 
   const s = {
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
-    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
-    subtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '24px' },
+    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
+    subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
     rateClientsBtn: {
       display: 'flex', alignItems: 'center', gap: '8px',
       padding: '9px 16px', background: '#7c3aed', color: '#fff',
@@ -155,15 +155,15 @@ const ManageBookings = () => {
       background: 'rgba(255,255,255,0.25)', color: '#fff', fontSize: '11px', fontWeight: '700',
       borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
     },
-    table: { width: '100%', borderCollapse: 'collapse', background: isDark ? '#1e293b' : '#fff', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
-    th: { textAlign: 'left', padding: '12px 16px', fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, fontWeight: '500' },
-    td: { padding: '12px 16px', fontSize: '13px', color: isDark ? '#f1f5f9' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#334155' : '#f3f4f6'}`, verticalAlign: 'middle' },
+    table: { width: '100%', borderCollapse: 'collapse', background: isDark ? '#242526' : '#fff', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
+    th: { textAlign: 'left', padding: '12px 16px', fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, fontWeight: '500' },
+    td: { padding: '12px 16px', fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`, verticalAlign: 'middle' },
     carCell: { display: 'flex', alignItems: 'center', gap: '10px' },
     clientName: { fontWeight: '600', fontSize: '13px' },
-    clientMeta: { fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280' },
-    carThumb: { width: '44px', height: '32px', background: isDark ? '#334155' : '#f3f4f6', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 },
-    payBadge: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
-    paymentRef: { fontSize: '10px', color: isDark ? '#64748b' : '#9ca3af', marginTop: '2px', fontFamily: 'monospace', wordBreak: 'break-all' },
+    clientMeta: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    carThumb: { width: '44px', height: '32px', background: isDark ? '#3a3b3c' : '#f3f4f6', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 },
+    payBadge: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    paymentRef: { fontSize: '10px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px', fontFamily: 'monospace', wordBreak: 'break-all' },
     confirmed: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     cancelled: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     completed: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
@@ -172,21 +172,21 @@ const ManageBookings = () => {
     declineBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     refundApproved: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     refundDeclined: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-    select: { padding: '5px 10px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', background: isDark ? '#0f172a' : '#fff', color: isDark ? '#f1f5f9' : '#1a1a1a', cursor: 'pointer' },
+    select: { padding: '5px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a', cursor: 'pointer' },
     editRatingBtn: { background: 'none', border: 'none', color: '#7c3aed', fontSize: '11px', cursor: 'pointer', padding: 0, textDecoration: 'underline' },
     lowRatingBadge: { background: '#fee2e2', color: '#991b1b', fontSize: '10px', padding: '1px 8px', borderRadius: '20px', marginLeft: '6px', fontWeight: '600' },
     filterRow: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' },
     searchInput: {
-      flex: '1 1 220px', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px',
-      fontSize: '13px', outline: 'none', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#f1f5f9' : '#111827',
+      flex: '1 1 220px', padding: '9px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px',
+      fontSize: '13px', outline: 'none', background: isDark ? '#242526' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
     },
     statusTabRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%' },
     statusTab: (active) => ({
       display: 'flex', alignItems: 'center', gap: '6px',
       padding: '8px 16px', borderRadius: '999px', fontSize: '13px', fontWeight: '600',
-      border: active ? 'none' : `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
-      background: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#1e293b' : '#fff'),
-      color: active ? ON_GOLD : (isDark ? '#f1f5f9' : '#374151'),
+      border: active ? 'none' : `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      background: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#242526' : '#fff'),
+      color: active ? ON_GOLD : (isDark ? '#e4e6eb' : '#374151'),
       cursor: 'pointer', whiteSpace: 'nowrap',
     }),
     statusTabCount: (active) => ({
@@ -194,18 +194,18 @@ const ManageBookings = () => {
     }),
     statusTabDot: { width: '7px', height: '7px', borderRadius: '50%', background: '#dc2626', flexShrink: 0 },
     calendarBtn: {
-      padding: '9px 16px', background: isDark ? '#1e293b' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151',
-      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+      padding: '9px 16px', background: isDark ? '#242526' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600',
       cursor: 'pointer', whiteSpace: 'nowrap',
     },
     rescheduleFilterBtn: {
       display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '9px 16px', background: isDark ? '#1e293b' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151',
-      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      padding: '9px 16px', background: isDark ? '#242526' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap',
     },
     rescheduleFilterBadge: {
-      background: isDark ? '#334155' : '#e5e7eb', color: isDark ? '#f1f5f9' : '#374151',
+      background: isDark ? '#3a3b3c' : '#e5e7eb', color: isDark ? '#e4e6eb' : '#374151',
       fontSize: '11px', fontWeight: '700', borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
     },
     // Same plain text-link style as the "← Back to Manage Bookings" links on
@@ -304,7 +304,7 @@ const ManageBookings = () => {
           </thead>
           <tbody>
             {loading ? <SkeletonTableRows isDark={isDark} columns={8} /> : filteredBookings.length === 0 ? (
-              <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>No bookings match.</td></tr>
+              <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280' }}>No bookings match.</td></tr>
             ) : pageBookings.map((booking) => (
               <tr key={booking._id}>
                 <td style={s.td}>
@@ -352,10 +352,10 @@ const ManageBookings = () => {
                 <td style={s.td}>
                   {booking.refundStatus === 'requested' ? (
                     <div>
-                      <div style={{ fontSize: '12px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '2px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '2px' }}>
                         ₱{booking.refundAmount?.toLocaleString() ?? 0}
                       </div>
-                      <div style={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px', maxWidth: '160px' }}>
+                      <div style={{ fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px', maxWidth: '160px' }}>
                         {booking.refundReason}
                       </div>
                       <div style={{ display: 'flex', gap: '6px' }}>
@@ -373,13 +373,13 @@ const ManageBookings = () => {
                   ) : booking.refundStatus === 'declined' ? (
                     <span style={s.refundDeclined}>Refund Declined</span>
                   ) : (
-                    <span style={{ color: isDark ? '#64748b' : '#9ca3af', fontSize: '12px' }}>—</span>
+                    <span style={{ color: isDark ? '#8a8d91' : '#9ca3af', fontSize: '12px' }}>—</span>
                   )}
                 </td>
                 <td style={s.td}>
                   {booking.rescheduleRequest?.status === 'pending' ? (
                     <div>
-                      <div style={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '6px', maxWidth: '160px' }}>
+                      <div style={{ fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px', maxWidth: '160px' }}>
                         New: {new Date(booking.rescheduleRequest.newStartDate).toLocaleDateString()} to {new Date(booking.rescheduleRequest.newEndDate).toLocaleDateString()}
                       </div>
                       <div style={{ display: 'flex', gap: '6px' }}>
@@ -392,12 +392,12 @@ const ManageBookings = () => {
                   ) : booking.rescheduleRequest?.status === 'declined' ? (
                     <span style={s.refundDeclined}>Reschedule Declined</span>
                   ) : (
-                    <span style={{ color: isDark ? '#64748b' : '#9ca3af', fontSize: '12px' }}>—</span>
+                    <span style={{ color: isDark ? '#8a8d91' : '#9ca3af', fontSize: '12px' }}>—</span>
                   )}
                 </td>
                 <td style={s.td}>
                   {booking.refundStatus === 'requested' ? (
-                    <span style={{ fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', fontStyle: 'italic' }}>
+                    <span style={{ fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic' }}>
                       Resolve refund request first
                     </span>
                   ) : booking.status === 'confirmed' ? (
@@ -412,7 +412,7 @@ const ManageBookings = () => {
                           Mark as Returned
                         </button>
                       ) : (
-                        <span style={{ fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', fontStyle: 'italic' }}>
+                        <span style={{ fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', fontStyle: 'italic' }}>
                           Pickup {new Date(booking.startDate).toLocaleDateString()}
                         </span>
                       )}
@@ -437,7 +437,7 @@ const ManageBookings = () => {
                         <option value="cancelled">Cancelled</option>
                       </select>
                       {booking.payment !== 'paid' && (
-                        <div style={{ fontSize: '10px', color: isDark ? '#94a3b8' : '#6b7280', fontStyle: 'italic', marginTop: '4px' }}>
+                        <div style={{ fontSize: '10px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic', marginTop: '4px' }}>
                           Awaiting GCash payment
                         </div>
                       )}

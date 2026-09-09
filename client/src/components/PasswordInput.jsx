@@ -41,7 +41,7 @@ const PasswordInput = ({ id, style, value, onChange, placeholder, required, minL
           position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
           background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: isDark ? '#94a3b8' : '#6b7280',
+          color: isDark ? '#b0b3b8' : '#6b7280',
         }}
       >
         {visible ? <EyeOffIcon /> : <EyeIcon />}

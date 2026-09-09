@@ -16,17 +16,17 @@ const AdminLayout = ({ children, activePage }) => {
   const handleLogout = () => { logout(); navigate('/login'); };
 
   const s = {
-    page: { minHeight: '100vh', background: isDark ? '#0f172a' : '#f9fafb' },
-    topbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 32px', background: isDark ? '#1e293b' : '#fff', borderBottom: `1px solid ${isDark ? '#334155' : '#e5e7eb'}` },
+    page: { minHeight: '100vh', background: isDark ? '#18191a' : '#f9fafb' },
+    topbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 32px', background: isDark ? '#242526' : '#fff', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
     topRight: { display: 'flex', alignItems: 'center', gap: '12px' },
-    welcome: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280' },
-    toggleBtn: { padding: '6px 12px', borderRadius: '8px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, background: isDark ? '#1e293b' : '#f9fafb', color: isDark ? '#f1f5f9' : '#1a1a1a', fontSize: '16px', cursor: 'pointer' },
+    welcome: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    toggleBtn: { padding: '6px 12px', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, background: isDark ? '#242526' : '#f9fafb', color: isDark ? '#e4e6eb' : '#1a1a1a', fontSize: '16px', cursor: 'pointer' },
     logoutBtn: { padding: '7px 16px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
     layout: { display: 'grid', gridTemplateColumns: '180px 1fr' },
-    sidebar: { background: isDark ? '#1e293b' : '#fff', borderRight: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`, padding: '24px 0', minHeight: 'calc(100vh - 45px)' },
+    sidebar: { background: isDark ? '#242526' : '#fff', borderRight: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, padding: '24px 0', minHeight: 'calc(100vh - 45px)' },
     avatar: { width: '48px', height: '48px', borderRadius: '50%', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '600', margin: '0 auto 8px' },
-    adminName: { textAlign: 'center', fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '24px' },
-    sideItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', fontSize: '13px', color: isDark ? '#94a3b8' : '#4b5563', textDecoration: 'none' },
+    adminName: { textAlign: 'center', fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '24px' },
+    sideItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', fontSize: '13px', color: isDark ? '#b0b3b8' : '#4b5563', textDecoration: 'none' },
     sideItemActive: { background: isDark ? GOLD_TINT_DARK : GOLD_TINT, color: isDark ? GOLD_DARK : GOLD, borderLeft: `3px solid ${isDark ? GOLD_DARK : GOLD}` },
     sideDot: { width: '8px', height: '8px', borderRadius: '50%', background: '#dc2626', flexShrink: 0 },
   };
@@ -51,11 +51,11 @@ const AdminLayout = ({ children, activePage }) => {
             className="admin-mobile-toggle"
             onClick={() => setSidebarOpen((v) => !v)}
             aria-label="Toggle menu"
-            style={{ alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, background: isDark ? '#0f172a' : '#f9fafb', color: isDark ? '#f1f5f9' : '#1a1a1a', fontSize: '15px', cursor: 'pointer' }}
+            style={{ alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, background: isDark ? '#18191a' : '#f9fafb', color: isDark ? '#e4e6eb' : '#1a1a1a', fontSize: '15px', cursor: 'pointer' }}
           >
             {sidebarOpen ? '✕' : '☰'}
           </button>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' }}>
             <img src="/logo.png" alt="Rent-a-Ride" style={{ width: '28px', height: '28px', borderRadius: '50%' }} />
             Rent-a-Ride Admin
           </span>
@@ -64,9 +64,9 @@ const AdminLayout = ({ children, activePage }) => {
           <span className="admin-welcome-text" style={s.welcome}>Welcome, {user?.name}</span>
           <NotificationBell
             isDark={isDark}
-            iconColor={isDark ? '#f1f5f9' : '#1a1a1a'}
-            btnBg={isDark ? '#0f172a' : '#f9fafb'}
-            btnBorder={isDark ? '#334155' : '#d1d5db'}
+            iconColor={isDark ? '#e4e6eb' : '#1a1a1a'}
+            btnBg={isDark ? '#18191a' : '#f9fafb'}
+            btnBorder={isDark ? '#3a3b3c' : '#d1d5db'}
           />
           <button style={s.toggleBtn} onClick={toggleTheme} aria-label="Toggle theme">{isDark ? '☀️' : '🌙'}</button>
           <button style={s.logoutBtn} onClick={handleLogout}>Logout</button>

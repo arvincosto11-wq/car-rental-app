@@ -14,16 +14,16 @@ const BookingSteps = ({ steps, currentStep, onStepClick, isDark }) => {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: '12px', fontWeight: '700',
       background: state === 'upcoming' ? 'transparent' : (isDark ? GOLD_DARK : GOLD),
-      color: state === 'upcoming' ? (isDark ? '#64748b' : '#9ca3af') : ON_GOLD,
-      border: state === 'upcoming' ? `2px solid ${isDark ? '#334155' : '#d1d5db'}` : 'none',
+      color: state === 'upcoming' ? (isDark ? '#8a8d91' : '#9ca3af') : ON_GOLD,
+      border: state === 'upcoming' ? `2px solid ${isDark ? '#3a3b3c' : '#d1d5db'}` : 'none',
     }),
     label: (state) => ({
       fontSize: '13px', fontWeight: state === 'active' ? '700' : '500',
-      color: state === 'upcoming' ? (isDark ? '#64748b' : '#9ca3af') : (isDark ? '#f1f5f9' : '#1a1a1a'),
+      color: state === 'upcoming' ? (isDark ? '#8a8d91' : '#9ca3af') : (isDark ? '#e4e6eb' : '#1a1a1a'),
     }),
     connector: (done) => ({
       width: '2px', height: '22px', marginLeft: '13px',
-      background: done ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#334155' : '#d1d5db'),
+      background: done ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#d1d5db'),
     }),
   };
 

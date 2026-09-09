@@ -41,7 +41,7 @@ const ConsignorDashboard = lazy(() => import('./pages/consignor/ConsignorDashboa
 const AddVehicle = lazy(() => import('./pages/consignor/AddVehicle'));
 
 const PageLoading = () => (
-  <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>
+  <div style={{ padding: '60px', textAlign: 'center', color: '#b0b3b8', fontSize: '14px' }}>
     Loading...
   </div>
 );

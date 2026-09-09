@@ -16,7 +16,7 @@ const NotFound = () => {
       justifyContent: 'center',
       textAlign: 'center',
       padding: '40px 16px',
-      background: isDark ? '#0f172a' : '#f9fafb',
+      background: isDark ? '#18191a' : '#f9fafb',
     },
     code: {
       fontSize: '72px',
@@ -28,12 +28,12 @@ const NotFound = () => {
     title: {
       fontSize: '20px',
       fontWeight: '600',
-      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
       marginBottom: '8px',
     },
     subtitle: {
       fontSize: '14px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
       marginBottom: '24px',
       maxWidth: '360px',
     },

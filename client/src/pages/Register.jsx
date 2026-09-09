@@ -210,26 +210,26 @@ const Register = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: isDark ? '#0f172a' : '#f9fafb',
+      background: isDark ? '#18191a' : '#f9fafb',
       padding: '40px 16px',
     },
     card: {
-      background: isDark ? '#1e293b' : '#fff',
+      background: isDark ? '#242526' : '#fff',
       padding: '40px',
       borderRadius: '12px',
-      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       width: '100%',
       maxWidth: '560px',
     },
     title: {
       fontSize: '24px',
       fontWeight: '600',
-      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
       marginBottom: '4px',
     },
     subtitle: {
       fontSize: '14px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
       marginBottom: '24px',
     },
     consignmentNotice: {
@@ -259,33 +259,33 @@ const Register = () => {
     label: {
       display: 'block',
       fontSize: '13px',
-      color: isDark ? '#94a3b8' : '#374151',
+      color: isDark ? '#b0b3b8' : '#374151',
       marginBottom: '6px',
       fontWeight: '500',
     },
     input: {
       width: '100%',
       padding: '10px 12px',
-      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       borderRadius: '8px',
       fontSize: '14px',
       outline: 'none',
       boxSizing: 'border-box',
-      background: isDark ? '#0f172a' : '#fff',
-      color: isDark ? '#f1f5f9' : '#111827',
+      background: isDark ? '#18191a' : '#fff',
+      color: isDark ? '#e4e6eb' : '#111827',
     },
     idUpload: {
       position: 'relative',
       width: '100%',
       height: '140px',
-      border: `2px dashed ${isDark ? '#334155' : '#d1d5db'}`,
+      border: `2px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       borderRadius: '12px',
       overflow: 'hidden',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: isDark ? '#0f172a' : '#fff',
+      background: isDark ? '#18191a' : '#fff',
     },
     idPlaceholder: { textAlign: 'center', padding: '16px' },
     idPreview: { width: '100%', height: '100%', objectFit: 'cover' },
@@ -314,9 +314,9 @@ const Register = () => {
     backBtn: {
       flex: '0 0 auto',
       padding: '11px 20px',
-      background: isDark ? '#0f172a' : '#f3f4f6',
-      color: isDark ? '#f1f5f9' : '#374151',
-      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      background: isDark ? '#18191a' : '#f3f4f6',
+      color: isDark ? '#e4e6eb' : '#374151',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       borderRadius: '8px',
       fontSize: '14px',
       fontWeight: '500',
@@ -336,7 +336,7 @@ const Register = () => {
     footer: {
       textAlign: 'center',
       fontSize: '13px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
       marginTop: '20px',
     },
     footerLink: {
@@ -478,7 +478,7 @@ const Register = () => {
                         ) : (
                           <div style={styles.idPlaceholder}>
                             <span style={{ fontSize: '28px' }}>🪪</span>
-                            <p style={{ fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280', marginTop: '6px' }}>Click to upload a photo of your ID</p>
+                            <p style={{ fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '6px' }}>Click to upload a photo of your ID</p>
                           </div>
                         )}
                         <input id="reg-valid-id" type="file" accept="image/*" onChange={handleIdImageChange} style={styles.fileInput} />

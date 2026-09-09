@@ -94,7 +94,7 @@ const Cars = () => {
     title: {
       fontSize: '28px',
       fontWeight: '700',
-      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
       marginBottom: '24px',
     },
     filters: {
@@ -106,42 +106,42 @@ const Cars = () => {
     searchInput: {
       flex: '1 1 200px',
       padding: '10px 14px',
-      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       borderRadius: '8px',
       fontSize: '14px',
       outline: 'none',
-      background: isDark ? '#1e293b' : '#fff',
-      color: isDark ? '#f1f5f9' : '#111827',
+      background: isDark ? '#242526' : '#fff',
+      color: isDark ? '#e4e6eb' : '#111827',
     },
     select: {
       padding: '10px 14px',
-      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       borderRadius: '8px',
       fontSize: '14px',
       outline: 'none',
-      background: isDark ? '#1e293b' : '#fff',
-      color: isDark ? '#f1f5f9' : '#111827',
+      background: isDark ? '#242526' : '#fff',
+      color: isDark ? '#e4e6eb' : '#111827',
     },
     priceInput: {
       width: '90px',
       padding: '10px 12px',
-      border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`,
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       borderRadius: '8px',
       fontSize: '14px',
       outline: 'none',
-      background: isDark ? '#1e293b' : '#fff',
-      color: isDark ? '#f1f5f9' : '#111827',
+      background: isDark ? '#242526' : '#fff',
+      color: isDark ? '#e4e6eb' : '#111827',
     },
     priceRangeGroup: { display: 'flex', alignItems: 'center', gap: '6px' },
-    priceRangeSep: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280' },
+    priceRangeSep: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280' },
     availableToggle: {
       display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px',
-      color: isDark ? '#f1f5f9' : '#374151', cursor: 'pointer', whiteSpace: 'nowrap',
+      color: isDark ? '#e4e6eb' : '#374151', cursor: 'pointer', whiteSpace: 'nowrap',
     },
-    resultsCount: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '14px' },
+    resultsCount: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px' },
     skeletonCard: {
-      background: isDark ? '#1e293b' : '#fff',
-      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '12px',
       overflow: 'hidden',
     },
@@ -150,8 +150,8 @@ const Cars = () => {
       gap: '20px',
     },
     card: {
-      background: isDark ? '#1e293b' : '#fff',
-      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '12px',
       overflow: 'hidden',
       cursor: 'pointer',
@@ -159,7 +159,7 @@ const Cars = () => {
     imgWrap: {
       position: 'relative',
       height: '160px',
-      background: isDark ? '#334155' : '#f3f4f6',
+      background: isDark ? '#3a3b3c' : '#f3f4f6',
     },
     img: {
       width: '100%',
@@ -172,7 +172,7 @@ const Cars = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: isDark ? '#64748b' : '#9ca3af',
+      color: isDark ? '#8a8d91' : '#9ca3af',
       fontSize: '13px',
     },
     availBadge: {
@@ -199,12 +199,12 @@ const Cars = () => {
     carName: {
       fontSize: '16px',
       fontWeight: '600',
-      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
       marginBottom: '4px',
     },
     carSub: {
       fontSize: '13px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
       marginBottom: '10px',
     },
     ratingRow: {
@@ -215,7 +215,7 @@ const Cars = () => {
     },
     ratingText: {
       fontSize: '12px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
       fontWeight: '500',
     },
     carMeta: {
@@ -223,7 +223,7 @@ const Cars = () => {
       gridTemplateColumns: '1fr 1fr',
       gap: '4px',
       fontSize: '12px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
     },
     bookingTypeRow: {
       display: 'flex',
@@ -233,8 +233,8 @@ const Cars = () => {
     },
     bookingTypeTag: {
       fontSize: '11px',
-      color: isDark ? '#f1f5f9' : '#374151',
-      background: isDark ? '#334155' : '#f3f4f6',
+      color: isDark ? '#e4e6eb' : '#374151',
+      background: isDark ? '#3a3b3c' : '#f3f4f6',
       padding: '3px 9px',
       borderRadius: '20px',
     },
@@ -244,10 +244,10 @@ const Cars = () => {
       justifyContent: 'space-between',
       gap: '10px',
       fontSize: '13px',
-      color: isDark ? '#94a3b8' : '#6b7280',
+      color: isDark ? '#b0b3b8' : '#6b7280',
       marginBottom: '16px',
-      background: isDark ? '#1e293b' : '#f9fafb',
-      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: isDark ? '#242526' : '#f9fafb',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '8px',
       padding: '10px 14px',
     },
@@ -363,7 +363,7 @@ const Cars = () => {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <p style={{ textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280' }}>No cars found.</p>
+        <p style={{ textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280' }}>No cars found.</p>
       ) : (
         <>
         <p style={styles.resultsCount}>{filtered.length} vehicle{filtered.length === 1 ? '' : 's'} found</p>

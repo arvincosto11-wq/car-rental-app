@@ -62,31 +62,31 @@ const ManageReviews = () => {
   });
 
   const s = {
-    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#1a1a1a', marginBottom: '4px' },
-    subtitle: { fontSize: '13px', color: isDark ? '#94a3b8' : '#6b7280', marginBottom: '20px' },
+    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
+    subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '20px' },
     filterRow: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '18px' },
     searchInput: {
-      flex: '1 1 220px', padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px',
-      fontSize: '13px', outline: 'none', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#f1f5f9' : '#111827',
+      flex: '1 1 220px', padding: '9px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px',
+      fontSize: '13px', outline: 'none', background: isDark ? '#242526' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
     },
     select: {
-      padding: '9px 12px', border: `1px solid ${isDark ? '#334155' : '#d1d5db'}`, borderRadius: '8px',
-      fontSize: '13px', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#f1f5f9' : '#111827', cursor: 'pointer',
+      padding: '9px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px',
+      fontSize: '13px', background: isDark ? '#242526' : '#fff', color: isDark ? '#e4e6eb' : '#111827', cursor: 'pointer',
     },
-    empty: { textAlign: 'center', padding: '48px', color: isDark ? '#94a3b8' : '#6b7280' },
+    empty: { textAlign: 'center', padding: '48px', color: isDark ? '#b0b3b8' : '#6b7280' },
     card: (hidden) => ({
-      display: 'flex', gap: '14px', background: isDark ? '#1e293b' : '#fff',
-      border: `1px solid ${hidden ? (isDark ? '#7f1d1d' : '#fca5a5') : (isDark ? '#334155' : '#e5e7eb')}`,
+      display: 'flex', gap: '14px', background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${hidden ? (isDark ? '#7f1d1d' : '#fca5a5') : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
       borderRadius: '12px', padding: '16px', marginBottom: '12px',
       opacity: hidden ? 0.75 : 1,
     }),
-    thumb: { width: '64px', height: '48px', borderRadius: '8px', overflow: 'hidden', background: isDark ? '#334155' : '#f3f4f6', flexShrink: 0 },
+    thumb: { width: '64px', height: '48px', borderRadius: '8px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', flexShrink: 0 },
     info: { flex: 1, minWidth: 0 },
     topRow: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' },
-    carName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' },
-    reviewerName: { fontSize: '12px', color: isDark ? '#94a3b8' : '#6b7280' },
+    carName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    reviewerName: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
     hiddenBadge: { fontSize: '10px', fontWeight: '700', background: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: '20px' },
-    date: { fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af', marginLeft: 'auto' },
+    date: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginLeft: 'auto' },
     comment: { fontSize: '13px', color: isDark ? '#cbd5e1' : '#374151', lineHeight: '1.5', marginTop: '6px' },
     photoGrid: { display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' },
     photo: { width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px' },
@@ -137,7 +137,7 @@ const ManageReviews = () => {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <StarRating value={r.overall} size={13} readOnly />
-                <span style={{ fontSize: '12px', fontWeight: '600', color: isDark ? '#f1f5f9' : '#1a1a1a' }}>{r.overall.toFixed(1)}</span>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' }}>{r.overall.toFixed(1)}</span>
               </div>
               {r.comment && <p style={s.comment}>{r.comment}</p>}
               {r.photos?.length > 0 && (

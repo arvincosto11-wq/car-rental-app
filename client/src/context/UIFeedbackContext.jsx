@@ -59,8 +59,8 @@ export const UIFeedbackProvider = ({ children }) => {
       maxWidth: 'min(360px, calc(100vw - 40px))',
     },
     toast: (type) => ({
-      background: isDark ? '#1e293b' : '#fff',
-      border: `1px solid ${isDark ? '#334155' : '#e5e7eb'}`,
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderLeft: `4px solid ${typeStyles[type].border}`,
       borderRadius: '8px',
       padding: '12px 14px',
@@ -70,14 +70,14 @@ export const UIFeedbackProvider = ({ children }) => {
       gap: '10px',
       fontSize: '13px',
       lineHeight: '1.5',
-      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
       animation: 'toast-in 0.25s ease',
     }),
     toastClose: {
       background: 'none',
       border: 'none',
       cursor: 'pointer',
-      color: isDark ? '#94a3b8' : '#9ca3af',
+      color: isDark ? '#b0b3b8' : '#9ca3af',
       fontSize: '16px',
       lineHeight: 1,
       padding: 0,
@@ -94,7 +94,7 @@ export const UIFeedbackProvider = ({ children }) => {
       padding: '20px',
     },
     confirmCard: {
-      background: isDark ? '#1e293b' : '#fff',
+      background: isDark ? '#242526' : '#fff',
       borderRadius: '12px',
       padding: '24px',
       maxWidth: '400px',
@@ -102,13 +102,13 @@ export const UIFeedbackProvider = ({ children }) => {
     },
     confirmMessage: {
       fontSize: '14px',
-      color: isDark ? '#f1f5f9' : '#1a1a1a',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
       marginBottom: '20px',
       lineHeight: '1.5',
     },
     confirmActions: { display: 'flex', gap: '10px' },
     confirmCancelBtn: {
-      flex: 1, padding: '10px', background: isDark ? '#334155' : '#f3f4f6', color: isDark ? '#f1f5f9' : '#374151',
+      flex: 1, padding: '10px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151',
       border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500',
     },
     confirmOkBtn: (danger) => ({
