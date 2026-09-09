@@ -30,6 +30,10 @@ const carSchema = new mongoose.Schema({
   ratingCount: { type: Number, default: 0 },
   archived: { type: Boolean, default: false },
   archivedAt: { type: Date },
+  // Admin-curated pick for the homepage stacked carousel. When no car has
+  // this set, the carousel falls back to auto-picking top-rated cars
+  // instead — see GET /cars/featured.
+  featured: { type: Boolean, default: false },
   availabilityRequest: {
     status: { type: String, enum: ['none', 'pending', 'declined'], default: 'none' },
     // Which direction this request is asking for — a consignor needs admin

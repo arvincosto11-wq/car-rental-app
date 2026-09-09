@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useUIFeedback } from '../context/UIFeedbackContext';
 import StarRating from '../components/StarRating';
+import StackedCarCarousel from '../components/StackedCarCarousel';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import usePageTitle from '../hooks/usePageTitle';
-import useFavorites from '../hooks/useFavorites';
-import FavoriteButton from '../components/FavoriteButton';
 import api from '../api';
 
 const CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe', 'Motorcycle'];
@@ -17,8 +16,6 @@ const CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe', 'Motor
 const HERO_IMAGES = ['/hero-mayon.webp', '/hero-mayon-road.jpg', '/hero-winding-road.jpg', '/handling-keys.jpg'];
 
 const Home = () => {
-  const [cars, setCars] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [testimonials, setTestimonials] = useState([]);
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
@@ -27,23 +24,7 @@ const Home = () => {
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
-  const { canFavorite, isFavorite, toggleFavorite } = useFavorites();
   usePageTitle();
-
-  useEffect(() => {
-    const fetchCars = async () => {
-      try {
-        const res = await api.get('/cars');
-        const sorted = [...res.data].sort((a, b) => (b.isAvailable === false ? 0 : 1) - (a.isAvailable === false ? 0 : 1));
-        setCars(sorted.slice(0, 6));
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCars();
-  }, []);
 
   useEffect(() => {
     const fetchTestimonials = async () => {
@@ -509,71 +490,14 @@ const Home = () => {
       <div style={styles.section}>
         <h2 style={styles.sectionTitle}>Featured Vehicles</h2>
         <p style={styles.sectionSubtitle}>
-          Explore our selection of premium vehicles available for your next adventure.
+          A look at some of our top-rated rides — browse the full fleet anytime.
         </p>
 
-        {loading ? (
-          <p style={{ textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280' }}>Loading cars...</p>
-        ) : cars.length === 0 ? (
-          <p style={{ textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280' }}>No cars available yet.</p>
-        ) : (
-          <div className="responsive-grid-3" style={styles.grid}>
-            {cars.map((car) => (
-              <div
-                key={car._id}
-                className="car-card-hover"
-                style={styles.card}
-                onClick={() => navigate(`/cars/${car._id}`)}
-                role="link"
-                tabIndex={0}
-                aria-label={`View ${car.brand} ${car.model} details`}
-                onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) navigate(`/cars/${car._id}`); }}
-              >
-                <div style={styles.imgWrap}>
-                  {car.image ? (
-                    <img src={car.image} alt={car.model} style={styles.img} />
-                  ) : (
-                    <div style={styles.noImg}>No Image</div>
-                  )}
-                  <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#16a34a' }}>
-                    {car.isAvailable === false ? 'Not Listed' : 'Bookable'}
-                  </span>
-                  <FavoriteButton
-                    carId={car._id}
-                    canFavorite={canFavorite}
-                    isFavorite={isFavorite(car._id)}
-                    onToggle={toggleFavorite}
-                    style={{ position: 'absolute', top: '10px', right: '10px' }}
-                  />
-                  <span style={styles.priceBadge}>₱{car.pricePerDay} / day</span>
-                </div>
-                <div style={styles.cardBody}>
-                  <h3 style={styles.carName}>{car.brand} {car.model}</h3>
-                  <p style={styles.carSub}>{car.category} · {car.year}</p>
-                  {car.ratingCount > 0 ? (
-                    <div style={styles.ratingRow}>
-                      <StarRating value={car.avgRating} size={13} readOnly />
-                      <span style={styles.ratingText}>{car.avgRating.toFixed(1)} ({car.ratingCount})</span>
-                    </div>
-                  ) : (
-                    <div style={styles.ratingRow}>
-                      <span style={styles.ratingText}>No reviews yet</span>
-                    </div>
-                  )}
-                  <div style={styles.carMeta}>
-                    <span>{car.seats} Seats</span>
-                    <span>{car.fuelType}</span>
-                    <span>{car.transmission}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <StackedCarCarousel isDark={isDark} />
 
         <div style={{ textAlign: 'center', marginTop: '32px' }}>
           <button style={styles.viewAllBtn} onClick={() => navigate('/cars')}>
-            View All Cars
+            Browse All Vehicles
           </button>
         </div>
       </div>

@@ -219,6 +219,31 @@ router.get('/reviews/featured', async (req, res) => {
   }
 });
 
+// Cars for the homepage stacked carousel (public) — admin-picked cars if any
+// exist, otherwise auto-falls back to the highest-rated listed cars so the
+// carousel is never empty on a fresh install. Either way, only cars that are
+// actually bookable right now (listed, not archived) are eligible.
+router.get('/featured', async (req, res) => {
+  try {
+    const baseFilter = { archived: { $ne: true }, isAvailable: true };
+    let cars = await Car.find({ ...baseFilter, featured: true }).limit(6);
+
+    if (cars.length === 0) {
+      cars = await Car.find({ ...baseFilter, ratingCount: { $gt: 0 } })
+        .sort({ avgRating: -1, ratingCount: -1 })
+        .limit(6);
+    }
+
+    if (getRequestRole(req) !== 'admin') {
+      cars = cars.map(hidePlateNumber);
+    }
+
+    res.json(cars);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Get single car (public)
 router.get('/:id', async (req, res) => {
   try {
@@ -299,6 +324,19 @@ router.put('/:id/archive', protect, adminOnly, async (req, res) => {
       { new: true }
     );
     if (!car) return res.status(404).json({ message: 'Car not found' });
+    res.json(car);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Toggle whether a car appears in the homepage stacked carousel (admin only)
+router.put('/:id/feature', protect, adminOnly, async (req, res) => {
+  try {
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+    car.featured = !car.featured;
+    await car.save();
     res.json(car);
   } catch (err) {
     res.status(500).json({ message: err.message });

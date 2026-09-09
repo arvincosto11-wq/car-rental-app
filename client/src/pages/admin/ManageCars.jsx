@@ -94,6 +94,17 @@ const ManageCars = () => {
     }
   };
 
+  const handleFeature = async (car) => {
+    try {
+      const res = await api.put(`/cars/${car._id}/feature`);
+      setCars(cars.map((c) => c._id === car._id ? res.data : c));
+      toast.success(res.data.featured ? 'Added to the homepage carousel.' : 'Removed from the homepage carousel.');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to update this car.');
+    }
+  };
+
   const handleEdit = (car) => {
     setEditingCar(car._id);
     setBlockForm({ startDate: '', endDate: '', reason: '' });
@@ -300,6 +311,12 @@ const ManageCars = () => {
     editBtn: { padding: '5px 12px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT, border: `1px solid ${isDark ? GOLD_TINT_BORDER_DARK : GOLD_TINT_BORDER}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? GOLD_DARK : GOLD },
     toggleBtn: { padding: '5px 12px', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     archiveBtn: { padding: '5px 12px', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    featureBtn: (active) => ({
+      padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer',
+      border: `1px solid ${active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#d1d5db')}`,
+      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#18191a' : '#f3f4f6'),
+      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a'),
+    }),
     editForm: { maxWidth: '960px' },
     editModalOverlay: {
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300,
@@ -454,6 +471,13 @@ const ManageCars = () => {
                         <button style={styles.editBtn} onClick={() => handleEdit(car)}>Edit</button>
                         <button style={styles.toggleBtn} onClick={() => handleToggle(car)}>
                           {car.isAvailable ? 'Hide' : 'Show'}
+                        </button>
+                        <button
+                          style={styles.featureBtn(car.featured)}
+                          onClick={() => handleFeature(car)}
+                          title={car.featured ? 'Shown in the homepage carousel' : 'Add to the homepage carousel'}
+                        >
+                          {car.featured ? '★ Featured' : '☆ Feature'}
                         </button>
                         <button style={styles.archiveBtn} onClick={() => handleArchive(car._id)}>Archive</button>
                       </div>
