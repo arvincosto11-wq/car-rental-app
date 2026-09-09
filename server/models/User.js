@@ -4,10 +4,6 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  // Set only for accounts created/linked via "Sign in with Google" — the
-  // password field is still populated (a random unusable value) since it's
-  // required at the schema level, but these accounts never use it.
-  googleId: { type: String, default: '' },
   role: { type: String, enum: ['user', 'admin', 'consignor'], default: 'user' },
   image: { type: String, default: '' },
   phone: { type: String, default: '' },

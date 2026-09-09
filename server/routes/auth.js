@@ -1,5 +1,4 @@
 import express from 'express';
-import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
@@ -216,71 +215,6 @@ router.post('/login', loginLimiter, async (req, res) => {
     res.json({
       token,
       user: { id: user._id, name: user.name, email, role: user.role }
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Sign in (or sign up) with Google. The client uses a custom-styled button
-// (not Google's own pre-built widget, which auto-personalizes to "Sign in
-// as <name>" once a Google session is active) and hands us the access token
-// from that flow — we look up the identity it belongs to directly from
-// Google's own userinfo endpoint rather than trusting anything else in the
-// request, so there's no way to forge an email/identity here.
-router.post('/google', loginLimiter, async (req, res) => {
-  try {
-    const { accessToken } = req.body;
-    if (!accessToken) return res.status(400).json({ message: 'Missing Google access token.' });
-
-    let payload;
-    try {
-      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!userInfoRes.ok) throw new Error('Invalid access token');
-      payload = await userInfoRes.json();
-    } catch {
-      return res.status(400).json({ message: 'Invalid Google credential.' });
-    }
-
-    // Google's userinfo endpoint returns email_verified as either a real
-    // boolean or the string "true"/"false" depending on version — check
-    // both so a stringified "false" can't be treated as truthy.
-    const emailVerified = payload?.email_verified === true || payload?.email_verified === 'true';
-    if (!payload?.email || !emailVerified) {
-      return res.status(400).json({ message: 'Your Google account email is not verified.' });
-    }
-
-    let user = await User.findOne({ email: payload.email });
-    if (!user) {
-      // A random, never-shown password — this account only ever signs in
-      // through Google, but the schema requires a password value.
-      const randomPassword = crypto.randomBytes(32).toString('hex');
-      const hashed = await bcrypt.hash(randomPassword, 10);
-      user = await User.create({
-        name: payload.name || payload.email.split('@')[0],
-        email: payload.email,
-        password: hashed,
-        googleId: payload.sub,
-        image: payload.picture || '',
-      });
-    } else if (!user.googleId) {
-      // An existing email/password account signing in with Google for the
-      // first time — link it instead of creating a duplicate account.
-      user.googleId = payload.sub;
-      await user.save();
-    }
-
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role }
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

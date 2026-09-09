@@ -7,7 +7,6 @@ import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 import LocationAddressFields from '../components/LocationAddressFields';
 import PasswordInput from '../components/PasswordInput';
-import GoogleAuthButton from '../components/GoogleAuthButton';
 import BookingSteps from '../components/BookingSteps';
 import usePageTitle from '../hooks/usePageTitle';
 
@@ -27,7 +26,6 @@ const validators = {
 // registration, and the account is only ever created once it's confirmed,
 // never from just an email on its own.
 const REGISTER_STEPS = ['Account', 'Contact & ID', 'Emergency Contact', 'Verify Email'];
-const GOOGLE_CONFIGURED = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const Register = () => {
   usePageTitle('Register');
@@ -347,15 +345,6 @@ const Register = () => {
       color: isDark ? '#fca5a5' : '#dc2626',
       marginTop: '4px',
     },
-    divider: {
-      display: 'flex', alignItems: 'center', gap: '10px',
-      margin: '18px 0', fontSize: '12px', color: isDark ? '#64748b' : '#9ca3af',
-    },
-    dividerLine: { flex: 1, height: '1px', background: isDark ? '#334155' : '#e5e7eb' },
-    googleHint: {
-      fontSize: '11px', color: isDark ? '#64748b' : '#9ca3af',
-      marginTop: '6px', marginBottom: '14px',
-    },
   };
 
   const inputStyle = (field) => (
@@ -382,17 +371,6 @@ const Register = () => {
               <AnimatePresence mode="wait">
                 {step === 1 && (
                   <motion.div key="step1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
-                    {GOOGLE_CONFIGURED && (
-                      <>
-                        <GoogleAuthButton onError={setError} isDark={isDark} />
-                        <p style={styles.googleHint}>You can add your phone, address, and ID anytime from your profile.</p>
-                        <div style={styles.divider}>
-                          <span style={styles.dividerLine} />
-                          or continue with email
-                          <span style={styles.dividerLine} />
-                        </div>
-                      </>
-                    )}
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="reg-name">Full Name</label>
                       <input
