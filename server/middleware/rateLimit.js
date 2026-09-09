@@ -17,3 +17,14 @@ export const registerLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Limits how often a verification code email can be requested — sending
+// email costs quota, and this is the endpoint most exposed to spamming a
+// stranger's inbox.
+export const verificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { message: 'Too many verification code requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

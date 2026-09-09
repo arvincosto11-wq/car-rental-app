@@ -4,13 +4,17 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
+import EmailVerification from '../models/EmailVerification.js';
 import { protect } from '../middleware/auth.js';
-import { loginLimiter, registerLimiter } from '../middleware/rateLimit.js';
+import { loginLimiter, registerLimiter, verificationLimiter } from '../middleware/rateLimit.js';
+import { sendVerificationCodeEmail } from '../utils/email.js';
 
 const router = express.Router();
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
+const VERIFIED_WINDOW_MS = 30 * 60 * 1000;
 
 // Get the logged-in user's own profile (used to check things like license status before booking)
 router.get('/me', protect, async (req, res) => {
@@ -83,6 +87,64 @@ router.put('/change-password', protect, async (req, res) => {
   }
 });
 
+// Send a 6-digit code to the given email, to be confirmed via
+// POST /verify-email-code before registration is allowed to proceed.
+router.post('/send-verification-code', verificationLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!EMAIL_REGEX.test(email || '')) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ message: 'Email already exists' });
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    // A fresh request always overwrites any previous code for this email —
+    // upsert so re-sending invalidates whatever code was sent before.
+    await EmailVerification.findOneAndUpdate(
+      { email },
+      { email, code, attempts: 0, verified: false, expiresAt: new Date(Date.now() + VERIFICATION_CODE_TTL_MS) },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    await sendVerificationCodeEmail(email, code);
+    res.json({ message: 'Verification code sent.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Confirm the code the client just entered. On success, the email is
+// marked verified for a 30-minute window so the rest of the multi-step
+// register form can still be filled out before actually submitting.
+router.post('/verify-email-code', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) return res.status(400).json({ message: 'Missing email or code.' });
+
+    const record = await EmailVerification.findOne({ email });
+    if (!record || record.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'That code has expired. Please request a new one.' });
+    }
+    if (record.attempts >= 5) {
+      return res.status(400).json({ message: 'Too many incorrect attempts. Please request a new code.' });
+    }
+    if (record.code !== String(code).trim()) {
+      record.attempts += 1;
+      await record.save();
+      return res.status(400).json({ message: 'Incorrect code. Please try again.' });
+    }
+
+    record.verified = true;
+    record.expiresAt = new Date(Date.now() + VERIFIED_WINDOW_MS);
+    await record.save();
+    res.json({ message: 'Email verified.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Register
 router.post('/register', registerLimiter, async (req, res) => {
   try {
@@ -103,6 +165,14 @@ router.post('/register', registerLimiter, async (req, res) => {
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: 'Email already exists' });
 
+    // The whole point of the verification step — without this check it
+    // would just be UI theater, since anyone could call this endpoint
+    // directly and skip straight past it.
+    const verification = await EmailVerification.findOne({ email });
+    if (!verification?.verified || verification.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'Please verify your email before registering.' });
+    }
+
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({
       name, email, password: hashed,
@@ -111,6 +181,8 @@ router.post('/register', registerLimiter, async (req, res) => {
       licenseNumber, licenseExpiry,
       emergencyContactName, emergencyContactNumber
     });
+
+    await EmailVerification.deleteOne({ email });
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
