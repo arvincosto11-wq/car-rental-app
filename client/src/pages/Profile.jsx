@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import Skeleton from '../components/Skeleton';
+import PasswordInput from '../components/PasswordInput';
 import usePageTitle from '../hooks/usePageTitle';
 import api from '../api';
 
@@ -377,18 +378,18 @@ const Profile = () => {
             <form onSubmit={handleRequestPasswordChange}>
               <div style={s.field}>
                 <label style={s.label} htmlFor="pw-current">Current Password</label>
-                <input id="pw-current" style={s.input} type="password" value={pwForm.currentPassword}
+                <PasswordInput id="pw-current" style={s.input} value={pwForm.currentPassword} isDark={isDark}
                   onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })} required />
               </div>
               <div className="responsive-row-2" style={s.row}>
                 <div style={s.field}>
                   <label style={s.label} htmlFor="pw-new">New Password</label>
-                  <input id="pw-new" style={s.input} type="password" value={pwForm.newPassword} minLength={8}
+                  <PasswordInput id="pw-new" style={s.input} value={pwForm.newPassword} minLength={8} isDark={isDark}
                     onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} required />
                 </div>
                 <div style={s.field}>
                   <label style={s.label} htmlFor="pw-confirm">Confirm New Password</label>
-                  <input id="pw-confirm" style={s.input} type="password" value={pwForm.confirmPassword} minLength={8}
+                  <PasswordInput id="pw-confirm" style={s.input} value={pwForm.confirmPassword} minLength={8} isDark={isDark}
                     onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })} required />
                 </div>
               </div>

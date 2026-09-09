@@ -7,6 +7,7 @@ import api from '../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../data/vehicleBrands';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 import LocationAddressFields from '../components/LocationAddressFields';
+import PasswordInput from '../components/PasswordInput';
 import BookingSteps from '../components/BookingSteps';
 import usePageTitle from '../hooks/usePageTitle';
 
@@ -317,13 +318,13 @@ const ConsignmentRegister = () => {
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="cr-password">Password</label>
-                        <input id="cr-password" style={styles.input} type="password" placeholder="Create a password (min. 8 characters)"
+                        <PasswordInput id="cr-password" style={styles.input} placeholder="Create a password (min. 8 characters)" isDark={isDark}
                           value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} />
                       </div>
                     </div>
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="cr-confirm-password">Confirm Password</label>
-                      <input id="cr-confirm-password" style={styles.input} type="password" placeholder="Re-enter your password"
+                      <PasswordInput id="cr-confirm-password" style={styles.input} placeholder="Re-enter your password" isDark={isDark}
                         value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={8} />
                     </div>
                     <div style={styles.field}>
