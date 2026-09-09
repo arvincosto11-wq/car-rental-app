@@ -581,7 +581,7 @@ const Register = () => {
                         onChange={(e) => setVerificationCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
                       />
                     </div>
-                    <button type="button" style={{ ...styles.footerLink, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}
+                    <button type="button" className="text-link-btn" style={{ ...styles.footerLink, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}
                       onClick={sendVerificationCode} disabled={sendingCode}>
                       {sendingCode ? 'Resending...' : "Didn't get it? Resend code"}
                     </button>
