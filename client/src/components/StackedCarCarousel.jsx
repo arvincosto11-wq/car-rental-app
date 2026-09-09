@@ -7,14 +7,15 @@ import api from '../api';
 const STACK_SIZE = 3;
 const HOLD_MS = 4000;
 
-// Slot 0 = front (largest, clickable), higher slots sit progressively
-// further back — smaller, dimmer, offset down. Rotating `index` reassigns
-// which car occupies which slot, so cards already on screen animate to
-// their new position instead of just swapping content.
+// Slot 0 = center (front, largest, clickable). Slot 1 sits behind and to
+// the right (next car up), slot 2 behind and to the left (arrived from the
+// right on a previous tick, about to exit). `x` is a percentage of the
+// card's own width, not the container's — so the offset scales naturally
+// with the card at any viewport size instead of needing pixel math.
 const slotStyle = (slot) => {
-  if (slot === 0) return { opacity: 1, scale: 1, y: 0, zIndex: 3 };
-  if (slot === 1) return { opacity: 0.7, scale: 0.93, y: 20, zIndex: 2 };
-  return { opacity: 0.4, scale: 0.86, y: 38, zIndex: 1 };
+  if (slot === 0) return { opacity: 1, scale: 1, x: '0%', zIndex: 3 };
+  if (slot === 1) return { opacity: 0.55, scale: 0.87, x: '46%', zIndex: 2 };
+  return { opacity: 0.5, scale: 0.87, x: '-46%', zIndex: 1 };
 };
 
 const StackedCarCarousel = ({ isDark }) => {
@@ -45,32 +46,33 @@ const StackedCarCarousel = ({ isDark }) => {
   const visible = Array.from({ length: stackSize }, (_, offset) => cars[(index + offset) % cars.length]);
 
   const s = {
+    outer: { overflow: 'hidden', padding: '10px 0' },
     wrap: {
-      position: 'relative', maxWidth: '380px', margin: '0 auto',
-      height: `${300 + (stackSize - 1) * 20}px`,
+      position: 'relative', width: 'min(560px, 94vw)', height: '300px',
+      margin: '0 auto',
     },
     glow: {
-      position: 'absolute', top: '-60px', left: '50%', transform: 'translateX(-50%)',
-      width: '520px', height: '420px', borderRadius: '50%', pointerEvents: 'none',
+      position: 'absolute', top: '-70px', left: '50%', transform: 'translateX(-50%)',
+      width: '560px', height: '440px', borderRadius: '50%', pointerEvents: 'none',
       background: isDark
         ? 'radial-gradient(circle, rgba(232,161,0,0.28) 0%, rgba(232,161,0,0) 70%)'
         : 'radial-gradient(circle, rgba(184,121,10,0.22) 0%, rgba(184,121,10,0) 70%)',
       filter: 'blur(20px)',
     },
     card: {
-      position: 'absolute', top: 0, left: 0, right: 0,
+      position: 'absolute', top: 0, left: '50%', width: 'min(280px, 68vw)', marginLeft: 'min(-140px, -34vw)',
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '16px', overflow: 'hidden',
       boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.5)' : '0 12px 32px rgba(0,0,0,0.12)',
       cursor: 'pointer',
     },
-    imgWrap: { width: '100%', height: '190px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
+    imgWrap: { width: '100%', height: '170px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
     img: { width: '100%', height: '100%', objectFit: 'cover' },
-    body: { padding: '16px 18px' },
-    name: { fontSize: '16px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '2px' },
-    sub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '10px' },
-    price: { fontSize: '15px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD },
+    body: { padding: '14px 16px' },
+    name: { fontSize: '15px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '2px' },
+    sub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '8px' },
+    price: { fontSize: '14px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD },
     priceUnit: { fontSize: '12px', fontWeight: '400', color: isDark ? '#b0b3b8' : '#6b7280' },
     dots: { display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '18px' },
     dot: (active) => ({
@@ -81,7 +83,7 @@ const StackedCarCarousel = ({ isDark }) => {
   };
 
   return (
-    <div>
+    <div style={s.outer}>
       <div
         style={s.wrap}
         onMouseEnter={() => setPaused(true)}
@@ -94,10 +96,9 @@ const StackedCarCarousel = ({ isDark }) => {
             return (
               <motion.div
                 key={car._id}
-                layout
-                initial={{ opacity: 0, scale: 0.8, y: 60 }}
+                initial={{ opacity: 0, scale: 0.8, x: '-70%' }}
                 animate={target}
-                exit={{ opacity: 0, scale: 0.8, y: -30 }}
+                exit={{ opacity: 0, scale: 0.75, x: '0%', y: 30 }}
                 transition={{ duration: 0.7, ease: 'easeInOut' }}
                 style={{ ...s.card, zIndex: target.zIndex }}
                 onClick={() => slot === 0 && navigate(`/cars/${car._id}`)}
