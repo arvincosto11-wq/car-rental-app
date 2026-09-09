@@ -60,11 +60,22 @@ export const NotificationProvider = ({ children }) => {
   const unreadCountFor = (linkPrefix) =>
     notifications.filter((n) => !n.read && n.link?.startsWith(linkPrefix)).length;
 
+  // Marks every unread notification pointing into a given section as read —
+  // called when a page like My Bookings or My Vehicles actually loads, so a
+  // client seeing the update in context clears the nav badge right then
+  // instead of it staying lit until they separately open the bell dropdown
+  // and click each one.
+  const markReadByLinkPrefix = (linkPrefix) => {
+    notifications
+      .filter((n) => !n.read && n.link?.startsWith(linkPrefix))
+      .forEach((n) => markRead(n._id));
+  };
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <NotificationContext.Provider value={{
-      notifications, unreadCount, unreadCountFor,
+      notifications, unreadCount, unreadCountFor, markReadByLinkPrefix,
       markRead, markAllRead, deleteNotification, refetch: fetchNotifications,
     }}>
       {children}

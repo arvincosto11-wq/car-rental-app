@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
+import { useNotifications } from '../../context/NotificationContext';
 import { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import useModalA11y from '../../hooks/useModalA11y';
@@ -30,6 +31,7 @@ const ConsignorDashboard = () => {
   const { user } = useAuth();
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
+  const { notifications, markReadByLinkPrefix } = useNotifications();
   const navigate = useNavigate();
   const [consignments, setConsignments] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -50,6 +52,13 @@ const ConsignorDashboard = () => {
     fetchConsignments();
     fetchBookings();
   }, [user]);
+
+  // Same fix as My Bookings: the nav badge is unread-notification-based and
+  // only cleared when the client opened the bell and clicked each one, so
+  // it stayed lit even after they'd already come here and seen the update.
+  useEffect(() => {
+    markReadByLinkPrefix('/consignor');
+  }, [notifications]);
 
   const fetchConsignments = async () => {
     try {

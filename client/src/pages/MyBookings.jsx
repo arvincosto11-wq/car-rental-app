@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useUIFeedback } from '../context/UIFeedbackContext';
+import { useNotifications } from '../context/NotificationContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
 import RatingModal from '../components/RatingModal';
@@ -56,6 +57,7 @@ const MyBookings = () => {
   const { user } = useAuth();
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
+  const { notifications, markReadByLinkPrefix } = useNotifications();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
@@ -89,6 +91,15 @@ const MyBookings = () => {
     };
     fetchBookings();
   }, [user]);
+
+  // The nav badge is driven by unread notifications, which only clear when
+  // the client opens the bell and clicks each one — so it stayed lit even
+  // after they'd already come here and seen the update. Landing on this
+  // page is itself "seeing it", so clear anything pointing here the moment
+  // notifications are loaded (and again whenever a new one comes in).
+  useEffect(() => {
+    markReadByLinkPrefix('/my-bookings');
+  }, [notifications]);
 
   // Landed back here from the PayMongo GCash redirect — check the real
   // payment status right away instead of waiting on the webhook, then drop
