@@ -575,19 +575,19 @@ select:disabled {
 }
 
 /* BackButton — pilot on one spot (Car Detail's "Back to all cars")
-   before rolling out to the app's other "← Back to..." links. "Hover
-   slide": the button itself stays put; the arrow — sitting in its own
-   small rounded-square chip, background distinct from the button's own
-   pill background — slides to dead center, and the label fades out.
-   The chip is absolutely positioned throughout (not just on hover) so
-   left/transform can transition smoothly — the padding-left below
-   reserves the room it needs at rest. */
+   before rolling out to the app's other "← Back to..." links. At rest,
+   a solid dark panel covers the left ~40% of the button (holding the
+   arrow) and the rest is the button's plain background (holding the
+   label). On hover, that panel grows to 100% width — the dark color
+   floods the whole button — while the label fades out. The panel's
+   icon is centered via flexbox, so it re-centers automatically as the
+   panel grows instead of needing a separately-animated position. */
 .back-btn {
   position: relative;
   display: flex;
   align-items: center;
   margin-bottom: 20px;
-  padding: 8px 18px 8px 44px;
+  padding: 10px 20px 10px 76px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--card-bg);
@@ -607,26 +607,27 @@ button.back-btn:not(:disabled):active {
 }
 .back-btn-arrow {
   position: absolute;
-  left: 6px;
-  top: 50%;
-  width: 28px;
-  height: 28px;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 0;
+  width: 40%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: var(--border);
-  transform: translate(0, -50%);
-  transition: left 350ms cubic-bezier(0.23, 1, 0.32, 1),
-              transform 350ms cubic-bezier(0.23, 1, 0.32, 1);
+  /* --text/--card-bg (not a hardcoded color) so this stays the strong
+     foreground vs. background relationship in both themes, rather than
+     literally "dark" regardless of light/dark mode. */
+  background: var(--text);
+  color: var(--card-bg);
+  transition: width 350ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .back-btn:hover .back-btn-arrow {
-  /* left: 50% + translateX(-50%) centers it exactly, regardless of the
-     button's width — no guessed pixel offset to get wrong. */
-  left: 50%;
-  transform: translate(-50%, -50%);
+  width: 100%;
 }
 .back-btn-label {
+  position: relative;
+  z-index: 1;
   transition: opacity 200ms ease;
 }
 .back-btn:hover .back-btn-label {
