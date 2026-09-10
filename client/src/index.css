@@ -534,9 +534,15 @@ select:disabled {
   border-radius: 50%;
   background: var(--gold);
   opacity: 0;
-  transition: width 800ms cubic-bezier(0.19,1,0.22,1),
-              height 800ms cubic-bezier(0.19,1,0.22,1),
-              opacity 800ms cubic-bezier(0.19,1,0.22,1);
+  /* Slow-start (ease-in), not the source's fast-start curve — that one
+     was tuned for growing to a modest 220px, but now that the target is
+     a huge 120vmax, a fast start blows past the actual button size
+     almost instantly and the rest of the growth happens invisibly off
+     past the edges. Slow-start keeps the growth visible for longer
+     relative to the button's actual size. */
+  transition: width 1100ms cubic-bezier(0.55, 0.06, 0.68, 0.19),
+              height 1100ms cubic-bezier(0.55, 0.06, 0.68, 0.19),
+              opacity 400ms ease-out;
 }
 .flow-btn:hover .flow-btn-fill {
   /* vmax, not a fixed px like the source's 220px — this is always bigger
