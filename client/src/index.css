@@ -539,8 +539,13 @@ select:disabled {
               opacity 800ms cubic-bezier(0.19,1,0.22,1);
 }
 .flow-btn:hover .flow-btn-fill {
-  width: 220px;
-  height: 220px;
+  /* vmax, not a fixed px like the source's 220px — this is always bigger
+     than the viewport's largest dimension, so it's guaranteed bigger
+     than any button that could ever fit on screen, at any size this
+     component gets used at. Still reads as a circle blooming from the
+     center; it just never runs out of room to fully cover. */
+  width: 120vmax;
+  height: 120vmax;
   opacity: 1;
 }
 .flow-btn-arrow {
@@ -550,10 +555,14 @@ select:disabled {
   z-index: 2;
   transition: left 800ms cubic-bezier(0.34,1.56,0.64,1), right 800ms cubic-bezier(0.34,1.56,0.64,1);
 }
-.flow-btn-arrow-left { left: -25%; }
+/* Fixed px, not % like the source — a percentage offset scales with the
+   button's own width, fine on a compact pill but landing far outside
+   overflow:hidden's clip on a wide button. Same reasoning as the fill
+   above: this button gets used at more than one size. */
+.flow-btn-arrow-left { left: -32px; }
 .flow-btn:hover .flow-btn-arrow-left { left: 16px; }
 .flow-btn-arrow-right { right: 16px; }
-.flow-btn:hover .flow-btn-arrow-right { right: -25%; }
+.flow-btn:hover .flow-btn-arrow-right { right: -32px; }
 .flow-btn-text {
   position: relative;
   z-index: 1;
