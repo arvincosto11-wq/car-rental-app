@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { GOLD, GOLD_DARK } from '../theme';
@@ -23,6 +23,8 @@ const StackedCarCarousel = ({ isDark }) => {
   const [cars, setCars] = useState([]);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const wrapRef = useRef(null);
+  const wheelCooldownRef = useRef(false);
 
   useEffect(() => {
     api.get('/cars/featured')
@@ -32,6 +34,10 @@ const StackedCarCarousel = ({ isDark }) => {
 
   const advance = useCallback(() => {
     setIndex((i) => (i + 1) % cars.length);
+  }, [cars.length]);
+
+  const retreat = useCallback(() => {
+    setIndex((i) => (i - 1 + cars.length) % cars.length);
   }, [cars.length]);
 
   // Front card navigates to its detail page. A side card instead rotates
@@ -52,6 +58,28 @@ const StackedCarCarousel = ({ isDark }) => {
     const timer = setInterval(advance, HOLD_MS);
     return () => clearInterval(timer);
   }, [cars.length, paused, advance]);
+
+  // Scroll wheel while hovering rotates the carousel instead of scrolling
+  // the page. Attached as a native (non-passive) listener via ref rather
+  // than React's onWheel — React attaches wheel listeners passively by
+  // default for scroll performance, which would make preventDefault a
+  // silent no-op. Debounced with a cooldown so one scroll gesture (a
+  // mouse wheel notch, or a trackpad flick that fires many small deltas)
+  // only advances one step instead of spinning through several.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || cars.length < 2) return;
+    const handleWheel = (e) => {
+      e.preventDefault();
+      if (wheelCooldownRef.current) return;
+      wheelCooldownRef.current = true;
+      if (e.deltaY > 0) advance();
+      else if (e.deltaY < 0) retreat();
+      setTimeout(() => { wheelCooldownRef.current = false; }, 500);
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [cars.length, advance, retreat]);
 
   if (cars.length === 0) return null;
 
@@ -102,6 +130,7 @@ const StackedCarCarousel = ({ isDark }) => {
   return (
     <div style={s.outer}>
       <div
+        ref={wrapRef}
         style={s.wrap}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
