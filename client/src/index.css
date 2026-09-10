@@ -607,8 +607,8 @@ button.back-btn:not(:disabled):active {
   position: absolute;
   left: 14px;
   top: 50%;
-  /* muted, distinct from the label's stronger text color */
-  color: var(--text-secondary);
+  /* darker than the label, not lighter */
+  color: var(--text);
   transform: translate(0, -50%);
   transition: left 350ms cubic-bezier(0.23, 1, 0.32, 1),
               transform 350ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -620,7 +620,7 @@ button.back-btn:not(:disabled):active {
   transform: translate(-50%, -50%);
 }
 .back-btn-label {
-  color: var(--text);
+  color: var(--text-secondary);
   transition: opacity 200ms ease;
 }
 .back-btn:hover .back-btn-label {
