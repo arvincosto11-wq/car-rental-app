@@ -6,6 +6,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import NotificationBell from './NotificationBell';
 import { MenuCloseIcon } from './AnimatedStateIcons';
+import api from '../api';
 
 const ThemeIcon = ({ dark, size = 16 }) => (
   dark ? (
@@ -36,6 +37,7 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [idVerified, setIdVerified] = useState(null);
   const menuRef = useRef(null);
 
   const isHome = location.pathname === '/';
@@ -50,6 +52,18 @@ const Navbar = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Fetched lazily (only once the dropdown is actually opened) rather than
+  // trusting the cached login `user` object — that's set once at login and
+  // never updated, so it'd go stale the moment admin verifies someone's ID
+  // mid-session. Only clients ever have this gate (it unlocks self-drive
+  // booking), so skip it for admin/consignor.
+  useEffect(() => {
+    if (!menuOpen || user?.role !== 'user' || idVerified !== null) return;
+    api.get('/auth/me')
+      .then((res) => setIdVerified(!!res.data.idVerified))
+      .catch((err) => console.error(err));
+  }, [menuOpen, user, idVerified]);
 
   useEffect(() => {
     if (!isHome) {
@@ -214,6 +228,21 @@ const Navbar = () => {
                   overflow: 'hidden',
                   zIndex: 200,
                 }}>
+                  {user.role === 'user' && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      padding: '9px 16px',
+                      fontSize: '12px',
+                      color: isDark ? '#94a3b8' : '#6b7280',
+                      borderBottom: `1px solid ${menuBorder}`,
+                    }}>
+                      <span style={{
+                        width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0,
+                        background: idVerified === null ? (isDark ? '#4e4f50' : '#d1d5db') : idVerified ? '#16a34a' : '#f59e0b',
+                      }} />
+                      {idVerified === null ? 'Checking ID status…' : idVerified ? 'ID Verified' : 'ID Pending Verification'}
+                    </div>
+                  )}
                   <Link
                     to="/profile"
                     onClick={() => setMenuOpen(false)}
