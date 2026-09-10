@@ -523,17 +523,23 @@ select:disabled {
 .flow-btn:active {
   transform: scale(0.95);
 }
+/* left/right animate in from the center (both start at 50%, meeting in
+   the middle at zero width) out to 0/0 — i.e. exactly the button's own
+   edges, by construction, at any width. No shape/scale math to get
+   wrong: at the end of the transition this *is* the button's full box. */
 .flow-btn-fill {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  right: 50%;
   z-index: 0;
   background: var(--gold);
-  border-radius: inherit;
-  transform: scale(0);
-  transition: transform 500ms cubic-bezier(0.19,1,0.22,1);
+  transition: left 500ms cubic-bezier(0.19,1,0.22,1), right 500ms cubic-bezier(0.19,1,0.22,1);
 }
 .flow-btn:hover .flow-btn-fill {
-  transform: scale(1);
+  left: 0;
+  right: 0;
 }
 .flow-btn-arrow {
   position: absolute;
