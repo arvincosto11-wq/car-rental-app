@@ -490,12 +490,14 @@ select:disabled {
 
 /* FlowButton — ported from a Tailwind/shadcn component to plain CSS (the
    animation is pure CSS transitions, no JS/Tailwind actually required to
-   reproduce it). Transparent at rest, fills solid gold on hover — a plain
-   background-color fade rather than the source's circle-expanding-from-
-   the-center trick, since that circle has a fixed max size and this
-   button's width varies by where it's used (a size tuned for a compact
-   pill left the corners of a wider button unfilled). Arrows slide in from
-   the sides and the text nudges over on hover too. */
+   reproduce it). Transparent at rest; on hover, .flow-btn-fill grows from
+   a point at the center out to fully cover the button (scale 0 -> 1),
+   which reads as the gold color flowing outward from the middle. Unlike
+   the source's fixed-size expanding circle (max 220px, which left a
+   wide button's corners unfilled), this scales the fill itself rather
+   than a shape with a hardcoded max size, so it always fully covers
+   regardless of the button's width. Arrows slide in from the sides and
+   the text nudges over on hover too. */
 .flow-btn {
   position: relative;
   display: inline-flex;
@@ -511,17 +513,27 @@ select:disabled {
   font-weight: 600;
   color: var(--gold);
   cursor: pointer;
-  transition: background-color 400ms ease, color 400ms ease,
-              border-color 400ms ease, border-radius 400ms ease;
+  transition: color 450ms ease, border-color 450ms ease, border-radius 450ms ease;
 }
 .flow-btn:hover {
-  background-color: var(--gold);
   border-color: transparent;
   border-radius: 12px;
   color: var(--on-gold);
 }
 .flow-btn:active {
   transform: scale(0.95);
+}
+.flow-btn-fill {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--gold);
+  border-radius: inherit;
+  transform: scale(0);
+  transition: transform 500ms cubic-bezier(0.19,1,0.22,1);
+}
+.flow-btn:hover .flow-btn-fill {
+  transform: scale(1);
 }
 .flow-btn-arrow {
   position: absolute;
