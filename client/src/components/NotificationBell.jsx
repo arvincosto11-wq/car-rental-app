@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../context/NotificationContext';
+import { AnimatedNotificationIcon } from './AnimatedStateIcons';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
 const DROPDOWN_LIMIT = 8;
@@ -99,10 +100,7 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
   return (
     <div ref={ref} style={s.wrap}>
       <button style={s.btn} onClick={() => { setOpen((v) => !v); setShowAll(false); }} aria-label="Notifications">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-        </svg>
+        <AnimatedNotificationIcon active={unreadCount > 0} showDot={false} size={20} />
         {unreadCount > 0 && <span style={s.badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
       </button>
 

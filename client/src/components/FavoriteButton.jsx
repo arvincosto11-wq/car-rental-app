@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUIFeedback } from '../context/UIFeedbackContext';
-
-const HeartIcon = ({ filled }) => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z" />
-  </svg>
-);
+import { AnimatedHeartIcon } from './AnimatedStateIcons';
 
 // Heart toggle used on car cards and the car detail page. Stops event
 // propagation so it works when nested inside a clickable card without
@@ -50,7 +45,7 @@ const FavoriteButton = ({ carId, canFavorite, isFavorite, onToggle, size = 32, s
         ...style,
       }}
     >
-      <HeartIcon filled={isFavorite} />
+      <AnimatedHeartIcon active={isFavorite} size={18} color="#fff" />
     </button>
   );
 };

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 import NotificationBell from './NotificationBell';
+import { MenuCloseIcon } from './AnimatedStateIcons';
 import useAdminPendingCounts from '../hooks/useAdminPendingCounts';
 
 const AdminLayout = ({ children, activePage }) => {
@@ -53,7 +54,7 @@ const AdminLayout = ({ children, activePage }) => {
             aria-label="Toggle menu"
             style={{ alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, background: isDark ? '#18191a' : '#f9fafb', color: isDark ? '#e4e6eb' : '#1a1a1a', fontSize: '15px', cursor: 'pointer' }}
           >
-            {sidebarOpen ? '✕' : '☰'}
+            <MenuCloseIcon active={sidebarOpen} size={16} />
           </button>
           <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' }}>
             <img src="/logo.png" alt="Rent-a-Ride" style={{ width: '28px', height: '28px', borderRadius: '50%' }} />

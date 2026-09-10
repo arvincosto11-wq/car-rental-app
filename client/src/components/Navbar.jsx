@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useNotifications } from '../context/NotificationContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import NotificationBell from './NotificationBell';
+import { MenuCloseIcon } from './AnimatedStateIcons';
 
 const ThemeIcon = ({ dark, size = 16 }) => (
   dark ? (
@@ -305,7 +306,7 @@ const Navbar = () => {
               cursor: 'pointer',
             }}
           >
-            {mobileOpen ? '✕' : '☰'}
+            <MenuCloseIcon active={mobileOpen} size={18} />
           </button>
         </div>
       </div>

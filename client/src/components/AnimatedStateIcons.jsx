@@ -1,25 +1,34 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
-// 12 icons that morph between two meaningful states on a loop (loading→success,
+// 12 icons that morph between two meaningful states (loading→success,
 // play→pause, lock→unlock, etc). Ported from a shadcn/Tailwind/TypeScript
 // component (21st.dev) to plain JSX using the `motion` package already in
 // this project — same animations, no new dependencies, no Tailwind/shadcn.
-// Each is self-contained: pass `size`/`color` to drop it in anywhere; the
-// on/off state auto-toggles on `duration` ms by default, same as the source.
-
-function useAutoToggle(interval) {
+//
+// Each accepts an optional `active` boolean: pass it to make the icon
+// reflect real app state (e.g. active={isFavorite}), and it drives the
+// animation directly with no internal timer. Leave `active` unset and the
+// icon free-runs on its own `duration`-ms interval instead — that's demo/
+// showcase mode, used on /icon-preview.
+function useAutoToggle(interval, enabled) {
   const [on, setOn] = useState(false);
   useEffect(() => {
+    if (!enabled) return;
     const id = setInterval(() => setOn((v) => !v), interval);
     return () => clearInterval(id);
-  }, [interval]);
+  }, [interval, enabled]);
   return on;
 }
 
+function useToggleState(active, duration) {
+  const auto = useAutoToggle(duration, active === undefined);
+  return active !== undefined ? active : auto;
+}
+
 /* ─── 1. LOADING → SUCCESS ─── spinner morphs into checkmark */
-export function SuccessIcon({ size = 40, color = 'currentColor', className, duration = 2200 }) {
-  const done = useAutoToggle(duration);
+export function SuccessIcon({ size = 40, color = 'currentColor', className, duration = 2200, active }) {
+  const done = useToggleState(active, duration);
   return (
     <svg viewBox="0 0 40 40" fill="none" className={className} style={{ width: size, height: size }}>
       <motion.circle cx="20" cy="20" r="16" stroke={color} strokeWidth={2}
@@ -48,8 +57,8 @@ export function SuccessIcon({ size = 40, color = 'currentColor', className, dura
 }
 
 /* ─── 2. MENU → CLOSE ─── hamburger morphs to X */
-export function MenuCloseIcon({ size = 40, color = 'currentColor', className, duration = 2000 }) {
-  const open = useAutoToggle(duration);
+export function MenuCloseIcon({ size = 40, color = 'currentColor', className, duration = 2000, active }) {
+  const open = useToggleState(active, duration);
   return (
     <svg viewBox="0 0 40 40" fill="none" className={className} style={{ width: size, height: size }}>
       <motion.line x1="10" x2="30" stroke={color} strokeWidth={2.5} strokeLinecap="round"
@@ -76,8 +85,8 @@ export function MenuCloseIcon({ size = 40, color = 'currentColor', className, du
 }
 
 /* ─── 3. PLAY → PAUSE ─── */
-export function PlayPauseIcon({ size = 40, color = 'currentColor', className, duration = 2400 }) {
-  const playing = useAutoToggle(duration);
+export function PlayPauseIcon({ size = 40, color = 'currentColor', className, duration = 2400, active }) {
+  const playing = useToggleState(active, duration);
   return (
     <svg viewBox="0 0 40 40" fill="none" className={className} style={{ width: size, height: size }}>
       <AnimatePresence mode="wait">
@@ -107,8 +116,8 @@ export function PlayPauseIcon({ size = 40, color = 'currentColor', className, du
 }
 
 /* ─── 4. LOCK → UNLOCK ─── shackle lifts */
-export function LockUnlockIcon({ size = 40, color = 'currentColor', className, duration = 2600 }) {
-  const unlocked = useAutoToggle(duration);
+export function LockUnlockIcon({ size = 40, color = 'currentColor', className, duration = 2600, active }) {
+  const unlocked = useToggleState(active, duration);
   return (
     <svg viewBox="0 0 40 40" fill="none" className={className} style={{ width: size, height: size }}>
       <rect x="9" y="18" width="22" height="16" rx="3" stroke={color} strokeWidth={2} />
@@ -127,8 +136,8 @@ export function LockUnlockIcon({ size = 40, color = 'currentColor', className, d
 }
 
 /* ─── 5. COPY → COPIED ─── clipboard with checkmark flash */
-export function CopiedIcon({ size = 40, color = 'currentColor', className, duration = 2200 }) {
-  const copied = useAutoToggle(duration);
+export function CopiedIcon({ size = 40, color = 'currentColor', className, duration = 2200, active }) {
+  const copied = useToggleState(active, duration);
   return (
     <svg viewBox="0 0 40 40" fill="none" className={className} style={{ width: size, height: size }}>
       <rect x="12" y="10" width="18" height="22" rx="2" stroke={color} strokeWidth={2} />
@@ -158,9 +167,10 @@ export function CopiedIcon({ size = 40, color = 'currentColor', className, durat
   );
 }
 
-/* ─── 6. BELL → NOTIFICATION ─── bell rings then dot appears */
-export function AnimatedNotificationIcon({ size = 40, color = 'currentColor', className, duration = 2800 }) {
-  const notif = useAutoToggle(duration);
+/* ─── 6. BELL → NOTIFICATION ─── bell rings then dot appears. `showDot` can
+   be turned off when the caller already renders its own count badge. */
+export function AnimatedNotificationIcon({ size = 40, color = 'currentColor', className, duration = 2800, active, showDot = true }) {
+  const notif = useToggleState(active, duration);
   return (
     <motion.svg viewBox="0 0 40 40" fill="none" className={className}
       animate={notif ? { rotate: [0, 8, -8, 6, -6, 3, 0] } : { rotate: 0 }}
@@ -168,19 +178,21 @@ export function AnimatedNotificationIcon({ size = 40, color = 'currentColor', cl
       style={{ width: size, height: size, transformOrigin: '20px 6px' }}>
       <path d="M28 16a8 8 0 00-16 0c0 8-4 10-4 10h24s-4-2-4-10" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       <path d="M17.5 30a3 3 0 005 0" stroke={color} strokeWidth={2} strokeLinecap="round" />
-      <motion.circle cx="28" cy="10" r="4" fill="#EF4444"
-        animate={notif
-          ? { scale: [0, 1.3, 1], opacity: 1 }
-          : { scale: 0, opacity: 0 }}
-        transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
-      />
+      {showDot && (
+        <motion.circle cx="28" cy="10" r="4" fill="#EF4444"
+          animate={notif
+            ? { scale: [0, 1.3, 1], opacity: 1 }
+            : { scale: 0, opacity: 0 }}
+          transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+        />
+      )}
     </motion.svg>
   );
 }
 
 /* ─── 7. HEART → FILLED ─── heart fills with bounce */
-export function AnimatedHeartIcon({ size = 40, color = 'currentColor', className, duration = 2000 }) {
-  const filled = useAutoToggle(duration);
+export function AnimatedHeartIcon({ size = 40, color = 'currentColor', className, duration = 2000, active }) {
+  const filled = useToggleState(active, duration);
   return (
     <svg viewBox="0 0 40 40" fill="none" className={className} style={{ width: size, height: size }}>
       <motion.path
@@ -197,8 +209,8 @@ export function AnimatedHeartIcon({ size = 40, color = 'currentColor', className
 }
 
 /* ─── 8. DOWNLOAD → DONE ─── arrow drops into tray then checks */
-export function DownloadDoneIcon({ size = 40, color = 'currentColor', className, duration = 2400 }) {
-  const done = useAutoToggle(duration);
+export function DownloadDoneIcon({ size = 40, color = 'currentColor', className, duration = 2400, active }) {
+  const done = useToggleState(active, duration);
   return (
     <svg viewBox="0 0 40 40" fill="none" className={className} style={{ width: size, height: size }}>
       <path d="M8 28v4a2 2 0 002 2h20a2 2 0 002-2v-4" stroke={color} strokeWidth={2} strokeLinecap="round" />
@@ -227,8 +239,8 @@ export function DownloadDoneIcon({ size = 40, color = 'currentColor', className,
 }
 
 /* ─── 9. SEND ─── paper plane flies off then resets */
-export function SendIcon({ size = 40, color = 'currentColor', className, duration = 2600 }) {
-  const sent = useAutoToggle(duration);
+export function SendIcon({ size = 40, color = 'currentColor', className, duration = 2600, active }) {
+  const sent = useToggleState(active, duration);
   return (
     <svg viewBox="0 0 40 40" fill="none" className={className} style={{ width: size, height: size }}>
       <motion.g
@@ -245,8 +257,8 @@ export function SendIcon({ size = 40, color = 'currentColor', className, duratio
 }
 
 /* ─── 10. TOGGLE ─── switch flips with spring */
-export function ToggleIcon({ size = 40, color = 'currentColor', className, duration = 1800 }) {
-  const on = useAutoToggle(duration);
+export function ToggleIcon({ size = 40, color = 'currentColor', className, duration = 1800, active }) {
+  const on = useToggleState(active, duration);
   return (
     <svg viewBox="0 0 40 40" fill="none" className={className} style={{ width: size, height: size }}>
       <motion.rect x="5" y="13" width="30" height="14" rx="7"
@@ -266,8 +278,8 @@ export function ToggleIcon({ size = 40, color = 'currentColor', className, durat
 }
 
 /* ─── 11. EYE → HIDDEN ─── eye opens/closes with slash */
-export function EyeToggleIcon({ size = 40, color = 'currentColor', className, duration = 2200 }) {
-  const hidden = useAutoToggle(duration);
+export function EyeToggleIcon({ size = 40, color = 'currentColor', className, duration = 2200, active }) {
+  const hidden = useToggleState(active, duration);
   return (
     <svg viewBox="0 0 40 40" fill="none" className={className} style={{ width: size, height: size }}>
       <motion.path d="M4 20s6-10 16-10 16 10 16 10-6 10-16 10S4 20 4 20z"
@@ -288,8 +300,8 @@ export function EyeToggleIcon({ size = 40, color = 'currentColor', className, du
 }
 
 /* ─── 12. VOLUME ─── mute/unmute with wave fade */
-export function VolumeIcon({ size = 40, color = 'currentColor', className, duration = 2400 }) {
-  const muted = useAutoToggle(duration);
+export function VolumeIcon({ size = 40, color = 'currentColor', className, duration = 2400, active }) {
+  const muted = useToggleState(active, duration);
   return (
     <svg viewBox="0 0 40 40" fill="none" className={className} style={{ width: size, height: size }}>
       <path d="M8 16h5l7-6v20l-7-6H8a1 1 0 01-1-1V17a1 1 0 011-1z" stroke={color} strokeWidth={2} strokeLinejoin="round" />
