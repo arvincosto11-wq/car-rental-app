@@ -575,11 +575,11 @@ select:disabled {
 }
 
 /* BackButton — pilot on one spot (Car Detail's "Back to all cars")
-   before rolling out to the app's other "← Back to..." links. Simple on
-   purpose: the whole pill nudges right on hover, nothing else — no
-   color/text change, unlike the earlier reference image, since a
-   restrained version is safer to validate first. */
+   before rolling out to the app's other "← Back to..." links. "Hover
+   slide": the button itself stays put; the arrow slides right and the
+   label fades out, revealing just the arrow. */
 .back-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -592,24 +592,26 @@ select:disabled {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  overflow: hidden;
 }
-/* Opts out of the global button lift/shadow (see button:hover above) the
-   same way .icon-toggle-btn does — that rule's transform: translateY(-2px)
-   has higher specificity than a plain .back-btn:hover would, so it was
-   silently winning and replacing the intended slide with a lift instead. */
-button.back-btn:not(:disabled) {
-  transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-button.back-btn:not(:disabled):hover {
-  filter: none;
-  box-shadow: none;
-  transform: translateX(6px);
-}
+/* Opts out of the global button lift/shadow (see button:hover above) —
+   the button itself doesn't move now, only its contents do. */
+button.back-btn:not(:disabled):hover,
 button.back-btn:not(:disabled):active {
   filter: none;
   box-shadow: none;
-  transform: translateX(6px) scale(0.97);
+  transform: none;
 }
-.back-btn svg {
+.back-btn-arrow {
   flex-shrink: 0;
+  transition: transform 350ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.back-btn:hover .back-btn-arrow {
+  transform: translateX(70px);
+}
+.back-btn-label {
+  transition: opacity 200ms ease;
+}
+.back-btn:hover .back-btn-label {
+  opacity: 0;
 }
