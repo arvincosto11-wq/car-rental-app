@@ -630,10 +630,10 @@ button.back-btn:not(:disabled):active {
   /* Fixed px, not a percentage — a percentage scales with each button's
      own total width, so longer labels (e.g. "Back to Manage Bookings"
      vs. "Back to all cars") made the panel wider than the label's fixed
-     padding-left could clear, clipping the first letter behind it. This
-     matches the label's padding-left exactly so it never overlaps,
-     regardless of label length. */
-  width: 56px;
+     padding-left could clear, clipping the first letter behind it. Kept
+     comfortably under the label's padding-left (see .back-btn-label) so
+     there's always a breathing gap, never a flush/cramped edge. */
+  width: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -650,7 +650,11 @@ button.back-btn:not(:disabled):active {
 .back-btn-label {
   position: relative;
   z-index: 1;
-  padding: 10px 20px 10px 56px;
+  /* Left padding is wider than the arrow chip (52px) on purpose — a small
+     gap so the text doesn't sit flush against the chip's edge — and the
+     right padding matches it, so the pill reads balanced instead of
+     left-heavy with the text crowding the right edge. */
+  padding: 10px 26px 10px 66px;
   transition: opacity 200ms ease;
 }
 .back-btn:hover .back-btn-label {
