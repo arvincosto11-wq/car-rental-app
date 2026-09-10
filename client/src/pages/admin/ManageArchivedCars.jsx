@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
+import BackButton from '../../components/BackButton';
 import { SkeletonListCard } from '../../components/Skeleton';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
@@ -11,6 +12,7 @@ import api from '../../api';
 const ManageArchivedCars = () => {
   usePageTitle('Archived Cars');
   const { isDark } = useTheme();
+  const navigate = useNavigate();
   const { toast, confirm } = useUIFeedback();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,6 @@ const ManageArchivedCars = () => {
   };
 
   const s = {
-    backLink: { fontSize: '13px', color: isDark ? GOLD_DARK : GOLD, textDecoration: 'none', fontWeight: '500', marginBottom: '10px', display: 'inline-block' },
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
     empty: { textAlign: 'center', padding: '48px', color: isDark ? '#b0b3b8' : '#6b7280' },
@@ -78,7 +79,7 @@ const ManageArchivedCars = () => {
 
   return (
     <AdminLayout activePage="Manage Cars">
-      <Link to="/admin/manage-cars" style={s.backLink}>← Back to Manage Cars</Link>
+      <BackButton text="Back to Manage Cars" onClick={() => navigate('/admin/manage-cars')} />
       <h1 style={s.title}>Archived Cars</h1>
       <p style={s.subtitle}>Removed from listings but not deleted. Restore anytime, or delete permanently if it has no booking history.</p>
 

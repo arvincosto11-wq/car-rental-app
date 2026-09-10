@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
+import BackButton from '../../components/BackButton';
 import StarRating from '../../components/StarRating';
 import ClientRatingModal from '../../components/ClientRatingModal';
 import { SkeletonTableRows } from '../../components/Skeleton';
@@ -208,26 +209,15 @@ const ManageBookings = () => {
       background: isDark ? '#3a3b3c' : '#e5e7eb', color: isDark ? '#e4e6eb' : '#374151',
       fontSize: '11px', fontWeight: '700', borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
     },
-    // Same plain text-link style as the "← Back to Manage Bookings" links on
-    // Bookings Calendar / Rate Clients, so returning from this filter reads
-    // as a back action rather than another primary button.
-    rescheduleBackLink: {
-      display: 'inline-block', marginBottom: '12px',
-      padding: 0, fontSize: '13px', color: isDark ? GOLD_DARK : GOLD, fontWeight: '500',
-      background: 'none', border: 'none', textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-    },
   };
 
   return (
     <AdminLayout activePage="Manage Bookings">
       {!loading && rescheduleOnly && (
-        <button
-          type="button"
-          style={s.rescheduleBackLink}
+        <BackButton
+          text="Back to All Bookings"
           onClick={() => { setRescheduleOnly(false); setPage(1); }}
-        >
-          ← Back to All Bookings
-        </button>
+        />
       )}
       <div style={s.headerRow}>
         <div>

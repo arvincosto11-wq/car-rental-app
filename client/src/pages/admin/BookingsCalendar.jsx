@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
+import BackButton from '../../components/BackButton';
 import Skeleton from '../../components/Skeleton';
 import { useTheme } from '../../context/ThemeContext';
 import useModalA11y from '../../hooks/useModalA11y';
@@ -53,6 +54,7 @@ const CHIP_LIMIT = 2;
 const BookingsCalendar = () => {
   usePageTitle('Bookings Calendar');
   const { isDark } = useTheme();
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState(() => { const d = new Date(); d.setDate(1); return d; });
@@ -93,7 +95,6 @@ const BookingsCalendar = () => {
 
   const s = {
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
-    backLink: { fontSize: '13px', color: isDark ? GOLD_DARK : GOLD, textDecoration: 'none', fontWeight: '500' },
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginTop: '10px', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '18px' },
     navRow: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' },
@@ -130,7 +131,7 @@ const BookingsCalendar = () => {
 
   return (
     <AdminLayout activePage="Manage Bookings">
-      <Link to="/admin/manage-bookings" style={s.backLink}>← Back to Manage Bookings</Link>
+      <BackButton text="Back to Manage Bookings" onClick={() => navigate('/admin/manage-bookings')} />
       <div style={s.headerRow}>
         <div>
           <h1 style={s.title}>Bookings Calendar</h1>

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../../theme';
 import BookingSteps from '../../components/BookingSteps';
+import BackButton from '../../components/BackButton';
 import usePageTitle from '../../hooks/usePageTitle';
 
 const OTHER = '__other__';
@@ -170,7 +171,6 @@ const AddVehicle = () => {
     container: { maxWidth: '720px', margin: '0 auto', padding: '32px 16px' },
     title: { fontSize: '24px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '20px' },
-    backLink: { fontSize: '13px', color: isDark ? GOLD_DARK : GOLD, textDecoration: 'none', marginBottom: '16px', display: 'inline-block' },
     form: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', padding: '24px' },
     error: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
     row: { gap: '12px' },
@@ -208,7 +208,7 @@ const AddVehicle = () => {
   return (
     <div style={s.page}>
       <div style={s.container}>
-        <Link to="/consignor" style={s.backLink}>&larr; Back to My Vehicles</Link>
+        <BackButton text="Back to My Vehicles" onClick={() => navigate('/consignor')} />
         <h1 style={s.title}>Add Another Vehicle</h1>
         <p style={s.subtitle}>Submit another vehicle for consignment review.</p>
 

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
+import BackButton from '../../components/BackButton';
 import ClientRatingModal from '../../components/ClientRatingModal';
 import { SkeletonListCard } from '../../components/Skeleton';
 import usePageTitle from '../../hooks/usePageTitle';
@@ -11,6 +12,7 @@ import api from '../../api';
 const RateClients = () => {
   usePageTitle('Rate Clients');
   const { isDark } = useTheme();
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ratingModalId, setRatingModalId] = useState(null);
@@ -37,7 +39,6 @@ const RateClients = () => {
   };
 
   const s = {
-    backLink: { fontSize: '13px', color: isDark ? GOLD_DARK : GOLD, textDecoration: 'none', fontWeight: '500', display: 'inline-block', marginBottom: '12px' },
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
     empty: { textAlign: 'center', padding: '48px', color: isDark ? '#b0b3b8' : '#6b7280' },
@@ -63,7 +64,7 @@ const RateClients = () => {
 
   return (
     <AdminLayout activePage="Manage Bookings">
-      <Link to="/admin/manage-bookings" style={s.backLink}>← Back to Manage Bookings</Link>
+      <BackButton text="Back to Manage Bookings" onClick={() => navigate('/admin/manage-bookings')} />
       <h1 style={s.title}>Rate Clients</h1>
       <p style={s.subtitle}>Completed bookings where the client hasn't been rated yet.</p>
 
