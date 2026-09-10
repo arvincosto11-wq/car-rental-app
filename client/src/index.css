@@ -620,7 +620,11 @@ button.back-btn:not(:disabled):active {
   transform: translate(-50%, -50%);
 }
 .back-btn-label {
+  /* color alone (--text-secondary vs --text on the arrow) was too subtle
+     to read as two distinct colors — opacity on top makes it
+     unmistakably faded next to the solid-dark arrow. */
   color: var(--text-secondary);
+  opacity: 0.6;
   transition: opacity 200ms ease;
 }
 .back-btn:hover .back-btn-label {
