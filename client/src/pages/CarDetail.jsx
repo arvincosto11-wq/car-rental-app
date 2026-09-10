@@ -8,6 +8,7 @@ import Skeleton from '../components/Skeleton';
 import FavoriteButton from '../components/FavoriteButton';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import BookingSteps from '../components/BookingSteps';
+import FlowButton from '../components/FlowButton';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
@@ -724,9 +725,7 @@ const CarDetail = () => {
             {car.isAvailable !== false && (
               <>
                 <p style={s.fieldHint}>Pick your dates, choose a booking type, and confirm — takes about a minute.</p>
-                <button style={s.bookBtn} onClick={openBookingModal}>
-                  Book Now
-                </button>
+                <FlowButton text="Book Now" onClick={openBookingModal} style={{ width: '100%' }} />
                 <p style={s.noCC}>Paid securely via GCash</p>
               </>
             )}

@@ -15,6 +15,8 @@
   --input-text: #111827;
   --navbar-bg: #ffffff;
   --sidebar-bg: #ffffff;
+  --gold: #b8790a;
+  --on-gold: #17130e;
 }
 
 body {
@@ -39,6 +41,8 @@ body.dark {
   --input-text: #e4e6eb;
   --navbar-bg: #18191a;
   --sidebar-bg: #18191a;
+  --gold: #e8a100;
+  --on-gold: #17130e;
 }
 
 #root {
@@ -482,4 +486,74 @@ select:disabled {
   .navbar-mobile-menu.open {
     display: flex;
   }
+}
+
+/* FlowButton — ported from a Tailwind/shadcn component to plain CSS
+   (the animation is pure CSS transitions, no JS/Tailwind actually
+   required to reproduce it). Arrows slide in from the sides, a circle
+   expands from the center to fill the pill, text nudges over — all on
+   :hover via .group-style nesting under .flow-btn. */
+.flow-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow: hidden;
+  border-radius: 100px;
+  border: 1.5px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  background: transparent;
+  padding: 12px 32px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gold);
+  cursor: pointer;
+  transition: color 600ms cubic-bezier(0.23,1,0.32,1),
+              border-color 600ms cubic-bezier(0.23,1,0.32,1),
+              border-radius 600ms cubic-bezier(0.23,1,0.32,1);
+}
+.flow-btn:hover {
+  border-color: transparent;
+  border-radius: 12px;
+  color: var(--on-gold);
+}
+.flow-btn:active {
+  transform: scale(0.95);
+}
+.flow-btn-arrow {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  z-index: 2;
+  transition: left 800ms cubic-bezier(0.34,1.56,0.64,1), right 800ms cubic-bezier(0.34,1.56,0.64,1);
+}
+.flow-btn-arrow-left { left: -25%; }
+.flow-btn:hover .flow-btn-arrow-left { left: 16px; }
+.flow-btn-arrow-right { right: 16px; }
+.flow-btn:hover .flow-btn-arrow-right { right: -25%; }
+.flow-btn-text {
+  position: relative;
+  z-index: 1;
+  transform: translateX(-12px);
+  transition: transform 800ms ease;
+}
+.flow-btn:hover .flow-btn-text {
+  transform: translateX(12px);
+}
+.flow-btn-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--gold);
+  opacity: 0;
+  transition: width 800ms cubic-bezier(0.19,1,0.22,1), height 800ms cubic-bezier(0.19,1,0.22,1), opacity 800ms cubic-bezier(0.19,1,0.22,1);
+}
+.flow-btn:hover .flow-btn-circle {
+  width: 220px;
+  height: 220px;
+  opacity: 1;
 }
