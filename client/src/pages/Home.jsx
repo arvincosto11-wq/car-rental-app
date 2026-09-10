@@ -175,6 +175,16 @@ const Home = () => {
       maxWidth: '1200px',
       margin: '0 auto',
     },
+    // Negative margin pulls this up to overlap the hero's lower portion —
+    // there's enough clearance below the search box (60px hero padding +
+    // whatever's left of the 620px min-height) that this doesn't collide
+    // with it. zIndex above the hero's own image/overlay (both at 1-2).
+    carouselOverlap: {
+      position: 'relative',
+      zIndex: 3,
+      marginTop: '-170px',
+      marginBottom: '32px',
+    },
     sectionTitle: {
       fontSize: '28px',
       fontWeight: '700',
@@ -486,16 +496,18 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Featured Cars */}
+      {/* Featured Cars — pulled up to overlap the hero's lower portion
+          instead of sitting in its own section below it. */}
+      <div style={styles.carouselOverlap}>
+        <StackedCarCarousel isDark={isDark} />
+      </div>
       <div style={styles.section}>
         <h2 style={styles.sectionTitle}>Featured Vehicles</h2>
         <p style={styles.sectionSubtitle}>
           A look at some of our top-rated rides — browse the full fleet anytime.
         </p>
 
-        <StackedCarCarousel isDark={isDark} />
-
-        <div style={{ textAlign: 'center', marginTop: '32px' }}>
+        <div style={{ textAlign: 'center' }}>
           <button style={styles.viewAllBtn} onClick={() => navigate('/cars')}>
             Browse All Vehicles
           </button>
