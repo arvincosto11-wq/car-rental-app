@@ -615,7 +615,7 @@ button.back-btn:not(:disabled):active {
   left: 0;
   bottom: 0;
   z-index: 0;
-  width: 40%;
+  width: 26%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -632,7 +632,7 @@ button.back-btn:not(:disabled):active {
 .back-btn-label {
   position: relative;
   z-index: 1;
-  padding: 10px 20px 10px 76px;
+  padding: 10px 20px 10px 56px;
   transition: opacity 200ms ease;
 }
 .back-btn:hover .back-btn-label {
