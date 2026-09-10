@@ -576,19 +576,20 @@ select:disabled {
 
 /* BackButton — pilot on one spot (Car Detail's "Back to all cars")
    before rolling out to the app's other "← Back to..." links. "Hover
-   slide": the button itself stays put; the arrow slides right and the
-   label fades out, revealing just the arrow. */
+   slide": the button itself stays put; the arrow slides to dead center
+   and the label fades out, revealing just the arrow. The arrow is
+   absolutely positioned throughout (not just on hover) so left/transform
+   can transition smoothly between the two states — the padding-left
+   below reserves the room it needs at rest. */
 .back-btn {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
   margin-bottom: 20px;
-  padding: 8px 18px 8px 14px;
+  padding: 8px 18px 8px 38px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--card-bg);
-  color: var(--text);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -603,13 +604,23 @@ button.back-btn:not(:disabled):active {
   transform: none;
 }
 .back-btn-arrow {
-  flex-shrink: 0;
-  transition: transform 350ms cubic-bezier(0.23, 1, 0.32, 1);
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  /* muted, distinct from the label's stronger text color */
+  color: var(--text-secondary);
+  transform: translate(0, -50%);
+  transition: left 350ms cubic-bezier(0.23, 1, 0.32, 1),
+              transform 350ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .back-btn:hover .back-btn-arrow {
-  transform: translateX(70px);
+  /* left: 50% + translateX(-50%) centers it exactly, regardless of the
+     button's width — no guessed pixel offset to get wrong. */
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 .back-btn-label {
+  color: var(--text);
   transition: opacity 200ms ease;
 }
 .back-btn:hover .back-btn-label {
