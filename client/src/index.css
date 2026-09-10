@@ -592,10 +592,23 @@ select:disabled {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+}
+/* Opts out of the global button lift/shadow (see button:hover above) the
+   same way .icon-toggle-btn does — that rule's transform: translateY(-2px)
+   has higher specificity than a plain .back-btn:hover would, so it was
+   silently winning and replacing the intended slide with a lift instead. */
+button.back-btn:not(:disabled) {
   transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
 }
-.back-btn:hover {
+button.back-btn:not(:disabled):hover {
+  filter: none;
+  box-shadow: none;
   transform: translateX(6px);
+}
+button.back-btn:not(:disabled):active {
+  filter: none;
+  box-shadow: none;
+  transform: translateX(6px) scale(0.97);
 }
 .back-btn svg {
   flex-shrink: 0;
