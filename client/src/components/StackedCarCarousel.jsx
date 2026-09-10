@@ -34,6 +34,19 @@ const StackedCarCarousel = ({ isDark }) => {
     setIndex((i) => (i + 1) % cars.length);
   }, [cars.length]);
 
+  // Front card navigates to its detail page. A side card instead rotates
+  // itself into the front position — found by its real index in `cars`,
+  // not a relative step, so it works the same whether it was on the left
+  // or the right.
+  const handleCardClick = (car, slot) => {
+    if (slot === 0) {
+      navigate(`/cars/${car._id}`);
+      return;
+    }
+    const targetIndex = cars.findIndex((c) => c._id === car._id);
+    if (targetIndex !== -1) setIndex(targetIndex);
+  };
+
   useEffect(() => {
     if (cars.length < 2 || paused) return;
     const timer = setInterval(advance, HOLD_MS);
@@ -105,11 +118,11 @@ const StackedCarCarousel = ({ isDark }) => {
                 exit={{ opacity: 0, scale: 0.75, x: '0%', y: 30 }}
                 transition={{ duration: 0.7, ease: 'easeInOut' }}
                 style={{ ...s.card, zIndex: target.zIndex }}
-                onClick={() => slot === 0 && navigate(`/cars/${car._id}`)}
-                role={slot === 0 ? 'link' : undefined}
-                tabIndex={slot === 0 ? 0 : -1}
-                aria-label={slot === 0 ? `View ${car.brand} ${car.model} details` : undefined}
-                onKeyDown={(e) => { if (slot === 0 && e.key === 'Enter') navigate(`/cars/${car._id}`); }}
+                onClick={() => handleCardClick(car, slot)}
+                role={slot === 0 ? 'link' : 'button'}
+                tabIndex={0}
+                aria-label={slot === 0 ? `View ${car.brand} ${car.model} details` : `Bring ${car.brand} ${car.model} to the front`}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleCardClick(car, slot); }}
               >
                 <div style={s.imgWrap}>
                   {car.image && <img src={car.image} alt="" style={s.img} />}
