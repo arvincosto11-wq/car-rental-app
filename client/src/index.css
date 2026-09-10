@@ -576,20 +576,22 @@ select:disabled {
 
 /* BackButton — pilot on one spot (Car Detail's "Back to all cars")
    before rolling out to the app's other "← Back to..." links. "Hover
-   slide": the button itself stays put; the arrow slides to dead center
-   and the label fades out, revealing just the arrow. The arrow is
-   absolutely positioned throughout (not just on hover) so left/transform
-   can transition smoothly between the two states — the padding-left
-   below reserves the room it needs at rest. */
+   slide": the button itself stays put; the arrow — sitting in its own
+   small rounded-square chip, background distinct from the button's own
+   pill background — slides to dead center, and the label fades out.
+   The chip is absolutely positioned throughout (not just on hover) so
+   left/transform can transition smoothly — the padding-left below
+   reserves the room it needs at rest. */
 .back-btn {
   position: relative;
   display: flex;
   align-items: center;
   margin-bottom: 20px;
-  padding: 8px 18px 8px 38px;
+  padding: 8px 18px 8px 44px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--card-bg);
+  color: var(--text);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -605,10 +607,15 @@ button.back-btn:not(:disabled):active {
 }
 .back-btn-arrow {
   position: absolute;
-  left: 14px;
+  left: 6px;
   top: 50%;
-  /* darker than the label, not lighter */
-  color: var(--text);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--border);
   transform: translate(0, -50%);
   transition: left 350ms cubic-bezier(0.23, 1, 0.32, 1),
               transform 350ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -620,11 +627,6 @@ button.back-btn:not(:disabled):active {
   transform: translate(-50%, -50%);
 }
 .back-btn-label {
-  /* color alone (--text-secondary vs --text on the arrow) was too subtle
-     to read as two distinct colors — opacity on top makes it
-     unmistakably faded next to the solid-dark arrow. */
-  color: var(--text-secondary);
-  opacity: 0.6;
   transition: opacity 200ms ease;
 }
 .back-btn:hover .back-btn-label {
