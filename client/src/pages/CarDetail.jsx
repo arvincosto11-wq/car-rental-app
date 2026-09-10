@@ -725,7 +725,9 @@ const CarDetail = () => {
             {car.isAvailable !== false && (
               <>
                 <p style={s.fieldHint}>Pick your dates, choose a booking type, and confirm — takes about a minute.</p>
-                <FlowButton text="Book Now" onClick={openBookingModal} style={{ width: '100%' }} />
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <FlowButton text="Book Now" onClick={openBookingModal} />
+                </div>
                 <p style={s.noCC}>Paid securely via GCash</p>
               </>
             )}

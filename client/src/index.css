@@ -488,16 +488,14 @@ select:disabled {
   }
 }
 
-/* FlowButton — ported from a Tailwind/shadcn component to plain CSS (the
-   animation is pure CSS transitions, no JS/Tailwind actually required to
-   reproduce it). Transparent at rest; on hover, .flow-btn-fill grows from
-   a point at the center out to fully cover the button (scale 0 -> 1),
-   which reads as the gold color flowing outward from the middle. Unlike
-   the source's fixed-size expanding circle (max 220px, which left a
-   wide button's corners unfilled), this scales the fill itself rather
-   than a shape with a hardcoded max size, so it always fully covers
-   regardless of the button's width. Arrows slide in from the sides and
-   the text nudges over on hover too. */
+/* FlowButton — ported 1:1 from the Tailwind/shadcn source's own numbers
+   (16px circle -> 220px, same durations/easings), just as plain CSS and
+   gold-skinned. Earlier attempts tried to make the fill work at any
+   button width, which fought the design: the source's 220px circle only
+   ever needs to cover a compact, content-width pill, never a stretched
+   full-width button — so this button is NOT stretched (see FlowButton
+   usage in CarDetail.jsx, centered rather than width:100%) and the
+   circle math matches the source exactly. */
 .flow-btn {
   position: relative;
   display: inline-flex;
@@ -513,7 +511,9 @@ select:disabled {
   font-weight: 600;
   color: var(--gold);
   cursor: pointer;
-  transition: color 450ms ease, border-color 450ms ease, border-radius 450ms ease;
+  transition: color 600ms cubic-bezier(0.23,1,0.32,1),
+              border-color 600ms cubic-bezier(0.23,1,0.32,1),
+              border-radius 600ms cubic-bezier(0.23,1,0.32,1);
 }
 .flow-btn:hover {
   border-color: transparent;
@@ -523,23 +523,25 @@ select:disabled {
 .flow-btn:active {
   transform: scale(0.95);
 }
-/* left/right animate in from the center (both start at 50%, meeting in
-   the middle at zero width) out to 0/0 — i.e. exactly the button's own
-   edges, by construction, at any width. No shape/scale math to get
-   wrong: at the end of the transition this *is* the button's full box. */
 .flow-btn-fill {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: 50%;
   left: 50%;
-  right: 50%;
+  transform: translate(-50%, -50%);
   z-index: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
   background: var(--gold);
-  transition: left 500ms cubic-bezier(0.19,1,0.22,1), right 500ms cubic-bezier(0.19,1,0.22,1);
+  opacity: 0;
+  transition: width 800ms cubic-bezier(0.19,1,0.22,1),
+              height 800ms cubic-bezier(0.19,1,0.22,1),
+              opacity 800ms cubic-bezier(0.19,1,0.22,1);
 }
 .flow-btn:hover .flow-btn-fill {
-  left: 0;
-  right: 0;
+  width: 220px;
+  height: 220px;
+  opacity: 1;
 }
 .flow-btn-arrow {
   position: absolute;
@@ -548,14 +550,10 @@ select:disabled {
   z-index: 2;
   transition: left 800ms cubic-bezier(0.34,1.56,0.64,1), right 800ms cubic-bezier(0.34,1.56,0.64,1);
 }
-/* Fixed px, not %, on purpose — a percentage here scales with the
-   button's own width, so it looks right on a compact pill but breaks
-   badly (arrow parked way outside overflow:hidden's clip) once the
-   button is stretched wide, like the full-width "Book Now" usage. */
-.flow-btn-arrow-left { left: -32px; }
+.flow-btn-arrow-left { left: -25%; }
 .flow-btn:hover .flow-btn-arrow-left { left: 16px; }
 .flow-btn-arrow-right { right: 16px; }
-.flow-btn:hover .flow-btn-arrow-right { right: -32px; }
+.flow-btn:hover .flow-btn-arrow-right { right: -25%; }
 .flow-btn-text {
   position: relative;
   z-index: 1;
