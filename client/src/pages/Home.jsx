@@ -175,14 +175,13 @@ const Home = () => {
       maxWidth: '1200px',
       margin: '0 auto',
     },
-    // Negative margin pulls this up to overlap the hero's lower portion —
-    // there's enough clearance below the search box (60px hero padding +
-    // whatever's left of the 620px min-height) that this doesn't collide
-    // with it. zIndex above the hero's own image/overlay (both at 1-2).
+    // Negative margin pulls this up to overlap the hero's lower portion.
+    // zIndex above the hero's own image/overlay (both at 1-2). -170px sat
+    // too close under the search bar; backed off to give more clearance.
     carouselOverlap: {
       position: 'relative',
       zIndex: 3,
-      marginTop: '-170px',
+      marginTop: '-90px',
       marginBottom: '32px',
     },
     sectionTitle: {
