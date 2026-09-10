@@ -573,3 +573,30 @@ select:disabled {
 .flow-btn:hover .flow-btn-text {
   transform: translateX(12px);
 }
+
+/* BackButton — pilot on one spot (Car Detail's "Back to all cars")
+   before rolling out to the app's other "← Back to..." links. Simple on
+   purpose: the whole pill nudges right on hover, nothing else — no
+   color/text change, unlike the earlier reference image, since a
+   restrained version is safer to validate first. */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 8px 18px 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.back-btn:hover {
+  transform: translateX(6px);
+}
+.back-btn svg {
+  flex-shrink: 0;
+}

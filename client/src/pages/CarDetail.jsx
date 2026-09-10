@@ -9,6 +9,7 @@ import FavoriteButton from '../components/FavoriteButton';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import BookingSteps from '../components/BookingSteps';
 import FlowButton from '../components/FlowButton';
+import BackButton from '../components/BackButton';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
@@ -633,9 +634,7 @@ const CarDetail = () => {
       </AnimatePresence>
 
       <div style={s.container}>
-        <button style={s.backBtn} onClick={() => navigate('/cars')}>
-          ← Back to all cars
-        </button>
+        <BackButton text="Back to all cars" onClick={() => navigate('/cars')} />
 
         <div className="car-detail-layout" style={s.layout}>
           {/* Left */}
