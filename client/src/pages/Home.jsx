@@ -497,7 +497,7 @@ const Home = () => {
 
       {/* Featured Cars — pulled up to overlap the hero's lower portion
           instead of sitting in its own section below it. */}
-      <div style={styles.carouselOverlap}>
+      <div className="carousel-overlap" style={styles.carouselOverlap}>
         <StackedCarCarousel isDark={isDark} />
       </div>
       <div style={styles.section}>

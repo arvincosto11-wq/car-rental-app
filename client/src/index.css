@@ -386,6 +386,18 @@ select:disabled {
   .hero-search-field { border-right: none !important; border-bottom: 1px solid var(--border); }
 }
 
+/* The carousel's negative margin-top (see Home.jsx) was tuned to overlap
+   the hero's short, single-row desktop search box. Below 560px the search
+   box above (.hero-search-box) stacks into a much taller column, so the
+   same negative overlap now pulls the carousel up into it instead of just
+   the hero's empty lower padding. Cancelling the overlap here removes the
+   collision without touching the desktop value it was tuned against. */
+@media (max-width: 560px) {
+  .carousel-overlap {
+    margin-top: 16px !important;
+  }
+}
+
 .booking-card {
   display: flex;
 }
@@ -643,4 +655,35 @@ button.back-btn:not(:disabled):active {
 }
 .back-btn:hover .back-btn-label {
   opacity: 0;
+}
+/* Touch devices have no reliable :hover state, so below this width the
+   sliding-panel reveal above would either never play or get stuck
+   half-triggered after a tap — reported as "no animation" and text
+   overlapping the arrow. Swap to a plain static arrow + label with no
+   reveal to animate, rather than chase a hover effect touch can't do.
+   Desktop's hover styles above are untouched. */
+@media (max-width: 560px) {
+  .back-btn-arrow {
+    position: static;
+    width: auto;
+    height: auto;
+    background: transparent;
+    color: var(--text);
+    margin-right: 8px;
+    transition: none;
+  }
+  .back-btn:hover .back-btn-arrow,
+  .back-btn:active .back-btn-arrow {
+    width: auto;
+  }
+  .back-btn {
+    padding-left: 16px;
+  }
+  .back-btn-label {
+    padding: 10px 18px 10px 0;
+  }
+  .back-btn:hover .back-btn-label,
+  .back-btn:active .back-btn-label {
+    opacity: 1;
+  }
 }
