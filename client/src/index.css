@@ -432,22 +432,22 @@ select:disabled {
    Detail's booking flow, just forced into the horizontal-row treatment
    unconditionally instead of only under 700px, since the split-panel
    layout only leaves a form-width column for it, never a tall sidebar. */
-.register-steps-shell .booking-steps-list {
+.wizard-steps-shell .booking-steps-list {
   flex-direction: row !important;
   justify-content: space-between;
   margin-bottom: 28px;
 }
-.register-steps-shell .booking-step-item-wrap {
+.wizard-steps-shell .booking-step-item-wrap {
   flex: 1;
   position: relative;
 }
-.register-steps-shell .booking-step-row {
+.wizard-steps-shell .booking-step-row {
   flex-direction: column;
   gap: 6px;
   position: relative;
   z-index: 1;
 }
-.register-steps-shell .booking-step-label {
+.wizard-steps-shell .booking-step-label {
   font-size: 11px !important;
   text-align: center;
 }
@@ -458,7 +458,7 @@ select:disabled {
    it's pushed out by the circle's radius (14px, half of the 28px circle)
    on both ends, leaving it spanning only the gap between the two circles,
    never their footprint, regardless of z-index/fill. */
-.register-steps-shell .booking-step-connector {
+.wizard-steps-shell .booking-step-connector {
   display: block;
   position: absolute;
   top: 14px;

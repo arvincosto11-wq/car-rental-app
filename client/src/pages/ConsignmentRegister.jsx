@@ -9,11 +9,20 @@ import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 import LocationAddressFields from '../components/LocationAddressFields';
 import PasswordInput from '../components/PasswordInput';
 import BookingSteps from '../components/BookingSteps';
+import AuthBrandPanel from '../components/AuthBrandPanel';
 import usePageTitle from '../hooks/usePageTitle';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const OTHER = '__other__';
 const CONSIGN_STEPS = ['Your Information', 'Vehicle Details', 'Documents'];
+
+// Shown on the branding panel, swapped per step via AuthBrandPanel's own
+// crossfade — keyed by step number so it matches CONSIGN_STEPS above.
+const CONSIGN_TAGLINES = {
+  1: 'Tell us about you and upload your ID for verification.',
+  2: "Add your vehicle's details and your suggested price.",
+  3: 'Upload your documents and vehicle photos to finish.',
+};
 
 const ConsignmentRegister = () => {
   usePageTitle('Apply for Consignment');
@@ -210,12 +219,33 @@ const ConsignmentRegister = () => {
       padding: '40px 16px',
     },
     card: {
-      background: isDark ? '#242526' : '#fff',
-      padding: '40px',
-      borderRadius: '12px',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      display: 'flex',
       width: '100%',
-      maxWidth: '720px',
+      maxWidth: '1040px',
+      borderRadius: '20px',
+      overflow: 'hidden',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.08)',
+    },
+    panel: {
+      position: 'relative',
+      width: '36%',
+      flexShrink: 0,
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '40px',
+      background: isDark
+        ? 'linear-gradient(160deg, #242526 0%, #18191a 100%)'
+        : 'linear-gradient(160deg, #faedc7 0%, #fff 100%)',
+      borderRight: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    formSide: {
+      flex: 1,
+      minWidth: 0,
+      padding: '40px',
+      background: isDark ? '#242526' : '#fff',
     },
     title: { fontSize: '24px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px' },
@@ -287,7 +317,12 @@ const ConsignmentRegister = () => {
 
   return (
     <div style={styles.container}>
-      <div style={styles.card}>
+      <div className="login-card" style={styles.card}>
+        <div className="login-map-panel" style={styles.panel}>
+          <AuthBrandPanel tagline={CONSIGN_TAGLINES[step]} />
+        </div>
+
+        <div style={styles.formSide}>
         <h1 style={styles.title}>Apply for Consignment</h1>
         <p style={styles.subtitle}>List your vehicle with us and start earning. Fill out your details and your vehicle's information below.</p>
 
@@ -298,7 +333,7 @@ const ConsignmentRegister = () => {
         {error && <div style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          <div className="booking-steps-shell">
+          <div className="wizard-steps-shell">
             <BookingSteps steps={CONSIGN_STEPS} currentStep={step} onStepClick={goToStep} isDark={isDark} />
 
             <div>
@@ -582,6 +617,7 @@ const ConsignmentRegister = () => {
         <p style={styles.footer}>
           Already applied? <Link to="/login" style={styles.footerLink}>Login</Link>
         </p>
+        </div>
       </div>
     </div>
   );

@@ -404,7 +404,7 @@ const Register = () => {
         {error && <div style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          <div className="register-steps-shell">
+          <div className="wizard-steps-shell">
             <BookingSteps steps={REGISTER_STEPS} currentStep={step} onStepClick={goToStep} isDark={isDark} />
 
             <div>
