@@ -9,6 +9,7 @@ import LocationAddressFields from '../components/LocationAddressFields';
 import PasswordInput from '../components/PasswordInput';
 import OtpInput from '../components/OtpInput';
 import BookingSteps from '../components/BookingSteps';
+import AuthBrandPanel from '../components/AuthBrandPanel';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
 
@@ -28,6 +29,15 @@ const validators = {
 // registration, and the account is only ever created once it's confirmed,
 // never from just an email on its own.
 const REGISTER_STEPS = ['Account', 'Contact & ID', 'Emergency Contact', 'Verify Email'];
+
+// Shown on the branding panel, swapped per step via AuthBrandPanel's own
+// crossfade — keyed by step number so it matches REGISTER_STEPS above.
+const REGISTER_TAGLINES = {
+  1: 'Sign up to get started — it only takes a minute.',
+  2: 'Add your contact details and ID for a smoother pickup.',
+  3: 'One quick emergency contact and you’re almost done.',
+  4: 'Just confirm your email and your account is ready.',
+};
 
 const Register = () => {
   usePageTitle('Register');
@@ -214,12 +224,33 @@ const Register = () => {
       padding: '40px 16px',
     },
     card: {
-      background: isDark ? '#242526' : '#fff',
-      padding: '40px',
-      borderRadius: '12px',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      display: 'flex',
       width: '100%',
-      maxWidth: '560px',
+      maxWidth: '1000px',
+      borderRadius: '20px',
+      overflow: 'hidden',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.08)',
+    },
+    panel: {
+      position: 'relative',
+      width: '38%',
+      flexShrink: 0,
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '40px',
+      background: isDark
+        ? 'linear-gradient(160deg, #242526 0%, #18191a 100%)'
+        : 'linear-gradient(160deg, #faedc7 0%, #fff 100%)',
+      borderRight: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    formSide: {
+      flex: 1,
+      minWidth: 0,
+      padding: '40px',
+      background: isDark ? '#242526' : '#fff',
     },
     title: {
       fontSize: '24px',
@@ -357,7 +388,12 @@ const Register = () => {
 
   return (
     <div style={styles.container}>
-      <div style={styles.card}>
+      <div className="login-card" style={styles.card}>
+        <div className="login-map-panel" style={styles.panel}>
+          <AuthBrandPanel tagline={REGISTER_TAGLINES[step]} />
+        </div>
+
+        <div style={styles.formSide}>
         <h1 style={styles.title}>Create account</h1>
         <p style={styles.subtitle}>Sign up to get started</p>
 
@@ -368,7 +404,7 @@ const Register = () => {
         {error && <div style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          <div className="booking-steps-shell">
+          <div className="register-steps-shell">
             <BookingSteps steps={REGISTER_STEPS} currentStep={step} onStepClick={goToStep} isDark={isDark} />
 
             <div>
@@ -600,6 +636,7 @@ const Register = () => {
           Already have an account?{' '}
           <Link to="/login" style={styles.footerLink}>Login</Link>
         </p>
+        </div>
       </div>
     </div>
   );

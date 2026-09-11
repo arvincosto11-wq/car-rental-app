@@ -428,6 +428,30 @@ select:disabled {
   .login-card { max-width: 460px !important; }
 }
 
+/* Register's step indicator — same BookingSteps component/markup as Car
+   Detail's booking flow, just forced into the horizontal-row treatment
+   unconditionally instead of only under 700px, since the split-panel
+   layout only leaves a form-width column for it, never a tall sidebar. */
+.register-steps-shell .booking-steps-list {
+  flex-direction: row !important;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+.register-steps-shell .booking-step-item-wrap {
+  flex: 1;
+}
+.register-steps-shell .booking-step-row {
+  flex-direction: column;
+  gap: 6px;
+}
+.register-steps-shell .booking-step-label {
+  font-size: 11px !important;
+  text-align: center;
+}
+.register-steps-shell .booking-step-connector {
+  display: none;
+}
+
 .table-scroll {
   width: 100%;
   overflow-x: auto;
