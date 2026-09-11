@@ -424,8 +424,6 @@ const Register = () => {
         <h1 style={styles.title}>Create account</h1>
         <p style={styles.subtitle}>Sign up to get started</p>
 
-        {error && <div style={styles.error}>{error}</div>}
-
         <div style={styles.consignmentNotice}>
           🚗 Have a car to rent out? <Link to="/consignment/register" style={styles.consignmentLink}>Apply for consignment</Link> instead.
         </div>
@@ -435,6 +433,7 @@ const Register = () => {
             <BookingSteps steps={REGISTER_STEPS} currentStep={step} onStepClick={goToStep} isDark={isDark} />
 
             <div>
+              {error && <div style={styles.error}>{error}</div>}
               <AnimatePresence mode="wait">
                 {step === 1 && (
                   <motion.div key="step1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>

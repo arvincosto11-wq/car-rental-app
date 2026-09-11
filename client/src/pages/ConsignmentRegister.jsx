@@ -348,8 +348,6 @@ const ConsignmentRegister = () => {
         <h1 style={styles.title}>Apply for Consignment</h1>
         <p style={styles.subtitle}>List your vehicle with us and start earning. Fill out your details and your vehicle's information below.</p>
 
-        {error && <div style={styles.error}>{error}</div>}
-
         <div style={styles.notice}>
           Just want to rent a car instead? <Link to="/register" style={styles.noticeLink}>Register as a client</Link>.
         </div>
@@ -359,6 +357,7 @@ const ConsignmentRegister = () => {
             <BookingSteps steps={CONSIGN_STEPS} currentStep={step} onStepClick={goToStep} isDark={isDark} />
 
             <div>
+              {error && <div style={styles.error}>{error}</div>}
               <AnimatePresence mode="wait">
                 {step === 1 && (
                   <motion.div key="step1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
