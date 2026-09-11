@@ -34,6 +34,17 @@ const carSchema = new mongoose.Schema({
   // this set, the carousel falls back to auto-picking top-rated cars
   // instead — see GET /cars/featured.
   featured: { type: Boolean, default: false },
+  // Last known position reported by this car's physical GPS tracker.
+  // updatedAt stays null until a real device actually reports in — the
+  // GPS Tracking dashboard fills the gap with a deterministic placeholder
+  // position until then, see GET /cars/gps-fleet.
+  gps: {
+    lat: { type: Number },
+    lng: { type: Number },
+    speed: { type: Number },
+    ignitionOn: { type: Boolean },
+    updatedAt: { type: Date, default: null },
+  },
   availabilityRequest: {
     status: { type: String, enum: ['none', 'pending', 'declined'], default: 'none' },
     // Which direction this request is asking for — a consignor needs admin

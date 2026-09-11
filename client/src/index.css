@@ -413,6 +413,13 @@ select:disabled {
   }
 }
 
+.gps-layout {
+  display: grid;
+}
+@media (max-width: 800px) {
+  .gps-layout { grid-template-columns: 1fr !important; }
+}
+
 .table-scroll {
   width: 100%;
   overflow-x: auto;

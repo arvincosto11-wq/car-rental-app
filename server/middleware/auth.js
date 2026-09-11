@@ -26,3 +26,10 @@ export const consignorOnly = (req, res, next) => {
   }
   next();
 };
+
+export const adminOrConsignor = (req, res, next) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'consignor') {
+    return res.status(403).json({ message: 'Admin or consignor access only' });
+  }
+  next();
+};

@@ -2,7 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import Car from '../models/Car.js';
 import Booking from '../models/Booking.js';
-import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
+import { protect, adminOnly, consignorOnly, adminOrConsignor } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 
 const router = express.Router();
@@ -322,6 +322,51 @@ router.get('/featured', async (req, res) => {
     }
 
     res.json(cars);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Legazpi City center — placeholder fleet positions (see mockGps below)
+// are scattered around here until a real tracker reports in.
+const LEGAZPI_LAT = 13.1391;
+const LEGAZPI_LNG = 123.7438;
+
+// No real device has reported for this car yet — derive a stable, spread-
+// out placeholder position from its own id instead of a random one, so it
+// doesn't jump around between requests or stack every car on one point.
+// isMock lets the dashboard label these as "not yet connected".
+function mockGps(carId) {
+  const hash = parseInt(carId.toString().slice(-6), 16);
+  const latOffset = ((hash % 1000) / 1000 - 0.5) * 0.06;
+  const lngOffset = (((hash >> 4) % 1000) / 1000 - 0.5) * 0.06;
+  return {
+    lat: LEGAZPI_LAT + latOffset,
+    lng: LEGAZPI_LNG + lngOffset,
+    speed: 0,
+    ignitionOn: false,
+    updatedAt: null,
+    isMock: true,
+  };
+}
+
+// Fleet positions for the GPS Tracking dashboard — admin sees every listed
+// car, a consignor only their own. Cars whose tracker hasn't reported yet
+// (gps.updatedAt is null) get a mockGps placeholder so the dashboard always
+// has something to plot, clearly marked isMock for the UI to flag.
+router.get('/gps-fleet', protect, adminOrConsignor, async (req, res) => {
+  try {
+    const filter = { archived: { $ne: true } };
+    if (req.user.role === 'consignor') filter.owner = req.user.id;
+
+    const cars = await Car.find(filter).select('brand model plateNumber image gps owner');
+    const withGps = cars.map((car) => {
+      const obj = req.user.role === 'admin' ? car.toObject() : hidePlateNumber(car);
+      obj.gps = car.gps?.updatedAt ? { ...car.gps.toObject(), isMock: false } : mockGps(car._id);
+      return obj;
+    });
+
+    res.json(withGps);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

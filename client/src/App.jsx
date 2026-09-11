@@ -38,8 +38,10 @@ const ManageConsignments = lazy(() => import('./pages/admin/ManageConsignments')
 const ManageAvailabilityRequests = lazy(() => import('./pages/admin/ManageAvailabilityRequests'));
 const RateClients = lazy(() => import('./pages/admin/RateClients'));
 const ManageReviews = lazy(() => import('./pages/admin/ManageReviews'));
+const GpsTracking = lazy(() => import('./pages/admin/GpsTracking'));
 const ConsignorDashboard = lazy(() => import('./pages/consignor/ConsignorDashboard'));
 const AddVehicle = lazy(() => import('./pages/consignor/AddVehicle'));
+const ConsignorGpsTracking = lazy(() => import('./pages/consignor/GpsTracking'));
 
 const PageLoading = () => (
   <div style={{ padding: '60px', textAlign: 'center', color: '#b0b3b8', fontSize: '14px' }}>
@@ -121,6 +123,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/consignor/gps-tracking"
+              element={
+                <ProtectedRoute allowedRoles={['consignor']}>
+                  <><Navbar /><ConsignorGpsTracking /></>
+                </ProtectedRoute>
+              }
+            />
 
             {/* Admin-only Routes (AdminLayout renders its own top bar/sidebar) */}
             <Route
@@ -152,6 +162,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <ManageCars />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/gps-tracking"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <GpsTracking />
                 </ProtectedRoute>
               }
             />

@@ -208,6 +208,8 @@ const ConsignorDashboard = () => {
     title: { fontSize: '28px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280' },
     addBtn: { padding: '10px 20px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', textDecoration: 'none', whiteSpace: 'nowrap' },
+    headerBtnGroup: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
+    gpsBtn: { padding: '10px 20px', background: 'transparent', color: isDark ? '#e4e6eb' : '#1a1a1a', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', textDecoration: 'none', whiteSpace: 'nowrap' },
     statsRow: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px', marginBottom: '28px' },
     statCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', padding: '18px' },
     statLabel: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px' },
@@ -299,7 +301,10 @@ const ConsignorDashboard = () => {
             <h1 style={s.title}>My Vehicles</h1>
             <p style={s.subtitle}>Track the status of your consignment applications.</p>
           </div>
-          <Link className="btn-like" to="/consignor/add-vehicle" style={s.addBtn}>+ Add Another Vehicle</Link>
+          <div style={s.headerBtnGroup}>
+            <Link className="btn-like" to="/consignor/gps-tracking" style={s.gpsBtn}>GPS Tracking</Link>
+            <Link className="btn-like" to="/consignor/add-vehicle" style={s.addBtn}>+ Add Another Vehicle</Link>
+          </div>
         </div>
 
         <div style={s.statsRow}>

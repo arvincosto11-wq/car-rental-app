@@ -19,6 +19,7 @@ const DashboardIcon = () => <NavIcon><rect x="3" y="3" width="7" height="7" rx="
 const AnalyticsIcon = () => <NavIcon><line x1="4" y1="20" x2="4" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="20" y1="20" x2="20" y2="14" /></NavIcon>;
 const AddVehicleIcon = () => <NavIcon><circle cx="12" cy="12" r="9" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></NavIcon>;
 const CarIcon = () => <NavIcon><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11" /><rect x="3" y="11" width="18" height="6" rx="2" /><circle cx="7.5" cy="17" r="1.3" /><circle cx="16.5" cy="17" r="1.3" /></NavIcon>;
+const GpsIcon = () => <NavIcon><path d="M12 21s7-6.4 7-12a7 7 0 0 0-14 0c0 5.6 7 12 7 12z" /><circle cx="12" cy="9" r="2.5" /></NavIcon>;
 const BookingsIcon = () => <NavIcon><rect x="3" y="4" width="18" height="17" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /></NavIcon>;
 const ClientsIcon = () => <NavIcon><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><circle cx="17.5" cy="9" r="2.3" /><path d="M15.5 14.3c2.3.5 3.8 2.6 3.8 5.7" /></NavIcon>;
 const ConsignmentsIcon = () => <NavIcon><path d="M3 12l3-7h12l3 7" /><path d="M3 12v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6" /><path d="M3 12h5l1 3h6l1-3h5" /></NavIcon>;
@@ -57,6 +58,7 @@ const AdminLayout = ({ children, activePage }) => {
     { to: '/admin/analytics', label: 'Analytics', Icon: AnalyticsIcon },
     { to: '/admin/add-car', label: 'Add Vehicle', Icon: AddVehicleIcon },
     { to: '/admin/manage-cars', label: 'Manage Cars', Icon: CarIcon },
+    { to: '/admin/gps-tracking', label: 'GPS Tracking', Icon: GpsIcon },
     { to: '/admin/manage-bookings', label: 'Manage Bookings', Icon: BookingsIcon },
     { to: '/admin/manage-clients', label: 'Manage Clients', Icon: ClientsIcon },
     { to: '/admin/manage-consignments', label: 'Manage Consignments', Icon: ConsignmentsIcon },
