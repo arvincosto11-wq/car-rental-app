@@ -25,7 +25,7 @@ const ValidIdUpload = ({
           onChange={(e) => onIdTypeChange(e.target.value)}
           required={required}
         >
-          <option value="">Select the ID you'll use</option>
+          <option value="" disabled hidden>Select the ID you'll use</option>
           {VALID_ID_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       </div>

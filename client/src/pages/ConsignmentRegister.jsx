@@ -348,11 +348,11 @@ const ConsignmentRegister = () => {
         <h1 style={styles.title}>Apply for Consignment</h1>
         <p style={styles.subtitle}>List your vehicle with us and start earning. Fill out your details and your vehicle's information below.</p>
 
+        {error && <div style={styles.error}>{error}</div>}
+
         <div style={styles.notice}>
           Just want to rent a car instead? <Link to="/register" style={styles.noticeLink}>Register as a client</Link>.
         </div>
-
-        {error && <div style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="wizard-steps-shell">

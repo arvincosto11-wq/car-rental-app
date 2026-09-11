@@ -424,11 +424,11 @@ const Register = () => {
         <h1 style={styles.title}>Create account</h1>
         <p style={styles.subtitle}>Sign up to get started</p>
 
+        {error && <div style={styles.error}>{error}</div>}
+
         <div style={styles.consignmentNotice}>
           🚗 Have a car to rent out? <Link to="/consignment/register" style={styles.consignmentLink}>Apply for consignment</Link> instead.
         </div>
-
-        {error && <div style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="wizard-steps-shell">
