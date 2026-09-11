@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { GOLD, GOLD_DARK } from '../theme';
+import Skeleton from './Skeleton';
 import api from '../api';
 
 const STACK_SIZE = 3;
@@ -21,6 +22,7 @@ const slotStyle = (slot) => {
 const StackedCarCarousel = ({ isDark }) => {
   const navigate = useNavigate();
   const [cars, setCars] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const wrapRef = useRef(null);
@@ -29,7 +31,8 @@ const StackedCarCarousel = ({ isDark }) => {
   useEffect(() => {
     api.get('/cars/featured')
       .then((res) => setCars(res.data))
-      .catch((err) => console.error(err));
+      .catch((err) => console.error(err))
+      .finally(() => setLoading(false));
   }, []);
 
   const advance = useCallback(() => {
@@ -80,6 +83,27 @@ const StackedCarCarousel = ({ isDark }) => {
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
   }, [cars.length, advance, retreat]);
+
+  // Matches the real card's own position/size (left: 23%, width: 54% of
+  // wrap) so the skeleton sits exactly where the front card will appear —
+  // no layout shift once the real data (or a cold-started backend
+  // response) finally arrives.
+  if (loading) {
+    return (
+      <div style={{ overflow: 'hidden', padding: '10px 0' }}>
+        <div style={{ position: 'relative', width: 'min(960px, 96vw)', height: '460px', margin: '0 auto' }}>
+          <div style={{ position: 'absolute', top: 0, left: '23%', width: '54%' }}>
+            <Skeleton height="290px" radius="18px 18px 0 0" isDark={isDark} />
+            <div style={{ padding: '22px 24px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderTop: 'none', borderRadius: '0 0 18px 18px' }}>
+              <Skeleton width="70%" height="22px" isDark={isDark} style={{ marginBottom: '10px' }} />
+              <Skeleton width="45%" height="14px" isDark={isDark} style={{ marginBottom: '14px' }} />
+              <Skeleton width="35%" height="19px" isDark={isDark} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (cars.length === 0) return null;
 
