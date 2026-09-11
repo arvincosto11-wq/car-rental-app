@@ -10,6 +10,8 @@ import LocationAddressFields from '../components/LocationAddressFields';
 import PasswordInput from '../components/PasswordInput';
 import BookingSteps from '../components/BookingSteps';
 import AuthBrandPanel from '../components/AuthBrandPanel';
+import ValidIdUpload from '../components/ValidIdUpload';
+import { idTypeNeedsBack } from '../data/validIdTypes';
 import usePageTitle from '../hooks/usePageTitle';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
@@ -37,8 +39,11 @@ const ConsignmentRegister = () => {
   });
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const [validIdType, setValidIdType] = useState('');
   const [validIdImage, setValidIdImage] = useState(null);
   const [validIdPreview, setValidIdPreview] = useState('');
+  const [validIdBackImage, setValidIdBackImage] = useState(null);
+  const [validIdBackPreview, setValidIdBackPreview] = useState('');
   const [orImage, setOrImage] = useState(null);
   const [orPreview, setOrPreview] = useState('');
   const [crImage, setCrImage] = useState(null);
@@ -101,7 +106,9 @@ const ConsignmentRegister = () => {
     if (form.password !== confirmPassword) { setError('Password and confirmation do not match.'); return false; }
     if (!PHONE_REGEX.test(form.phone)) { setError('Please enter a valid Philippine phone number (e.g. 09171234567 or +639171234567)'); return false; }
     if (!form.address.trim()) { setError('Please complete your address.'); return false; }
+    if (!validIdType) { setError('Please select which valid ID you\'ll be using.'); return false; }
     if (!validIdImage) { setError('Please upload a photo of your valid ID.'); return false; }
+    if (idTypeNeedsBack(validIdType) && !validIdBackImage) { setError('Please also upload a photo of the back of your ID.'); return false; }
     setError('');
     return true;
   };
@@ -159,8 +166,16 @@ const ConsignmentRegister = () => {
       setError('Please enter a valid Philippine phone number (e.g. 09171234567 or +639171234567)');
       return;
     }
+    if (!validIdType) {
+      setError('Please select which valid ID you\'ll be using.');
+      return;
+    }
     if (!validIdImage) {
       setError('Please upload a photo of your valid ID.');
+      return;
+    }
+    if (idTypeNeedsBack(validIdType) && !validIdBackImage) {
+      setError('Please also upload a photo of the back of your ID.');
       return;
     }
     if (!orImage || !crImage) {
@@ -180,6 +195,10 @@ const ConsignmentRegister = () => {
     setLoading(true);
     try {
       const uploadedId = await uploadToImageKit(validIdImage);
+      let uploadedIdBack = { url: '', fileId: '' };
+      if (validIdBackImage) {
+        uploadedIdBack = await uploadToImageKit(validIdBackImage);
+      }
       const uploadedOr = await uploadToImageKit(orImage);
       const uploadedCr = await uploadToImageKit(crImage);
       const uploadedPhotos = [];
@@ -190,8 +209,11 @@ const ConsignmentRegister = () => {
 
       const res = await api.post('/consignments/register', {
         ...form,
+        validIdType,
         validIdImage: uploadedId.url,
         validIdImageFileId: uploadedId.fileId,
+        validIdImageBack: uploadedIdBack.url,
+        validIdImageBackFileId: uploadedIdBack.fileId,
         orImage: uploadedOr.url,
         orImageFileId: uploadedOr.fileId,
         crImage: uploadedCr.url,
@@ -374,21 +396,17 @@ const ConsignmentRegister = () => {
                       onChange={(address) => setForm((f) => ({ ...f, address }))}
                     />
 
-                    <div style={styles.field}>
-                      <label style={styles.label} htmlFor="cr-valid-id">Your Valid ID (Driver's License, National ID, etc.)</label>
-                      <div style={styles.upload}>
-                        {validIdPreview ? (
-                          <img src={validIdPreview} alt="ID preview" style={styles.uploadPreview} />
-                        ) : (
-                          <div style={styles.uploadPlaceholder}>
-                            <span style={{ fontSize: '26px' }}>🪪</span>
-                            <p style={styles.uploadHint}>Click to upload a photo of your ID</p>
-                          </div>
-                        )}
-                        <input id="cr-valid-id" type="file" accept="image/*" style={styles.fileInput}
-                          onChange={(e) => { const f = e.target.files[0]; if (f) { setValidIdImage(f); setValidIdPreview(URL.createObjectURL(f)); } }} />
-                      </div>
-                    </div>
+                    <ValidIdUpload
+                      styles={styles}
+                      idPrefix="cr-valid-id"
+                      required
+                      idType={validIdType}
+                      onIdTypeChange={setValidIdType}
+                      frontPreview={validIdPreview}
+                      onFrontChange={(f) => { setValidIdImage(f); setValidIdPreview(URL.createObjectURL(f)); }}
+                      backPreview={validIdBackPreview}
+                      onBackChange={(f) => { setValidIdBackImage(f); setValidIdBackPreview(URL.createObjectURL(f)); }}
+                    />
 
                     <div style={styles.stepActions}>
                       <button type="button" style={styles.nextBtn} onClick={goToStep2Next}>

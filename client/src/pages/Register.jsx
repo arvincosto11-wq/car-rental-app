@@ -10,6 +10,8 @@ import PasswordInput from '../components/PasswordInput';
 import OtpInput from '../components/OtpInput';
 import BookingSteps from '../components/BookingSteps';
 import AuthBrandPanel from '../components/AuthBrandPanel';
+import ValidIdUpload from '../components/ValidIdUpload';
+import { idTypeNeedsBack } from '../data/validIdTypes';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
 
@@ -50,8 +52,11 @@ const Register = () => {
   });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [validIdType, setValidIdType] = useState('');
   const [validIdImage, setValidIdImage] = useState(null);
   const [validIdPreview, setValidIdPreview] = useState('');
+  const [validIdBackImage, setValidIdBackImage] = useState(null);
+  const [validIdBackPreview, setValidIdBackPreview] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
@@ -103,6 +108,18 @@ const Register = () => {
       setError('Please complete your address before continuing.');
       return false;
     }
+    if (!validIdType) {
+      setError('Please select which valid ID you\'ll be using.');
+      return false;
+    }
+    if (!validIdImage) {
+      setError('Please upload a photo of your ID.');
+      return false;
+    }
+    if (idTypeNeedsBack(validIdType) && !validIdBackImage) {
+      setError('Please also upload a photo of the back of your ID.');
+      return false;
+    }
     setError('');
     return true;
   };
@@ -144,12 +161,14 @@ const Register = () => {
     if (sent) setStep(4);
   };
 
-  const handleIdImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setValidIdImage(file);
-      setValidIdPreview(URL.createObjectURL(file));
-    }
+  const handleIdFrontChange = (file) => {
+    setValidIdImage(file);
+    setValidIdPreview(URL.createObjectURL(file));
+  };
+
+  const handleIdBackChange = (file) => {
+    setValidIdBackImage(file);
+    setValidIdBackPreview(URL.createObjectURL(file));
   };
 
   const uploadToImageKit = async (file) => {
@@ -199,11 +218,18 @@ const Register = () => {
       if (validIdImage) {
         uploaded = await uploadToImageKit(validIdImage);
       }
+      let uploadedBack = { url: '', fileId: '' };
+      if (validIdBackImage) {
+        uploadedBack = await uploadToImageKit(validIdBackImage);
+      }
 
       const res = await api.post('/auth/register', {
         ...form,
+        validIdType,
         validIdImage: uploaded.url,
         validIdImageFileId: uploaded.fileId,
+        validIdImageBack: uploadedBack.url,
+        validIdImageBackFileId: uploadedBack.fileId,
       });
       login(res.data.user, res.data.token);
       navigate('/');
@@ -305,7 +331,7 @@ const Register = () => {
       background: isDark ? '#18191a' : '#fff',
       color: isDark ? '#e4e6eb' : '#111827',
     },
-    idUpload: {
+    upload: {
       position: 'relative',
       width: '100%',
       height: '140px',
@@ -318,8 +344,9 @@ const Register = () => {
       justifyContent: 'center',
       background: isDark ? '#18191a' : '#fff',
     },
-    idPlaceholder: { textAlign: 'center', padding: '16px' },
-    idPreview: { width: '100%', height: '100%', objectFit: 'cover' },
+    uploadPlaceholder: { textAlign: 'center', padding: '16px' },
+    uploadHint: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '6px' },
+    uploadPreview: { width: '100%', height: '100%', objectFit: 'cover' },
     fileInput: {
       position: 'absolute',
       top: 0,
@@ -506,20 +533,17 @@ const Register = () => {
                       onChange={(address) => setForm((f) => ({ ...f, address }))}
                     />
 
-                    <div style={styles.field}>
-                      <label style={styles.label} htmlFor="reg-valid-id">Valid ID (Driver's License, National ID, etc.) — optional for now</label>
-                      <div style={styles.idUpload}>
-                        {validIdPreview ? (
-                          <img src={validIdPreview} alt="ID preview" style={styles.idPreview} />
-                        ) : (
-                          <div style={styles.idPlaceholder}>
-                            <span style={{ fontSize: '28px' }}>🪪</span>
-                            <p style={{ fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '6px' }}>Click to upload a photo of your ID</p>
-                          </div>
-                        )}
-                        <input id="reg-valid-id" type="file" accept="image/*" onChange={handleIdImageChange} style={styles.fileInput} />
-                      </div>
-                    </div>
+                    <ValidIdUpload
+                      styles={styles}
+                      idPrefix="reg-valid-id"
+                      required
+                      idType={validIdType}
+                      onIdTypeChange={setValidIdType}
+                      frontPreview={validIdPreview}
+                      onFrontChange={handleIdFrontChange}
+                      backPreview={validIdBackPreview}
+                      onBackChange={handleIdBackChange}
+                    />
 
                     <p style={{ ...styles.subtitle, marginBottom: '8px' }}>
                       Driver's license (optional now — only needed if you later book a self-drive vehicle)

@@ -8,8 +8,13 @@ const userSchema = new mongoose.Schema({
   image: { type: String, default: '' },
   phone: { type: String, default: '' },
   address: { type: String, default: '' },
+  validIdType: { type: String, default: '' },
   validIdImage: { type: String, default: '' },
   validIdImageFileId: { type: String, default: '' },
+  // Only set for ID types with real info on the back (driver's license,
+  // national ID, UMID, postal ID) — see client/src/data/validIdTypes.js.
+  validIdImageBack: { type: String, default: '' },
+  validIdImageBackFileId: { type: String, default: '' },
   licenseNumber: { type: String, default: '' },
   licenseExpiry: { type: Date },
   emergencyContactName: { type: String, default: '' },

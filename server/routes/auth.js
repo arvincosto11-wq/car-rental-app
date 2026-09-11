@@ -241,7 +241,8 @@ router.post('/register', registerLimiter, async (req, res) => {
   try {
     const {
       name, email, password, phone, address,
-      validIdImage, validIdImageFileId,
+      validIdType, validIdImage, validIdImageFileId,
+      validIdImageBack, validIdImageBackFileId,
       licenseNumber, licenseExpiry,
       emergencyContactName, emergencyContactNumber
     } = req.body;
@@ -268,7 +269,8 @@ router.post('/register', registerLimiter, async (req, res) => {
     const user = await User.create({
       name, email, password: hashed,
       phone, address,
-      validIdImage, validIdImageFileId,
+      validIdType, validIdImage, validIdImageFileId,
+      validIdImageBack, validIdImageBackFileId,
       licenseNumber, licenseExpiry,
       emergencyContactName, emergencyContactNumber
     });
