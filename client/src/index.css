@@ -439,17 +439,33 @@ select:disabled {
 }
 .register-steps-shell .booking-step-item-wrap {
   flex: 1;
+  position: relative;
 }
 .register-steps-shell .booking-step-row {
   flex-direction: column;
   gap: 6px;
+  position: relative;
+  z-index: 1;
 }
 .register-steps-shell .booking-step-label {
   font-size: 11px !important;
   text-align: center;
 }
+/* Reflow the connector from a short vertical tick (drawn below the row,
+   for the stacked layout) into a horizontal line running between this
+   step's circle and the next one's — same center-to-center distance as
+   one item-wrap's own width, since every item-wrap is flex: 1 and they
+   sit flush against each other. Circle's own z-index above keeps the
+   line from painting over it. */
 .register-steps-shell .booking-step-connector {
-  display: none;
+  display: block;
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  width: 100% !important;
+  height: 2px !important;
+  margin-left: 0 !important;
+  z-index: 0;
 }
 
 .table-scroll {
