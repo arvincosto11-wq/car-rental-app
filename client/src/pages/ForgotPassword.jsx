@@ -4,6 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import PasswordInput from '../components/PasswordInput';
 import OtpInput from '../components/OtpInput';
+import AuthBrandPanel from '../components/AuthBrandPanel';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
 import api from '../api';
@@ -86,8 +87,21 @@ const ForgotPassword = () => {
       background: isDark ? '#18191a' : '#f9fafb', padding: '40px 16px',
     },
     card: {
-      background: isDark ? '#242526' : '#fff', padding: '40px', borderRadius: '12px',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, width: '100%', maxWidth: '400px',
+      display: 'flex', width: '100%', maxWidth: '900px', borderRadius: '20px', overflow: 'hidden',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.08)',
+    },
+    panel: {
+      position: 'relative', width: '44%', flexShrink: 0, overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px',
+      background: isDark
+        ? 'linear-gradient(160deg, #242526 0%, #18191a 100%)'
+        : 'linear-gradient(160deg, #faedc7 0%, #fff 100%)',
+      borderRight: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    formSide: {
+      flex: 1, minWidth: 0, padding: '48px 40px',
+      background: isDark ? '#242526' : '#fff',
     },
     title: { fontSize: '24px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
@@ -115,7 +129,16 @@ const ForgotPassword = () => {
 
   return (
     <div style={styles.container}>
-      <div style={styles.card}>
+      <div className="login-card" style={styles.card}>
+        <div className="login-map-panel" style={styles.panel}>
+          <AuthBrandPanel
+            tagline={step === 'email'
+              ? "We'll send a code to your email so you can reset your password."
+              : 'Enter the code and choose a new password.'}
+          />
+        </div>
+
+        <div style={styles.formSide}>
         <h1 style={styles.title}>{step === 'email' ? 'Forgot password?' : 'Reset password'}</h1>
         <p style={styles.subtitle}>
           {step === 'email'
@@ -166,6 +189,7 @@ const ForgotPassword = () => {
         <p style={styles.footer}>
           Remembered it? <Link to="/login" style={styles.footerLink}>Login</Link>
         </p>
+        </div>
       </div>
     </div>
   );
