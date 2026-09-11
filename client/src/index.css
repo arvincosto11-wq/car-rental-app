@@ -462,9 +462,11 @@ select:disabled {
   position: absolute;
   top: 14px;
   left: 50%;
+  transform: translateY(-50%);
   width: 100% !important;
-  height: 2px !important;
+  height: 4px !important;
   margin-left: 0 !important;
+  border-radius: 2px;
   z-index: 0;
 }
 
