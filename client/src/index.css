@@ -420,6 +420,14 @@ select:disabled {
   .gps-layout { grid-template-columns: 1fr !important; }
 }
 
+/* Login's branding/map panel is a nice-to-have on desktop but has no room
+   to coexist with the form on a phone screen — hidden below tablet width,
+   same as the source design's own breakpoint, so only the form remains. */
+@media (max-width: 760px) {
+  .login-map-panel { display: none !important; }
+  .login-card { max-width: 460px !important; }
+}
+
 .table-scroll {
   width: 100%;
   overflow-x: auto;
