@@ -156,6 +156,20 @@ button.text-link-btn:not(:disabled):active {
   text-decoration: underline;
 }
 
+/* Dropdown trigger/menu-item buttons (StatusDropdown) — same reasoning as
+   .icon-toggle-btn: the lift/shadow above is sized for CTA buttons, not a
+   compact pill or a row inside a floating menu. Highlight state is handled
+   by the component itself (background color), not by this hover rule. */
+button.dropdown-item-btn:not(:disabled) {
+  transition: none;
+}
+button.dropdown-item-btn:not(:disabled):hover,
+button.dropdown-item-btn:not(:disabled):active {
+  filter: none;
+  transform: none;
+  box-shadow: none;
+}
+
 /* Small "this needs attention" dot — admin sidebar, status tabs, etc. A
    gentle pulse on the halo makes it noticeable without being alarming. */
 .pending-dot {

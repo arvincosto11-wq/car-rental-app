@@ -7,6 +7,7 @@ import StarRating from '../../components/StarRating';
 import ClientRatingModal from '../../components/ClientRatingModal';
 import { SkeletonTableRows } from '../../components/Skeleton';
 import Pagination from '../../components/Pagination';
+import StatusDropdown from '../../components/StatusDropdown';
 import { paginate } from '../../utils/paginate';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
@@ -173,7 +174,6 @@ const ManageBookings = () => {
     declineBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     refundApproved: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     refundDeclined: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-    select: { padding: '5px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a', cursor: 'pointer' },
     editRatingBtn: { background: 'none', border: 'none', color: '#7c3aed', fontSize: '11px', cursor: 'pointer', padding: 0, textDecoration: 'underline' },
     lowRatingBadge: { background: '#fee2e2', color: '#991b1b', fontSize: '10px', padding: '1px 8px', borderRadius: '20px', marginLeft: '6px', fontWeight: '600' },
     filterRow: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' },
@@ -421,11 +421,16 @@ const ManageBookings = () => {
                     </div>
                   ) : (
                     <div>
-                      <select style={s.select} value={booking.status} aria-label="Update booking status" onChange={(e) => handleStatus(booking._id, e.target.value)}>
-                        <option value="pending">Pending</option>
-                        <option value="confirmed" disabled={booking.payment !== 'paid'}>Confirmed</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
+                      <StatusDropdown
+                        isDark={isDark}
+                        value={booking.status}
+                        onChange={(status) => handleStatus(booking._id, status)}
+                        options={[
+                          { value: 'pending', label: 'Pending' },
+                          { value: 'confirmed', label: 'Confirmed', disabled: booking.payment !== 'paid' },
+                          { value: 'cancelled', label: 'Cancelled' },
+                        ]}
+                      />
                       {booking.payment !== 'paid' && (
                         <div style={{ fontSize: '10px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic', marginTop: '4px' }}>
                           Awaiting GCash payment
