@@ -5,6 +5,7 @@ import AdminLayout from '../../components/AdminLayout';
 import BackButton from '../../components/BackButton';
 import StarRating from '../../components/StarRating';
 import ClientRatingModal from '../../components/ClientRatingModal';
+import BookingDetailsModal from '../../components/BookingDetailsModal';
 import { SkeletonTableRows } from '../../components/Skeleton';
 import Pagination from '../../components/Pagination';
 import StatusDropdown from '../../components/StatusDropdown';
@@ -18,12 +19,6 @@ import api from '../../api';
 const LOW_RATING_THRESHOLD = 3;
 const PAGE_SIZE = 10;
 
-const formatPayment = (payment) => {
-  if (payment === 'gcash_pending') return 'GCash pending';
-  if (payment === 'paid') return 'Paid';
-  return 'Unpaid';
-};
-
 const ManageBookings = () => {
   usePageTitle('Manage Bookings');
   const { isDark } = useTheme();
@@ -33,6 +28,7 @@ const ManageBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ratingModalId, setRatingModalId] = useState(null);
+  const [detailsBookingId, setDetailsBookingId] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [rescheduleOnly, setRescheduleOnly] = useState(false);
@@ -126,6 +122,7 @@ const ManageBookings = () => {
   };
 
   const ratingBooking = bookings.find((b) => b._id === ratingModalId);
+  const detailsBooking = bookings.find((b) => b._id === detailsBookingId);
   const unratedClientCount = bookings.filter((b) => b.status === 'completed' && !b.clientRating?.ratedAt).length;
   const pendingRescheduleCount = bookings.filter((b) => b.rescheduleRequest?.status === 'pending').length;
 
@@ -180,22 +177,22 @@ const ManageBookings = () => {
     clientName: { fontWeight: '600', fontSize: '13px' },
     clientMeta: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
     carThumb: { width: '44px', height: '32px', background: isDark ? '#3a3b3c' : '#f3f4f6', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 },
-    payBadge: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
     balanceNote: { fontSize: '11px', color: isDark ? GOLD_DARK : GOLD, marginTop: '4px', maxWidth: '160px' },
     collectBtn: {
       display: 'block', marginTop: '6px', padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '500',
     },
-    paymentRef: { fontSize: '10px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px', fontFamily: 'monospace', wordBreak: 'break-all' },
     confirmed: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     cancelled: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     completed: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     returnBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '500' },
     acceptBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     declineBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
-    refundApproved: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-    refundDeclined: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     editRatingBtn: { background: 'none', border: 'none', color: '#7c3aed', fontSize: '11px', cursor: 'pointer', padding: 0, textDecoration: 'underline' },
+    detailsBtn: {
+      padding: '5px 12px', fontSize: '12px', fontWeight: '500', borderRadius: '6px', cursor: 'pointer',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#374151',
+    },
     lowRatingBadge: { background: '#fee2e2', color: '#991b1b', fontSize: '10px', padding: '1px 8px', borderRadius: '20px', marginLeft: '6px', fontWeight: '600' },
     filterRow: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' },
     searchInput: {
@@ -307,15 +304,14 @@ const ManageBookings = () => {
               <th style={s.th}>Car</th>
               <th style={s.th}>Date Range</th>
               <th style={s.th}>Total</th>
-              <th style={s.th}>Payment</th>
-              <th style={s.th}>Refund</th>
-              <th style={s.th}>Reschedule</th>
+              <th style={s.th}>Requests</th>
               <th style={s.th}>Actions</th>
+              <th style={s.th}>Details</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? <SkeletonTableRows isDark={isDark} columns={8} /> : filteredBookings.length === 0 ? (
-              <tr><td colSpan={8} style={{ ...s.td, textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280' }}>No bookings match.</td></tr>
+            {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : filteredBookings.length === 0 ? (
+              <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280' }}>No bookings match.</td></tr>
             ) : pageBookings.map((booking) => (
               <tr key={booking._id}>
                 <td style={s.td}>
@@ -358,25 +354,14 @@ const ManageBookings = () => {
                   {booking.paymentType === 'downpayment' && booking.amountPaid < booking.totalPrice && (
                     <div style={s.balanceNote}>
                       ₱{booking.amountPaid.toLocaleString()} paid · ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} due at pickup
-                      {booking.status !== 'cancelled' && (
-                        <button style={s.collectBtn} onClick={() => handleCollectBalance(booking)}>
-                          Mark Balance Received
-                        </button>
-                      )}
                     </div>
                   )}
                 </td>
                 <td style={s.td}>
-                  <span style={s.payBadge}>{formatPayment(booking.payment)}</span>
-                  {booking.paymongoPaymentId && (
-                    <div style={s.paymentRef} title="PayMongo payment reference">{booking.paymongoPaymentId}</div>
-                  )}
-                </td>
-                <td style={s.td}>
-                  {booking.refundStatus === 'requested' ? (
-                    <div>
+                  {booking.refundStatus === 'requested' && (
+                    <div style={{ marginBottom: booking.rescheduleRequest?.status === 'pending' ? '10px' : 0 }}>
                       <div style={{ fontSize: '12px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '2px' }}>
-                        ₱{booking.refundAmount?.toLocaleString() ?? 0}
+                        Refund: ₱{booking.refundAmount?.toLocaleString() ?? 0}
                       </div>
                       <div style={{ fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px', maxWidth: '160px' }}>
                         {booking.refundReason}
@@ -386,22 +371,12 @@ const ManageBookings = () => {
                         <button style={s.declineBtn} onClick={() => handleRefundDecision(booking._id, 'declined')}>Decline</button>
                       </div>
                     </div>
-                  ) : booking.refundStatus === 'approved' ? (
-                    <div>
-                      <span style={s.refundApproved}>Refund Approved</span>
-                      {booking.paymongoRefundId && (
-                        <div style={s.paymentRef} title="PayMongo refund reference">{booking.paymongoRefundId}</div>
-                      )}
-                    </div>
-                  ) : booking.refundStatus === 'declined' ? (
-                    <span style={s.refundDeclined}>Refund Declined</span>
-                  ) : (
-                    <span style={{ color: isDark ? '#8a8d91' : '#9ca3af', fontSize: '12px' }}>—</span>
                   )}
-                </td>
-                <td style={s.td}>
-                  {booking.rescheduleRequest?.status === 'pending' ? (
+                  {booking.rescheduleRequest?.status === 'pending' && (
                     <div>
+                      <div style={{ fontSize: '12px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '2px' }}>
+                        Reschedule request
+                      </div>
                       <div style={{ fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px', maxWidth: '160px' }}>
                         New: {new Date(booking.rescheduleRequest.newStartDate).toLocaleDateString()} to {new Date(booking.rescheduleRequest.newEndDate).toLocaleDateString()}
                       </div>
@@ -410,19 +385,23 @@ const ManageBookings = () => {
                         <button style={s.declineBtn} onClick={() => handleRescheduleDecision(booking._id, 'declined')}>Decline</button>
                       </div>
                     </div>
-                  ) : booking.rescheduleRequest?.status === 'approved' ? (
-                    <span style={s.refundApproved}>Rescheduled</span>
-                  ) : booking.rescheduleRequest?.status === 'declined' ? (
-                    <span style={s.refundDeclined}>Reschedule Declined</span>
-                  ) : (
+                  )}
+                  {booking.refundStatus !== 'requested' && booking.rescheduleRequest?.status !== 'pending' && (
                     <span style={{ color: isDark ? '#8a8d91' : '#9ca3af', fontSize: '12px' }}>—</span>
                   )}
                 </td>
                 <td style={s.td}>
+                  {booking.paymentType === 'downpayment' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
+                    <button style={{ ...s.collectBtn, display: 'inline-block', marginTop: 0, marginBottom: '8px' }} onClick={() => handleCollectBalance(booking)}>
+                      Mark Balance Received
+                    </button>
+                  )}
                   {booking.refundStatus === 'requested' ? (
-                    <span style={{ fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic' }}>
-                      Resolve refund request first
-                    </span>
+                    <div>
+                      <span style={{ fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic' }}>
+                        Resolve refund request first
+                      </span>
+                    </div>
                   ) : booking.status === 'confirmed' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={s.confirmed}>confirmed</span>
@@ -472,6 +451,11 @@ const ManageBookings = () => {
                     </div>
                   )}
                 </td>
+                <td style={s.td}>
+                  <button type="button" style={s.detailsBtn} onClick={() => setDetailsBookingId(booking._id)}>
+                    View Details
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -486,6 +470,14 @@ const ManageBookings = () => {
           isDark={isDark}
           onClose={closeRatingModal}
           onSubmitted={handleRatingSubmitted}
+        />
+      )}
+
+      {detailsBookingId && detailsBooking && (
+        <BookingDetailsModal
+          booking={detailsBooking}
+          isDark={isDark}
+          onClose={() => setDetailsBookingId(null)}
         />
       )}
     </AdminLayout>
