@@ -101,37 +101,49 @@ const ConsignmentRegister = () => {
 
   const goToStep = (n) => setStep(n);
 
+  // Every check below sets a message on the specific field it's about
+  // (fieldErrors.X, rendered directly under that field) instead of a
+  // page-level banner, so the feedback shows up right where the problem is.
   const validateStep1 = () => {
-    if (!form.name.trim()) { setError('Please enter your full name.'); return false; }
-    if (!form.email.trim()) { setError('Please enter your email.'); return false; }
-    if (!form.password || form.password.length < 8) { setError('Password must be at least 8 characters.'); return false; }
-    if (form.password !== confirmPassword) { setError('Password and confirmation do not match.'); return false; }
-    // Shown right under the phone field itself (see fieldErrors.phone
-    // below the input), not as a page-level banner.
+    const nameError = !form.name.trim() ? 'Full name is required.' : '';
+    const emailError = !form.email.trim() ? 'Email is required.' : '';
+    const passwordError = !form.password ? 'Password is required.' : (form.password.length < 8 ? 'Password must be at least 8 characters.' : '');
+    const confirmPasswordError = !confirmPassword ? 'Please confirm your password.' : (form.password !== confirmPassword ? 'Passwords do not match.' : '');
     const phoneError = !form.phone.trim() ? 'Phone number is required.' : (PHONE_REGEX.test(form.phone) ? '' : PHONE_ERROR);
-    setFieldErrors((prev) => ({ ...prev, phone: phoneError }));
-    if (phoneError) return false;
-    if (!form.address.trim()) { setError('Please complete your address.'); return false; }
-    if (!validIdType) { setError('Please select which valid ID you\'ll be using.'); return false; }
-    if (!validIdImage) { setError('Please upload a photo of your valid ID.'); return false; }
-    if (idTypeNeedsBack(validIdType) && !validIdBackImage) { setError('Please also upload a photo of the back of your ID.'); return false; }
-    setError('');
-    return true;
+    const addressError = !form.address.trim() ? 'Please complete your address.' : '';
+    const validIdError = !validIdType
+      ? "Please select which valid ID you'll be using."
+      : !validIdImage
+        ? 'Please upload a photo of your valid ID.'
+        : (idTypeNeedsBack(validIdType) && !validIdBackImage ? 'Please also upload a photo of the back of your ID.' : '');
+
+    setFieldErrors((prev) => ({
+      ...prev,
+      name: nameError, email: emailError, password: passwordError, confirmPassword: confirmPasswordError,
+      phone: phoneError, address: addressError, validId: validIdError,
+    }));
+    return !(nameError || emailError || passwordError || confirmPasswordError || phoneError || addressError || validIdError);
   };
 
   const validateStep2 = () => {
-    if (!form.brand.trim() || !form.model.trim()) { setError('Please select or enter the vehicle brand and model.'); return false; }
-    if (!form.year) { setError('Please enter the vehicle year.'); return false; }
-    if (!form.plateNumber.trim()) { setError('Please enter the plate number.'); return false; }
-    if (vehicleType !== 'motorcycle' && !form.category) { setError('Please select a category.'); return false; }
-    if (!form.transmission) { setError('Please select a transmission.'); return false; }
-    if (!form.fuelType) { setError('Please select a fuel type.'); return false; }
-    if (!form.seats) { setError('Please enter the seating capacity.'); return false; }
-    if (!form.suggestedPricePerDay) { setError('Please enter a suggested daily price.'); return false; }
+    const brandModelError = (!form.brand.trim() || !form.model.trim()) ? 'Please select or enter the vehicle brand and model.' : '';
+    const yearError = !form.year ? 'Please enter the vehicle year.' : '';
+    const plateError = !form.plateNumber.trim() ? 'Please enter the plate number.' : '';
+    const categoryError = (vehicleType !== 'motorcycle' && !form.category) ? 'Please select a category.' : '';
+    const transmissionError = !form.transmission ? 'Please select a transmission.' : '';
+    const fuelError = !form.fuelType ? 'Please select a fuel type.' : '';
+    const seatsError = !form.seats ? 'Please enter the seating capacity.' : '';
+    const priceError = !form.suggestedPricePerDay ? 'Please enter a suggested daily price.' : '';
     const selectedBookingTypes = Object.entries(bookingTypes).filter(([, v]) => v);
-    if (selectedBookingTypes.length === 0) { setError('Please select at least one booking type (Self Drive and/or With Driver).'); return false; }
-    setError('');
-    return true;
+    const bookingTypeError = selectedBookingTypes.length === 0 ? 'Please select at least one booking type.' : '';
+
+    setFieldErrors((prev) => ({
+      ...prev,
+      brandModel: brandModelError, year: yearError, plateNumber: plateError, category: categoryError,
+      transmission: transmissionError, fuelType: fuelError, seats: seatsError,
+      suggestedPricePerDay: priceError, bookingTypes: bookingTypeError,
+    }));
+    return !(brandModelError || yearError || plateError || categoryError || transmissionError || fuelError || seatsError || priceError || bookingTypeError);
   };
 
   const goToStep2Next = () => { if (validateStep1()) setStep(2); };
@@ -168,35 +180,27 @@ const ConsignmentRegister = () => {
     e.preventDefault();
     setError('');
 
-    if (!PHONE_REGEX.test(form.phone)) {
-      setError('Please enter a valid Philippine phone number (e.g. 09171234567 or +639171234567)');
-      return;
-    }
-    if (!validIdType) {
-      setError('Please select which valid ID you\'ll be using.');
-      return;
-    }
-    if (!validIdImage) {
-      setError('Please upload a photo of your valid ID.');
-      return;
-    }
-    if (idTypeNeedsBack(validIdType) && !validIdBackImage) {
-      setError('Please also upload a photo of the back of your ID.');
-      return;
-    }
-    if (!orImage || !crImage) {
-      setError('Please upload photos of both the OR (Official Receipt) and CR (Certificate of Registration).');
-      return;
-    }
-    if (vehiclePhotos.length === 0) {
-      setError('Please upload at least one photo of the vehicle.');
+    // Steps 1 and 2 are already off-screen by now — no single visible field
+    // to attach these to, so they stay a summary banner (this is only a
+    // defensive re-check; each step's own Continue button already blocked
+    // advancing past it once).
+    if (!PHONE_REGEX.test(form.phone) || !validIdType || !validIdImage || (idTypeNeedsBack(validIdType) && !validIdBackImage)) {
+      setError('Please go back and finish your info and valid ID upload.');
       return;
     }
     const selectedBookingTypes = Object.entries(bookingTypes).filter(([, v]) => v).map(([k]) => k);
     if (selectedBookingTypes.length === 0) {
-      setError('Please select at least one booking type (Self Drive and/or With Driver).');
+      setError('Please go back and select at least one booking type.');
       return;
     }
+
+    // Documents step is the one currently on screen, so these get inline
+    // messages under their own upload boxes instead.
+    const orError = !orImage ? 'Please upload a photo of the OR.' : '';
+    const crError = !crImage ? 'Please upload a photo of the CR.' : '';
+    const photosError = vehiclePhotos.length === 0 ? 'Please upload at least one photo of the vehicle.' : '';
+    setFieldErrors((prev) => ({ ...prev, orImage: orError, crImage: crError, vehiclePhotos: photosError }));
+    if (orError || crError || photosError) return;
 
     setLoading(true);
     try {
@@ -374,25 +378,29 @@ const ConsignmentRegister = () => {
                   <motion.div key="step1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="cr-name">Full Name</label>
-                      <input id="cr-name" style={styles.input} type="text" placeholder="Enter your name"
+                      <input id="cr-name" style={inputStyle('name')} type="text" placeholder="Enter your name"
                         value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                      {fieldErrors.name && <p style={styles.fieldError}>{fieldErrors.name}</p>}
                     </div>
                     <div className="responsive-row-2" style={styles.row}>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="cr-email">Email</label>
-                        <input id="cr-email" style={styles.input} type="email" placeholder="Enter your email"
+                        <input id="cr-email" style={inputStyle('email')} type="email" placeholder="Enter your email"
                           value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+                        {fieldErrors.email && <p style={styles.fieldError}>{fieldErrors.email}</p>}
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="cr-password">Password</label>
-                        <PasswordInput id="cr-password" style={styles.input} placeholder="Create a password (min. 8 characters)" isDark={isDark}
+                        <PasswordInput id="cr-password" style={inputStyle('password')} placeholder="Create a password (min. 8 characters)" isDark={isDark}
                           value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} />
+                        {fieldErrors.password && <p style={styles.fieldError}>{fieldErrors.password}</p>}
                       </div>
                     </div>
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="cr-confirm-password">Confirm Password</label>
-                      <PasswordInput id="cr-confirm-password" style={styles.input} placeholder="Re-enter your password" isDark={isDark}
+                      <PasswordInput id="cr-confirm-password" style={inputStyle('confirmPassword')} placeholder="Re-enter your password" isDark={isDark}
                         value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={8} />
+                      {fieldErrors.confirmPassword && <p style={styles.fieldError}>{fieldErrors.confirmPassword}</p>}
                     </div>
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="cr-phone">Phone Number</label>
@@ -410,6 +418,7 @@ const ConsignmentRegister = () => {
                       idPrefix="cr-loc"
                       onChange={(address) => setForm((f) => ({ ...f, address }))}
                     />
+                    {fieldErrors.address && <p style={{ ...styles.fieldError, marginTop: '-10px', marginBottom: '16px' }}>{fieldErrors.address}</p>}
 
                     <ValidIdUpload
                       styles={styles}
@@ -422,6 +431,7 @@ const ConsignmentRegister = () => {
                       backPreview={validIdBackPreview}
                       onBackChange={(f) => { setValidIdBackImage(f); setValidIdBackPreview(URL.createObjectURL(f)); }}
                     />
+                    {fieldErrors.validId && <p style={styles.fieldError}>{fieldErrors.validId}</p>}
 
                     <div style={styles.stepActions}>
                       <button type="button" style={styles.nextBtn} onClick={goToStep2Next}>
@@ -445,7 +455,7 @@ const ConsignmentRegister = () => {
                     <div className="responsive-row-2" style={styles.row}>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="cr-brand">Brand</label>
-                        <select id="cr-brand" style={styles.input} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
+                        <select id="cr-brand" style={inputStyle('brandModel')} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
                           <option value="">Select brand</option>
                           {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
                           <option value={OTHER}>Other (type manually)</option>
@@ -459,7 +469,7 @@ const ConsignmentRegister = () => {
                         <label style={styles.label} htmlFor="cr-model">Model</label>
                         {brandChoice && brandChoice !== OTHER ? (
                           <>
-                            <select id="cr-model" style={styles.input} value={modelChoice} onChange={(e) => handleModelChoiceChange(e.target.value)} required>
+                            <select id="cr-model" style={inputStyle('brandModel')} value={modelChoice} onChange={(e) => handleModelChoiceChange(e.target.value)} required>
                               <option value="">Select model</option>
                               {modelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
                               <option value={OTHER}>Other (type manually)</option>
@@ -470,18 +480,20 @@ const ConsignmentRegister = () => {
                             )}
                           </>
                         ) : (
-                          <input id="cr-model" style={styles.input} type="text" placeholder={brandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
+                          <input id="cr-model" style={inputStyle('brandModel')} type="text" placeholder={brandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
                             value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}
                             disabled={!brandChoice} required />
                         )}
                       </div>
                     </div>
+                    {fieldErrors.brandModel && <p style={{ ...styles.fieldError, marginTop: '-10px', marginBottom: '16px' }}>{fieldErrors.brandModel}</p>}
 
                     <div className="responsive-row-3" style={styles.row3}>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="cr-year">Year</label>
-                        <input id="cr-year" style={styles.input} type="number" placeholder="e.g. 2022"
+                        <input id="cr-year" style={inputStyle('year')} type="number" placeholder="e.g. 2022"
                           value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} required />
+                        {fieldErrors.year && <p style={styles.fieldError}>{fieldErrors.year}</p>}
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="cr-color">Color</label>
@@ -497,8 +509,9 @@ const ConsignmentRegister = () => {
 
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="cr-plate">Plate Number</label>
-                      <input id="cr-plate" style={styles.input} type="text" placeholder="e.g. ABC 1234"
+                      <input id="cr-plate" style={inputStyle('plateNumber')} type="text" placeholder="e.g. ABC 1234"
                         value={form.plateNumber} onChange={(e) => setForm({ ...form, plateNumber: e.target.value })} required />
+                      {fieldErrors.plateNumber && <p style={styles.fieldError}>{fieldErrors.plateNumber}</p>}
                     </div>
 
                     <div className="responsive-row-3" style={styles.row3}>
@@ -507,39 +520,45 @@ const ConsignmentRegister = () => {
                         {vehicleType === 'motorcycle' ? (
                           <div id="cr-category" style={styles.categoryFixed}>Motorcycle</div>
                         ) : (
-                          <select id="cr-category" style={styles.input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
+                          <select id="cr-category" style={inputStyle('category')} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
                             <option value="">Select category</option>
                             {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
                           </select>
                         )}
+                        {fieldErrors.category && <p style={styles.fieldError}>{fieldErrors.category}</p>}
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="cr-transmission">Transmission</label>
-                        <select id="cr-transmission" style={styles.input} value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })} required>
+                        <select id="cr-transmission" style={inputStyle('transmission')} value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })} required>
                           <option value="">Select transmission</option>
                           <option>Automatic</option><option>Manual</option><option>Semi-Automatic</option>
                         </select>
+                        {fieldErrors.transmission && <p style={styles.fieldError}>{fieldErrors.transmission}</p>}
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="cr-fuel">Fuel Type</label>
-                        <select id="cr-fuel" style={styles.input} value={form.fuelType} onChange={(e) => setForm({ ...form, fuelType: e.target.value })} required>
+                        <select id="cr-fuel" style={inputStyle('fuelType')} value={form.fuelType} onChange={(e) => setForm({ ...form, fuelType: e.target.value })} required>
                           <option value="">Select fuel type</option>
                           <option>Petrol</option><option>Diesel</option><option>Electric</option><option>Hybrid</option>
                         </select>
+                        {fieldErrors.fuelType && <p style={styles.fieldError}>{fieldErrors.fuelType}</p>}
                       </div>
                     </div>
 
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="cr-seats">Seating Capacity</label>
-                      <input id="cr-seats" style={styles.input} type="number" placeholder="e.g. 5"
+                      <input id="cr-seats" style={inputStyle('seats')} type="number" placeholder="e.g. 5"
                         value={form.seats} onChange={(e) => setForm({ ...form, seats: e.target.value })} required />
+                      {fieldErrors.seats && <p style={styles.fieldError}>{fieldErrors.seats}</p>}
                     </div>
 
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="cr-price">Suggested Daily Price (₱)</label>
-                      <input id="cr-price" style={styles.input} type="number" placeholder="e.g. 120"
+                      <input id="cr-price" style={inputStyle('suggestedPricePerDay')} type="number" placeholder="e.g. 120"
                         value={form.suggestedPricePerDay} onChange={(e) => setForm({ ...form, suggestedPricePerDay: e.target.value })} required />
-                      <p style={styles.fieldHint}>This is a starting suggestion — our admin may adjust it before listing.</p>
+                      {fieldErrors.suggestedPricePerDay
+                        ? <p style={styles.fieldError}>{fieldErrors.suggestedPricePerDay}</p>
+                        : <p style={styles.fieldHint}>This is a starting suggestion — our admin may adjust it before listing.</p>}
                     </div>
 
                     <div style={styles.field}>
@@ -556,7 +575,9 @@ const ConsignmentRegister = () => {
                           With Driver
                         </label>
                       </div>
-                      <p style={styles.fieldHint}>At least one must be checked. Motorcycles default to Self Drive only.</p>
+                      {fieldErrors.bookingTypes
+                        ? <p style={styles.fieldError}>{fieldErrors.bookingTypes}</p>
+                        : <p style={styles.fieldHint}>At least one must be checked. Motorcycles default to Self Drive only.</p>}
                     </div>
 
                     <div style={styles.field}>
@@ -593,6 +614,7 @@ const ConsignmentRegister = () => {
                           <input id="cr-or" type="file" accept="image/*" style={styles.fileInput}
                             onChange={(e) => { const f = e.target.files[0]; if (f) { setOrImage(f); setOrPreview(URL.createObjectURL(f)); } }} />
                         </div>
+                        {fieldErrors.orImage && <p style={styles.fieldError}>{fieldErrors.orImage}</p>}
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="cr-cr">CR (Certificate of Registration)</label>
@@ -608,6 +630,7 @@ const ConsignmentRegister = () => {
                           <input id="cr-cr" type="file" accept="image/*" style={styles.fileInput}
                             onChange={(e) => { const f = e.target.files[0]; if (f) { setCrImage(f); setCrPreview(URL.createObjectURL(f)); } }} />
                         </div>
+                        {fieldErrors.crImage && <p style={styles.fieldError}>{fieldErrors.crImage}</p>}
                       </div>
                     </div>
 
@@ -620,6 +643,7 @@ const ConsignmentRegister = () => {
                         </div>
                         <input id="cr-vehicle-photos" type="file" accept="image/*" multiple style={styles.fileInput} onChange={handleVehiclePhotosChange} />
                       </div>
+                      {fieldErrors.vehiclePhotos && <p style={styles.fieldError}>{fieldErrors.vehiclePhotos}</p>}
                       {vehiclePreviews.length > 0 && (
                         <div style={styles.photoGrid}>
                           {vehiclePreviews.map((src, i) => (

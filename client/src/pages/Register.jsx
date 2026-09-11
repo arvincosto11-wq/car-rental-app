@@ -82,59 +82,41 @@ const Register = () => {
 
   const goToStep = (n) => setStep(n);
 
+  // Every check below sets a message on the specific field it's about
+  // (fieldErrors.X, rendered directly under that input) instead of a
+  // page-level banner — so the feedback shows up right where the problem
+  // actually is, not somewhere the user has to go hunting for.
   const validateStep1 = () => {
-    const next = {
-      email: validators.email(form.email),
-      password: validators.password(form.password),
-      confirmPassword: form.password !== confirmPassword ? 'Passwords do not match.' : '',
-    };
-    setFieldErrors((prev) => ({ ...prev, ...next }));
-    if (!form.name.trim() || !form.email.trim() || !form.password || !confirmPassword || Object.values(next).some(Boolean)) {
-      setError('Please fill in all fields and fix any highlighted errors before continuing.');
-      return false;
-    }
-    setError('');
-    return true;
+    const nameError = !form.name.trim() ? 'Full name is required.' : '';
+    const emailError = !form.email.trim() ? 'Email is required.' : validators.email(form.email);
+    const passwordError = !form.password ? 'Password is required.' : validators.password(form.password);
+    const confirmPasswordError = !confirmPassword
+      ? 'Please confirm your password.'
+      : (form.password !== confirmPassword ? 'Passwords do not match.' : '');
+
+    setFieldErrors((prev) => ({ ...prev, name: nameError, email: emailError, password: passwordError, confirmPassword: confirmPasswordError }));
+    return !(nameError || emailError || passwordError || confirmPasswordError);
   };
 
   const validateStep2 = () => {
-    // Shown right under the field itself (see fieldErrors.phone below the
-    // input), not as a page-level banner — a phone-format problem belongs
-    // next to the phone field, not somewhere the user has to go hunting for.
     const phoneError = !form.phone.trim() ? 'Phone number is required.' : validators.phone(form.phone);
-    setFieldErrors((prev) => ({ ...prev, phone: phoneError }));
-    if (phoneError) {
-      return false;
-    }
-    if (!form.address.trim()) {
-      setError('Please complete your address before continuing.');
-      return false;
-    }
-    if (!validIdType) {
-      setError('Please select which valid ID you\'ll be using.');
-      return false;
-    }
-    if (!validIdImage) {
-      setError('Please upload a photo of your ID.');
-      return false;
-    }
-    if (idTypeNeedsBack(validIdType) && !validIdBackImage) {
-      setError('Please also upload a photo of the back of your ID.');
-      return false;
-    }
-    setError('');
-    return true;
+    const addressError = !form.address.trim() ? 'Please complete your address.' : '';
+    const validIdError = !validIdType
+      ? "Please select which valid ID you'll be using."
+      : !validIdImage
+        ? 'Please upload a photo of your ID.'
+        : (idTypeNeedsBack(validIdType) && !validIdBackImage ? 'Please also upload a photo of the back of your ID.' : '');
+
+    setFieldErrors((prev) => ({ ...prev, phone: phoneError, address: addressError, validId: validIdError }));
+    return !(phoneError || addressError || validIdError);
   };
 
   const validateStep3 = () => {
-    const next = { emergencyContactNumber: validators.emergencyContactNumber(form.emergencyContactNumber) };
-    setFieldErrors((prev) => ({ ...prev, ...next }));
-    if (!form.emergencyContactName.trim() || !form.emergencyContactNumber.trim() || Object.values(next).some(Boolean)) {
-      setError('Please fill in your emergency contact details before continuing.');
-      return false;
-    }
-    setError('');
-    return true;
+    const nameError = !form.emergencyContactName.trim() ? 'Emergency contact name is required.' : '';
+    const numberError = !form.emergencyContactNumber.trim() ? 'Phone number is required.' : validators.emergencyContactNumber(form.emergencyContactNumber);
+
+    setFieldErrors((prev) => ({ ...prev, emergencyContactName: nameError, emergencyContactNumber: numberError }));
+    return !(nameError || numberError);
   };
 
   const goToStep2Next = () => { if (validateStep1()) setStep(2); };
@@ -195,18 +177,23 @@ const Register = () => {
     setError('');
 
     if (!verificationCode.trim()) {
-      setError('Please enter the code we sent to your email.');
+      setFieldErrors((prev) => ({ ...prev, verificationCode: 'Please enter the code we sent to your email.' }));
       return;
     }
 
+    // Re-checks every step's fields at once here, since steps 1-3 are no
+    // longer on screen at this point — there's no single visible field left
+    // to attach these to, so this one stays a summary banner rather than an
+    // inline message nobody would see.
     const nextFieldErrors = {
+      verificationCode: '',
       email: validators.email(form.email),
       phone: validators.phone(form.phone),
       emergencyContactNumber: validators.emergencyContactNumber(form.emergencyContactNumber),
       password: validators.password(form.password),
       confirmPassword: form.password !== confirmPassword ? 'Passwords do not match.' : '',
     };
-    setFieldErrors(nextFieldErrors);
+    setFieldErrors((prev) => ({ ...prev, ...nextFieldErrors }));
     if (Object.values(nextFieldErrors).some(Boolean)) {
       setError('Please fix the highlighted fields before continuing.');
       return;
@@ -443,13 +430,16 @@ const Register = () => {
                       <label style={styles.label} htmlFor="reg-name">Full Name</label>
                       <input
                         id="reg-name"
-                        style={styles.input}
+                        style={inputStyle('name')}
                         type="text"
                         placeholder="Enter your name"
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        aria-invalid={!!fieldErrors.name}
+                        aria-describedby={fieldErrors.name ? 'reg-name-error' : undefined}
                         required
                       />
+                      {fieldErrors.name && <p id="reg-name-error" style={styles.fieldError}>{fieldErrors.name}</p>}
                     </div>
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="reg-email">Email</label>
@@ -533,6 +523,7 @@ const Register = () => {
                       styles={styles}
                       onChange={(address) => setForm((f) => ({ ...f, address }))}
                     />
+                    {fieldErrors.address && <p style={{ ...styles.fieldError, marginTop: '-10px', marginBottom: '16px' }}>{fieldErrors.address}</p>}
 
                     <ValidIdUpload
                       styles={styles}
@@ -545,6 +536,7 @@ const Register = () => {
                       backPreview={validIdBackPreview}
                       onBackChange={handleIdBackChange}
                     />
+                    {fieldErrors.validId && <p style={styles.fieldError}>{fieldErrors.validId}</p>}
 
                     <p style={{ ...styles.subtitle, marginBottom: '8px' }}>
                       Driver's license (optional now — only needed if you later book a self-drive vehicle)
@@ -591,13 +583,16 @@ const Register = () => {
                         <label style={styles.label} htmlFor="reg-emergency-name">Emergency Contact Name</label>
                         <input
                           id="reg-emergency-name"
-                          style={styles.input}
+                          style={inputStyle('emergencyContactName')}
                           type="text"
                           placeholder="Full name"
                           value={form.emergencyContactName}
                           onChange={(e) => setForm({ ...form, emergencyContactName: e.target.value })}
+                          aria-invalid={!!fieldErrors.emergencyContactName}
+                          aria-describedby={fieldErrors.emergencyContactName ? 'reg-emergency-name-error' : undefined}
                           required
                         />
+                        {fieldErrors.emergencyContactName && <p id="reg-emergency-name-error" style={styles.fieldError}>{fieldErrors.emergencyContactName}</p>}
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="reg-emergency-number">Emergency Contact Number</label>
@@ -636,6 +631,7 @@ const Register = () => {
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="reg-verify-code">Verification Code</label>
                       <OtpInput value={verificationCode} onChange={setVerificationCode} isDark={isDark} />
+                      {fieldErrors.verificationCode && <p style={styles.fieldError}>{fieldErrors.verificationCode}</p>}
                     </div>
                     <button type="button" className="text-link-btn" style={{ ...styles.footerLink, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: resendCooldown > 0 ? 'default' : 'pointer' }}
                       onClick={sendVerificationCode} disabled={sendingCode || resendCooldown > 0}>
