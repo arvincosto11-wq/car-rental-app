@@ -1,11 +1,16 @@
 import useModalA11y from '../hooks/useModalA11y';
+import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
 // Everything about a booking that's reference material rather than
 // something admin needs to scan or act on every time — payment/refund
 // reference IDs, resolved refund/reschedule history, booking metadata.
 // Pulled out of Manage Bookings' table into this dialog so the table
 // itself only shows what's actionable or glanceable at a row level.
-const BookingDetailsModal = ({ booking, isDark, onClose }) => {
+// "Mark Balance Received" lives here too, not in the row — with several
+// downpayment bookings on screen at once it was the same gold button
+// repeated down the whole Actions column, which read as noisier than the
+// stuff we'd just moved out.
+const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance }) => {
   const modalRef = useModalA11y(onClose);
   if (!booking) return null;
 
@@ -22,6 +27,10 @@ const BookingDetailsModal = ({ booking, isDark, onClose }) => {
     label: { color: isDark ? '#b0b3b8' : '#6b7280', flexShrink: 0 },
     value: { color: isDark ? '#e4e6eb' : '#1a1a1a', textAlign: 'right', wordBreak: 'break-word' },
     mono: { fontFamily: 'monospace', fontSize: '11px' },
+    collectBtn: {
+      display: 'block', width: '100%', marginTop: '10px', padding: '8px 12px', fontSize: '13px', border: 'none', borderRadius: '8px',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '600',
+    },
   };
 
   const Row = ({ label, value, mono }) => (
@@ -59,6 +68,11 @@ const BookingDetailsModal = ({ booking, isDark, onClose }) => {
           <Row label="Paid so far" value={`₱${booking.amountPaid.toLocaleString()}`} />
           {remaining > 0 && <Row label="Remaining balance" value={`₱${remaining.toLocaleString()}`} />}
           {booking.paymongoPaymentId && <Row label="Payment reference" value={booking.paymongoPaymentId} mono />}
+          {remaining > 0 && booking.status !== 'cancelled' && (
+            <button type="button" style={s.collectBtn} onClick={() => onCollectBalance(booking)}>
+              Mark Balance Received
+            </button>
+          )}
         </div>
 
         {booking.refundStatus !== 'none' && (
