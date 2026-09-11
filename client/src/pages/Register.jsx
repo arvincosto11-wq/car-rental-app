@@ -98,10 +98,12 @@ const Register = () => {
   };
 
   const validateStep2 = () => {
-    const next = { phone: validators.phone(form.phone) };
-    setFieldErrors((prev) => ({ ...prev, ...next }));
-    if (!form.phone.trim() || Object.values(next).some(Boolean)) {
-      setError('Please enter a valid phone number before continuing.');
+    // Shown right under the field itself (see fieldErrors.phone below the
+    // input), not as a page-level banner — a phone-format problem belongs
+    // next to the phone field, not somewhere the user has to go hunting for.
+    const phoneError = !form.phone.trim() ? 'Phone number is required.' : validators.phone(form.phone);
+    setFieldErrors((prev) => ({ ...prev, phone: phoneError }));
+    if (phoneError) {
       return false;
     }
     if (!form.address.trim()) {

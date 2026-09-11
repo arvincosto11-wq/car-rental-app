@@ -15,6 +15,7 @@ import { idTypeNeedsBack } from '../data/validIdTypes';
 import usePageTitle from '../hooks/usePageTitle';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
+const PHONE_ERROR = 'Enter a valid PH mobile number (e.g. 09171234567 or +639171234567).';
 const OTHER = '__other__';
 const CONSIGN_STEPS = ['Your Information', 'Vehicle Details', 'Documents'];
 
@@ -38,6 +39,7 @@ const ConsignmentRegister = () => {
     suggestedPricePerDay: '', description: '',
   });
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [validIdType, setValidIdType] = useState('');
   const [validIdImage, setValidIdImage] = useState(null);
@@ -104,7 +106,11 @@ const ConsignmentRegister = () => {
     if (!form.email.trim()) { setError('Please enter your email.'); return false; }
     if (!form.password || form.password.length < 8) { setError('Password must be at least 8 characters.'); return false; }
     if (form.password !== confirmPassword) { setError('Password and confirmation do not match.'); return false; }
-    if (!PHONE_REGEX.test(form.phone)) { setError('Please enter a valid Philippine phone number (e.g. 09171234567 or +639171234567)'); return false; }
+    // Shown right under the phone field itself (see fieldErrors.phone
+    // below the input), not as a page-level banner.
+    const phoneError = !form.phone.trim() ? 'Phone number is required.' : (PHONE_REGEX.test(form.phone) ? '' : PHONE_ERROR);
+    setFieldErrors((prev) => ({ ...prev, phone: phoneError }));
+    if (phoneError) return false;
     if (!form.address.trim()) { setError('Please complete your address.'); return false; }
     if (!validIdType) { setError('Please select which valid ID you\'ll be using.'); return false; }
     if (!validIdImage) { setError('Please upload a photo of your valid ID.'); return false; }
@@ -335,7 +341,12 @@ const ConsignmentRegister = () => {
     },
     footer: { textAlign: 'center', fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '20px' },
     footerLink: { color: isDark ? GOLD_DARK : GOLD, textDecoration: 'none', fontWeight: '500' },
+    fieldError: { fontSize: '11px', color: isDark ? '#fca5a5' : '#dc2626', marginTop: '4px' },
   };
+
+  const inputStyle = (field) => (
+    fieldErrors[field] ? { ...styles.input, border: `1px solid ${isDark ? '#f87171' : '#dc2626'}` } : styles.input
+  );
 
   return (
     <div style={styles.container}>
@@ -385,8 +396,13 @@ const ConsignmentRegister = () => {
                     </div>
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="cr-phone">Phone Number</label>
-                      <input id="cr-phone" style={styles.input} type="tel" placeholder="09171234567"
-                        value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
+                      <input id="cr-phone" style={inputStyle('phone')} type="tel" placeholder="09171234567"
+                        value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                        onBlur={(e) => setFieldErrors((prev) => ({ ...prev, phone: !e.target.value.trim() ? '' : (PHONE_REGEX.test(e.target.value) ? '' : PHONE_ERROR) }))}
+                        aria-invalid={!!fieldErrors.phone}
+                        aria-describedby={fieldErrors.phone ? 'cr-phone-error' : undefined}
+                        required />
+                      {fieldErrors.phone && <p id="cr-phone-error" style={styles.fieldError}>{fieldErrors.phone}</p>}
                     </div>
 
                     <LocationAddressFields
