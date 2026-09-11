@@ -375,6 +375,35 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
   }
 });
 
+// Admin records the remaining balance as collected in person at pickup
+// (cash or GCash) — the only thing left owed on a downpayment booking. No
+// new field needed: once amountPaid reaches totalPrice, there's nothing
+// left to collect, so that alone is the "settled" signal everywhere else
+// (Manage Bookings, My Bookings) already reads from.
+router.put('/:id/collect-balance', protect, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    if (booking.paymentType !== 'downpayment') {
+      return res.status(400).json({ message: 'This booking was already paid in full.' });
+    }
+    if (booking.amountPaid >= booking.totalPrice) {
+      return res.status(400).json({ message: 'There is no remaining balance on this booking.' });
+    }
+
+    const collected = booking.totalPrice - booking.amountPaid;
+    booking.amountPaid = booking.totalPrice;
+    await booking.save();
+
+    await notifyUser(booking.user, 'Balance Received', `We've recorded your remaining balance of ₱${collected.toLocaleString()} as paid. Thanks!`, '/my-bookings');
+
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Refund tiers based on how long ago the booking was MADE — not the pickup
 // date at all. A short cooling-off window (full refund) for a quick change
 // of mind, tapering off the longer the client sits on the booking before

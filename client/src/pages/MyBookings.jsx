@@ -497,6 +497,10 @@ const MyBookings = () => {
     },
     priceLabel: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
     price: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    balanceDue: {
+      fontSize: '11px', fontWeight: '600', color: isDark ? GOLD_DARK : GOLD, marginTop: '4px',
+      textAlign: 'right', maxWidth: '160px',
+    },
     bookedOn: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '4px' },
     modalOverlay: {
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -713,6 +717,11 @@ const MyBookings = () => {
               <div className="booking-card-price" style={styles.priceCol}>
                 <span style={styles.priceLabel}>Total Price</span>
                 <span style={styles.price}>₱{booking.totalPrice}</span>
+                {booking.paymentType === 'downpayment' && booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
+                  <span style={styles.balanceDue}>
+                    ₱{booking.amountPaid.toLocaleString()} paid — bring ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} at pickup
+                  </span>
+                )}
                 <span style={styles.bookedOn}>
                   Booked on {new Date(booking.createdAt).toLocaleDateString()}
                 </span>
