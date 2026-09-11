@@ -11,7 +11,10 @@ const ChevronIcon = ({ open }) => (
 // Animated replacement for a native <select> — a pill button showing the
 // current choice, opening into a floating list of options on click. Used
 // for Manage Bookings' status changer, in place of the plain browser
-// dropdown. `options` is [{ value, label, disabled }]; closes on an
+// dropdown. `options` is [{ value, label, disabled, color }] — color tints
+// just that option's label (in both the trigger and the menu row), so e.g.
+// Confirmed/Cancelled read at a glance the same way the table's own status
+// badges already do, without repainting the whole pill. Closes on an
 // outside click, same pattern as NotificationBell's own dropdown.
 const StatusDropdown = ({ value, options, onChange, isDark }) => {
   const [open, setOpen] = useState(false);
@@ -40,10 +43,11 @@ const StatusDropdown = ({ value, options, onChange, isDark }) => {
       background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '8px', boxShadow: '0 8px 20px rgba(0,0,0,0.16)', overflow: 'hidden', padding: '4px',
     },
-    item: (disabled, highlighted) => ({
+    item: (disabled, highlighted, color) => ({
       display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', border: 'none', borderRadius: '6px',
       background: highlighted ? (isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.08)') : 'transparent',
-      color: disabled ? (isDark ? '#4e4f50' : '#9ca3af') : (isDark ? '#e4e6eb' : '#1a1a1a'),
+      color: disabled ? (isDark ? '#4e4f50' : '#9ca3af') : (color || (isDark ? '#e4e6eb' : '#1a1a1a')),
+      fontWeight: color ? '600' : '400',
       fontSize: '12px', cursor: disabled ? 'not-allowed' : 'pointer',
     }),
   };
@@ -51,7 +55,7 @@ const StatusDropdown = ({ value, options, onChange, isDark }) => {
   return (
     <div ref={ref} style={s.wrap}>
       <button type="button" className="dropdown-item-btn" style={s.trigger} onClick={() => setOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={open}>
-        {current?.label || value}
+        <span style={{ color: current?.color || 'inherit', fontWeight: current?.color ? '600' : '400' }}>{current?.label || value}</span>
         <ChevronIcon open={open} />
       </button>
       <AnimatePresence>
@@ -72,7 +76,7 @@ const StatusDropdown = ({ value, options, onChange, isDark }) => {
                 role="option"
                 aria-selected={opt.value === value}
                 disabled={opt.disabled}
-                style={s.item(opt.disabled, opt.value === value || hovered === opt.value)}
+                style={s.item(opt.disabled, opt.value === value || hovered === opt.value, opt.color)}
                 onMouseEnter={() => setHovered(opt.value)}
                 onMouseLeave={() => setHovered(null)}
                 onClick={() => { if (!opt.disabled) { onChange(opt.value); setOpen(false); } }}

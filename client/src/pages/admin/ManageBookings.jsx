@@ -427,8 +427,8 @@ const ManageBookings = () => {
                         onChange={(status) => handleStatus(booking._id, status)}
                         options={[
                           { value: 'pending', label: 'Pending' },
-                          { value: 'confirmed', label: 'Confirmed', disabled: booking.payment !== 'paid' },
-                          { value: 'cancelled', label: 'Cancelled' },
+                          { value: 'confirmed', label: 'Confirmed', disabled: booking.payment !== 'paid', color: isDark ? '#34d399' : '#16a34a' },
+                          { value: 'cancelled', label: 'Cancelled', color: isDark ? '#f87171' : '#dc2626' },
                         ]}
                       />
                       {booking.payment !== 'paid' && (
