@@ -404,6 +404,44 @@ router.put('/:id/collect-balance', protect, adminOnly, async (req, res) => {
   }
 });
 
+// Admin marks a confirmed booking as a no-show once its pickup date has
+// passed — cancels it (freeing the car for other bookings, same as any
+// other cancelled booking) and forfeits whatever the client already paid
+// as a no-show fee instead of running it through the normal refund-request
+// flow. Reuses refundStatus/refundReason/refundAmount to record that
+// outcome rather than adding a dedicated field — a no-show is really just
+// a cancellation with $0 refund and a specific reason.
+router.put('/:id/no-show', protect, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ message: 'Only a confirmed booking can be marked as a no-show.' });
+    }
+    if (new Date() < new Date(booking.startDate)) {
+      return res.status(400).json({ message: "This booking can't be marked as a no-show before its pickup date." });
+    }
+
+    booking.status = 'cancelled';
+    booking.refundStatus = 'declined';
+    booking.refundReason = 'Client did not show up for pickup — the amount paid is forfeited as a no-show fee, per booking terms.';
+    booking.refundAmount = 0;
+    await booking.save();
+
+    await notifyUser(
+      booking.user,
+      'Booking Marked as No-Show',
+      'Your booking was cancelled because the vehicle was not picked up. The amount you paid has been forfeited as a no-show fee, per our booking terms.',
+      '/my-bookings'
+    );
+
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Refund tiers based on how long ago the booking was MADE — not the pickup
 // date at all. A short cooling-off window (full refund) for a quick change
 // of mind, tapering off the longer the client sits on the booking before

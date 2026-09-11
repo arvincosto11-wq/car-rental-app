@@ -89,6 +89,22 @@ const ManageBookings = () => {
     await handleStatus(booking._id, 'completed');
   };
 
+  const handleMarkNoShow = async (booking) => {
+    const ok = await confirm(
+      `Mark this booking as a no-show? This cancels it and forfeits the ₱${booking.amountPaid.toLocaleString()} already paid — this can't be undone.`,
+      { confirmLabel: 'Yes, mark as no-show', cancelLabel: 'Cancel' }
+    );
+    if (!ok) return;
+    try {
+      await api.put(`/bookings/${booking._id}/no-show`);
+      await fetchBookings();
+      refetchPendingCounts();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Something went wrong marking this as a no-show.');
+    }
+  };
+
   const handleRefundDecision = async (id, decision) => {
     try {
       await api.put(`/bookings/${id}/refund`, { decision });
@@ -182,6 +198,7 @@ const ManageBookings = () => {
     cancelled: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     completed: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
     returnBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '500' },
+    noShowBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     acceptBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     declineBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     editRatingBtn: { background: 'none', border: 'none', color: '#7c3aed', fontSize: '11px', cursor: 'pointer', padding: 0, textDecoration: 'underline' },
@@ -394,16 +411,25 @@ const ManageBookings = () => {
                       </span>
                     </div>
                   ) : booking.status === 'confirmed' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={s.confirmed}>confirmed</span>
                       {new Date() >= new Date(booking.startDate) ? (
-                        <button
-                          style={s.returnBtn}
-                          onClick={() => handleMarkReturned(booking)}
-                          title="Only needed for an early return — this completes automatically the day after the return date."
-                        >
-                          Mark as Returned
-                        </button>
+                        <>
+                          <button
+                            style={s.returnBtn}
+                            onClick={() => handleMarkReturned(booking)}
+                            title="Only needed for an early return — this completes automatically the day after the return date."
+                          >
+                            Mark as Returned
+                          </button>
+                          <button
+                            style={s.noShowBtn}
+                            onClick={() => handleMarkNoShow(booking)}
+                            title="Vehicle was never picked up — cancels the booking and forfeits what was paid."
+                          >
+                            No-Show
+                          </button>
+                        </>
                       ) : (
                         <span style={{ fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', fontStyle: 'italic' }}>
                           Pickup {new Date(booking.startDate).toLocaleDateString()}

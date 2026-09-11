@@ -684,9 +684,9 @@ const MyBookings = () => {
                       </button>
                     </div>
                 )}
-                {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved') && (
+                {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved' || booking.refundStatus === 'declined') && (
                   <p style={styles.refundNote}>
-                    {booking.refundStatus === 'requested' ? 'Pending refund' : 'Refund'}: ₱{booking.refundAmount?.toLocaleString() ?? 0}
+                    {booking.refundStatus === 'requested' ? 'Pending refund' : booking.refundStatus === 'approved' ? 'Refund' : 'No refund'}: ₱{booking.refundAmount?.toLocaleString() ?? 0}
                     {booking.refundReason ? ` — Reason: ${booking.refundReason}` : ''}
                     {booking.paymongoRefundId ? ` — Ref: ${booking.paymongoRefundId}` : ''}
                   </p>

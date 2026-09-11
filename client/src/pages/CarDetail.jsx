@@ -382,22 +382,25 @@ const CarDetail = () => {
               <p><strong>2. Cancellation Policy</strong></p>
               <p>Refund amount depends on how long ago you made the booking, not your pickup date: cancel within 12 hours of booking for a full refund, within 12 to 24 hours for a 50% refund, or after 24 hours for no refund.</p>
               <br/>
-              <p><strong>3. Vehicle Usage</strong></p>
+              <p><strong>3. No-Show Policy</strong></p>
+              <p>If you do not pick up the vehicle for a confirmed booking, it will be cancelled and whatever amount you already paid (downpayment or full payment) is forfeited as a no-show fee — no refund. Use the reschedule option below if your plans change instead of simply not showing up.</p>
+              <br/>
+              <p><strong>4. Vehicle Usage</strong></p>
               <p>The rented vehicle must be used only for lawful purposes. The renter is responsible for any traffic violations, fines, or damages incurred during the rental period.</p>
               <br/>
-              <p><strong>4. Fuel Policy</strong></p>
+              <p><strong>5. Fuel Policy</strong></p>
               <p>The vehicle must be returned with the same fuel level it had at pickup. If it is returned with less fuel, the difference will be charged to the renter.</p>
               <br/>
-              <p><strong>5. Damage Policy</strong></p>
+              <p><strong>6. Damage Policy</strong></p>
               <p>The renter is liable for any damage to the vehicle during the rental period. Urban Wheels Car Rental reserves the right to charge for repairs.</p>
               <br/>
-              <p><strong>6. Payment</strong></p>
+              <p><strong>7. Payment</strong></p>
               <p>Your downpayment or full payment is collected online via GCash (through PayMongo) at the time of booking. If you chose the 20% downpayment option, the remaining balance must be settled in cash or GCash upon vehicle pickup.</p>
               <br/>
-              <p><strong>7. Late Returns</strong></p>
+              <p><strong>8. Late Returns</strong></p>
               <p>Late returns will be charged an additional fee equivalent to one day's rental rate per day of delay.</p>
               <br/>
-              <p><strong>8. Rescheduling</strong></p>
+              <p><strong>9. Rescheduling</strong></p>
               <p>Instead of cancelling, you may request to move a pending or confirmed booking to different dates at no extra fee, as long as the new dates keep the same trip length and are approved by an admin. See My Bookings to request a reschedule.</p>
             </div>
             <button style={s.closeBtn} onClick={() => setShowTerms(false)}>
