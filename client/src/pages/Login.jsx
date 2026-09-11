@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import PasswordInput from '../components/PasswordInput';
-import LoginRouteCanvas from '../components/LoginRouteCanvas';
 import usePageTitle from '../hooks/usePageTitle';
 import api from '../api';
 
@@ -72,13 +71,20 @@ const Login = () => {
         : `linear-gradient(160deg, #faedc7 0%, #fff 100%)`,
       borderRight: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
-    panelContent: { position: 'relative', zIndex: 1, textAlign: 'center' },
+    panelVideo: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 },
+    // Fixed dark scrim + white text rather than theme-toggled colors — same
+    // approach as the Home hero's photo overlay (see heroOverlay/heroTitle
+    // in Home.jsx): text sitting on top of video/photo content needs to
+    // stay legible against whatever that footage looks like, independent
+    // of the site's own light/dark mode.
+    panelOverlay: { position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(23,19,14,0.45), rgba(23,19,14,0.68))', zIndex: 1 },
+    panelContent: { position: 'relative', zIndex: 2, textAlign: 'center' },
     logoImg: {
       width: '72px', height: '72px', borderRadius: '50%', marginBottom: '20px',
-      boxShadow: isDark ? '0 8px 24px rgba(0,0,0,0.45)' : '0 8px 24px rgba(0,0,0,0.14)',
+      boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
     },
-    panelTitle: { fontSize: '26px', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '10px' },
-    panelSubtitle: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280', maxWidth: '250px', margin: '0 auto', lineHeight: '1.6' },
+    panelTitle: { fontSize: '26px', color: '#ffffff', marginBottom: '10px', textShadow: '0 2px 12px rgba(0,0,0,0.35)' },
+    panelSubtitle: { fontSize: '14px', color: 'rgba(255,255,255,0.85)', maxWidth: '250px', margin: '0 auto', lineHeight: '1.6' },
     formSide: {
       flex: 1, minWidth: 0, padding: '48px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center',
       background: isDark ? '#242526' : '#fff',
@@ -151,7 +157,16 @@ const Login = () => {
     <div style={styles.container}>
       <div className="login-card" style={styles.card}>
         <div className="login-map-panel" style={styles.panel}>
-          <LoginRouteCanvas dotColor={isDark ? GOLD_DARK : GOLD} lineColor={isDark ? GOLD_DARK : GOLD} />
+          <video
+            className="login-panel-video"
+            style={styles.panelVideo}
+            src="/login-bg.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+          <div style={styles.panelOverlay} />
           <motion.div
             initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
