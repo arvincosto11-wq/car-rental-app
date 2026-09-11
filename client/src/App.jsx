@@ -20,7 +20,6 @@ import MyFavorites from './pages/MyFavorites';
 import Profile from './pages/Profile';
 import ConsignmentRegister from './pages/ConsignmentRegister';
 import Help from './pages/Help';
-import IconPreview from './pages/IconPreview';
 import NotFound from './pages/NotFound';
 
 // Admin and consignor pages are only ever reached by those roles, and
@@ -69,7 +68,6 @@ function App() {
             <Route path="/forgot-password" element={<><Navbar /><ForgotPassword /></>} />
             <Route path="/consignment/register" element={<><Navbar /><ConsignmentRegister /></>} />
             <Route path="/help" element={<><Navbar /><Help /></>} />
-            <Route path="/icon-preview" element={<><Navbar /><IconPreview /></>} />
 
             {/* Client-only Routes */}
             <Route
