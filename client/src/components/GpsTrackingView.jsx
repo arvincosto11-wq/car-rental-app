@@ -23,7 +23,9 @@ const timeAgo = (dateStr) => {
 // A plain colored-dot divIcon instead of Leaflet's default marker — sidesteps
 // the well-known bundler issue where Leaflet's default icon image paths
 // don't resolve under Vite, and lets the pin color communicate status
-// (gold = selected, gray = placeholder/not yet connected, green = live).
+// (gold = selected, blue = currently rented, gray = available). Whether
+// the tracker itself is real vs. a placeholder is a separate concern,
+// covered by the popup text and the list's own badge instead.
 const pinIcon = (color) => L.divIcon({
   className: '',
   html: `<div style="width:18px;height:18px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>`,
@@ -40,6 +42,7 @@ const GpsTrackingView = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
+  const [search, setSearch] = useState('');
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -55,12 +58,21 @@ const GpsTrackingView = () => {
   };
 
   const anyMock = cars.some((c) => c.gps?.isMock);
+  const q = search.trim().toLowerCase();
+  const filteredCars = !q ? cars : cars.filter((car) =>
+    `${car.brand} ${car.model} ${car.plateNumber || ''}`.toLowerCase().includes(q)
+  );
 
   const s = {
     notice: {
       display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '10px',
       background: isDark ? '#3a2f10' : '#fff7e6', border: `1px solid ${isDark ? '#5a4a1a' : '#f3d98b'}`,
       color: isDark ? '#e8c463' : '#8a6d1a', fontSize: '13px', marginBottom: '16px',
+    },
+    searchInput: {
+      width: '100%', padding: '9px 12px', marginBottom: '16px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+      background: isDark ? '#242526' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
     },
     layout: { display: 'grid', gridTemplateColumns: '1fr 320px', gap: '16px', alignItems: 'start' },
     mapWrap: { height: '520px', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
@@ -77,9 +89,18 @@ const GpsTrackingView = () => {
     cardName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     cardMeta: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px' },
     pill: (mock) => ({
-      display: 'inline-block', marginTop: '6px', fontSize: '10px', fontWeight: '600', padding: '2px 8px',
+      display: 'inline-block', marginTop: '6px', marginRight: '4px', fontSize: '10px', fontWeight: '600', padding: '2px 8px',
       borderRadius: '20px', background: mock ? (isDark ? '#3a3b3c' : '#e5e7eb') : '#16a34a',
       color: mock ? (isDark ? '#b0b3b8' : '#6b7280') : '#fff',
+    }),
+    // Deliberately a different color family from the green/gray "Engine
+    // on"/"Demo location" pill below — that's about the tracker's own
+    // connectivity/ignition signal, this is about whether a customer
+    // actually has the car out, a separate axis of information.
+    statusPill: (rented) => ({
+      display: 'inline-block', marginTop: '6px', marginRight: '4px', fontSize: '10px', fontWeight: '600', padding: '2px 8px',
+      borderRadius: '20px', background: rented ? (isDark ? '#1e40af' : '#dbeafe') : (isDark ? '#3a3b3c' : '#e5e7eb'),
+      color: rented ? (isDark ? '#bfdbfe' : '#1e40af') : (isDark ? '#b0b3b8' : '#6b7280'),
     }),
     empty: { padding: '40px 20px', textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '14px' },
   };
@@ -94,11 +115,22 @@ const GpsTrackingView = () => {
 
   return (
     <div>
+      <input
+        type="text"
+        style={s.searchInput}
+        placeholder="Search by brand, model, or plate number..."
+        aria-label="Search vehicles"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
       {anyMock && (
         <div style={s.notice}>
           Some vehicles don't have a physical GPS tracker connected yet — their pin shows a placeholder demo location until one reports in.
         </div>
       )}
+      {filteredCars.length === 0 ? (
+        <div style={s.empty}>No vehicles match "{search}".</div>
+      ) : (
       <div className="gps-layout" style={s.layout}>
         <div style={s.mapWrap}>
           <MapContainer ref={mapRef} center={LEGAZPI_CENTER} zoom={13} style={{ height: '100%', width: '100%' }}>
@@ -106,15 +138,16 @@ const GpsTrackingView = () => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             />
-            {cars.map((car) => (
+            {filteredCars.map((car) => (
               <Marker
                 key={car._id}
                 position={[car.gps.lat, car.gps.lng]}
-                icon={pinIcon(selectedId === car._id ? (isDark ? GOLD_DARK : GOLD) : (car.gps.isMock ? '#9ca3af' : '#16a34a'))}
+                icon={pinIcon(selectedId === car._id ? (isDark ? GOLD_DARK : GOLD) : (car.isRented ? '#2563eb' : '#9ca3af'))}
                 eventHandlers={{ click: () => setSelectedId(car._id) }}
               >
                 <Popup>
                   <strong>{car.brand} {car.model}</strong><br />
+                  {car.isRented ? 'Rented' : 'Available'}<br />
                   {car.gps.isMock
                     ? 'Demo location — tracker not yet connected'
                     : `${car.gps.speed ?? 0} km/h · ${car.gps.ignitionOn ? 'Engine on' : 'Engine off'} · ${timeAgo(car.gps.updatedAt)}`}
@@ -124,7 +157,7 @@ const GpsTrackingView = () => {
           </MapContainer>
         </div>
         <div style={s.list}>
-          {cars.map((car) => (
+          {filteredCars.map((car) => (
             <button
               type="button"
               key={car._id}
@@ -135,11 +168,13 @@ const GpsTrackingView = () => {
               <div style={s.cardMeta}>
                 {car.gps.isMock ? 'Not yet connected' : `${car.gps.speed ?? 0} km/h · ${timeAgo(car.gps.updatedAt)}`}
               </div>
+              <span style={s.statusPill(car.isRented)}>{car.isRented ? 'Rented' : 'Available'}</span>
               <span style={s.pill(car.gps.isMock)}>{car.gps.isMock ? 'Demo location' : (car.gps.ignitionOn ? 'Engine on' : 'Parked')}</span>
             </button>
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 };

@@ -360,9 +360,24 @@ router.get('/gps-fleet', protect, adminOrConsignor, async (req, res) => {
     if (req.user.role === 'consignor') filter.owner = req.user.id;
 
     const cars = await Car.find(filter).select('brand model plateNumber image gps owner');
+
+    // A car is "Rented" if it has a confirmed booking covering today, not
+    // based on the tracker's own ignition signal — that tells us the
+    // engine is running, not whether a customer actually has the car out,
+    // and works the same whether or not a real tracker is connected yet.
+    const now = new Date();
+    const activeBookings = await Booking.find({
+      car: { $in: cars.map((c) => c._id) },
+      status: 'confirmed',
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+    }).select('car');
+    const rentedCarIds = new Set(activeBookings.map((b) => b.car.toString()));
+
     const withGps = cars.map((car) => {
       const obj = req.user.role === 'admin' ? car.toObject() : hidePlateNumber(car);
       obj.gps = car.gps?.updatedAt ? { ...car.gps.toObject(), isMock: false } : mockGps(car._id);
+      obj.isRented = rentedCarIds.has(car._id.toString());
       return obj;
     });
 
