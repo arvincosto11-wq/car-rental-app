@@ -70,16 +70,24 @@ const GpsTrackingView = () => {
       color: isDark ? '#e8c463' : '#8a6d1a', fontSize: '13px', marginBottom: '16px',
     },
     searchInput: {
-      width: '100%', padding: '9px 12px', marginBottom: '16px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+      width: '100%', padding: '9px 12px', marginBottom: '10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', flexShrink: 0,
       background: isDark ? '#242526' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
     },
     layout: { display: 'grid', gridTemplateColumns: '1fr 320px', gap: '16px', alignItems: 'start' },
     mapWrap: { height: '520px', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
-    list: {
-      display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '520px', overflowY: 'auto',
+    // Search sits inside this panel (above the scrollable card stack)
+    // rather than spanning the whole width above the map too, since it's
+    // really filtering the list someone is scanning — the map just
+    // reacts to it. Split into a fixed header (search) + its own
+    // scrolling region so the input doesn't scroll away with the cards.
+    listPanel: {
+      display: 'flex', flexDirection: 'column',
       background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '12px', padding: '10px',
+    },
+    list: {
+      display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '460px', overflowY: 'auto',
     },
     card: (active) => ({
       textAlign: 'left', padding: '10px 12px', borderRadius: '10px', cursor: 'pointer',
@@ -115,14 +123,6 @@ const GpsTrackingView = () => {
 
   return (
     <div>
-      <input
-        type="text"
-        style={s.searchInput}
-        placeholder="Search by brand, model, or plate number..."
-        aria-label="Search vehicles"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
       {anyMock && (
         <div style={s.notice}>
           Some vehicles don't have a physical GPS tracker connected yet — their pin shows a placeholder demo location until one reports in.
@@ -153,26 +153,36 @@ const GpsTrackingView = () => {
             ))}
           </MapContainer>
         </div>
-        <div style={s.list}>
-          {filteredCars.length === 0 ? (
-            <div style={s.empty}>No vehicles match "{search}".</div>
-          ) : (
-            filteredCars.map((car) => (
-              <button
-                type="button"
-                key={car._id}
-                style={s.card(selectedId === car._id)}
-                onClick={() => focusCar(car)}
-              >
-                <div style={s.cardName}>{car.brand} {car.model}</div>
-                <div style={s.cardMeta}>
-                  {car.gps.isMock ? 'Not yet connected' : `${car.gps.speed ?? 0} km/h · ${timeAgo(car.gps.updatedAt)}`}
-                </div>
-                <span style={s.statusPill(car.isRented)}>{car.isRented ? 'Rented' : 'Available'}</span>
-                <span style={s.pill(car.gps.isMock)}>{car.gps.isMock ? 'Demo location' : (car.gps.ignitionOn ? 'Engine on' : 'Parked')}</span>
-              </button>
-            ))
-          )}
+        <div style={s.listPanel}>
+          <input
+            type="text"
+            style={s.searchInput}
+            placeholder="Search by brand, model, or plate number..."
+            aria-label="Search vehicles"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div style={s.list}>
+            {filteredCars.length === 0 ? (
+              <div style={s.empty}>No vehicles match "{search}".</div>
+            ) : (
+              filteredCars.map((car) => (
+                <button
+                  type="button"
+                  key={car._id}
+                  style={s.card(selectedId === car._id)}
+                  onClick={() => focusCar(car)}
+                >
+                  <div style={s.cardName}>{car.brand} {car.model}</div>
+                  <div style={s.cardMeta}>
+                    {car.gps.isMock ? 'Not yet connected' : `${car.gps.speed ?? 0} km/h · ${timeAgo(car.gps.updatedAt)}`}
+                  </div>
+                  <span style={s.statusPill(car.isRented)}>{car.isRented ? 'Rented' : 'Available'}</span>
+                  <span style={s.pill(car.gps.isMock)}>{car.gps.isMock ? 'Demo location' : (car.gps.ignitionOn ? 'Engine on' : 'Parked')}</span>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
