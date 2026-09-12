@@ -128,9 +128,6 @@ const GpsTrackingView = () => {
           Some vehicles don't have a physical GPS tracker connected yet — their pin shows a placeholder demo location until one reports in.
         </div>
       )}
-      {filteredCars.length === 0 ? (
-        <div style={s.empty}>No vehicles match "{search}".</div>
-      ) : (
       <div className="gps-layout" style={s.layout}>
         <div style={s.mapWrap}>
           <MapContainer ref={mapRef} center={LEGAZPI_CENTER} zoom={13} style={{ height: '100%', width: '100%' }}>
@@ -157,24 +154,27 @@ const GpsTrackingView = () => {
           </MapContainer>
         </div>
         <div style={s.list}>
-          {filteredCars.map((car) => (
-            <button
-              type="button"
-              key={car._id}
-              style={s.card(selectedId === car._id)}
-              onClick={() => focusCar(car)}
-            >
-              <div style={s.cardName}>{car.brand} {car.model}</div>
-              <div style={s.cardMeta}>
-                {car.gps.isMock ? 'Not yet connected' : `${car.gps.speed ?? 0} km/h · ${timeAgo(car.gps.updatedAt)}`}
-              </div>
-              <span style={s.statusPill(car.isRented)}>{car.isRented ? 'Rented' : 'Available'}</span>
-              <span style={s.pill(car.gps.isMock)}>{car.gps.isMock ? 'Demo location' : (car.gps.ignitionOn ? 'Engine on' : 'Parked')}</span>
-            </button>
-          ))}
+          {filteredCars.length === 0 ? (
+            <div style={s.empty}>No vehicles match "{search}".</div>
+          ) : (
+            filteredCars.map((car) => (
+              <button
+                type="button"
+                key={car._id}
+                style={s.card(selectedId === car._id)}
+                onClick={() => focusCar(car)}
+              >
+                <div style={s.cardName}>{car.brand} {car.model}</div>
+                <div style={s.cardMeta}>
+                  {car.gps.isMock ? 'Not yet connected' : `${car.gps.speed ?? 0} km/h · ${timeAgo(car.gps.updatedAt)}`}
+                </div>
+                <span style={s.statusPill(car.isRented)}>{car.isRented ? 'Rented' : 'Available'}</span>
+                <span style={s.pill(car.gps.isMock)}>{car.gps.isMock ? 'Demo location' : (car.gps.ignitionOn ? 'Engine on' : 'Parked')}</span>
+              </button>
+            ))
+          )}
         </div>
       </div>
-      )}
     </div>
   );
 };
