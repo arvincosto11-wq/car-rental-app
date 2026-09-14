@@ -1,6 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import { protect, adminOnly } from '../middleware/auth.js';
+import { notifyUser } from '../utils/notify.js';
 
 const router = express.Router();
 
@@ -20,12 +21,20 @@ router.get('/', protect, adminOnly, async (req, res) => {
 router.put('/:id/verify', protect, adminOnly, async (req, res) => {
   try {
     const { verified } = req.body;
+    const wasVerified = (await User.findById(req.params.id).select('idVerified'))?.idVerified;
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { idVerified: verified },
       { new: true }
     ).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Only notify on the actual transition into verified — flip back to
+    // false (an admin correction) doesn't need one.
+    if (verified && !wasVerified) {
+      await notifyUser(user._id, 'ID Verified', 'Your valid ID has been verified. You can now book normally.', '/profile');
+    }
+
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: err.message });
