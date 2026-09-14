@@ -414,12 +414,9 @@ select:disabled {
   .hero-search-field { border-right: none !important; border-bottom: 1px solid var(--border); }
 }
 
-/* The carousel's negative margin-top (see Home.jsx) was tuned to overlap
-   the hero's short, single-row desktop search box. Below 560px the search
-   box above (.hero-search-box) stacks into a much taller column, so the
-   same negative overlap now pulls the carousel up into it instead of just
-   the hero's empty lower padding. Cancelling the overlap here removes the
-   collision without touching the desktop value it was tuned against. */
+/* A little extra breathing room between the "Curated Fleet" heading and
+   the carousel on small screens, where the heading text wraps to more
+   lines and sits closer to the carousel than on desktop. */
 @media (max-width: 560px) {
   .carousel-overlap {
     margin-top: 16px !important;

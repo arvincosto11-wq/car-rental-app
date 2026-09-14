@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { GOLD, GOLD_DARK } from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import Skeleton from './Skeleton';
 import api from '../api';
 
@@ -12,11 +12,14 @@ const HOLD_MS = 4000;
 // the right (next car up), slot 2 behind and to the left (arrived from the
 // right on a previous tick, about to exit). `x` is a percentage of the
 // card's own width, not the container's — so the offset scales naturally
-// with the card at any viewport size instead of needing pixel math.
+// with the card at any viewport size instead of needing pixel math. `filter`
+// is animated the same way as the rest (framer-motion handles CSS filter
+// transitions fine) — a real blur on the side cards reads as depth-of-field
+// rather than just a dimmed duplicate of the front card.
 const slotStyle = (slot) => {
-  if (slot === 0) return { opacity: 1, scale: 1, x: '0%', zIndex: 3 };
-  if (slot === 1) return { opacity: 0.55, scale: 0.87, x: '46%', zIndex: 2 };
-  return { opacity: 0.5, scale: 0.87, x: '-46%', zIndex: 1 };
+  if (slot === 0) return { opacity: 1, scale: 1, x: '0%', zIndex: 3, filter: 'blur(0px) grayscale(0)' };
+  if (slot === 1) return { opacity: 0.6, scale: 0.87, x: '46%', zIndex: 2, filter: 'blur(3px) grayscale(0.25)' };
+  return { opacity: 0.55, scale: 0.87, x: '-46%', zIndex: 1, filter: 'blur(3px) grayscale(0.25)' };
 };
 
 const StackedCarCarousel = ({ isDark }) => {
@@ -91,13 +94,13 @@ const StackedCarCarousel = ({ isDark }) => {
   if (loading) {
     return (
       <div style={{ overflow: 'hidden', padding: '10px 0' }}>
-        <div style={{ position: 'relative', width: 'min(960px, 96vw)', height: '460px', margin: '0 auto' }}>
+        <div style={{ position: 'relative', width: 'min(960px, 96vw)', height: '500px', margin: '0 auto' }}>
           <div style={{ position: 'absolute', top: 0, left: '23%', width: '54%' }}>
             <Skeleton height="290px" radius="18px 18px 0 0" isDark={isDark} />
             <div style={{ padding: '22px 24px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderTop: 'none', borderRadius: '0 0 18px 18px' }}>
-              <Skeleton width="70%" height="22px" isDark={isDark} style={{ marginBottom: '10px' }} />
-              <Skeleton width="45%" height="14px" isDark={isDark} style={{ marginBottom: '14px' }} />
-              <Skeleton width="35%" height="19px" isDark={isDark} />
+              <Skeleton width="70%" height="20px" isDark={isDark} style={{ marginBottom: '10px' }} />
+              <Skeleton width="45%" height="12px" isDark={isDark} style={{ marginBottom: '16px' }} />
+              <Skeleton height="43px" radius="10px" isDark={isDark} />
             </div>
           </div>
         </div>
@@ -113,7 +116,7 @@ const StackedCarCarousel = ({ isDark }) => {
   const s = {
     outer: { overflow: 'hidden', padding: '10px 0' },
     wrap: {
-      position: 'relative', width: 'min(960px, 96vw)', height: '460px',
+      position: 'relative', width: 'min(960px, 96vw)', height: '500px',
       margin: '0 auto',
     },
     glow: {
@@ -136,13 +139,28 @@ const StackedCarCarousel = ({ isDark }) => {
       boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.5)' : '0 16px 40px rgba(0,0,0,0.12)',
       cursor: 'pointer',
     },
-    imgWrap: { width: '100%', height: '290px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
+    imgWrap: { position: 'relative', width: '100%', height: '290px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
     img: { width: '100%', height: '100%', objectFit: 'cover' },
+    categoryBadge: {
+      position: 'absolute', top: '14px', right: '14px',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+      fontSize: '11px', fontWeight: '700', letterSpacing: '0.02em',
+      padding: '4px 12px', borderRadius: '20px',
+    },
     body: { padding: '22px 24px' },
-    name: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '3px' },
-    sub: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '10px' },
-    price: { fontSize: '19px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD },
-    priceUnit: { fontSize: '13px', fontWeight: '400', color: isDark ? '#b0b3b8' : '#6b7280' },
+    headRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' },
+    name: { fontSize: '20px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    sub: {
+      fontSize: '11.5px', fontWeight: '600', letterSpacing: '0.03em', textTransform: 'uppercase',
+      color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px',
+    },
+    price: { fontSize: '19px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, textAlign: 'right' },
+    priceUnit: { fontSize: '12px', fontWeight: '500', color: isDark ? '#b0b3b8' : '#6b7280' },
+    reserveBtn: {
+      display: 'block', width: '100%', padding: '13px', marginTop: '4px',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+      border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+    },
     dots: { display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '18px' },
     dot: (active) => ({
       width: active ? '18px' : '6px', height: '6px', borderRadius: '4px',
@@ -179,13 +197,25 @@ const StackedCarCarousel = ({ isDark }) => {
               >
                 <div style={s.imgWrap}>
                   {car.image && <img src={car.image} alt="" style={s.img} />}
+                  {car.category && <span style={s.categoryBadge}>{car.category}</span>}
                 </div>
                 <div style={s.body}>
-                  <div style={s.name}>{car.brand} {car.model}</div>
-                  <div style={s.sub}>{car.category} · {car.year}</div>
-                  <div style={s.price}>
-                    ₱{car.pricePerDay}<span style={s.priceUnit}> / day</span>
+                  <div style={s.headRow}>
+                    <div style={s.name}>{car.brand} {car.model}</div>
+                    <div style={s.price}>
+                      ₱{car.pricePerDay}<br /><span style={s.priceUnit}>per day</span>
+                    </div>
                   </div>
+                  <div style={s.sub}>{car.category}{car.seats ? ` • ${car.seats} Seats` : ''}</div>
+                  {slot === 0 && (
+                    <button
+                      type="button"
+                      style={s.reserveBtn}
+                      onClick={(e) => { e.stopPropagation(); navigate(`/cars/${car._id}`); }}
+                    >
+                      Reserve This Vehicle
+                    </button>
+                  )}
                 </div>
               </motion.div>
             );

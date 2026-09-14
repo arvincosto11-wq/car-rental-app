@@ -179,13 +179,11 @@ const Home = () => {
       maxWidth: '1200px',
       margin: '0 auto',
     },
-    // Negative margin pulls this up to overlap the hero's lower portion.
-    // zIndex above the hero's own image/overlay (both at 1-2). -170px sat
-    // too close under the search bar; backed off to give more clearance.
+    // Sits directly under the "Curated Fleet" heading now, rather than
+    // overlapping up into the hero — that overlap trick only made sense
+    // when the carousel was the very first thing after the hero image.
     carouselOverlap: {
-      position: 'relative',
-      zIndex: 3,
-      marginTop: '-90px',
+      marginTop: '10px',
       marginBottom: '32px',
     },
     sectionTitle: {
@@ -522,22 +520,22 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Featured Cars — pulled up to overlap the hero's lower portion
-          instead of sitting in its own section below it. */}
+      {/* Featured Cars — heading now introduces the section before the
+          carousel, instead of the carousel overlapping straight up into
+          the hero with the heading tacked on below it. */}
+      <div style={{ ...styles.section, paddingBottom: 0 }}>
+        <h2 style={styles.sectionTitle}>The Curated Fleet</h2>
+        <p style={styles.sectionSubtitle}>
+          A closer look at some of our top-rated, best-maintained vehicles.
+        </p>
+      </div>
       <div className="carousel-overlap" style={styles.carouselOverlap}>
         <StackedCarCarousel isDark={isDark} />
       </div>
-      <div style={styles.section}>
-        <h2 style={styles.sectionTitle}>Featured Vehicles</h2>
-        <p style={styles.sectionSubtitle}>
-          A look at some of our top-rated rides — browse the full fleet anytime.
-        </p>
-
-        <div style={{ textAlign: 'center' }}>
-          <button style={styles.viewAllBtn} onClick={() => navigate('/cars')}>
-            Browse All Vehicles
-          </button>
-        </div>
+      <div style={{ ...styles.section, paddingTop: 0, textAlign: 'center' }}>
+        <button style={styles.viewAllBtn} onClick={() => navigate('/cars')}>
+          Browse All Vehicles
+        </button>
       </div>
 
       {/* Testimonials */}
