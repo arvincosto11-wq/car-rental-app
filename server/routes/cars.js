@@ -368,8 +368,14 @@ router.get('/gps-fleet', protect, adminOrConsignor, async (req, res) => {
     // Isolated per car so one tracker/account hiccup doesn't take down the
     // whole fleet view; a failure just leaves that car on its last known
     // (or mock) position for this load.
-    if (process.env.AIKA_PASSWORD) {
-      await Promise.all(cars.filter((c) => c.gpsDeviceId).map(async (car) => {
+    const trackedCars = cars.filter((c) => c.gpsDeviceId);
+    if (!process.env.AIKA_PASSWORD) {
+      if (trackedCars.length) console.log(`AIKA: ${trackedCars.length} car(s) have a gpsDeviceId set, but AIKA_PASSWORD isn't configured — skipping live fetch.`);
+    } else if (trackedCars.length === 0) {
+      console.log('AIKA: AIKA_PASSWORD is set, but no car has a gpsDeviceId assigned yet.');
+    } else {
+      await Promise.all(trackedCars.map(async (car) => {
+        console.log(`AIKA: fetching live position for ${car.brand} ${car.model} (car ${car._id}, device ${car.gpsDeviceId})...`);
         try {
           const live = await fetchAikaGps(car.gpsDeviceId, process.env.AIKA_PASSWORD);
           // null means the tracker hasn't gotten a real GPS fix yet (its
@@ -378,9 +384,12 @@ router.get('/gps-fleet', protect, adminOrConsignor, async (req, res) => {
           if (live) {
             car.gps = live;
             await car.save();
+            console.log(`AIKA: got a real fix for car ${car._id} — lat ${live.lat}, lng ${live.lng}.`);
+          } else {
+            console.log(`AIKA: car ${car._id}'s tracker reported no GPS fix yet — keeping its previous position.`);
           }
         } catch (err) {
-          console.error(`AIKA GPS fetch failed for car ${car._id} (device ${car.gpsDeviceId}):`, err.message);
+          console.error(`AIKA: fetch FAILED for car ${car._id} (device ${car.gpsDeviceId}):`, err.message);
         }
       }));
     }
