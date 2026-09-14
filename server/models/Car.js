@@ -45,6 +45,12 @@ const carSchema = new mongoose.Schema({
     ignitionOn: { type: Boolean },
     updatedAt: { type: Date, default: null },
   },
+  // Links this car to a physical GPS tracker's device ID on the AIKA
+  // platform (the "ID Number" shown in their app/web dashboard, e.g.
+  // "9176761220") — set by admin once a tracker is assigned to this
+  // vehicle. Empty means no real tracker yet, so GET /cars/gps-fleet
+  // falls back to the mock placeholder position instead.
+  gpsDeviceId: { type: String, default: '' },
   availabilityRequest: {
     status: { type: String, enum: ['none', 'pending', 'declined'], default: 'none' },
     // Which direction this request is asking for — a consignor needs admin

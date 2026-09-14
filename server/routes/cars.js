@@ -4,6 +4,7 @@ import Car from '../models/Car.js';
 import Booking from '../models/Booking.js';
 import { protect, adminOnly, consignorOnly, adminOrConsignor } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
+import { fetchAikaGps } from '../utils/aikaGps.js';
 
 const router = express.Router();
 
@@ -359,7 +360,30 @@ router.get('/gps-fleet', protect, adminOrConsignor, async (req, res) => {
     const filter = { archived: { $ne: true } };
     if (req.user.role === 'consignor') filter.owner = req.user.id;
 
-    const cars = await Car.find(filter).select('brand model plateNumber image gps owner');
+    const cars = await Car.find(filter).select('brand model plateNumber image gps gpsDeviceId owner');
+
+    // Any car with a physical tracker assigned gets a live pull before we
+    // respond — one HTTP round trip to AIKA per tracker, fine at this
+    // scale (an admin/consignor dashboard load, not a high-traffic path).
+    // Isolated per car so one tracker/account hiccup doesn't take down the
+    // whole fleet view; a failure just leaves that car on its last known
+    // (or mock) position for this load.
+    if (process.env.AIKA_PASSWORD) {
+      await Promise.all(cars.filter((c) => c.gpsDeviceId).map(async (car) => {
+        try {
+          const live = await fetchAikaGps(car.gpsDeviceId, process.env.AIKA_PASSWORD);
+          // null means the tracker hasn't gotten a real GPS fix yet (its
+          // own "no data" sentinel) — leave the car's existing gps (mock
+          // or last known good fix) alone rather than overwrite it.
+          if (live) {
+            car.gps = live;
+            await car.save();
+          }
+        } catch (err) {
+          console.error(`AIKA GPS fetch failed for car ${car._id} (device ${car.gpsDeviceId}):`, err.message);
+        }
+      }));
+    }
 
     // A car is "Rented" if it has a confirmed booking covering today, not
     // based on the tracker's own ignition signal — that tells us the

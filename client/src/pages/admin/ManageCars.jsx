@@ -123,6 +123,7 @@ const ManageCars = () => {
       seats: car.seats,
       description: car.description,
       plateNumber: car.plateNumber || '',
+      gpsDeviceId: car.gpsDeviceId || '',
       color: car.color || '',
       mileage: car.mileage ?? '',
       image: car.image,
@@ -640,6 +641,11 @@ const ManageCars = () => {
                     <label style={styles.label} htmlFor="mc-edit-plate">Plate Number</label>
                     <input id="mc-edit-plate" style={styles.input} type="text" placeholder="e.g. ABC 1234" value={editForm.plateNumber}
                       onChange={(e) => setEditForm({...editForm, plateNumber: formatPlateNumber(e.target.value)})} />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-gps-device">GPS Tracker Device ID</label>
+                    <input id="mc-edit-gps-device" style={styles.input} type="text" placeholder="e.g. 9176761220 (leave blank if none installed)" value={editForm.gpsDeviceId}
+                      onChange={(e) => setEditForm({...editForm, gpsDeviceId: e.target.value.trim()})} />
                   </div>
                   <div style={styles.field}>
                     <label style={styles.label} htmlFor="mc-edit-color">Color</label>
