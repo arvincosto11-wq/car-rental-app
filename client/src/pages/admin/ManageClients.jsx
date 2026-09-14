@@ -186,6 +186,12 @@ const ManageClients = () => {
 
             <div style={s.profileGrid}>
               <div style={s.profileItem}>
+                <span style={s.profileLabel}>Birthdate</span>
+                <span style={s.profileValue}>
+                  {selectedClient.birthDate ? new Date(selectedClient.birthDate).toLocaleDateString() : '—'}
+                </span>
+              </div>
+              <div style={s.profileItem}>
                 <span style={s.profileLabel}>Phone</span>
                 <span style={s.profileValue}>{selectedClient.phone || '—'}</span>
               </div>

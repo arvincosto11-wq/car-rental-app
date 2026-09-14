@@ -17,7 +17,24 @@ import usePageTitle from '../hooks/usePageTitle';
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const PHONE_ERROR = 'Enter a valid PH mobile number (e.g. 09171234567 or +639171234567).';
 const OTHER = '__other__';
+const MIN_AGE_YEARS = 18;
 const CONSIGN_STEPS = ['Your Information', 'Vehicle Details', 'Documents'];
+
+// Whole-years-old as of today — used both to validate on submit and to cap
+// the date picker so a too-recent birthdate can't even be selected.
+const ageInYears = (birthDate) => {
+  const today = new Date();
+  const dob = new Date(birthDate);
+  let age = today.getFullYear() - dob.getFullYear();
+  const hasHadBirthdayThisYear = today.getMonth() > dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+  if (!hasHadBirthdayThisYear) age -= 1;
+  return age;
+};
+const maxBirthDate = () => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - MIN_AGE_YEARS);
+  return d.toISOString().split('T')[0];
+};
 
 // Shown on the branding panel, swapped per step via AuthBrandPanel's own
 // crossfade — keyed by step number so it matches CONSIGN_STEPS above.
@@ -32,7 +49,7 @@ const ConsignmentRegister = () => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     // Owner info
-    name: '', email: '', password: '', phone: '', address: '',
+    name: '', email: '', password: '', birthDate: '', phone: '', address: '',
     // Vehicle info
     brand: '', model: '', year: '', plateNumber: '', registrationExpiry: '', color: '', mileage: '',
     category: '', transmission: '', fuelType: '', seats: '',
@@ -107,6 +124,9 @@ const ConsignmentRegister = () => {
   // page-level banner, so the feedback shows up right where the problem is.
   const validateStep1 = () => {
     const nameError = !form.name.trim() ? 'Full name is required.' : '';
+    const birthDateError = !form.birthDate
+      ? 'Birthdate is required.'
+      : (ageInYears(form.birthDate) < MIN_AGE_YEARS ? `You must be at least ${MIN_AGE_YEARS} years old to register.` : '');
     const emailError = !form.email.trim() ? 'Email is required.' : '';
     const passwordError = !form.password ? 'Password is required.' : (form.password.length < 8 ? 'Password must be at least 8 characters.' : '');
     const confirmPasswordError = !confirmPassword ? 'Please confirm your password.' : (form.password !== confirmPassword ? 'Passwords do not match.' : '');
@@ -120,10 +140,10 @@ const ConsignmentRegister = () => {
 
     setFieldErrors((prev) => ({
       ...prev,
-      name: nameError, email: emailError, password: passwordError, confirmPassword: confirmPasswordError,
+      name: nameError, birthDate: birthDateError, email: emailError, password: passwordError, confirmPassword: confirmPasswordError,
       phone: phoneError, address: addressError, validId: validIdError,
     }));
-    return !(nameError || emailError || passwordError || confirmPasswordError || phoneError || addressError || validIdError);
+    return !(nameError || birthDateError || emailError || passwordError || confirmPasswordError || phoneError || addressError || validIdError);
   };
 
   const validateStep2 = () => {
@@ -383,6 +403,13 @@ const ConsignmentRegister = () => {
                       <input id="cr-name" style={inputStyle('name')} type="text" placeholder="Enter your name"
                         value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
                       {fieldErrors.name && <p style={styles.fieldError}>{fieldErrors.name}</p>}
+                    </div>
+                    <div style={styles.field}>
+                      <label style={styles.label} htmlFor="cr-birthdate">Birthdate</label>
+                      <input id="cr-birthdate" style={inputStyle('birthDate')} type="date" max={maxBirthDate()}
+                        value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} required />
+                      <p style={styles.uploadHint}>Must match your valid ID — you won't be able to change this later.</p>
+                      {fieldErrors.birthDate && <p style={styles.fieldError}>{fieldErrors.birthDate}</p>}
                     </div>
                     <div className="responsive-row-2" style={styles.row}>
                       <div style={styles.field}>

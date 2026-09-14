@@ -11,6 +11,19 @@ import { notifyUser, notifyAdmins } from '../utils/notify.js';
 const router = express.Router();
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_AGE_YEARS = 18;
+
+// Whole-years-old as of today, not just a calendar-year subtraction — so
+// someone born on, say, Sept 20 doesn't count as 18 on Sept 1 of the year
+// they turn 18.
+const ageInYears = (birthDate) => {
+  const today = new Date();
+  const dob = new Date(birthDate);
+  let age = today.getFullYear() - dob.getFullYear();
+  const hasHadBirthdayThisYear = today.getMonth() > dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+  if (!hasHadBirthdayThisYear) age -= 1;
+  return age;
+};
 
 // Register as a vehicle owner (consignor) + submit their first vehicle in one step.
 // Public route — creates the User account (role: consignor) and the first
@@ -19,7 +32,7 @@ router.post('/register', registerLimiter, async (req, res) => {
   try {
     const {
       // Owner info
-      name, email, password, phone, address,
+      name, email, password, birthDate, phone, address,
       validIdType, validIdImage, validIdImageFileId,
       validIdImageBack, validIdImageBackFileId, validIdExpiry,
       // Vehicle info
@@ -34,13 +47,19 @@ router.post('/register', registerLimiter, async (req, res) => {
     if (!password || password.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters.' });
     }
+    if (!birthDate) {
+      return res.status(400).json({ message: 'Please enter your birthdate.' });
+    }
+    if (ageInYears(birthDate) < MIN_AGE_YEARS) {
+      return res.status(400).json({ message: `You must be at least ${MIN_AGE_YEARS} years old to register.` });
+    }
 
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: 'Email already exists' });
 
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({
-      name, email, password: hashed, phone, address,
+      name, email, password: hashed, birthDate, phone, address,
       validIdType, validIdImage, validIdImageFileId,
       validIdImageBack, validIdImageBackFileId, validIdExpiry,
       role: 'consignor'

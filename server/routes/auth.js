@@ -13,6 +13,19 @@ const router = express.Router();
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
 const VERIFIED_WINDOW_MS = 30 * 60 * 1000;
+const MIN_AGE_YEARS = 18;
+
+// Whole-years-old as of today, not just a calendar-year subtraction — so
+// someone born on, say, Sept 20 doesn't count as 18 on Sept 1 of the year
+// they turn 18.
+const ageInYears = (birthDate) => {
+  const today = new Date();
+  const dob = new Date(birthDate);
+  let age = today.getFullYear() - dob.getFullYear();
+  const hasHadBirthdayThisYear = today.getMonth() > dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+  if (!hasHadBirthdayThisYear) age -= 1;
+  return age;
+};
 
 // Get the logged-in user's own profile (used to check things like license status before booking)
 router.get('/me', protect, async (req, res) => {
@@ -240,7 +253,7 @@ router.post('/verify-email-code', async (req, res) => {
 router.post('/register', registerLimiter, async (req, res) => {
   try {
     const {
-      name, email, password, phone, address,
+      name, email, password, birthDate, phone, address,
       validIdType, validIdImage, validIdImageFileId,
       validIdImageBack, validIdImageBackFileId, validIdExpiry,
       licenseNumber, licenseExpiry,
@@ -252,6 +265,12 @@ router.post('/register', registerLimiter, async (req, res) => {
     }
     if (!password || password.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+    }
+    if (!birthDate) {
+      return res.status(400).json({ message: 'Please enter your birthdate.' });
+    }
+    if (ageInYears(birthDate) < MIN_AGE_YEARS) {
+      return res.status(400).json({ message: `You must be at least ${MIN_AGE_YEARS} years old to register.` });
     }
 
     const exists = await User.findOne({ email });
@@ -267,7 +286,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({
-      name, email, password: hashed,
+      name, email, password: hashed, birthDate,
       phone, address,
       validIdType, validIdImage, validIdImageFileId,
       validIdImageBack, validIdImageBackFileId, validIdExpiry,

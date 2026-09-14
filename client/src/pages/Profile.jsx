@@ -252,6 +252,12 @@ const Profile = () => {
                   <span style={s.roleTag}>{profile.role}</span>
                 </div>
                 <div style={s.profileItem}>
+                  <span style={s.profileLabel}>Birthdate</span>
+                  <span style={s.profileValue}>
+                    {profile.birthDate ? new Date(profile.birthDate).toLocaleDateString() : '—'}
+                  </span>
+                </div>
+                <div style={s.profileItem}>
                   <span style={s.profileLabel}>Phone</span>
                   <span style={s.profileValue}>{profile.phone || '—'}</span>
                 </div>

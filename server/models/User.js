@@ -6,6 +6,11 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { type: String, enum: ['user', 'admin', 'consignor'], default: 'user' },
   image: { type: String, default: '' },
+  // Set once at registration and never user-editable afterward (see PUT
+  // /auth/me) — it has to match the birthdate on the user's own valid ID,
+  // so letting them freely change it would defeat both the 18+ age check
+  // at signup and identity verification against their uploaded ID.
+  birthDate: { type: Date },
   phone: { type: String, default: '' },
   address: { type: String, default: '' },
   validIdType: { type: String, default: '' },

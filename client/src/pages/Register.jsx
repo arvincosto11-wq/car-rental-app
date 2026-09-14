@@ -18,6 +18,23 @@ import useResendCooldown from '../hooks/useResendCooldown';
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_ERROR = 'Enter a valid PH mobile number (e.g. 09171234567 or +639171234567).';
+const MIN_AGE_YEARS = 18;
+
+// Whole-years-old as of today — used both to validate on submit and to cap
+// the date picker so a too-recent birthdate can't even be selected.
+const ageInYears = (birthDate) => {
+  const today = new Date();
+  const dob = new Date(birthDate);
+  let age = today.getFullYear() - dob.getFullYear();
+  const hasHadBirthdayThisYear = today.getMonth() > dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+  if (!hasHadBirthdayThisYear) age -= 1;
+  return age;
+};
+const maxBirthDate = () => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - MIN_AGE_YEARS);
+  return d.toISOString().split('T')[0];
+};
 
 const validators = {
   email: (v) => (!v ? '' : EMAIL_REGEX.test(v) ? '' : 'Enter a valid email address.'),
@@ -45,7 +62,7 @@ const Register = () => {
   usePageTitle('Register');
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
-    name: '', email: '', password: '',
+    name: '', email: '', password: '', birthDate: '',
     phone: '', address: '',
     licenseNumber: '', licenseExpiry: '',
     emergencyContactName: '', emergencyContactNumber: '',
@@ -89,14 +106,17 @@ const Register = () => {
   // actually is, not somewhere the user has to go hunting for.
   const validateStep1 = () => {
     const nameError = !form.name.trim() ? 'Full name is required.' : '';
+    const birthDateError = !form.birthDate
+      ? 'Birthdate is required.'
+      : (ageInYears(form.birthDate) < MIN_AGE_YEARS ? `You must be at least ${MIN_AGE_YEARS} years old to register.` : '');
     const emailError = !form.email.trim() ? 'Email is required.' : validators.email(form.email);
     const passwordError = !form.password ? 'Password is required.' : validators.password(form.password);
     const confirmPasswordError = !confirmPassword
       ? 'Please confirm your password.'
       : (form.password !== confirmPassword ? 'Passwords do not match.' : '');
 
-    setFieldErrors((prev) => ({ ...prev, name: nameError, email: emailError, password: passwordError, confirmPassword: confirmPasswordError }));
-    return !(nameError || emailError || passwordError || confirmPasswordError);
+    setFieldErrors((prev) => ({ ...prev, name: nameError, birthDate: birthDateError, email: emailError, password: passwordError, confirmPassword: confirmPasswordError }));
+    return !(nameError || birthDateError || emailError || passwordError || confirmPasswordError);
   };
 
   const validateStep2 = () => {
@@ -442,6 +462,22 @@ const Register = () => {
                         required
                       />
                       {fieldErrors.name && <p id="reg-name-error" style={styles.fieldError}>{fieldErrors.name}</p>}
+                    </div>
+                    <div style={styles.field}>
+                      <label style={styles.label} htmlFor="reg-birthdate">Birthdate</label>
+                      <input
+                        id="reg-birthdate"
+                        style={inputStyle('birthDate')}
+                        type="date"
+                        max={maxBirthDate()}
+                        value={form.birthDate}
+                        onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
+                        aria-invalid={!!fieldErrors.birthDate}
+                        aria-describedby={fieldErrors.birthDate ? 'reg-birthdate-error' : undefined}
+                        required
+                      />
+                      <p style={styles.uploadHint}>Must match your valid ID — you won't be able to change this later.</p>
+                      {fieldErrors.birthDate && <p id="reg-birthdate-error" style={styles.fieldError}>{fieldErrors.birthDate}</p>}
                     </div>
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="reg-email">Email</label>
