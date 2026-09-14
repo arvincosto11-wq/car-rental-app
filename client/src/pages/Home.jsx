@@ -4,6 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useUIFeedback } from '../context/UIFeedbackContext';
 import StarRating from '../components/StarRating';
 import StackedCarCarousel from '../components/StackedCarCarousel';
+import Footer from '../components/Footer';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import usePageTitle from '../hooks/usePageTitle';
 import api from '../api';
@@ -135,16 +136,19 @@ const Home = () => {
       margin: '0 auto',
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '12px',
+      borderRadius: '20px',
       overflow: 'hidden',
+      boxShadow: '0 12px 32px rgba(0,0,0,0.28)',
     },
     searchField: {
       flex: 1,
-      padding: '12px 16px',
+      padding: '12px 18px',
       borderRight: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
     searchLabel: {
-      display: 'block',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '5px',
       fontSize: '11px',
       color: isDark ? '#b0b3b8' : '#6b7280',
       marginBottom: '4px',
@@ -315,29 +319,26 @@ const Home = () => {
       borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
-    aboutText: {
-      maxWidth: '700px',
-      margin: '0 auto 36px',
-      textAlign: 'center',
-      fontSize: '15px',
-      lineHeight: '1.7',
-      color: isDark ? '#cbd5e1' : '#4b5563',
+    aboutInner: { gap: '48px', alignItems: 'center' },
+    featureGrid: { gap: '16px' },
+    featureCard: {
+      textAlign: 'left',
+      background: isDark ? '#18191a' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      borderRadius: '12px',
+      padding: '18px',
     },
-    featureGrid: {
-      gap: '24px',
-    },
-    featureCard: { textAlign: 'center' },
     featureIcon: {
-      width: '56px',
-      height: '56px',
-      borderRadius: '50%',
+      width: '42px',
+      height: '42px',
+      borderRadius: '10px',
       background: isDark ? GOLD_DARK : GOLD,
       color: ON_GOLD,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: '24px',
-      margin: '0 auto 14px',
+      fontSize: '19px',
+      marginBottom: '12px',
     },
     featureTitle: {
       fontSize: '14px',
@@ -349,6 +350,32 @@ const Home = () => {
       fontSize: '12.5px',
       color: isDark ? '#b0b3b8' : '#6b7280',
       lineHeight: '1.5',
+    },
+    aboutTagline: {
+      fontSize: '13px',
+      fontWeight: '700',
+      letterSpacing: '0.03em',
+      color: isDark ? GOLD_DARK : GOLD,
+      marginBottom: '6px',
+    },
+    aboutHeading: {
+      fontSize: '26px',
+      fontWeight: '700',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+      marginBottom: '14px',
+    },
+    aboutText: {
+      fontSize: '14px',
+      lineHeight: '1.7',
+      color: isDark ? '#cbd5e1' : '#4b5563',
+      marginBottom: '20px',
+    },
+    checklist: { listStyle: 'none', padding: 0, margin: '0 0 24px', display: 'flex', flexDirection: 'column', gap: '12px' },
+    checklistItem: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: '500', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    checkBadge: {
+      width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700',
     },
     contactSection: {
       background: isDark ? '#18191a' : '#17130e',
@@ -455,7 +482,7 @@ const Home = () => {
 
         <div className="hero-search-box" style={styles.searchBox}>
           <div className="hero-search-field" style={styles.searchField}>
-            <label style={styles.searchLabel} htmlFor="home-pickup-date">Pick-up Date</label>
+            <label style={styles.searchLabel} htmlFor="home-pickup-date"><span aria-hidden="true">📅</span> Pick-up Date</label>
             <input
               id="home-pickup-date"
               style={styles.searchInput}
@@ -466,7 +493,7 @@ const Home = () => {
             />
           </div>
           <div className="hero-search-field" style={styles.searchField}>
-            <label style={styles.searchLabel} htmlFor="home-return-date">Return Date</label>
+            <label style={styles.searchLabel} htmlFor="home-return-date"><span aria-hidden="true">📅</span> Return Date</label>
             <input
               id="home-return-date"
               style={styles.searchInput}
@@ -477,7 +504,7 @@ const Home = () => {
             />
           </div>
           <div className="hero-search-field" style={{ ...styles.searchField, borderRight: 'none' }}>
-            <label style={styles.searchLabel} htmlFor="home-search-category">Vehicle Type</label>
+            <label style={styles.searchLabel} htmlFor="home-search-category"><span aria-hidden="true">🚙</span> Vehicle Type</label>
             <select
               id="home-search-category"
               style={styles.searchInput}
@@ -539,33 +566,46 @@ const Home = () => {
 
       {/* About */}
       <div style={{ ...styles.section, ...styles.aboutSection }}>
-        <h2 style={styles.sectionTitle}>About Rent-A-Ride Albay</h2>
-        <p style={styles.aboutText}>
-          Serving Camalig and the greater Albay area since 2018, Rent-A-Ride Albay has helped
-          travelers and locals alike explore the region in well-maintained, affordable vehicles —
-          with a team that treats every trip like it's our own. Your journey. Our commitment.
-        </p>
+        <div className="responsive-row-2" style={styles.aboutInner}>
+          <div className="responsive-row-2" style={styles.featureGrid}>
+            <div style={styles.featureCard}>
+              <div style={styles.featureIcon}>🚗</div>
+              <div style={styles.featureTitle}>Well-Maintained Units</div>
+              <div style={styles.featureText}>Clean, safe, and road-ready.</div>
+            </div>
+            <div style={styles.featureCard}>
+              <div style={styles.featureIcon}>💰</div>
+              <div style={styles.featureTitle}>Affordable Rates</div>
+              <div style={styles.featureText}>Quality service that fits your budget.</div>
+            </div>
+            <div style={styles.featureCard}>
+              <div style={styles.featureIcon}>📍</div>
+              <div style={styles.featureTitle}>Flexible Pick-up &amp; Return</div>
+              <div style={styles.featureText}>Convenient locations, hassle-free.</div>
+            </div>
+            <div style={styles.featureCard}>
+              <div style={styles.featureIcon}>🎧</div>
+              <div style={styles.featureTitle}>Friendly Customer Support</div>
+              <div style={styles.featureText}>We're here to help, every step of the way.</div>
+            </div>
+          </div>
 
-        <div className="responsive-grid-4" style={styles.featureGrid}>
-          <div style={styles.featureCard}>
-            <div style={styles.featureIcon}>🚗</div>
-            <div style={styles.featureTitle}>Well-Maintained Units</div>
-            <div style={styles.featureText}>Clean, safe, and road-ready.</div>
-          </div>
-          <div style={styles.featureCard}>
-            <div style={styles.featureIcon}>💰</div>
-            <div style={styles.featureTitle}>Affordable Rates</div>
-            <div style={styles.featureText}>Quality service that fits your budget.</div>
-          </div>
-          <div style={styles.featureCard}>
-            <div style={styles.featureIcon}>📍</div>
-            <div style={styles.featureTitle}>Flexible Pick-up &amp; Return</div>
-            <div style={styles.featureText}>Convenient locations, hassle-free.</div>
-          </div>
-          <div style={styles.featureCard}>
-            <div style={styles.featureIcon}>🎧</div>
-            <div style={styles.featureTitle}>Friendly Customer Support</div>
-            <div style={styles.featureText}>We're here to help, every step of the way.</div>
+          <div>
+            <div style={styles.aboutTagline}>ABOUT US</div>
+            <h2 style={styles.aboutHeading}>The complete Albay rental experience.</h2>
+            <p style={styles.aboutText}>
+              Serving Camalig and the greater Albay area since 2018, Rent-A-Ride Albay has helped
+              travelers and locals alike explore the region in well-maintained, affordable vehicles —
+              with a team that treats every trip like it's our own.
+            </p>
+            <ul style={styles.checklist}>
+              <li style={styles.checklistItem}><span style={styles.checkBadge}>✓</span> Digital-first booking and ID verification</li>
+              <li style={styles.checklistItem}><span style={styles.checkBadge}>✓</span> Live GPS tracking on select vehicles</li>
+              <li style={styles.checklistItem}><span style={styles.checkBadge}>✓</span> Transparent, no-hidden-fee pricing</li>
+            </ul>
+            <button style={styles.viewAllBtn} onClick={() => navigate('/cars')}>
+              Browse All Vehicles
+            </button>
           </div>
         </div>
       </div>
@@ -618,6 +658,8 @@ const Home = () => {
           </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 };
