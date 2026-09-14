@@ -7,6 +7,7 @@ import { protect } from '../middleware/auth.js';
 import { loginLimiter, registerLimiter, verificationLimiter } from '../middleware/rateLimit.js';
 import { sendVerificationCodeEmail } from '../utils/email.js';
 import { notifyAdmins } from '../utils/notify.js';
+import { checkAndNotifyExpiringDocs } from '../utils/expiryNotify.js';
 
 const router = express.Router();
 
@@ -32,6 +33,7 @@ router.get('/me', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
+    await checkAndNotifyExpiringDocs(user);
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -40,14 +42,18 @@ router.get('/me', protect, async (req, res) => {
 
 // Update the logged-in user's own basic profile info.
 // Deliberately excludes email, password, role, isBlocked, and idVerified —
-// those are either security-sensitive or admin-controlled.
+// those are either security-sensitive or admin-controlled. birthDate is a
+// special case: it's accepted here ONLY as a one-time backfill for accounts
+// that predate the birthdate field (see the `!user.birthDate` guard below)
+// — once set, it's locked, same as if it had been collected at registration.
 router.put('/me', protect, async (req, res) => {
   try {
     const {
-      name, phone, address,
+      name, phone, address, birthDate,
       licenseNumber, licenseExpiry,
       emergencyContactName, emergencyContactNumber,
-      validIdImage, validIdImageFileId
+      validIdType, validIdImage, validIdImageFileId,
+      validIdImageBack, validIdImageBackFileId, validIdExpiry
     } = req.body;
 
     const user = await User.findById(req.user.id);
@@ -61,14 +67,34 @@ router.put('/me', protect, async (req, res) => {
     if (emergencyContactName !== undefined) user.emergencyContactName = emergencyContactName;
     if (emergencyContactNumber !== undefined) user.emergencyContactNumber = emergencyContactNumber;
 
-    // If they upload a new ID photo, it needs to be re-verified by admin
+    if (birthDate && !user.birthDate) {
+      if (ageInYears(birthDate) < MIN_AGE_YEARS) {
+        return res.status(400).json({ message: `You must be at least ${MIN_AGE_YEARS} years old.` });
+      }
+      user.birthDate = birthDate;
+    }
+
+    if (validIdExpiry !== undefined) user.validIdExpiry = validIdExpiry || null;
+
+    // A new front or back photo, or switching ID type, means admin has to
+    // look at it again — the expiry date alone changing doesn't (same photo,
+    // nothing new to review).
     let idNeedsVerification = false;
+    if (validIdType && validIdType !== user.validIdType) {
+      user.validIdType = validIdType;
+      idNeedsVerification = true;
+    }
     if (validIdImage && validIdImage !== user.validIdImage) {
       user.validIdImage = validIdImage;
       user.validIdImageFileId = validIdImageFileId || '';
-      user.idVerified = false;
       idNeedsVerification = true;
     }
+    if (validIdImageBack && validIdImageBack !== user.validIdImageBack) {
+      user.validIdImageBack = validIdImageBack;
+      user.validIdImageBackFileId = validIdImageBackFileId || '';
+      idNeedsVerification = true;
+    }
+    if (idNeedsVerification) user.idVerified = false;
 
     await user.save();
 

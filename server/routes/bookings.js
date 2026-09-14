@@ -123,23 +123,29 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({ message: 'This vehicle is not available during the selected dates. Please choose different dates.' });
     }
 
-    // Self-drive requires a valid, unexpired license on file, a photo of a
-    // valid ID uploaded, AND admin approval — license/expiry alone can be
-    // fabricated, so idVerified (set by admin after reviewing the photo) is
-    // the real gate. All three are managed from the client's own Profile,
-    // never accepted inline here.
+    // A verified, unexpired ID is required for EVERY booking type — identity
+    // still matters even when a driver is provided, not just for self-drive.
+    // idVerified (set by admin after reviewing the photo) is the real gate,
+    // since the expiry date alone could be fabricated. Managed from the
+    // client's own Profile, never accepted inline here.
+    if (!currentUser.validIdImage) {
+      return res.status(400).json({ message: 'Please upload a photo of your valid ID in your Profile before booking.' });
+    }
+    if (!currentUser.idVerified) {
+      return res.status(400).json({ message: 'Your ID is still pending verification by our team. You can book once it is approved.' });
+    }
+    if (currentUser.validIdExpiry && new Date(currentUser.validIdExpiry) < new Date()) {
+      return res.status(400).json({ message: 'Your valid ID has expired. Please update it in your Profile before booking.' });
+    }
+
+    // Self-drive additionally requires a valid, unexpired driver's license —
+    // with-driver bookings don't, since the renter isn't the one driving.
     if (bookingType === 'self-drive') {
       if (!currentUser.licenseNumber || !currentUser.licenseExpiry) {
         return res.status(400).json({ message: "A driver's license is required to book self-drive. Please add it in your Profile." });
       }
       if (new Date(currentUser.licenseExpiry) < new Date()) {
         return res.status(400).json({ message: "Your driver's license has expired. Please update it in your Profile." });
-      }
-      if (!currentUser.validIdImage) {
-        return res.status(400).json({ message: 'Please upload a photo of your valid ID in your Profile before booking self-drive.' });
-      }
-      if (!currentUser.idVerified) {
-        return res.status(400).json({ message: 'Your ID is still pending verification by our team. You can book self-drive once it is approved.' });
       }
     }
 

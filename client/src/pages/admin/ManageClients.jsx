@@ -220,9 +220,20 @@ const ManageClients = () => {
             </div>
 
             {selectedClient.validIdImage ? (
-              <img src={selectedClient.validIdImage} alt="Valid ID" style={s.idImage} />
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <img src={selectedClient.validIdImage} alt="Valid ID front" style={s.idImage} />
+                {selectedClient.validIdImageBack && (
+                  <img src={selectedClient.validIdImageBack} alt="Valid ID back" style={s.idImage} />
+                )}
+              </div>
             ) : (
               <p style={s.empty}>No ID photo on file.</p>
+            )}
+            {selectedClient.validIdExpiry && (
+              <p style={{ ...s.profileValue, marginTop: '8px' }}>
+                ID expiry: {new Date(selectedClient.validIdExpiry).toLocaleDateString()}
+                {new Date(selectedClient.validIdExpiry) < new Date() && <span style={{ ...s.unverified, marginLeft: '8px' }}>Expired</span>}
+              </p>
             )}
 
             <div style={s.actionRow}>

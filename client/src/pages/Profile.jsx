@@ -6,9 +6,17 @@ import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import Skeleton from '../components/Skeleton';
 import PasswordInput from '../components/PasswordInput';
 import OtpInput from '../components/OtpInput';
+import ValidIdUpload from '../components/ValidIdUpload';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
 import api from '../api';
+
+const MIN_AGE_YEARS = 18;
+const maxBirthDate = () => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - MIN_AGE_YEARS);
+  return d.toISOString().split('T')[0];
+};
 
 const Profile = () => {
   usePageTitle('My Profile');
@@ -19,8 +27,12 @@ const Profile = () => {
   const [profile, setProfile] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({});
+  const [validIdType, setValidIdType] = useState('');
   const [validIdImage, setValidIdImage] = useState(null);
   const [validIdPreview, setValidIdPreview] = useState('');
+  const [validIdBackImage, setValidIdBackImage] = useState(null);
+  const [validIdBackPreview, setValidIdBackPreview] = useState('');
+  const [validIdExpiry, setValidIdExpiry] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
@@ -50,6 +62,7 @@ const Profile = () => {
   const startEdit = () => {
     setForm({
       name: profile.name || '',
+      birthDate: '', // only ever sent as a one-time backfill — see the birthdate field below, shown only when profile.birthDate is empty
       phone: profile.phone || '',
       address: profile.address || '',
       licenseNumber: profile.licenseNumber || '',
@@ -57,8 +70,12 @@ const Profile = () => {
       emergencyContactName: profile.emergencyContactName || '',
       emergencyContactNumber: profile.emergencyContactNumber || '',
     });
+    setValidIdType(profile.validIdType || '');
     setValidIdImage(null);
     setValidIdPreview('');
+    setValidIdBackImage(null);
+    setValidIdBackPreview('');
+    setValidIdExpiry(profile.validIdExpiry ? profile.validIdExpiry.split('T')[0] : '');
     setSaveError('');
     setSaveSuccess('');
     setEditMode(true);
@@ -89,11 +106,16 @@ const Profile = () => {
     setSaving(true);
     setSaveError('');
     try {
-      const payload = { ...form };
+      const payload = { ...form, validIdType, validIdExpiry: validIdExpiry || null };
       if (validIdImage) {
         const uploaded = await uploadToImageKit(validIdImage);
         payload.validIdImage = uploaded.url;
         payload.validIdImageFileId = uploaded.fileId;
+      }
+      if (validIdBackImage) {
+        const uploadedBack = await uploadToImageKit(validIdBackImage);
+        payload.validIdImageBack = uploadedBack.url;
+        payload.validIdImageBackFileId = uploadedBack.fileId;
       }
       const res = await api.put('/auth/me', payload);
       setProfile(res.data);
@@ -198,10 +220,13 @@ const Profile = () => {
     roleTag: { background: isDark ? '#3a3b3c' : '#e5e7eb', color: isDark ? '#e4e6eb' : '#374151', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600', textTransform: 'capitalize' },
     verifiedTag: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
     unverifiedTag: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
+    expiredTag: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
     idThumb: { width: '100%', maxWidth: '260px', height: '130px', objectFit: 'cover', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, marginTop: '8px' },
     field: { marginBottom: '14px' },
     label: { display: 'block', fontSize: '13px', color: isDark ? '#b0b3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
     input: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    uploadHint: { fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280' },
+    fieldError: { fontSize: '11px', color: isDark ? '#fca5a5' : '#dc2626', marginTop: '4px' },
     row: { gap: '12px' },
     upload: { position: 'relative', width: '100%', maxWidth: '280px', height: '130px', border: `2px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#18191a' : '#fff' },
     uploadPlaceholder: { textAlign: 'center', padding: '12px', fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280' },
@@ -274,6 +299,9 @@ const Profile = () => {
                   <span style={s.profileValue}>
                     {profile.licenseExpiry ? new Date(profile.licenseExpiry).toLocaleDateString() : '—'}
                   </span>
+                  {profile.licenseExpiry && new Date(profile.licenseExpiry) < new Date() && (
+                    <div style={{ marginTop: '4px' }}><span style={s.expiredTag}>Expired</span></div>
+                  )}
                 </div>
                 <div style={s.profileItem}>
                   <span style={s.profileLabel}>Emergency Contact</span>
@@ -287,13 +315,26 @@ const Profile = () => {
 
               <div style={{ marginTop: '14px' }}>
                 <span style={s.profileLabel}>Valid ID</span>
-                <div style={{ marginTop: '6px' }}>
+                <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <span style={profile.idVerified ? s.verifiedTag : s.unverifiedTag}>
                     {profile.idVerified ? 'ID Verified' : 'Not Verified'}
                   </span>
+                  {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
+                    <span style={s.expiredTag}>Expired</span>
+                  )}
                 </div>
+                {profile.validIdExpiry && (
+                  <p style={{ ...s.uploadHint, marginTop: '6px' }}>
+                    Expires {new Date(profile.validIdExpiry).toLocaleDateString()}
+                  </p>
+                )}
                 {profile.validIdImage && (
                   <img src={profile.validIdImage} alt="Valid ID" style={s.idThumb} />
+                )}
+                {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
+                  <p style={{ ...s.formError, marginTop: '10px', maxWidth: '360px' }}>
+                    Your ID has expired. Please upload an updated photo below — you won't be able to book until it's renewed and re-verified.
+                  </p>
                 )}
               </div>
             </>
@@ -306,6 +347,15 @@ const Profile = () => {
                 <input id="profile-name" style={s.input} type="text" value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
+
+              {!profile.birthDate && (
+                <div style={s.field}>
+                  <label style={s.label} htmlFor="profile-birthdate">Birthdate</label>
+                  <input id="profile-birthdate" style={s.input} type="date" max={maxBirthDate()}
+                    value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} />
+                  <p style={s.uploadHint}>Your account doesn't have a birthdate on file yet — add it now. Must match your valid ID; you won't be able to change it once set.</p>
+                </div>
+              )}
 
               <div className="responsive-row-2" style={s.row}>
                 <div style={s.field}>
@@ -346,25 +396,23 @@ const Profile = () => {
                 </div>
               </div>
 
-              <div style={s.field}>
-                <label style={s.label} htmlFor="profile-valid-id">Valid ID (leave as is, or upload a new photo)</label>
-                <div style={s.upload}>
-                  {validIdPreview ? (
-                    <img src={validIdPreview} alt="New ID preview" style={s.uploadPreview} />
-                  ) : profile.validIdImage ? (
-                    <img src={profile.validIdImage} alt="Current ID" style={s.uploadPreview} />
-                  ) : (
-                    <div style={s.uploadPlaceholder}>Click to upload a photo of your ID</div>
-                  )}
-                  <input id="profile-valid-id" type="file" accept="image/*" style={s.fileInput}
-                    onChange={(e) => { const f = e.target.files[0]; if (f) { setValidIdImage(f); setValidIdPreview(URL.createObjectURL(f)); } }} />
-                </div>
-                {validIdImage && (
-                  <p style={{ fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '6px' }}>
-                    Uploading a new ID will require admin re-verification.
-                  </p>
-                )}
-              </div>
+              <p style={{ ...s.label, marginBottom: '2px' }}>Valid ID (leave as is, or update it)</p>
+              {!validIdType && <p style={s.uploadHint}>Select your ID type to view or update it.</p>}
+              <ValidIdUpload
+                styles={s}
+                idPrefix="profile-valid-id"
+                idType={validIdType}
+                onIdTypeChange={setValidIdType}
+                frontPreview={validIdPreview || profile.validIdImage}
+                onFrontChange={(f) => { setValidIdImage(f); setValidIdPreview(URL.createObjectURL(f)); }}
+                backPreview={validIdBackPreview || profile.validIdImageBack}
+                onBackChange={(f) => { setValidIdBackImage(f); setValidIdBackPreview(URL.createObjectURL(f)); }}
+                expiry={validIdExpiry}
+                onExpiryChange={setValidIdExpiry}
+              />
+              {(validIdImage || validIdBackImage) && (
+                <p style={s.uploadHint}>Uploading a new photo will require admin re-verification.</p>
+              )}
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
                 <button type="submit" style={s.saveBtn} disabled={saving}>
