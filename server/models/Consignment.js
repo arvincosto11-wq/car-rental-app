@@ -10,6 +10,7 @@ const consignmentSchema = new mongoose.Schema({
   model: { type: String, required: true },
   year: { type: Number, required: true },
   plateNumber: { type: String, required: true },
+  registrationExpiry: { type: Date },
   color: { type: String, default: '' },
   mileage: { type: Number },
   category: { type: String, enum: ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe', 'Motorcycle'] },

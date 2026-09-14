@@ -21,9 +21,9 @@ router.post('/register', registerLimiter, async (req, res) => {
       // Owner info
       name, email, password, phone, address,
       validIdType, validIdImage, validIdImageFileId,
-      validIdImageBack, validIdImageBackFileId,
+      validIdImageBack, validIdImageBackFileId, validIdExpiry,
       // Vehicle info
-      brand, model, year, plateNumber, color, mileage, category, transmission,
+      brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,
       fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
       orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
     } = req.body;
@@ -42,13 +42,13 @@ router.post('/register', registerLimiter, async (req, res) => {
     const user = await User.create({
       name, email, password: hashed, phone, address,
       validIdType, validIdImage, validIdImageFileId,
-      validIdImageBack, validIdImageBackFileId,
+      validIdImageBack, validIdImageBackFileId, validIdExpiry,
       role: 'consignor'
     });
 
     const consignment = await Consignment.create({
       owner: user._id,
-      brand, model, year, plateNumber, color, mileage, category, transmission,
+      brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,
       fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
       orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
     });
@@ -75,14 +75,14 @@ router.post('/register', registerLimiter, async (req, res) => {
 router.post('/', protect, consignorOnly, async (req, res) => {
   try {
     const {
-      brand, model, year, plateNumber, color, mileage, category, transmission,
+      brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,
       fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
       orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
     } = req.body;
 
     const consignment = await Consignment.create({
       owner: req.user.id,
-      brand, model, year, plateNumber, color, mileage, category, transmission,
+      brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,
       fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
       orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
     });
@@ -147,6 +147,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         seats: consignment.seats,
         description: consignment.description,
         plateNumber: consignment.plateNumber || '',
+        registrationExpiry: consignment.registrationExpiry,
         color: consignment.color || '',
         mileage: consignment.mileage,
         image: consignment.vehiclePhotos?.[0]?.url || '',

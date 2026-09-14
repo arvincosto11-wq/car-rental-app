@@ -15,6 +15,11 @@ const userSchema = new mongoose.Schema({
   // national ID, UMID, postal ID) — see client/src/data/validIdTypes.js.
   validIdImageBack: { type: String, default: '' },
   validIdImageBackFileId: { type: String, default: '' },
+  // Not every ID type expires (e.g. TIN ID), so this stays optional —
+  // left unset means "doesn't expire" rather than "unknown", and the
+  // expiring-documents view (GET /admin/expiring-documents) just skips
+  // anyone without one set.
+  validIdExpiry: { type: Date },
   licenseNumber: { type: String, default: '' },
   licenseExpiry: { type: Date },
   emergencyContactName: { type: String, default: '' },

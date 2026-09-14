@@ -19,7 +19,7 @@ const AddVehicle = () => {
   const [step, setStep] = useState(1);
 
   const [form, setForm] = useState({
-    brand: '', model: '', year: '', plateNumber: '', color: '', mileage: '',
+    brand: '', model: '', year: '', plateNumber: '', registrationExpiry: '', color: '', mileage: '',
     category: '', transmission: '', fuelType: '', seats: '',
     suggestedPricePerDay: '', description: '',
   });
@@ -284,6 +284,11 @@ const AddVehicle = () => {
                     <div style={s.field}>
                       <label style={s.label} htmlFor="av-plate">Plate Number</label>
                       <input id="av-plate" style={s.input} type="text" placeholder="e.g. ABC 1234" value={form.plateNumber} onChange={(e) => setForm({ ...form, plateNumber: e.target.value })} required />
+                    </div>
+
+                    <div style={s.field}>
+                      <label style={s.label} htmlFor="av-reg-expiry">OR/CR Registration Expiry (optional)</label>
+                      <input id="av-reg-expiry" style={s.input} type="date" value={form.registrationExpiry} onChange={(e) => setForm({ ...form, registrationExpiry: e.target.value })} />
                     </div>
 
                     <div className="responsive-row-3" style={s.row3}>

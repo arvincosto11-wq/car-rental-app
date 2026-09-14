@@ -34,7 +34,7 @@ const ConsignmentRegister = () => {
     // Owner info
     name: '', email: '', password: '', phone: '', address: '',
     // Vehicle info
-    brand: '', model: '', year: '', plateNumber: '', color: '', mileage: '',
+    brand: '', model: '', year: '', plateNumber: '', registrationExpiry: '', color: '', mileage: '',
     category: '', transmission: '', fuelType: '', seats: '',
     suggestedPricePerDay: '', description: '',
   });
@@ -46,6 +46,7 @@ const ConsignmentRegister = () => {
   const [validIdPreview, setValidIdPreview] = useState('');
   const [validIdBackImage, setValidIdBackImage] = useState(null);
   const [validIdBackPreview, setValidIdBackPreview] = useState('');
+  const [validIdExpiry, setValidIdExpiry] = useState('');
   const [orImage, setOrImage] = useState(null);
   const [orPreview, setOrPreview] = useState('');
   const [crImage, setCrImage] = useState(null);
@@ -224,6 +225,7 @@ const ConsignmentRegister = () => {
         validIdImageFileId: uploadedId.fileId,
         validIdImageBack: uploadedIdBack.url,
         validIdImageBackFileId: uploadedIdBack.fileId,
+        validIdExpiry: validIdExpiry || null,
         orImage: uploadedOr.url,
         orImageFileId: uploadedOr.fileId,
         crImage: uploadedCr.url,
@@ -430,6 +432,8 @@ const ConsignmentRegister = () => {
                       onFrontChange={(f) => { setValidIdImage(f); setValidIdPreview(URL.createObjectURL(f)); }}
                       backPreview={validIdBackPreview}
                       onBackChange={(f) => { setValidIdBackImage(f); setValidIdBackPreview(URL.createObjectURL(f)); }}
+                      expiry={validIdExpiry}
+                      onExpiryChange={setValidIdExpiry}
                     />
                     {fieldErrors.validId && <p style={styles.fieldError}>{fieldErrors.validId}</p>}
 
@@ -512,6 +516,12 @@ const ConsignmentRegister = () => {
                       <input id="cr-plate" style={inputStyle('plateNumber')} type="text" placeholder="e.g. ABC 1234"
                         value={form.plateNumber} onChange={(e) => setForm({ ...form, plateNumber: e.target.value })} required />
                       {fieldErrors.plateNumber && <p style={styles.fieldError}>{fieldErrors.plateNumber}</p>}
+                    </div>
+
+                    <div style={styles.field}>
+                      <label style={styles.label} htmlFor="cr-reg-expiry">OR/CR Registration Expiry (optional)</label>
+                      <input id="cr-reg-expiry" style={styles.input} type="date"
+                        value={form.registrationExpiry} onChange={(e) => setForm({ ...form, registrationExpiry: e.target.value })} />
                     </div>
 
                     <div className="responsive-row-3" style={styles.row3}>

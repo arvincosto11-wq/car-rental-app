@@ -57,6 +57,7 @@ const Register = () => {
   const [validIdPreview, setValidIdPreview] = useState('');
   const [validIdBackImage, setValidIdBackImage] = useState(null);
   const [validIdBackPreview, setValidIdBackPreview] = useState('');
+  const [validIdExpiry, setValidIdExpiry] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
@@ -219,6 +220,7 @@ const Register = () => {
         validIdImageFileId: uploaded.fileId,
         validIdImageBack: uploadedBack.url,
         validIdImageBackFileId: uploadedBack.fileId,
+        validIdExpiry: validIdExpiry || null,
       });
       login(res.data.user, res.data.token);
       navigate('/');
@@ -535,6 +537,8 @@ const Register = () => {
                       onFrontChange={handleIdFrontChange}
                       backPreview={validIdBackPreview}
                       onBackChange={handleIdBackChange}
+                      expiry={validIdExpiry}
+                      onExpiryChange={setValidIdExpiry}
                     />
                     {fieldErrors.validId && <p style={styles.fieldError}>{fieldErrors.validId}</p>}
 

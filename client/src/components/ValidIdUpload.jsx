@@ -11,6 +11,7 @@ const ValidIdUpload = ({
   idType, onIdTypeChange,
   frontPreview, onFrontChange,
   backPreview, onBackChange,
+  expiry, onExpiryChange,
 }) => {
   const needsBack = idTypeNeedsBack(idType);
 
@@ -75,6 +76,20 @@ const ValidIdUpload = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {idType && onExpiryChange && (
+        <div style={styles.field}>
+          <label style={styles.label} htmlFor={`${idPrefix}-expiry`}>ID Expiry Date (optional)</label>
+          <input
+            id={`${idPrefix}-expiry`}
+            type="date"
+            style={styles.input}
+            value={expiry || ''}
+            onChange={(e) => onExpiryChange(e.target.value)}
+          />
+          <p style={styles.uploadHint}>Leave blank if this ID doesn't expire.</p>
         </div>
       )}
     </>

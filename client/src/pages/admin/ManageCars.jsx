@@ -123,6 +123,7 @@ const ManageCars = () => {
       seats: car.seats,
       description: car.description,
       plateNumber: car.plateNumber || '',
+      registrationExpiry: car.registrationExpiry ? car.registrationExpiry.split('T')[0] : '',
       gpsDeviceId: car.gpsDeviceId || '',
       color: car.color || '',
       mileage: car.mileage ?? '',
@@ -641,6 +642,11 @@ const ManageCars = () => {
                     <label style={styles.label} htmlFor="mc-edit-plate">Plate Number</label>
                     <input id="mc-edit-plate" style={styles.input} type="text" placeholder="e.g. ABC 1234" value={editForm.plateNumber}
                       onChange={(e) => setEditForm({...editForm, plateNumber: formatPlateNumber(e.target.value)})} />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-reg-expiry">OR/CR Registration Expiry</label>
+                    <input id="mc-edit-reg-expiry" style={styles.input} type="date" value={editForm.registrationExpiry}
+                      onChange={(e) => setEditForm({...editForm, registrationExpiry: e.target.value})} />
                   </div>
                   <div style={styles.field}>
                     <label style={styles.label} htmlFor="mc-edit-gps-device">GPS Tracker Device ID</label>

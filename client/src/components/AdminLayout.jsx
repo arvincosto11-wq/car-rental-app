@@ -25,6 +25,7 @@ const ClientsIcon = () => <NavIcon><circle cx="9" cy="8" r="3" /><path d="M3 20c
 const ConsignmentsIcon = () => <NavIcon><path d="M3 12l3-7h12l3 7" /><path d="M3 12v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6" /><path d="M3 12h5l1 3h6l1-3h5" /></NavIcon>;
 const AvailabilityIcon = () => <NavIcon><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" /></NavIcon>;
 const ReviewsIcon = () => <NavIcon><polygon points="12 2 15 9 22 9.5 16.5 14.3 18.3 21 12 17.2 5.7 21 7.5 14.3 2 9.5 9 9" /></NavIcon>;
+const ExpiringDocsIcon = () => <NavIcon><path d="M6 2h9l4 4v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" /><path d="M14 2v5h5" /><line x1="12" y1="12" x2="12" y2="16" /><line x1="12" y1="18.5" x2="12" y2="18.5" /></NavIcon>;
 
 const AdminLayout = ({ children, activePage }) => {
   const { user, logout } = useAuth();
@@ -64,6 +65,7 @@ const AdminLayout = ({ children, activePage }) => {
     { to: '/admin/manage-consignments', label: 'Manage Consignments', Icon: ConsignmentsIcon },
     { to: '/admin/availability-requests', label: 'Availability Requests', Icon: AvailabilityIcon },
     { to: '/admin/manage-reviews', label: 'Manage Reviews', Icon: ReviewsIcon },
+    { to: '/admin/expiring-documents', label: 'Expiring Documents', Icon: ExpiringDocsIcon },
   ];
 
   return (

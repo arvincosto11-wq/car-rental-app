@@ -15,6 +15,10 @@ const carSchema = new mongoose.Schema({
   // before this field existed) — plate number is enforced in the Add
   // Vehicle form instead for anything created going forward.
   plateNumber: { type: String, default: '' },
+  // CR (Certificate of Registration) renewal date — optional, since older
+  // cars added before this field existed won't have one on file yet. See
+  // GET /admin/expiring-documents.
+  registrationExpiry: { type: Date },
   color: { type: String, default: '' },
   mileage: { type: Number },
   image: { type: String, default: '' },

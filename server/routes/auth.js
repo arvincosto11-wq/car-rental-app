@@ -242,7 +242,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     const {
       name, email, password, phone, address,
       validIdType, validIdImage, validIdImageFileId,
-      validIdImageBack, validIdImageBackFileId,
+      validIdImageBack, validIdImageBackFileId, validIdExpiry,
       licenseNumber, licenseExpiry,
       emergencyContactName, emergencyContactNumber
     } = req.body;
@@ -270,7 +270,7 @@ router.post('/register', registerLimiter, async (req, res) => {
       name, email, password: hashed,
       phone, address,
       validIdType, validIdImage, validIdImageFileId,
-      validIdImageBack, validIdImageBackFileId,
+      validIdImageBack, validIdImageBackFileId, validIdExpiry,
       licenseNumber, licenseExpiry,
       emergencyContactName, emergencyContactNumber
     });
