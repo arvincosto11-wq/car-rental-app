@@ -51,6 +51,7 @@ router.put('/me', protect, async (req, res) => {
     const {
       name, phone, address, birthDate,
       licenseNumber, licenseExpiry,
+      licenseImage, licenseImageFileId, licenseImageBack, licenseImageBackFileId,
       emergencyContactName, emergencyContactNumber,
       validIdType, validIdImage, validIdImageFileId,
       validIdImageBack, validIdImageBackFileId, validIdExpiry
@@ -67,6 +68,12 @@ router.put('/me', protect, async (req, res) => {
     if (emergencyContactName !== undefined) user.emergencyContactName = emergencyContactName;
     if (emergencyContactNumber !== undefined) user.emergencyContactNumber = emergencyContactNumber;
 
+    // License photos aren't gated behind admin re-verification the way the
+    // valid ID is — idVerified/booking eligibility never depended on them,
+    // they're just supporting evidence for the license number/expiry.
+    if (licenseImage) { user.licenseImage = licenseImage; user.licenseImageFileId = licenseImageFileId || ''; }
+    if (licenseImageBack) { user.licenseImageBack = licenseImageBack; user.licenseImageBackFileId = licenseImageBackFileId || ''; }
+
     if (birthDate && !user.birthDate) {
       if (ageInYears(birthDate) < MIN_AGE_YEARS) {
         return res.status(400).json({ message: `You must be at least ${MIN_AGE_YEARS} years old.` });
@@ -74,31 +81,42 @@ router.put('/me', protect, async (req, res) => {
       user.birthDate = birthDate;
     }
 
-    if (validIdExpiry !== undefined) user.validIdExpiry = validIdExpiry || null;
-
-    // A new front or back photo, or switching ID type, means admin has to
-    // look at it again — the expiry date alone changing doesn't (same photo,
+    // A new front/back photo or switching ID type means admin has to look
+    // at it again — the expiry date alone changing doesn't (same photo,
     // nothing new to review).
-    let idNeedsVerification = false;
-    if (validIdType && validIdType !== user.validIdType) {
-      user.validIdType = validIdType;
-      idNeedsVerification = true;
+    const idPhotoChanged =
+      (validIdType && validIdType !== user.validIdType) ||
+      (validIdImage && validIdImage !== user.validIdImage) ||
+      (validIdImageBack && validIdImageBack !== user.validIdImageBack);
+
+    // Already verified: don't touch the live ID at all, so booking stays
+    // unaffected. Stash the update in the pending slot instead — the user
+    // keeps using their existing (still legitimate) ID until admin reviews
+    // the new one. Only unverified/never-verified users get a direct
+    // overwrite, since there's nothing verified yet to protect.
+    const wentPending = idPhotoChanged && user.idVerified;
+
+    if (wentPending) {
+      if (validIdType) user.pendingValidIdType = validIdType;
+      if (validIdImage) { user.pendingValidIdImage = validIdImage; user.pendingValidIdImageFileId = validIdImageFileId || ''; }
+      if (validIdImageBack) { user.pendingValidIdImageBack = validIdImageBack; user.pendingValidIdImageBackFileId = validIdImageBackFileId || ''; }
+      if (validIdExpiry !== undefined) user.pendingValidIdExpiry = validIdExpiry || null;
+      user.pendingIdSubmittedAt = new Date();
+    } else {
+      if (validIdExpiry !== undefined) user.validIdExpiry = validIdExpiry || null;
+      if (idPhotoChanged) {
+        if (validIdType) user.validIdType = validIdType;
+        if (validIdImage) { user.validIdImage = validIdImage; user.validIdImageFileId = validIdImageFileId || ''; }
+        if (validIdImageBack) { user.validIdImageBack = validIdImageBack; user.validIdImageBackFileId = validIdImageBackFileId || ''; }
+        user.idVerified = false;
+      }
     }
-    if (validIdImage && validIdImage !== user.validIdImage) {
-      user.validIdImage = validIdImage;
-      user.validIdImageFileId = validIdImageFileId || '';
-      idNeedsVerification = true;
-    }
-    if (validIdImageBack && validIdImageBack !== user.validIdImageBack) {
-      user.validIdImageBack = validIdImageBack;
-      user.validIdImageBackFileId = validIdImageBackFileId || '';
-      idNeedsVerification = true;
-    }
-    if (idNeedsVerification) user.idVerified = false;
 
     await user.save();
 
-    if (idNeedsVerification) {
+    if (wentPending) {
+      await notifyAdmins('ID Update Pending Review', `${user.name} submitted an updated ID and is awaiting re-verification.`, '/admin/manage-clients');
+    } else if (idPhotoChanged) {
       await notifyAdmins('ID Verification Needed', `${user.name} uploaded a new ID photo and needs verification.`, '/admin/manage-clients');
     }
     const { password, ...safeUser } = user.toObject();
@@ -283,6 +301,7 @@ router.post('/register', registerLimiter, async (req, res) => {
       validIdType, validIdImage, validIdImageFileId,
       validIdImageBack, validIdImageBackFileId, validIdExpiry,
       licenseNumber, licenseExpiry,
+      licenseImage, licenseImageFileId, licenseImageBack, licenseImageBackFileId,
       emergencyContactName, emergencyContactNumber
     } = req.body;
 
@@ -317,6 +336,7 @@ router.post('/register', registerLimiter, async (req, res) => {
       validIdType, validIdImage, validIdImageFileId,
       validIdImageBack, validIdImageBackFileId, validIdExpiry,
       licenseNumber, licenseExpiry,
+      licenseImage, licenseImageFileId, licenseImageBack, licenseImageBackFileId,
       emergencyContactName, emergencyContactNumber
     });
 

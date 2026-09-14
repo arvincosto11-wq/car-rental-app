@@ -41,6 +41,76 @@ router.put('/:id/verify', protect, adminOnly, async (req, res) => {
   }
 });
 
+// Approve a pending ID update — promotes the pending photo(s)/type/expiry
+// (submitted by an already-verified user, see PUT /auth/me) into the live
+// validId* fields and clears the pending slot. The user was never
+// unverified during the wait, so idVerified just gets re-affirmed as true.
+router.put('/:id/pending-id/approve', protect, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user.pendingIdSubmittedAt) {
+      return res.status(400).json({ message: 'This user has no pending ID update.' });
+    }
+
+    if (user.pendingValidIdType) user.validIdType = user.pendingValidIdType;
+    if (user.pendingValidIdImage) { user.validIdImage = user.pendingValidIdImage; user.validIdImageFileId = user.pendingValidIdImageFileId; }
+    if (user.pendingValidIdImageBack) { user.validIdImageBack = user.pendingValidIdImageBack; user.validIdImageBackFileId = user.pendingValidIdImageBackFileId; }
+    if (user.pendingValidIdExpiry !== undefined) user.validIdExpiry = user.pendingValidIdExpiry;
+    user.idVerified = true;
+
+    user.pendingValidIdType = '';
+    user.pendingValidIdImage = '';
+    user.pendingValidIdImageFileId = '';
+    user.pendingValidIdImageBack = '';
+    user.pendingValidIdImageBackFileId = '';
+    user.pendingValidIdExpiry = null;
+    user.pendingIdSubmittedAt = null;
+
+    await user.save();
+    await notifyUser(user._id, 'ID Update Approved', 'Your updated ID has been verified and is now active.', '/profile');
+
+    const { password, ...safeUser } = user.toObject();
+    res.json(safeUser);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Reject a pending ID update — discards the pending submission and leaves
+// the live (already-verified) ID completely untouched.
+router.put('/:id/pending-id/reject', protect, adminOnly, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user.pendingIdSubmittedAt) {
+      return res.status(400).json({ message: 'This user has no pending ID update.' });
+    }
+
+    user.pendingValidIdType = '';
+    user.pendingValidIdImage = '';
+    user.pendingValidIdImageFileId = '';
+    user.pendingValidIdImageBack = '';
+    user.pendingValidIdImageBackFileId = '';
+    user.pendingValidIdExpiry = null;
+    user.pendingIdSubmittedAt = null;
+
+    await user.save();
+    await notifyUser(
+      user._id,
+      'ID Update Rejected',
+      `Your submitted ID update was rejected${reason ? `: ${reason}` : '.'} Your previous verified ID is still active. Please try uploading again in your Profile.`,
+      '/profile'
+    );
+
+    const { password, ...safeUser } = user.toObject();
+    res.json(safeUser);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Block or unblock a client (admin)
 router.put('/:id/block', protect, adminOnly, async (req, res) => {
   try {

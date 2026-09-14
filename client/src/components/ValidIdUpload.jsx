@@ -11,7 +11,7 @@ const ValidIdUpload = ({
   idType, onIdTypeChange,
   frontPreview, onFrontChange,
   backPreview, onBackChange,
-  expiry, onExpiryChange,
+  expiry, onExpiryChange, hideExpiry = false,
 }) => {
   const needsBack = idTypeNeedsBack(idType);
 
@@ -79,7 +79,11 @@ const ValidIdUpload = ({
         </div>
       )}
 
-      {idType && onExpiryChange && (
+      {/* hideExpiry: the caller passes this when idType is the driver's license
+          and a separate License Expiry field already covers the same date —
+          asking twice for one physical document just invites the two going
+          out of sync. */}
+      {idType && onExpiryChange && !hideExpiry && (
         <div style={styles.field}>
           <label style={styles.label} htmlFor={`${idPrefix}-expiry`}>ID Expiry Date (optional)</label>
           <input

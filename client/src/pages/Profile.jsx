@@ -7,6 +7,7 @@ import Skeleton from '../components/Skeleton';
 import PasswordInput from '../components/PasswordInput';
 import OtpInput from '../components/OtpInput';
 import ValidIdUpload from '../components/ValidIdUpload';
+import LicensePhotoUpload from '../components/LicensePhotoUpload';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
 import api from '../api';
@@ -33,6 +34,10 @@ const Profile = () => {
   const [validIdBackImage, setValidIdBackImage] = useState(null);
   const [validIdBackPreview, setValidIdBackPreview] = useState('');
   const [validIdExpiry, setValidIdExpiry] = useState('');
+  const [licenseImage, setLicenseImage] = useState(null);
+  const [licensePreview, setLicensePreview] = useState('');
+  const [licenseBackImage, setLicenseBackImage] = useState(null);
+  const [licenseBackPreview, setLicenseBackPreview] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
@@ -76,6 +81,10 @@ const Profile = () => {
     setValidIdBackImage(null);
     setValidIdBackPreview('');
     setValidIdExpiry(profile.validIdExpiry ? profile.validIdExpiry.split('T')[0] : '');
+    setLicenseImage(null);
+    setLicensePreview('');
+    setLicenseBackImage(null);
+    setLicenseBackPreview('');
     setSaveError('');
     setSaveSuccess('');
     setEditMode(true);
@@ -106,7 +115,15 @@ const Profile = () => {
     setSaving(true);
     setSaveError('');
     try {
-      const payload = { ...form, validIdType, validIdExpiry: validIdExpiry || null };
+      // The driver's license IS the valid ID in this case — one physical
+      // document, so its expiry only needs to be entered once (in the
+      // License Expiry field) rather than twice.
+      const isDriversLicense = validIdType === 'drivers_license';
+      const payload = {
+        ...form,
+        validIdType,
+        validIdExpiry: isDriversLicense ? (form.licenseExpiry || null) : (validIdExpiry || null),
+      };
       if (validIdImage) {
         const uploaded = await uploadToImageKit(validIdImage);
         payload.validIdImage = uploaded.url;
@@ -117,11 +134,27 @@ const Profile = () => {
         payload.validIdImageBack = uploadedBack.url;
         payload.validIdImageBackFileId = uploadedBack.fileId;
       }
+      if (licenseImage) {
+        const uploadedLicense = await uploadToImageKit(licenseImage);
+        payload.licenseImage = uploadedLicense.url;
+        payload.licenseImageFileId = uploadedLicense.fileId;
+      }
+      if (licenseBackImage) {
+        const uploadedLicenseBack = await uploadToImageKit(licenseBackImage);
+        payload.licenseImageBack = uploadedLicenseBack.url;
+        payload.licenseImageBackFileId = uploadedLicenseBack.fileId;
+      }
+
+      const wasVerified = profile.idVerified;
       const res = await api.put('/auth/me', payload);
       setProfile(res.data);
       setEditMode(false);
-      setSaveSuccess('Profile updated.');
-      setTimeout(() => setSaveSuccess(''), 3000);
+      setSaveSuccess(
+        wasVerified && res.data.pendingIdSubmittedAt
+          ? 'Your ID update was submitted for review. Your current verified ID stays active until it’s approved.'
+          : 'Profile updated.'
+      );
+      setTimeout(() => setSaveSuccess(''), 5000);
     } catch (err) {
       setSaveError(err.response?.data?.message || 'Something went wrong saving your profile.');
     } finally {
@@ -313,6 +346,16 @@ const Profile = () => {
                 </div>
               </div>
 
+              {(profile.licenseImage || profile.licenseImageBack) && (
+                <div style={{ marginTop: '14px' }}>
+                  <span style={s.profileLabel}>License Photo</span>
+                  <div style={{ marginTop: '6px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    {profile.licenseImage && <img src={profile.licenseImage} alt="License front" style={s.idThumb} />}
+                    {profile.licenseImageBack && <img src={profile.licenseImageBack} alt="License back" style={s.idThumb} />}
+                  </div>
+                </div>
+              )}
+
               <div style={{ marginTop: '14px' }}>
                 <span style={s.profileLabel}>Valid ID</span>
                 <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -321,6 +364,9 @@ const Profile = () => {
                   </span>
                   {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
                     <span style={s.expiredTag}>Expired</span>
+                  )}
+                  {profile.pendingIdSubmittedAt && (
+                    <span style={s.unverifiedTag}>Update Pending Review</span>
                   )}
                 </div>
                 {profile.validIdExpiry && (
@@ -335,6 +381,17 @@ const Profile = () => {
                   <p style={{ ...s.formError, marginTop: '10px', maxWidth: '360px' }}>
                     Your ID has expired. Please upload an updated photo below — you won't be able to book until it's renewed and re-verified.
                   </p>
+                )}
+                {profile.pendingIdSubmittedAt && (
+                  <div style={{ marginTop: '12px' }}>
+                    <p style={s.uploadHint}>
+                      Submitted {new Date(profile.pendingIdSubmittedAt).toLocaleDateString()}, awaiting admin review. Your ID above stays verified and active in the meantime.
+                    </p>
+                    <div style={{ marginTop: '6px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      {profile.pendingValidIdImage && <img src={profile.pendingValidIdImage} alt="Pending ID front" style={s.idThumb} />}
+                      {profile.pendingValidIdImageBack && <img src={profile.pendingValidIdImageBack} alt="Pending ID back" style={s.idThumb} />}
+                    </div>
+                  </div>
                 )}
               </div>
             </>
@@ -383,6 +440,22 @@ const Profile = () => {
                 </div>
               </div>
 
+              {validIdType === 'drivers_license' ? (
+                <p style={s.uploadHint}>Your valid ID photos below already cover your license — no need to upload again.</p>
+              ) : (
+                <>
+                  <p style={{ ...s.label, marginBottom: '2px' }}>License Photo (optional)</p>
+                  <LicensePhotoUpload
+                    styles={s}
+                    idPrefix="profile-license"
+                    frontPreview={licensePreview || profile.licenseImage}
+                    onFrontChange={(f) => { setLicenseImage(f); setLicensePreview(URL.createObjectURL(f)); }}
+                    backPreview={licenseBackPreview || profile.licenseImageBack}
+                    onBackChange={(f) => { setLicenseBackImage(f); setLicenseBackPreview(URL.createObjectURL(f)); }}
+                  />
+                </>
+              )}
+
               <div className="responsive-row-2" style={s.row}>
                 <div style={s.field}>
                   <label style={s.label} htmlFor="profile-emergency-name">Emergency Contact Name</label>
@@ -398,6 +471,11 @@ const Profile = () => {
 
               <p style={{ ...s.label, marginBottom: '2px' }}>Valid ID (leave as is, or update it)</p>
               {!validIdType && <p style={s.uploadHint}>Select your ID type to view or update it.</p>}
+              {profile.pendingIdSubmittedAt && (
+                <p style={{ ...s.uploadHint, color: isDark ? '#fcd34d' : '#92400e' }}>
+                  You already have an ID update pending review — uploading here replaces that pending submission, not your currently verified ID.
+                </p>
+              )}
               <ValidIdUpload
                 styles={s}
                 idPrefix="profile-valid-id"
@@ -409,9 +487,14 @@ const Profile = () => {
                 onBackChange={(f) => { setValidIdBackImage(f); setValidIdBackPreview(URL.createObjectURL(f)); }}
                 expiry={validIdExpiry}
                 onExpiryChange={setValidIdExpiry}
+                hideExpiry={validIdType === 'drivers_license'}
               />
               {(validIdImage || validIdBackImage) && (
-                <p style={s.uploadHint}>Uploading a new photo will require admin re-verification.</p>
+                <p style={s.uploadHint}>
+                  {profile.idVerified
+                    ? 'Uploading a new photo will be submitted for review — your current verified ID stays active until it’s approved.'
+                    : 'Uploading a new photo will require admin re-verification.'}
+                </p>
               )}
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>

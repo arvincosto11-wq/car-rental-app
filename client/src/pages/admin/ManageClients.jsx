@@ -21,6 +21,9 @@ const ManageClients = () => {
   const [search, setSearch] = useState('');
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [page, setPage] = useState(1);
+  const [rejectPendingIdTarget, setRejectPendingIdTarget] = useState(null);
+  const [rejectPendingIdReason, setRejectPendingIdReason] = useState('');
+  const [rejectingPendingId, setRejectingPendingId] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -58,6 +61,35 @@ const ManageClients = () => {
     }
   };
 
+  const handleApprovePendingId = async (id) => {
+    try {
+      await api.put(`/users/${id}/pending-id/approve`);
+      fetchData();
+      refetchPendingCounts();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const openRejectPendingId = (id) => {
+    setRejectPendingIdTarget(id);
+    setRejectPendingIdReason('');
+  };
+
+  const confirmRejectPendingId = async () => {
+    setRejectingPendingId(true);
+    try {
+      await api.put(`/users/${rejectPendingIdTarget}/pending-id/reject`, { reason: rejectPendingIdReason });
+      fetchData();
+      refetchPendingCounts();
+      setRejectPendingIdTarget(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setRejectingPendingId(false);
+    }
+  };
+
   const bookingsForClient = (clientId) =>
     bookings.filter((b) => b.user?._id === clientId);
 
@@ -71,6 +103,7 @@ const ManageClients = () => {
 
   const selectedClient = clients.find((c) => c._id === selectedClientId);
   const clientModalRef = useModalA11y(() => setSelectedClientId(null), !!selectedClient);
+  const rejectPendingIdModalRef = useModalA11y(() => setRejectPendingIdTarget(null), !!rejectPendingIdTarget);
 
   const s = {
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
@@ -106,6 +139,12 @@ const ManageClients = () => {
     historyTd: { padding: '8px 10px', color: isDark ? '#e4e6eb' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
     closeBtn: { marginTop: '18px', padding: '10px 24px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', width: '100%' },
     empty: { fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', padding: '12px 0' },
+    pendingTag: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
+    pendingBox: { background: isDark ? 'rgba(217,119,6,0.12)' : '#fffbeb', border: `1px solid ${isDark ? 'rgba(217,119,6,0.35)' : '#fde68a'}`, borderRadius: '10px', padding: '14px', marginBottom: '18px' },
+    modalTextarea: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', marginTop: '10px', marginBottom: '4px', color: isDark ? '#e4e6eb' : '#1a1a1a', background: isDark ? '#18191a' : '#fff', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' },
+    modalActions: { display: 'flex', gap: '10px', marginTop: '14px' },
+    modalCancelBtn: { flex: 1, padding: '10px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
+    modalSubmitBtn: { flex: 1, padding: '10px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
   };
 
   return (
@@ -149,6 +188,9 @@ const ManageClients = () => {
                   <span style={client.idVerified ? s.verified : s.unverified}>
                     {client.idVerified ? 'Verified' : 'Unverified'}
                   </span>
+                  {client.pendingIdSubmittedAt && (
+                    <div style={{ marginTop: '4px' }}><span style={s.pendingTag}>Update Pending</span></div>
+                  )}
                 </td>
                 <td style={s.td}>
                   <span style={client.isBlocked ? s.blocked : s.active}>
@@ -219,6 +261,17 @@ const ManageClients = () => {
               </div>
             </div>
 
+            {(selectedClient.licenseImage || selectedClient.licenseImageBack) && (
+              <>
+                <h3 style={{ ...s.sectionTitle, marginTop: 0 }}>License Photo</h3>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {selectedClient.licenseImage && <img src={selectedClient.licenseImage} alt="License front" style={s.idImage} />}
+                  {selectedClient.licenseImageBack && <img src={selectedClient.licenseImageBack} alt="License back" style={s.idImage} />}
+                </div>
+              </>
+            )}
+
+            <h3 style={{ ...s.sectionTitle, marginTop: 0 }}>Valid ID</h3>
             {selectedClient.validIdImage ? (
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <img src={selectedClient.validIdImage} alt="Valid ID front" style={s.idImage} />
@@ -250,6 +303,32 @@ const ManageClients = () => {
                 {selectedClient.isBlocked ? 'Unblock Client' : 'Block Client'}
               </button>
             </div>
+
+            {selectedClient.pendingIdSubmittedAt && (
+              <div style={s.pendingBox}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                  <span style={s.pendingTag}>Update Pending Review</span>
+                  <span style={s.subCell}>Submitted {new Date(selectedClient.pendingIdSubmittedAt).toLocaleDateString()}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                  {selectedClient.pendingValidIdImage && <img src={selectedClient.pendingValidIdImage} alt="Pending ID front" style={s.idImage} />}
+                  {selectedClient.pendingValidIdImageBack && <img src={selectedClient.pendingValidIdImageBack} alt="Pending ID back" style={s.idImage} />}
+                </div>
+                {selectedClient.pendingValidIdExpiry && (
+                  <p style={{ ...s.profileValue, marginBottom: '10px' }}>
+                    New expiry: {new Date(selectedClient.pendingValidIdExpiry).toLocaleDateString()}
+                  </p>
+                )}
+                <div style={s.actionRow}>
+                  <button style={s.verifyBtn(false)} onClick={() => handleApprovePendingId(selectedClient._id)}>
+                    Approve New ID
+                  </button>
+                  <button style={s.blockBtn(false)} onClick={() => openRejectPendingId(selectedClient._id)}>
+                    Reject New ID
+                  </button>
+                </div>
+              </div>
+            )}
 
             <h3 style={s.sectionTitle}>Booking History</h3>
             {bookingsForClient(selectedClient._id).length === 0 ? (
@@ -284,6 +363,30 @@ const ManageClients = () => {
             <button style={s.closeBtn} onClick={() => setSelectedClientId(null)}>
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {rejectPendingIdTarget && (
+        <div style={s.modalOverlay}>
+          <div style={s.modalContent} ref={rejectPendingIdModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="reject-pending-id-title">
+            <h2 id="reject-pending-id-title" style={s.modalTitle}>Reject ID Update</h2>
+            <p style={s.modalSub}>The client's current verified ID stays active either way — only the new submission is discarded.</p>
+            <label style={s.profileLabel} htmlFor="reject-pending-id-reason">Reason (optional, shown to the client)</label>
+            <textarea
+              id="reject-pending-id-reason"
+              style={s.modalTextarea}
+              rows={3}
+              value={rejectPendingIdReason}
+              onChange={(e) => setRejectPendingIdReason(e.target.value)}
+              placeholder="e.g. The photo is blurry, please re-upload."
+            />
+            <div style={s.modalActions}>
+              <button style={s.modalCancelBtn} onClick={() => setRejectPendingIdTarget(null)} disabled={rejectingPendingId}>Cancel</button>
+              <button style={s.modalSubmitBtn} onClick={confirmRejectPendingId} disabled={rejectingPendingId}>
+                {rejectingPendingId ? 'Rejecting...' : 'Confirm Reject'}
+              </button>
+            </div>
           </div>
         </div>
       )}

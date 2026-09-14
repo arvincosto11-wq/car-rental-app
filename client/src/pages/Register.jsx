@@ -11,6 +11,7 @@ import OtpInput from '../components/OtpInput';
 import BookingSteps from '../components/BookingSteps';
 import AuthBrandPanel from '../components/AuthBrandPanel';
 import ValidIdUpload from '../components/ValidIdUpload';
+import LicensePhotoUpload from '../components/LicensePhotoUpload';
 import { idTypeNeedsBack } from '../data/validIdTypes';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
@@ -75,6 +76,10 @@ const Register = () => {
   const [validIdBackImage, setValidIdBackImage] = useState(null);
   const [validIdBackPreview, setValidIdBackPreview] = useState('');
   const [validIdExpiry, setValidIdExpiry] = useState('');
+  const [licenseImage, setLicenseImage] = useState(null);
+  const [licensePreview, setLicensePreview] = useState('');
+  const [licenseBackImage, setLicenseBackImage] = useState(null);
+  const [licenseBackPreview, setLicenseBackPreview] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
@@ -232,6 +237,19 @@ const Register = () => {
       if (validIdBackImage) {
         uploadedBack = await uploadToImageKit(validIdBackImage);
       }
+      let uploadedLicense = { url: '', fileId: '' };
+      if (licenseImage) {
+        uploadedLicense = await uploadToImageKit(licenseImage);
+      }
+      let uploadedLicenseBack = { url: '', fileId: '' };
+      if (licenseBackImage) {
+        uploadedLicenseBack = await uploadToImageKit(licenseBackImage);
+      }
+
+      // The driver's license IS the valid ID in this case — one physical
+      // document, so its expiry only needs to be entered once (in the
+      // License Expiry field) rather than twice.
+      const isDriversLicense = validIdType === 'drivers_license';
 
       const res = await api.post('/auth/register', {
         ...form,
@@ -240,7 +258,11 @@ const Register = () => {
         validIdImageFileId: uploaded.fileId,
         validIdImageBack: uploadedBack.url,
         validIdImageBackFileId: uploadedBack.fileId,
-        validIdExpiry: validIdExpiry || null,
+        validIdExpiry: isDriversLicense ? (form.licenseExpiry || null) : (validIdExpiry || null),
+        licenseImage: uploadedLicense.url,
+        licenseImageFileId: uploadedLicense.fileId,
+        licenseImageBack: uploadedLicenseBack.url,
+        licenseImageBackFileId: uploadedLicenseBack.fileId,
       });
       login(res.data.user, res.data.token);
       navigate('/');
@@ -575,6 +597,7 @@ const Register = () => {
                       onBackChange={handleIdBackChange}
                       expiry={validIdExpiry}
                       onExpiryChange={setValidIdExpiry}
+                      hideExpiry={validIdType === 'drivers_license'}
                     />
                     {fieldErrors.validId && <p style={styles.fieldError}>{fieldErrors.validId}</p>}
 
@@ -604,6 +627,19 @@ const Register = () => {
                         />
                       </div>
                     </div>
+
+                    {validIdType === 'drivers_license' ? (
+                      <p style={styles.uploadHint}>Your license photos above already cover this — no need to upload again.</p>
+                    ) : (
+                      <LicensePhotoUpload
+                        styles={styles}
+                        idPrefix="reg-license"
+                        frontPreview={licensePreview}
+                        onFrontChange={(f) => { setLicenseImage(f); setLicensePreview(URL.createObjectURL(f)); }}
+                        backPreview={licenseBackPreview}
+                        onBackChange={(f) => { setLicenseBackImage(f); setLicenseBackPreview(URL.createObjectURL(f)); }}
+                      />
+                    )}
 
                     <div style={styles.stepActions}>
                       <button type="button" style={styles.backBtn} onClick={() => goToStep(1)}>

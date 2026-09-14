@@ -32,9 +32,27 @@ const userSchema = new mongoose.Schema({
   licenseNumber: { type: String, default: '' },
   licenseExpiry: { type: Date },
   licenseExpiryNotifiedAt: { type: Date },
+  // Only collected when the driver's license ISN'T the user's chosen Valid
+  // ID (in that case the valid-ID photos already cover it — see
+  // idTypeNeedsBack in client/src/data/validIdTypes.js).
+  licenseImage: { type: String, default: '' },
+  licenseImageFileId: { type: String, default: '' },
+  licenseImageBack: { type: String, default: '' },
+  licenseImageBackFileId: { type: String, default: '' },
   emergencyContactName: { type: String, default: '' },
   emergencyContactNumber: { type: String, default: '' },
   idVerified: { type: Boolean, default: false },
+  // A re-upload from an ALREADY-verified user lands here instead of
+  // overwriting the live validId* fields directly — so their existing
+  // verified ID keeps working (booking stays unaffected) while admin
+  // reviews the update. See PUT /auth/me and PUT /users/:id/pending-id.
+  pendingValidIdType: { type: String, default: '' },
+  pendingValidIdImage: { type: String, default: '' },
+  pendingValidIdImageFileId: { type: String, default: '' },
+  pendingValidIdImageBack: { type: String, default: '' },
+  pendingValidIdImageBackFileId: { type: String, default: '' },
+  pendingValidIdExpiry: { type: Date },
+  pendingIdSubmittedAt: { type: Date },
   isBlocked: { type: Boolean, default: false },
   avgRating: { type: Number, default: 0 },
   ratingCount: { type: Number, default: 0 },

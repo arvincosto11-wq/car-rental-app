@@ -26,8 +26,15 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
       // Scoped to role: 'user' — Manage Clients only ever lists and can
       // verify plain clients, not consignors. Counting consignors here too
       // made this badge permanently stuck, since there was no way to ever
-      // resolve them from that page.
-      User.countDocuments({ role: 'user', validIdImage: { $ne: '' }, idVerified: false }),
+      // resolve them from that page. Also counts already-verified users
+      // with a pending ID update awaiting re-review (see PUT /auth/me).
+      User.countDocuments({
+        role: 'user',
+        $or: [
+          { validIdImage: { $ne: '' }, idVerified: false },
+          { pendingIdSubmittedAt: { $ne: null } },
+        ],
+      }),
       Consignment.countDocuments({ status: 'pending' }),
       Car.countDocuments({ 'availabilityRequest.status': 'pending' }),
       // A car can have several pending blocked-date ranges at once (unlike
