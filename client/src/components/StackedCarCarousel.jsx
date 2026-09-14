@@ -18,8 +18,8 @@ const HOLD_MS = 4000;
 // rather than just a dimmed duplicate of the front card.
 const slotStyle = (slot) => {
   if (slot === 0) return { opacity: 1, scale: 1, x: '0%', zIndex: 3, filter: 'blur(0px) grayscale(0)' };
-  if (slot === 1) return { opacity: 0.6, scale: 0.87, x: '46%', zIndex: 2, filter: 'blur(3px) grayscale(0.25)' };
-  return { opacity: 0.55, scale: 0.87, x: '-46%', zIndex: 1, filter: 'blur(3px) grayscale(0.25)' };
+  if (slot === 1) return { opacity: 0.55, scale: 0.87, x: '46%', zIndex: 2, filter: 'blur(4px) grayscale(0.3)' };
+  return { opacity: 0.5, scale: 0.87, x: '-46%', zIndex: 1, filter: 'blur(4px) grayscale(0.3)' };
 };
 
 const StackedCarCarousel = ({ isDark }) => {
@@ -87,20 +87,20 @@ const StackedCarCarousel = ({ isDark }) => {
     return () => el.removeEventListener('wheel', handleWheel);
   }, [cars.length, advance, retreat]);
 
-  // Matches the real card's own position/size (left: 23%, width: 54% of
+  // Matches the real card's own position/size (left: 13%, width: 74% of
   // wrap) so the skeleton sits exactly where the front card will appear —
   // no layout shift once the real data (or a cold-started backend
   // response) finally arrives.
   if (loading) {
     return (
       <div style={{ overflow: 'hidden', padding: '10px 0' }}>
-        <div style={{ position: 'relative', width: 'min(960px, 96vw)', height: '500px', margin: '0 auto' }}>
-          <div style={{ position: 'absolute', top: 0, left: '23%', width: '54%' }}>
-            <Skeleton height="290px" radius="18px 18px 0 0" isDark={isDark} />
-            <div style={{ padding: '22px 24px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderTop: 'none', borderRadius: '0 0 18px 18px' }}>
-              <Skeleton width="70%" height="20px" isDark={isDark} style={{ marginBottom: '10px' }} />
-              <Skeleton width="45%" height="12px" isDark={isDark} style={{ marginBottom: '16px' }} />
-              <Skeleton height="43px" radius="10px" isDark={isDark} />
+        <div style={{ position: 'relative', width: '100%', maxWidth: '440px', height: '340px', margin: '0 auto' }}>
+          <div style={{ position: 'absolute', top: 0, left: '13%', width: '74%' }}>
+            <Skeleton height="150px" radius="16px 16px 0 0" isDark={isDark} />
+            <div style={{ padding: '16px 18px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderTop: 'none', borderRadius: '0 0 16px 16px' }}>
+              <Skeleton width="70%" height="16px" isDark={isDark} style={{ marginBottom: '8px' }} />
+              <Skeleton width="45%" height="10px" isDark={isDark} style={{ marginBottom: '12px' }} />
+              <Skeleton height="32px" radius="8px" isDark={isDark} />
             </div>
           </div>
         </div>
@@ -115,53 +115,58 @@ const StackedCarCarousel = ({ isDark }) => {
 
   const s = {
     outer: { overflow: 'hidden', padding: '10px 0' },
+    // Sized for the hero's right-hand column now (its only usage — see
+    // Home.jsx), not a full-width section, so this stays a compact ~440px
+    // stage rather than the ~960px it needed as a standalone section.
     wrap: {
-      position: 'relative', width: 'min(960px, 96vw)', height: '500px',
+      position: 'relative', width: '100%', maxWidth: '440px', height: '340px',
       margin: '0 auto',
     },
     glow: {
-      position: 'absolute', top: '-90px', left: '50%', transform: 'translateX(-50%)',
-      width: '960px', height: '720px', borderRadius: '50%', pointerEvents: 'none',
+      position: 'absolute', top: '-60px', left: '50%', transform: 'translateX(-50%)',
+      width: '440px', height: '340px', borderRadius: '50%', pointerEvents: 'none',
       background: isDark
         ? 'radial-gradient(circle, rgba(232,161,0,0.28) 0%, rgba(232,161,0,0) 70%)'
         : 'radial-gradient(circle, rgba(184,121,10,0.22) 0%, rgba(184,121,10,0) 70%)',
       filter: 'blur(20px)',
     },
-    // Sized as a percentage of `wrap` (23% + 54% + 23% = 100%, so the card
+    // Sized as a percentage of `wrap` (13% + 74% + 13% = 100%, so the card
     // sits centered) rather than mixing px/vw clamps with a negative
     // margin — that combination inverted itself on wide viewports and
-    // shoved every card hundreds of pixels off-frame.
+    // shoved every card hundreds of pixels off-frame. Narrower side margins
+    // than the old full-size version so the side cards only peek as thin
+    // blurred slivers, matching a compact hero-embedded look.
     card: {
-      position: 'absolute', top: 0, left: '23%', width: '54%',
+      position: 'absolute', top: 0, left: '13%', width: '74%',
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '18px', overflow: 'hidden',
+      borderRadius: '16px', overflow: 'hidden',
       boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.5)' : '0 16px 40px rgba(0,0,0,0.12)',
       cursor: 'pointer',
     },
-    imgWrap: { position: 'relative', width: '100%', height: '290px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
+    imgWrap: { position: 'relative', width: '100%', height: '150px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
     img: { width: '100%', height: '100%', objectFit: 'cover' },
     categoryBadge: {
-      position: 'absolute', top: '14px', right: '14px',
+      position: 'absolute', top: '10px', right: '10px',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-      fontSize: '11px', fontWeight: '700', letterSpacing: '0.02em',
-      padding: '4px 12px', borderRadius: '20px',
+      fontSize: '9px', fontWeight: '700', letterSpacing: '0.02em',
+      padding: '3px 9px', borderRadius: '20px',
     },
-    body: { padding: '22px 24px' },
-    headRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' },
-    name: { fontSize: '20px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    body: { padding: '14px 16px' },
+    headRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3px' },
+    name: { fontSize: '15px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     sub: {
-      fontSize: '11.5px', fontWeight: '600', letterSpacing: '0.03em', textTransform: 'uppercase',
-      color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px',
+      fontSize: '9.5px', fontWeight: '600', letterSpacing: '0.03em', textTransform: 'uppercase',
+      color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '10px',
     },
-    price: { fontSize: '19px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, textAlign: 'right' },
-    priceUnit: { fontSize: '12px', fontWeight: '500', color: isDark ? '#b0b3b8' : '#6b7280' },
+    price: { fontSize: '14px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, textAlign: 'right' },
+    priceUnit: { fontSize: '9.5px', fontWeight: '500', color: isDark ? '#b0b3b8' : '#6b7280' },
     reserveBtn: {
-      display: 'block', width: '100%', padding: '13px', marginTop: '4px',
+      display: 'block', width: '100%', padding: '9px', marginTop: '2px',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-      border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+      border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
     },
-    dots: { display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '18px' },
+    dots: { display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '14px' },
     dot: (active) => ({
       width: active ? '18px' : '6px', height: '6px', borderRadius: '4px',
       background: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#d1d5db'),
@@ -213,7 +218,7 @@ const StackedCarCarousel = ({ isDark }) => {
                       style={s.reserveBtn}
                       onClick={(e) => { e.stopPropagation(); navigate(`/cars/${car._id}`); }}
                     >
-                      Reserve This Vehicle
+                      Book Now
                     </button>
                   )}
                 </div>

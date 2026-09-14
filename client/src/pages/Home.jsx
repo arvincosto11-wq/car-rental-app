@@ -11,17 +11,11 @@ import api from '../api';
 
 const CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe', 'Motorcycle'];
 
-// Curated hero photos — Mayon Volcano ties the brand to Albay specifically,
-// and the handover shot matches the brand's own poster style. Swap/add files
-// in client/public/ and update this list to change the rotation.
-const HERO_IMAGES = ['/hero-mayon.webp', '/hero-mayon-road.jpg', '/hero-winding-road.jpg', '/handling-keys.jpg'];
-
 const Home = () => {
   const [testimonials, setTestimonials] = useState([]);
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const [searchCategory, setSearchCategory] = useState('');
-  const [heroSlide, setHeroSlide] = useState(0);
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
@@ -38,16 +32,6 @@ const Home = () => {
     };
     fetchTestimonials();
   }, []);
-
-  const heroImages = HERO_IMAGES;
-
-  useEffect(() => {
-    if (heroImages.length < 2) return;
-    const timer = setInterval(() => {
-      setHeroSlide((prev) => (prev + 1) % heroImages.length);
-    }, 3500);
-    return () => clearInterval(timer);
-  }, [heroImages.length]);
 
   const handleSearch = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -69,79 +53,41 @@ const Home = () => {
   const styles = {
     hero: {
       position: 'relative',
-      minHeight: '620px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
       overflow: 'hidden',
-      background: '#17130e',
+      background: isDark ? '#18191a' : '#f9fafb',
     },
-    heroSlideImg: (active) => ({
-      position: 'absolute',
-      inset: 0,
-      width: '100%',
-      height: '100%',
-      objectFit: 'cover',
-      opacity: active ? 1 : 0,
-      transition: 'opacity 1.4s ease',
-    }),
-    heroOverlay: {
-      position: 'absolute',
-      inset: 0,
-      background: 'linear-gradient(180deg, rgba(23,19,14,0.55), rgba(23,19,14,0.7))',
-    },
-    heroContent: {
+    heroGrid: {
       position: 'relative',
-      zIndex: 2,
-      textAlign: 'center',
-      padding: '110px 32px 60px',
-      width: '100%',
-    },
-    heroArrows: {
-      position: 'absolute',
-      bottom: '24px',
-      right: '32px',
-      zIndex: 2,
-      display: 'flex',
-      gap: '8px',
-    },
-    heroArrowBtn: {
-      width: '34px',
-      height: '34px',
-      borderRadius: '6px',
-      border: '1px solid rgba(255,255,255,0.5)',
-      background: 'rgba(255,255,255,0.1)',
-      color: '#fff',
-      cursor: 'pointer',
-      fontSize: '14px',
-      display: 'flex',
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '90px 32px',
+      gap: '48px',
       alignItems: 'center',
-      justifyContent: 'center',
     },
+    heroLeft: { textAlign: 'left' },
+    heroRight: { display: 'flex', justifyContent: 'center' },
     heroTitle: {
       fontSize: '46px',
       fontWeight: '700',
-      color: '#ffffff',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
       marginBottom: '8px',
-      textShadow: '0 2px 12px rgba(0,0,0,0.35)',
     },
     heroSubtitle: {
       fontSize: '16px',
-      color: 'rgba(255,255,255,0.85)',
+      color: isDark ? '#b0b3b8' : '#6b7280',
       marginBottom: '32px',
     },
     searchBox: {
       gap: '0',
-      maxWidth: '820px',
-      margin: '0 auto',
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '20px',
       overflow: 'hidden',
-      boxShadow: '0 12px 32px rgba(0,0,0,0.28)',
+      boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.4)' : '0 12px 32px rgba(0,0,0,0.08)',
     },
     searchField: {
-      flex: 1,
+      flex: '1 1 130px',
+      minWidth: '130px',
       padding: '12px 18px',
       borderRight: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
@@ -178,13 +124,6 @@ const Home = () => {
       padding: '48px 32px',
       maxWidth: '1200px',
       margin: '0 auto',
-    },
-    // Sits directly under the "Curated Fleet" heading now, rather than
-    // overlapping up into the hero — that overlap trick only made sense
-    // when the carousel was the very first thing after the hero image.
-    carouselOverlap: {
-      marginTop: '10px',
-      marginBottom: '32px',
     },
     sectionTitle: {
       fontSize: '28px',
@@ -452,90 +391,59 @@ const Home = () => {
 
   return (
     <div>
-      {/* Hero Section */}
+      {/* Hero Section — plain theme-aware background (no photo), text and
+          search on the left, the featured-cars carousel on the right. */}
       <div style={styles.hero}>
-        {heroImages.map((src, i) => (
-          <img key={src + i} src={src} alt="" style={styles.heroSlideImg(i === heroSlide)} />
-        ))}
-        <div style={styles.heroOverlay}></div>
+        <div className="responsive-row-2" style={styles.heroGrid}>
+          <div style={styles.heroLeft}>
+            <h1 className="display-heading" style={styles.heroTitle}>Explore Without Limits</h1>
+            <p style={styles.heroSubtitle}>Well-maintained rides across Albay — book in minutes.</p>
 
-        {heroImages.length > 1 && (
-          <div style={styles.heroArrows}>
-            <button
-              style={styles.heroArrowBtn}
-              onClick={() => setHeroSlide((prev) => (prev - 1 + heroImages.length) % heroImages.length)}
-              aria-label="Previous"
-            >‹</button>
-            <button
-              style={styles.heroArrowBtn}
-              onClick={() => setHeroSlide((prev) => (prev + 1) % heroImages.length)}
-              aria-label="Next"
-            >›</button>
+            <div className="hero-search-box" style={styles.searchBox}>
+              <div className="hero-search-field" style={styles.searchField}>
+                <label style={styles.searchLabel} htmlFor="home-pickup-date"><span aria-hidden="true">📅</span> Pick-up Date</label>
+                <input
+                  id="home-pickup-date"
+                  style={styles.searchInput}
+                  type="date"
+                  min={new Date().toISOString().split('T')[0]}
+                  value={pickupDate}
+                  onChange={(e) => setPickupDate(e.target.value)}
+                />
+              </div>
+              <div className="hero-search-field" style={styles.searchField}>
+                <label style={styles.searchLabel} htmlFor="home-return-date"><span aria-hidden="true">📅</span> Return Date</label>
+                <input
+                  id="home-return-date"
+                  style={styles.searchInput}
+                  type="date"
+                  min={pickupDate || new Date().toISOString().split('T')[0]}
+                  value={returnDate}
+                  onChange={(e) => setReturnDate(e.target.value)}
+                />
+              </div>
+              <div className="hero-search-field" style={{ ...styles.searchField, borderRight: 'none' }}>
+                <label style={styles.searchLabel} htmlFor="home-search-category"><span aria-hidden="true">🚙</span> Vehicle Type</label>
+                <select
+                  id="home-search-category"
+                  style={styles.searchInput}
+                  value={searchCategory}
+                  onChange={(e) => setSearchCategory(e.target.value)}
+                >
+                  <option value="">Any</option>
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <button className="hero-search-btn" style={styles.searchBtn} onClick={handleSearch}>
+                Search
+              </button>
+            </div>
           </div>
-        )}
 
-        <div style={styles.heroContent}>
-        <h1 className="display-heading" style={styles.heroTitle}>Explore Without Limits</h1>
-        <p style={styles.heroSubtitle}>Well-maintained rides across Albay — book in minutes.</p>
-
-        <div className="hero-search-box" style={styles.searchBox}>
-          <div className="hero-search-field" style={styles.searchField}>
-            <label style={styles.searchLabel} htmlFor="home-pickup-date"><span aria-hidden="true">📅</span> Pick-up Date</label>
-            <input
-              id="home-pickup-date"
-              style={styles.searchInput}
-              type="date"
-              min={new Date().toISOString().split('T')[0]}
-              value={pickupDate}
-              onChange={(e) => setPickupDate(e.target.value)}
-            />
+          <div style={styles.heroRight}>
+            <StackedCarCarousel isDark={isDark} />
           </div>
-          <div className="hero-search-field" style={styles.searchField}>
-            <label style={styles.searchLabel} htmlFor="home-return-date"><span aria-hidden="true">📅</span> Return Date</label>
-            <input
-              id="home-return-date"
-              style={styles.searchInput}
-              type="date"
-              min={pickupDate || new Date().toISOString().split('T')[0]}
-              value={returnDate}
-              onChange={(e) => setReturnDate(e.target.value)}
-            />
-          </div>
-          <div className="hero-search-field" style={{ ...styles.searchField, borderRight: 'none' }}>
-            <label style={styles.searchLabel} htmlFor="home-search-category"><span aria-hidden="true">🚙</span> Vehicle Type</label>
-            <select
-              id="home-search-category"
-              style={styles.searchInput}
-              value={searchCategory}
-              onChange={(e) => setSearchCategory(e.target.value)}
-            >
-              <option value="">Any</option>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <button className="hero-search-btn" style={styles.searchBtn} onClick={handleSearch}>
-            Search
-          </button>
         </div>
-        </div>
-      </div>
-
-      {/* Featured Cars — heading now introduces the section before the
-          carousel, instead of the carousel overlapping straight up into
-          the hero with the heading tacked on below it. */}
-      <div style={{ ...styles.section, paddingBottom: 0 }}>
-        <h2 style={styles.sectionTitle}>The Curated Fleet</h2>
-        <p style={styles.sectionSubtitle}>
-          A closer look at some of our top-rated, best-maintained vehicles.
-        </p>
-      </div>
-      <div className="carousel-overlap" style={styles.carouselOverlap}>
-        <StackedCarCarousel isDark={isDark} />
-      </div>
-      <div style={{ ...styles.section, paddingTop: 0, textAlign: 'center' }}>
-        <button style={styles.viewAllBtn} onClick={() => navigate('/cars')}>
-          Browse All Vehicles
-        </button>
       </div>
 
       {/* Testimonials */}
