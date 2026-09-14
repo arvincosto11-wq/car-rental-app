@@ -94,7 +94,7 @@ const StackedCarCarousel = ({ isDark }) => {
   if (loading) {
     return (
       <div style={{ overflow: 'hidden', padding: '10px 0' }}>
-        <div style={{ position: 'relative', width: '100%', maxWidth: '440px', height: '340px', margin: '0 auto' }}>
+        <div style={{ position: 'relative', width: 'min(440px, 90vw)', height: '340px', margin: '0 auto' }}>
           <div style={{ position: 'absolute', top: 0, left: '13%', width: '74%' }}>
             <Skeleton height="150px" radius="16px 16px 0 0" isDark={isDark} />
             <div style={{ padding: '16px 18px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderTop: 'none', borderRadius: '0 0 16px 16px' }}>
@@ -117,9 +117,14 @@ const StackedCarCarousel = ({ isDark }) => {
     outer: { overflow: 'hidden', padding: '10px 0' },
     // Sized for the hero's right-hand column now (its only usage — see
     // Home.jsx), not a full-width section, so this stays a compact ~440px
-    // stage rather than the ~960px it needed as a standalone section.
+    // stage rather than the ~960px it needed as a standalone section. A
+    // real length (not a `%`) is required here: this sits inside a flex
+    // container (heroRight), and every card inside `wrap` is `position:
+    // absolute` — which doesn't count toward a flex item's shrink-to-fit
+    // sizing. A `width: 100%` here would resolve against that collapsed
+    // (near-zero) size instead of the space actually available.
     wrap: {
-      position: 'relative', width: '100%', maxWidth: '440px', height: '340px',
+      position: 'relative', width: 'min(440px, 90vw)', height: '340px',
       margin: '0 auto',
     },
     glow: {
