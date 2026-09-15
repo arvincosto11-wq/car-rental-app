@@ -94,13 +94,13 @@ const StackedCarCarousel = ({ isDark }) => {
   if (loading) {
     return (
       <div style={{ overflow: 'hidden', padding: '10px 0', width: '100%' }}>
-        <div style={{ position: 'relative', width: '100%', maxWidth: '520px', height: '400px', margin: '0 auto' }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: '600px', height: '460px', margin: '0 auto' }}>
           <div style={{ position: 'absolute', top: 0, left: '13%', width: '74%' }}>
-            <Skeleton height="180px" radius="16px 16px 0 0" isDark={isDark} />
-            <div style={{ padding: '18px 20px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderTop: 'none', borderRadius: '0 0 16px 16px' }}>
-              <Skeleton width="70%" height="18px" isDark={isDark} style={{ marginBottom: '10px' }} />
-              <Skeleton width="45%" height="11px" isDark={isDark} style={{ marginBottom: '14px' }} />
-              <Skeleton height="36px" radius="8px" isDark={isDark} />
+            <Skeleton height="210px" radius="16px 16px 0 0" isDark={isDark} />
+            <div style={{ padding: '20px 22px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderTop: 'none', borderRadius: '0 0 16px 16px' }}>
+              <Skeleton width="70%" height="19px" isDark={isDark} style={{ marginBottom: '11px' }} />
+              <Skeleton width="45%" height="12px" isDark={isDark} style={{ marginBottom: '16px' }} />
+              <Skeleton height="38px" radius="8px" isDark={isDark} />
             </div>
           </div>
         </div>
@@ -125,18 +125,18 @@ const StackedCarCarousel = ({ isDark }) => {
     // Setting it here instead means `wrap` only needs a plain 100%.
     outer: { overflow: 'hidden', padding: '10px 0', width: '100%' },
     // Sized for the hero's right-hand column now (its only usage — see
-    // Home.jsx), not a full-width section, so this stays a compact ~440px
-    // stage rather than the ~960px it needed as a standalone section.
-    // Fluid up to the cap so it actually shrinks at in-between viewport
-    // widths, instead of a viewport-relative unit (92vw) that ignored how
-    // much width this column — not the full viewport — actually has.
+    // Home.jsx), not a full-width section, so this stays a compact stage
+    // rather than the ~960px it needed as a standalone section. Fluid up
+    // to the cap so it actually shrinks at in-between viewport widths,
+    // instead of a viewport-relative unit (92vw) that ignored how much
+    // width this column — not the full viewport — actually has.
     wrap: {
-      position: 'relative', width: '100%', maxWidth: '520px', height: '400px',
+      position: 'relative', width: '100%', maxWidth: '600px', height: '460px',
       margin: '0 auto',
     },
     glow: {
       position: 'absolute', top: '-60px', left: '50%', transform: 'translateX(-50%)',
-      width: '520px', height: '400px', borderRadius: '50%', pointerEvents: 'none',
+      width: '600px', height: '460px', borderRadius: '50%', pointerEvents: 'none',
       background: isDark
         ? 'radial-gradient(circle, rgba(232,161,0,0.28) 0%, rgba(232,161,0,0) 70%)'
         : 'radial-gradient(circle, rgba(184,121,10,0.22) 0%, rgba(184,121,10,0) 70%)',
@@ -156,27 +156,27 @@ const StackedCarCarousel = ({ isDark }) => {
       boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.5)' : '0 16px 40px rgba(0,0,0,0.12)',
       cursor: 'pointer',
     },
-    imgWrap: { position: 'relative', width: '100%', height: '180px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
+    imgWrap: { position: 'relative', width: '100%', height: '210px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
     img: { width: '100%', height: '100%', objectFit: 'cover' },
     categoryBadge: {
-      position: 'absolute', top: '12px', right: '12px',
+      position: 'absolute', top: '14px', right: '14px',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-      fontSize: '10px', fontWeight: '700', letterSpacing: '0.02em',
-      padding: '4px 10px', borderRadius: '20px',
+      fontSize: '11px', fontWeight: '700', letterSpacing: '0.02em',
+      padding: '5px 12px', borderRadius: '20px',
     },
-    body: { padding: '18px 20px' },
-    headRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' },
-    name: { fontSize: '17px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    body: { padding: '20px 22px' },
+    headRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '5px' },
+    name: { fontSize: '19px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     sub: {
-      fontSize: '10.5px', fontWeight: '600', letterSpacing: '0.03em', textTransform: 'uppercase',
-      color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '12px',
+      fontSize: '11.5px', fontWeight: '600', letterSpacing: '0.03em', textTransform: 'uppercase',
+      color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px',
     },
-    price: { fontSize: '16px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, textAlign: 'right' },
-    priceUnit: { fontSize: '10.5px', fontWeight: '500', color: isDark ? '#b0b3b8' : '#6b7280' },
+    price: { fontSize: '18px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, textAlign: 'right' },
+    priceUnit: { fontSize: '11.5px', fontWeight: '500', color: isDark ? '#b0b3b8' : '#6b7280' },
     reserveBtn: {
-      display: 'block', width: '100%', padding: '11px', marginTop: '2px',
+      display: 'block', width: '100%', padding: '12px', marginTop: '2px',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-      border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+      border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
     },
     dots: { display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '16px' },
     dot: (active) => ({
