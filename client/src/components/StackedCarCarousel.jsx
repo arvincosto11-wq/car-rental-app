@@ -93,8 +93,8 @@ const StackedCarCarousel = ({ isDark }) => {
   // response) finally arrives.
   if (loading) {
     return (
-      <div style={{ overflow: 'hidden', padding: '10px 0' }}>
-        <div style={{ position: 'relative', width: 'min(520px, 92vw)', height: '400px', margin: '0 auto' }}>
+      <div style={{ overflow: 'hidden', padding: '10px 0', width: '100%' }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: '520px', height: '400px', margin: '0 auto' }}>
           <div style={{ position: 'absolute', top: 0, left: '13%', width: '74%' }}>
             <Skeleton height="180px" radius="16px 16px 0 0" isDark={isDark} />
             <div style={{ padding: '18px 20px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderTop: 'none', borderRadius: '0 0 16px 16px' }}>
@@ -114,17 +114,24 @@ const StackedCarCarousel = ({ isDark }) => {
   const visible = Array.from({ length: stackSize }, (_, offset) => cars[(index + offset) % cars.length]);
 
   const s = {
-    outer: { overflow: 'hidden', padding: '10px 0' },
+    // width: 100% here is load-bearing, not decorative: `outer` sits inside
+    // a flex container (heroRight) as a flex ITEM, which shrink-to-fits its
+    // content by default — and every real child further down (the cards in
+    // `wrap`) is `position: absolute`, which doesn't count toward that
+    // shrink-to-fit sizing. Without an explicit width here, `outer` would
+    // collapse toward zero and `wrap`'s own `width: 100%` below would
+    // resolve against that collapsed size instead of the space actually
+    // available (this exact bug shipped once already — see git history).
+    // Setting it here instead means `wrap` only needs a plain 100%.
+    outer: { overflow: 'hidden', padding: '10px 0', width: '100%' },
     // Sized for the hero's right-hand column now (its only usage — see
     // Home.jsx), not a full-width section, so this stays a compact ~440px
-    // stage rather than the ~960px it needed as a standalone section. A
-    // real length (not a `%`) is required here: this sits inside a flex
-    // container (heroRight), and every card inside `wrap` is `position:
-    // absolute` — which doesn't count toward a flex item's shrink-to-fit
-    // sizing. A `width: 100%` here would resolve against that collapsed
-    // (near-zero) size instead of the space actually available.
+    // stage rather than the ~960px it needed as a standalone section.
+    // Fluid up to the cap so it actually shrinks at in-between viewport
+    // widths, instead of a viewport-relative unit (92vw) that ignored how
+    // much width this column — not the full viewport — actually has.
     wrap: {
-      position: 'relative', width: 'min(520px, 92vw)', height: '400px',
+      position: 'relative', width: '100%', maxWidth: '520px', height: '400px',
       margin: '0 auto',
     },
     glow: {

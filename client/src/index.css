@@ -559,7 +559,7 @@ select:disabled {
   display: flex;
 }
 /* Drop the phone number before things get cramped, well above the full
-   mobile collapse at 860px — Log In/Reserve Now/theme toggle/nav links all
+   mobile collapse at 940px — Log In/Reserve Now/theme toggle/nav links all
    still need to fit in that shrinking middle ground. */
 @media (max-width: 1024px) {
   .navbar-phone { display: none; }
@@ -570,7 +570,11 @@ select:disabled {
 .navbar-mobile-menu {
   display: none;
 }
-@media (max-width: 860px) {
+/* Raised from 860px: the desktop layout got wider recently (a phone
+   number, plus larger gaps between the logo/links/links-to-links), so the
+   old threshold left a cramped, overflow-prone range just above it before
+   the phone number itself drops out at 1024px. */
+@media (max-width: 940px) {
   .navbar-nav-links,
   .navbar-auth-group {
     display: none;

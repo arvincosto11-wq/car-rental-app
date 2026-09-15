@@ -64,8 +64,13 @@ const Home = () => {
       gap: '48px',
       alignItems: 'center',
     },
-    heroLeft: { textAlign: 'left' },
-    heroRight: { display: 'flex', justifyContent: 'center', marginTop: '40px' },
+    // minWidth: 0 overrides a grid item's default "never shrink below my
+    // content's natural size" behavior — without it, this column refuses
+    // to shrink below the search box's/carousel's natural width, forcing
+    // the whole row wider than the viewport at in-between sizes instead of
+    // reflowing (the search fields wrapping, the carousel scaling down).
+    heroLeft: { textAlign: 'left', minWidth: 0 },
+    heroRight: { display: 'flex', justifyContent: 'center', marginTop: '40px', minWidth: 0 },
     heroTitle: {
       fontSize: '46px',
       fontWeight: '700',
