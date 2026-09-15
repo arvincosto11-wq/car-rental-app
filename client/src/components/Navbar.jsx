@@ -140,42 +140,39 @@ const Navbar = () => {
       transition: 'background 0.25s ease, border-color 0.25s ease',
     }}>
       <div style={{
-        position: 'relative',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '12px 32px',
       }}>
-        <Link to={user && user.role === 'consignor' ? '/consignor' : '/'} style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: '20px',
-          fontWeight: '600',
-          textDecoration: 'none',
-          color: textColor,
-        }}>
-          <img src="/logo.png" alt="Rent-a-Ride" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
-          Rent-a-Ride
-        </Link>
+        {/* Logo and nav links grouped together on the left (matching the
+            reference template) instead of the links being centered across
+            the whole bar — only the actions/CTA group sits on the right. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
+          <Link to={user && user.role === 'consignor' ? '/consignor' : '/'} style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '20px',
+            fontWeight: '600',
+            textDecoration: 'none',
+            color: textColor,
+          }}>
+            <img src="/logo.png" alt="Rent-a-Ride" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+            Rent-a-Ride
+          </Link>
 
-        {/* Absolutely centered on the navbar itself, not just "the middle
-            flex item" — space-between only guarantees equal gaps, so this
-            would otherwise drift toward whichever side (logo vs. the
-            auth/CTA group) is narrower. */}
-        <div className="navbar-nav-links" style={{
-          gap: '24px', alignItems: 'center',
-          position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
-        }}>
-          {navLinks.map((link) => {
-            const count = navBadgeCount(link.to);
-            return (
-              <Link key={link.to} to={link.to} className="nav-link" style={navLinkStyle}>
-                {link.label}
-                {count > 0 && <span style={navBadgeStyle}>{count > 9 ? '9+' : count}</span>}
-              </Link>
-            );
-          })}
+          <div className="navbar-nav-links" style={{ gap: '24px', alignItems: 'center' }}>
+            {navLinks.map((link) => {
+              const count = navBadgeCount(link.to);
+              return (
+                <Link key={link.to} to={link.to} className="nav-link" style={navLinkStyle}>
+                  {link.label}
+                  {count > 0 && <span style={navBadgeStyle}>{count > 9 ? '9+' : count}</span>}
+                </Link>
+              );
+            })}
+          </div>
         </div>
 
         <div className="navbar-auth-group" style={{ gap: '8px', alignItems: 'center' }}>

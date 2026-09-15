@@ -446,30 +446,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Testimonials */}
-      {testimonials.length > 0 && (
-        <div style={{ ...styles.section, ...styles.testimonialsSection }}>
-          <h2 style={styles.sectionTitle}>What Renters Are Saying</h2>
-          <p style={styles.sectionSubtitle}>Real feedback from real trips across Albay.</p>
-
-          <div className="responsive-grid-3" style={styles.testimonialGrid}>
-            {testimonials.map((t) => (
-              <div key={t._id} style={styles.testimonialCard}>
-                <StarRating value={t.overall} size={13} readOnly />
-                <p style={styles.testimonialComment}>"{t.comment}"</p>
-                <div style={styles.testimonialFooter}>
-                  <span style={styles.testimonialAvatar}>{t.reviewerName.charAt(0)}</span>
-                  <div>
-                    <div style={styles.testimonialName}>{t.reviewerName}</div>
-                    {t.car && <div style={styles.testimonialCar}>{t.car.brand} {t.car.model}</div>}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* About */}
       <div style={{ ...styles.section, ...styles.aboutSection }}>
         <div className="responsive-row-2" style={styles.aboutInner}>
@@ -515,6 +491,30 @@ const Home = () => {
           </div>
         </div>
       </div>
+
+      {/* Testimonials */}
+      {testimonials.length > 0 && (
+        <div style={{ ...styles.section, ...styles.testimonialsSection }}>
+          <h2 style={styles.sectionTitle}>What Renters Are Saying</h2>
+          <p style={styles.sectionSubtitle}>Real feedback from real trips across Albay.</p>
+
+          <div className="responsive-grid-3" style={styles.testimonialGrid}>
+            {testimonials.map((t) => (
+              <div key={t._id} style={styles.testimonialCard}>
+                <StarRating value={t.overall} size={13} readOnly />
+                <p style={styles.testimonialComment}>"{t.comment}"</p>
+                <div style={styles.testimonialFooter}>
+                  <span style={styles.testimonialAvatar}>{t.reviewerName.charAt(0)}</span>
+                  <div>
+                    <div style={styles.testimonialName}>{t.reviewerName}</div>
+                    {t.car && <div style={styles.testimonialCar}>{t.car.brand} {t.car.model}</div>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Contact */}
       <div style={styles.contactSection}>
