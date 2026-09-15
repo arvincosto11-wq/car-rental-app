@@ -65,7 +65,7 @@ const Home = () => {
       alignItems: 'center',
     },
     heroLeft: { textAlign: 'left' },
-    heroRight: { display: 'flex', justifyContent: 'center' },
+    heroRight: { display: 'flex', justifyContent: 'center', marginTop: '40px' },
     heroTitle: {
       fontSize: '46px',
       fontWeight: '700',

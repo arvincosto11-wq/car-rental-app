@@ -94,13 +94,13 @@ const StackedCarCarousel = ({ isDark }) => {
   if (loading) {
     return (
       <div style={{ overflow: 'hidden', padding: '10px 0' }}>
-        <div style={{ position: 'relative', width: 'min(440px, 90vw)', height: '340px', margin: '0 auto' }}>
+        <div style={{ position: 'relative', width: 'min(520px, 92vw)', height: '400px', margin: '0 auto' }}>
           <div style={{ position: 'absolute', top: 0, left: '13%', width: '74%' }}>
-            <Skeleton height="150px" radius="16px 16px 0 0" isDark={isDark} />
-            <div style={{ padding: '16px 18px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderTop: 'none', borderRadius: '0 0 16px 16px' }}>
-              <Skeleton width="70%" height="16px" isDark={isDark} style={{ marginBottom: '8px' }} />
-              <Skeleton width="45%" height="10px" isDark={isDark} style={{ marginBottom: '12px' }} />
-              <Skeleton height="32px" radius="8px" isDark={isDark} />
+            <Skeleton height="180px" radius="16px 16px 0 0" isDark={isDark} />
+            <div style={{ padding: '18px 20px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderTop: 'none', borderRadius: '0 0 16px 16px' }}>
+              <Skeleton width="70%" height="18px" isDark={isDark} style={{ marginBottom: '10px' }} />
+              <Skeleton width="45%" height="11px" isDark={isDark} style={{ marginBottom: '14px' }} />
+              <Skeleton height="36px" radius="8px" isDark={isDark} />
             </div>
           </div>
         </div>
@@ -124,12 +124,12 @@ const StackedCarCarousel = ({ isDark }) => {
     // sizing. A `width: 100%` here would resolve against that collapsed
     // (near-zero) size instead of the space actually available.
     wrap: {
-      position: 'relative', width: 'min(440px, 90vw)', height: '340px',
+      position: 'relative', width: 'min(520px, 92vw)', height: '400px',
       margin: '0 auto',
     },
     glow: {
       position: 'absolute', top: '-60px', left: '50%', transform: 'translateX(-50%)',
-      width: '440px', height: '340px', borderRadius: '50%', pointerEvents: 'none',
+      width: '520px', height: '400px', borderRadius: '50%', pointerEvents: 'none',
       background: isDark
         ? 'radial-gradient(circle, rgba(232,161,0,0.28) 0%, rgba(232,161,0,0) 70%)'
         : 'radial-gradient(circle, rgba(184,121,10,0.22) 0%, rgba(184,121,10,0) 70%)',
@@ -149,29 +149,29 @@ const StackedCarCarousel = ({ isDark }) => {
       boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.5)' : '0 16px 40px rgba(0,0,0,0.12)',
       cursor: 'pointer',
     },
-    imgWrap: { position: 'relative', width: '100%', height: '150px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
+    imgWrap: { position: 'relative', width: '100%', height: '180px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
     img: { width: '100%', height: '100%', objectFit: 'cover' },
     categoryBadge: {
-      position: 'absolute', top: '10px', right: '10px',
+      position: 'absolute', top: '12px', right: '12px',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-      fontSize: '9px', fontWeight: '700', letterSpacing: '0.02em',
-      padding: '3px 9px', borderRadius: '20px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.02em',
+      padding: '4px 10px', borderRadius: '20px',
     },
-    body: { padding: '14px 16px' },
-    headRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3px' },
-    name: { fontSize: '15px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    body: { padding: '18px 20px' },
+    headRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' },
+    name: { fontSize: '17px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     sub: {
-      fontSize: '9.5px', fontWeight: '600', letterSpacing: '0.03em', textTransform: 'uppercase',
-      color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '10px',
+      fontSize: '10.5px', fontWeight: '600', letterSpacing: '0.03em', textTransform: 'uppercase',
+      color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '12px',
     },
-    price: { fontSize: '14px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, textAlign: 'right' },
-    priceUnit: { fontSize: '9.5px', fontWeight: '500', color: isDark ? '#b0b3b8' : '#6b7280' },
+    price: { fontSize: '16px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, textAlign: 'right' },
+    priceUnit: { fontSize: '10.5px', fontWeight: '500', color: isDark ? '#b0b3b8' : '#6b7280' },
     reserveBtn: {
-      display: 'block', width: '100%', padding: '9px', marginTop: '2px',
+      display: 'block', width: '100%', padding: '11px', marginTop: '2px',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-      border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+      border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
     },
-    dots: { display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '14px' },
+    dots: { display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '16px' },
     dot: (active) => ({
       width: active ? '18px' : '6px', height: '6px', borderRadius: '4px',
       background: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#d1d5db'),
