@@ -410,8 +410,8 @@ const Home = () => {
       <div style={styles.hero}>
         <div className="responsive-row-2" style={styles.heroGrid}>
           <div style={styles.heroLeft}>
-            <h1 className="display-heading" style={styles.heroTitle}>Explore Without Limits</h1>
-            <p style={styles.heroSubtitle}>Well-maintained rides across Albay — book in minutes.</p>
+            <h1 className="display-heading" style={styles.heroTitle}>Experience the Drive You Deserve</h1>
+            <p style={styles.heroSubtitle}>We provide reliable and affordable car rental services in Albay. Safe. Comfortable. Hassle-free.</p>
 
             <div className="hero-search-box" style={styles.searchBox}>
               <div className="hero-search-field" style={styles.searchField}>
@@ -466,23 +466,28 @@ const Home = () => {
           <div className="responsive-row-2" style={styles.featureGrid}>
             <div style={styles.featureCard}>
               <div style={styles.featureIcon}>🚗</div>
-              <div style={styles.featureTitle}>Well-Maintained Units</div>
-              <div style={styles.featureText}>Clean, safe, and road-ready.</div>
+              <div style={styles.featureTitle}>Well-Maintained Vehicles</div>
+              <div style={styles.featureText}>Quality and safety you can trust.</div>
             </div>
             <div style={styles.featureCard}>
               <div style={styles.featureIcon}>💰</div>
               <div style={styles.featureTitle}>Affordable Rates</div>
-              <div style={styles.featureText}>Quality service that fits your budget.</div>
+              <div style={styles.featureText}>Transparent pricing with no hidden fees.</div>
             </div>
+            {/* "Flexible Bookings" here means any rental length (a day, a
+                week, a month) at the same daily rate — that already works
+                today. A cheaper per-day rate for longer rentals is a real,
+                separate feature that doesn't exist yet (deliberately on
+                hold — see project_weekly_monthly_discount_on_hold memory). */}
             <div style={styles.featureCard}>
-              <div style={styles.featureIcon}>📍</div>
-              <div style={styles.featureTitle}>Flexible Pick-up &amp; Return</div>
-              <div style={styles.featureText}>Convenient locations, hassle-free.</div>
+              <div style={styles.featureIcon}>📅</div>
+              <div style={styles.featureTitle}>Flexible Bookings</div>
+              <div style={styles.featureText}>Daily, weekly, or monthly — it's up to you!</div>
             </div>
             <div style={styles.featureCard}>
               <div style={styles.featureIcon}>🎧</div>
-              <div style={styles.featureTitle}>Friendly Customer Support</div>
-              <div style={styles.featureText}>We're here to help, every step of the way.</div>
+              <div style={styles.featureTitle}>Excellent Customer Service</div>
+              <div style={styles.featureText}>We're here to assist you every step of the way.</div>
             </div>
           </div>
 
