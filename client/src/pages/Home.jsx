@@ -51,16 +51,25 @@ const Home = () => {
   };
 
   const styles = {
+    // minHeight (not height): fills the first screen on any normal
+    // viewport, but still grows taller rather than clipping content on a
+    // short screen or a stacked mobile layout where the two columns add
+    // up to more than one screen's height — "nothing cut off" wins over
+    // "always exactly one screen" when the two are in tension.
     hero: {
       position: 'relative',
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
       overflow: 'hidden',
       background: isDark ? '#18191a' : '#f9fafb',
     },
     heroGrid: {
       position: 'relative',
+      width: '100%',
       maxWidth: '1200px',
       margin: '0 auto',
-      padding: '90px 32px',
+      padding: '80px 32px',
       gap: '48px',
       alignItems: 'center',
     },
