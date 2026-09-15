@@ -140,6 +140,7 @@ const Navbar = () => {
       transition: 'background 0.25s ease, border-color 0.25s ease',
     }}>
       <div style={{
+        position: 'relative',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -158,7 +159,14 @@ const Navbar = () => {
           Rent-a-Ride
         </Link>
 
-        <div className="navbar-nav-links" style={{ gap: '24px', alignItems: 'center' }}>
+        {/* Absolutely centered on the navbar itself, not just "the middle
+            flex item" — space-between only guarantees equal gaps, so this
+            would otherwise drift toward whichever side (logo vs. the
+            auth/CTA group) is narrower. */}
+        <div className="navbar-nav-links" style={{
+          gap: '24px', alignItems: 'center',
+          position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+        }}>
           {navLinks.map((link) => {
             const count = navBadgeCount(link.to);
             return (
@@ -278,23 +286,28 @@ const Navbar = () => {
             </div>
           ) : (
             <>
+              {/* Reserve Now leads to browsing, not registration — anyone
+                  not logged in gets sent to /login the moment they actually
+                  try to book a specific car (see CarDetail.jsx), and Login
+                  itself links onward to Register for anyone new. Keeping a
+                  plain Log In link alongside it so returning users still
+                  have an obvious, low-emphasis way back in. */}
               <Link className="btn-like" to="/login" style={{
-                padding: '7px 16px',
-                borderRadius: '8px',
-                border: `1px solid ${btnBorder}`,
+                padding: '7px 12px',
                 textDecoration: 'none',
                 fontSize: '13px',
                 color: textColor,
-              }}>Login</Link>
-              <Link className="btn-like" to="/register" style={{
-                padding: '7px 16px',
+              }}>Log In</Link>
+              <Link className="btn-like" to="/cars" style={{
+                padding: '7px 18px',
                 borderRadius: '8px',
                 background: isDark ? GOLD_DARK : GOLD,
                 color: ON_GOLD,
                 textDecoration: 'none',
                 fontSize: '13px',
+                fontWeight: '600',
                 border: 'none',
-              }}>Register</Link>
+              }}>Reserve Now</Link>
             </>
           )}
         </div>
@@ -365,8 +378,8 @@ const Navbar = () => {
           </>
         ) : (
           <>
-            <Link to="/login" onClick={() => setMobileOpen(false)} style={mobileLinkStyle}>Login</Link>
-            <Link to="/register" onClick={() => setMobileOpen(false)} style={{ ...mobileLinkStyle, color: isDark ? GOLD_DARK : GOLD, fontWeight: '600' }}>Register</Link>
+            <Link to="/login" onClick={() => setMobileOpen(false)} style={mobileLinkStyle}>Log In</Link>
+            <Link to="/cars" onClick={() => setMobileOpen(false)} style={{ ...mobileLinkStyle, color: isDark ? GOLD_DARK : GOLD, fontWeight: '600' }}>Reserve Now</Link>
           </>
         )}
       </div>
