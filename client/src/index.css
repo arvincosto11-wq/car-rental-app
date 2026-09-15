@@ -558,6 +558,12 @@ select:disabled {
 .navbar-auth-group {
   display: flex;
 }
+/* Drop the phone number before things get cramped, well above the full
+   mobile collapse at 860px — Log In/Reserve Now/theme toggle/nav links all
+   still need to fit in that shrinking middle ground. */
+@media (max-width: 1024px) {
+  .navbar-phone { display: none; }
+}
 .navbar-mobile-toggle-group {
   display: none;
 }

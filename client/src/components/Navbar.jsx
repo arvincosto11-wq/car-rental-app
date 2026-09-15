@@ -143,26 +143,26 @@ const Navbar = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        maxWidth: '1200px',
+        margin: '0 auto',
         padding: '12px 32px',
       }}>
         {/* Logo and nav links grouped together on the left (matching the
             reference template) instead of the links being centered across
             the whole bar — only the actions/CTA group sits on the right. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '48px' }}>
           <Link to={user && user.role === 'consignor' ? '/consignor' : '/'} style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '20px',
-            fontWeight: '600',
+            fontSize: '18px',
+            fontWeight: '700',
+            letterSpacing: '-0.02em',
             textDecoration: 'none',
-            color: textColor,
+            whiteSpace: 'nowrap',
           }}>
-            <img src="/logo.png" alt="Rent-a-Ride" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
-            Rent-a-Ride
+            <span style={{ color: textColor }}>Rent-A-Ride</span>{' '}
+            <span style={{ color: isDark ? GOLD_DARK : GOLD }}>Albay</span>
           </Link>
 
-          <div className="navbar-nav-links" style={{ gap: '24px', alignItems: 'center' }}>
+          <div className="navbar-nav-links" style={{ gap: '34px', alignItems: 'center' }}>
             {navLinks.map((link) => {
               const count = navBadgeCount(link.to);
               return (
@@ -282,7 +282,10 @@ const Navbar = () => {
               )}
             </div>
           ) : (
-            <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <span className="navbar-phone" style={{ fontSize: '13.5px', color: mutedColor, whiteSpace: 'nowrap' }}>
+                0950-651-0479
+              </span>
               {/* Reserve Now leads to browsing, not registration — anyone
                   not logged in gets sent to /login the moment they actually
                   try to book a specific car (see CarDetail.jsx), and Login
@@ -290,22 +293,24 @@ const Navbar = () => {
                   plain Log In link alongside it so returning users still
                   have an obvious, low-emphasis way back in. */}
               <Link className="btn-like" to="/login" style={{
-                padding: '7px 12px',
+                padding: '7px 4px',
                 textDecoration: 'none',
-                fontSize: '13px',
+                fontSize: '13.5px',
                 color: textColor,
+                whiteSpace: 'nowrap',
               }}>Log In</Link>
               <Link className="btn-like" to="/cars" style={{
-                padding: '7px 18px',
-                borderRadius: '8px',
+                padding: '12px 28px',
+                borderRadius: '999px',
                 background: isDark ? GOLD_DARK : GOLD,
                 color: ON_GOLD,
                 textDecoration: 'none',
-                fontSize: '13px',
-                fontWeight: '600',
+                fontSize: '13.5px',
+                fontWeight: '500',
                 border: 'none',
+                whiteSpace: 'nowrap',
               }}>Reserve Now</Link>
-            </>
+            </div>
           )}
         </div>
 
