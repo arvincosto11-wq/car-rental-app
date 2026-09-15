@@ -84,14 +84,15 @@ const Navbar = () => {
     navigate('/');
   };
 
-  // When floating over the hero photo, everything reads light regardless of
-  // the real light/dark theme preference — a photo background needs light
-  // text either way. Once scrolled (or on any non-Home page) it falls back
-  // to the normal theme-aware colors.
-  const textColor = transparent ? '#ffffff' : (isDark ? '#e4e6eb' : '#1a1a1a');
-  const mutedColor = transparent ? 'rgba(255,255,255,0.85)' : (isDark ? '#b0b3b8' : '#4b5563');
-  const btnBg = transparent ? 'rgba(255,255,255,0.15)' : (isDark ? '#242526' : '#f9fafb');
-  const btnBorder = transparent ? 'rgba(255,255,255,0.4)' : (isDark ? '#3a3b3c' : '#d1d5db');
+  // Used to force white when the hero had a dark photo behind it regardless
+  // of light/dark theme — now that the hero background is theme-aware
+  // (and can be near-white in light mode), always use the normal
+  // theme-aware colors instead, or light-mode text would render invisibly
+  // white-on-white while the navbar is still transparent at the top.
+  const textColor = isDark ? '#e4e6eb' : '#1a1a1a';
+  const mutedColor = isDark ? '#b0b3b8' : '#4b5563';
+  const btnBg = isDark ? '#242526' : '#f9fafb';
+  const btnBorder = isDark ? '#3a3b3c' : '#d1d5db';
   const menuBg = isDark ? '#242526' : '#fff';
   const menuBorder = isDark ? '#3a3b3c' : '#e5e7eb';
 
@@ -100,7 +101,7 @@ const Navbar = () => {
     color: mutedColor,
     fontSize: '14px',
     paddingBottom: '2px',
-    '--nav-hover-color': (transparent || isDark) ? GOLD_DARK : GOLD,
+    '--nav-hover-color': isDark ? GOLD_DARK : GOLD,
   };
   const mobileLinkStyle = {
     textDecoration: 'none',
