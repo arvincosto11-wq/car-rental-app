@@ -371,8 +371,12 @@ const MyBookings = () => {
       borderRadius: '16px',
       padding: '26px',
     },
-    topSection: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'center' },
-    leftCol: { display: 'flex', gap: '18px', flex: '1 1 260px', minWidth: 0, alignItems: 'center' },
+    topSection: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'flex-start' },
+    // flex-start so the booking number sits at the top of the image, not
+    // vertically centered against it — the date/model lines that follow are
+    // then aligned with the pickup panel via pickupPanel's own marginTop
+    // below, not by centering the whole row.
+    leftCol: { display: 'flex', gap: '18px', flex: '1 1 260px', minWidth: 0, alignItems: 'flex-start' },
     // Ambient glow color follows the booking's own status — confirmed
     // (upcoming) is the one that actually needs attention, so it gets the
     // most prominent glow; cancelled fades into the background since
@@ -410,7 +414,7 @@ const MyBookings = () => {
       color: isDark ? '#8a8d91' : '#9ca3af',
     },
     info: { flex: 1, minWidth: 0 },
-    topRow: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px', flexWrap: 'wrap' },
+    topRow: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px', flexWrap: 'wrap' },
     bookingNum: { fontSize: '19px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.02em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     // Every badge below shares this shape/type treatment — only the color
     // trio (bg/text/border) changes per status. Dark mode uses a
@@ -515,8 +519,11 @@ const MyBookings = () => {
     // A separate info panel (not tinted green overall — only the pickup
     // line's text is green, return line's text is neutral gray) so it
     // reads as its own box within the card rather than a colored alert.
+    // marginTop lines its content up with the date/model lines beside it —
+    // both sit below the taller "BOOKING #N" heading, roughly the same
+    // vertical offset as topRow's own rendered height + margin.
     pickupPanel: {
-      flex: '1 1 220px', minWidth: '200px', maxWidth: '300px', alignSelf: 'center',
+      flex: '1 1 220px', minWidth: '200px', maxWidth: '300px', marginTop: '38px',
       fontSize: '12px', lineHeight: '1.5', padding: '14px 16px', borderRadius: '12px',
       background: isDark ? '#303132' : '#f8fafc',
       border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
@@ -591,6 +598,7 @@ const MyBookings = () => {
       textAlign: 'right',
       minWidth: '140px',
       flex: '0 0 auto',
+      alignSelf: 'center',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'flex-end',
