@@ -151,7 +151,7 @@ const Navbar = () => {
         {/* Logo and nav links grouped together on the left (matching the
             reference template) instead of the links being centered across
             the whole bar — only the actions/CTA group sits on the right. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '48px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '68px' }}>
           <Link to={user && user.role === 'consignor' ? '/consignor' : '/'} style={{
             fontSize: '18px',
             fontWeight: '700',
@@ -163,7 +163,7 @@ const Navbar = () => {
             <span style={{ color: isDark ? GOLD_DARK : GOLD }}>Albay</span>
           </Link>
 
-          <div className="navbar-nav-links" style={{ gap: '34px', alignItems: 'center' }}>
+          <div className="navbar-nav-links" style={{ gap: '52px', alignItems: 'center' }}>
             {navLinks.map((link) => {
               const count = navBadgeCount(link.to);
               return (
@@ -176,7 +176,7 @@ const Navbar = () => {
           </div>
         </div>
 
-        <div className="navbar-auth-group" style={{ gap: '8px', alignItems: 'center' }}>
+        <div className="navbar-auth-group" style={{ gap: '14px', alignItems: 'center' }}>
           <button onClick={toggleTheme} aria-label="Toggle theme" style={{
             display: 'flex',
             alignItems: 'center',
