@@ -512,7 +512,7 @@ const MyBookings = () => {
     // line's text is green, return line's text is neutral gray) so it
     // reads as its own box within the card rather than a colored alert.
     pickupPanel: {
-      flex: '1 1 220px', minWidth: '200px', maxWidth: '300px',
+      flex: '1 1 220px', minWidth: '200px', maxWidth: '300px', alignSelf: 'center',
       fontSize: '12px', lineHeight: '1.5', padding: '14px 16px', borderRadius: '12px',
       background: isDark ? '#303132' : '#f8fafc',
       border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
@@ -520,7 +520,12 @@ const MyBookings = () => {
     pickupLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#86efac' : '#166534', fontWeight: '700' },
     returnLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#b0b3b8' : '#6b7280', fontWeight: '700', marginTop: '6px' },
     driverNote: { marginTop: '8px', fontStyle: 'italic', fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
-    actionsRow: { display: 'flex', gap: '10px', flexWrap: 'wrap', paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
+    // The divider spans the full card width, but the buttons themselves are
+    // indented to align under the booking info text rather than the photo —
+    // .actions-indent's margin-left (index.css) matches imgWrap width + the
+    // leftCol gap, and collapses to 0 on mobile where the card stacks.
+    actionsRow: { paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
+    actionsIndent: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
     rescheduleBtn: {
       textAlign: 'center',
       padding: '7px 16px',
@@ -588,18 +593,20 @@ const MyBookings = () => {
     // reads better against a near-black card than a darker recessed one) —
     // rather than a loose pill + text line, so paid/remaining reads as one
     // self-contained payment summary separate from the total price above it.
+    // Warm gold tint (not the neutral gray used for the pickup panel) so
+    // this reads distinctly as a payment callout, not just another box.
     paymentPanel: {
-      marginTop: '10px', padding: '10px 14px', borderRadius: '10px', minWidth: '160px',
-      background: isDark ? '#303132' : '#f8fafc',
-      border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
+      marginTop: '10px', padding: '8px 12px', borderRadius: '10px', minWidth: '160px',
+      background: isDark ? 'rgba(232,161,0,0.12)' : '#fffbeb',
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.3)' : '#fde68a'}`,
       textAlign: 'right',
     },
     paidAmount: {
-      fontSize: '11px', fontWeight: '800', letterSpacing: '0.03em', textTransform: 'uppercase',
+      fontSize: '10px', fontWeight: '800', letterSpacing: '0.03em', textTransform: 'uppercase',
       color: isDark ? GOLD_DARK : GOLD,
     },
     balanceDue: {
-      fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '4px',
+      fontSize: '10px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '3px',
     },
     bookedOn: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '8px' },
     modalOverlay: {
@@ -819,34 +826,40 @@ const MyBookings = () => {
               {(booking.status === 'pending' || booking.status === 'confirmed') &&
                 (!booking.refundStatus || booking.refundStatus === 'none') && (
                   <div style={styles.actionsRow}>
-                    <button style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
-                      Request Refund
-                    </button>
-                    {booking.rescheduleRequest?.status !== 'pending' && (
-                      <button style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
-                        Reschedule
+                    <div className="actions-indent" style={styles.actionsIndent}>
+                      <button style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
+                        Request Refund
                       </button>
-                    )}
+                      {booking.rescheduleRequest?.status !== 'pending' && (
+                        <button style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
+                          Reschedule
+                        </button>
+                      )}
+                    </div>
                   </div>
               )}
               {(booking.status === 'pending' || booking.status === 'confirmed') &&
                 booking.payment !== 'paid' &&
                 booking.refundStatus !== 'requested' && (
                   <div style={styles.actionsRow}>
-                    <button
-                      style={styles.bookAgainBtn}
-                      onClick={() => handleRetryPayment(booking._id)}
-                      disabled={retryingPaymentId === booking._id}
-                    >
-                      {retryingPaymentId === booking._id ? 'Redirecting...' : 'Retry GCash Payment'}
-                    </button>
+                    <div className="actions-indent" style={styles.actionsIndent}>
+                      <button
+                        style={styles.bookAgainBtn}
+                        onClick={() => handleRetryPayment(booking._id)}
+                        disabled={retryingPaymentId === booking._id}
+                      >
+                        {retryingPaymentId === booking._id ? 'Redirecting...' : 'Retry GCash Payment'}
+                      </button>
+                    </div>
                   </div>
               )}
               {booking.status === 'completed' && (
                 <div style={styles.actionsRow}>
-                  <button style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
-                    Book Again
-                  </button>
+                  <div className="actions-indent" style={styles.actionsIndent}>
+                    <button style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
+                      Book Again
+                    </button>
+                  </div>
                 </div>
               )}
               {booking.payment === 'paid' && booking.paymongoPaymentId && (
