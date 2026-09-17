@@ -11,6 +11,22 @@ import api from '../api';
 
 const CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe', 'Motorcycle'];
 
+// Hand-drawn inline SVGs, matching the same approach used for the admin
+// sidebar icons — a small icon library isn't worth pulling in for three
+// glyphs.
+const FieldIcon = ({ children }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    {children}
+  </svg>
+);
+const CalendarIcon = () => <FieldIcon><rect x="3" y="4" width="18" height="17" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /></FieldIcon>;
+const CarIcon = () => <FieldIcon><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11" /><rect x="3" y="11" width="18" height="6" rx="2" /><circle cx="7.5" cy="17" r="1.3" /><circle cx="16.5" cy="17" r="1.3" /></FieldIcon>;
+const ChevronIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, pointerEvents: 'none' }}>
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
 const Home = () => {
   const [testimonials, setTestimonials] = useState([]);
   const [pickupDate, setPickupDate] = useState('');
@@ -81,15 +97,24 @@ const Home = () => {
     heroLeft: { textAlign: 'left', minWidth: 0 },
     heroRight: { display: 'flex', justifyContent: 'center', marginTop: '40px', minWidth: 0 },
     heroTitle: {
-      fontSize: '46px',
+      fontSize: 'clamp(38px, 5.4vw, 64px)',
+      lineHeight: '1.05',
       fontWeight: '700',
       color: isDark ? '#e4e6eb' : '#1a1a1a',
-      marginBottom: '8px',
+      marginBottom: '18px',
+    },
+    // The last word rendered lighter/italic/muted instead of matching the
+    // rest of the headline — a callout treatment, not a second sentence.
+    heroTitleAccent: {
+      fontStyle: 'italic',
+      fontWeight: '400',
+      color: isDark ? '#6b7280' : '#9ca3af',
     },
     heroSubtitle: {
       fontSize: '16px',
       color: isDark ? '#b0b3b8' : '#6b7280',
       marginBottom: '32px',
+      maxWidth: '46ch',
     },
     searchBox: {
       gap: '0',
@@ -122,6 +147,15 @@ const Home = () => {
       color: isDark ? '#e4e6eb' : '#1a1a1a',
       background: 'transparent',
     },
+    // The native <select> arrow is dropped (appearance: none) in favor of
+    // our own chevron icon, positioned over it — matches the rest of the
+    // field icons instead of each browser's own inconsistent arrow glyph.
+    selectWrap: { position: 'relative' },
+    selectInput: { appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none', paddingRight: '18px', cursor: 'pointer' },
+    selectChevron: {
+      position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)',
+      color: isDark ? '#b0b3b8' : '#6b7280', display: 'flex',
+    },
     searchBtn: {
       padding: '12px 28px',
       margin: '10px',
@@ -133,6 +167,16 @@ const Home = () => {
       fontWeight: '600',
       cursor: 'pointer',
       alignSelf: 'center',
+    },
+    // Real, already-true claims only — matched to existing copy elsewhere
+    // on the site (the About checklist, the Contact section) rather than
+    // inventing new ones for this row specifically.
+    trustRow: {
+      display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '18px',
+    },
+    trustItem: {
+      fontSize: '11px', fontWeight: '600', letterSpacing: '0.04em', textTransform: 'uppercase',
+      color: isDark ? '#8a8d91' : '#9ca3af',
     },
     section: {
       padding: '48px 32px',
@@ -410,12 +454,14 @@ const Home = () => {
       <div style={styles.hero}>
         <div className="responsive-row-2" style={styles.heroGrid}>
           <div style={styles.heroLeft}>
-            <h1 className="display-heading" style={styles.heroTitle}>Experience the Drive You Deserve</h1>
+            <h1 className="display-heading" style={styles.heroTitle}>
+              Experience the Drive You <span style={styles.heroTitleAccent}>Deserve</span>
+            </h1>
             <p style={styles.heroSubtitle}>We provide reliable and affordable car rental services in Albay. Safe. Comfortable. Hassle-free.</p>
 
             <div className="hero-search-box" style={styles.searchBox}>
               <div className="hero-search-field" style={styles.searchField}>
-                <label style={styles.searchLabel} htmlFor="home-pickup-date"><span aria-hidden="true">📅</span> Pick-up Date</label>
+                <label style={styles.searchLabel} htmlFor="home-pickup-date"><CalendarIcon /> Pick-up Date</label>
                 <input
                   id="home-pickup-date"
                   style={styles.searchInput}
@@ -426,7 +472,7 @@ const Home = () => {
                 />
               </div>
               <div className="hero-search-field" style={styles.searchField}>
-                <label style={styles.searchLabel} htmlFor="home-return-date"><span aria-hidden="true">📅</span> Return Date</label>
+                <label style={styles.searchLabel} htmlFor="home-return-date"><CalendarIcon /> Return Date</label>
                 <input
                   id="home-return-date"
                   style={styles.searchInput}
@@ -437,20 +483,29 @@ const Home = () => {
                 />
               </div>
               <div className="hero-search-field" style={{ ...styles.searchField, borderRight: 'none' }}>
-                <label style={styles.searchLabel} htmlFor="home-search-category"><span aria-hidden="true">🚙</span> Vehicle Type</label>
-                <select
-                  id="home-search-category"
-                  style={styles.searchInput}
-                  value={searchCategory}
-                  onChange={(e) => setSearchCategory(e.target.value)}
-                >
-                  <option value="">Any</option>
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <label style={styles.searchLabel} htmlFor="home-search-category"><CarIcon /> Vehicle Type</label>
+                <div style={styles.selectWrap}>
+                  <select
+                    id="home-search-category"
+                    style={{ ...styles.searchInput, ...styles.selectInput }}
+                    value={searchCategory}
+                    onChange={(e) => setSearchCategory(e.target.value)}
+                  >
+                    <option value="">Any</option>
+                    {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <span style={styles.selectChevron}><ChevronIcon /></span>
+                </div>
               </div>
               <button className="hero-search-btn" style={styles.searchBtn} onClick={handleSearch}>
                 Search
               </button>
+            </div>
+
+            <div style={styles.trustRow}>
+              <span style={styles.trustItem}>ID-Verified Renters</span>
+              <span style={styles.trustItem}>No Hidden Fees</span>
+              <span style={styles.trustItem}>24/7 Support</span>
             </div>
           </div>
 
