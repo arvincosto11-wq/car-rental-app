@@ -309,7 +309,7 @@ const MyBookings = () => {
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
   const styles = {
-    container: { maxWidth: '960px', margin: '0 auto', padding: '32px' },
+    container: { maxWidth: '1100px', margin: '0 auto', padding: '32px' },
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
     title: {
       fontSize: 'clamp(26px, 3.4vw, 36px)', fontWeight: '900', letterSpacing: '-0.01em',
