@@ -17,6 +17,17 @@ import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 
 const PAGE_SIZE = 10;
 
+// Small stat-card icons — same hand-drawn inline-SVG approach used
+// elsewhere on the site rather than pulling in an icon library.
+const StatIcon = ({ children }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    {children}
+  </svg>
+);
+const BookingsIcon = () => <StatIcon><rect x="3" y="4" width="18" height="17" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="8" y1="13" x2="12" y2="13" /><line x1="8" y1="17" x2="14" y2="17" /></StatIcon>;
+const ConfirmedIcon = () => <StatIcon><path d="M12 3l2.3 2.3 3.2-.4.4 3.2L20 10l-2.1 2.5.4 3.2-3.2.4L12 18.4l-2.3-2.3-3.2.4-.4-3.2L4 10.5l2.1-2.4-.4-3.2 3.2-.4L12 3z" /><polyline points="9 11 11 13 15 9" /></StatIcon>;
+const SpentIcon = () => <StatIcon><circle cx="12" cy="12" r="9" /><path d="M9 8h4a2 2 0 1 1 0 4H9h4a2 2 0 1 1 0 4H9" /><line x1="9" y1="6" x2="9" y2="18" /></StatIcon>;
+
 // Mirrors getRefundPercentage in server/routes/bookings.js (based on time
 // since the booking was made, not the pickup date) — this is only a preview
 // shown before submitting; the server locks in the real amount at request time.
@@ -286,14 +297,17 @@ const MyBookings = () => {
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
   const styles = {
-    container: { maxWidth: '900px', margin: '0 auto', padding: '32px' },
+    container: { maxWidth: '960px', margin: '0 auto', padding: '32px' },
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
-    title: { fontSize: '28px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
-    subtitle: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
+    title: {
+      fontSize: 'clamp(26px, 3.4vw, 36px)', fontWeight: '900', letterSpacing: '-0.01em',
+      textTransform: 'uppercase', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px',
+    },
+    subtitle: { fontSize: '14px', fontStyle: 'italic', color: isDark ? GOLD_DARK : GOLD, marginBottom: '24px' },
     rateBookingsBtn: {
       display: 'flex', alignItems: 'center', gap: '8px',
       padding: '10px 18px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-      border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+      border: 'none', borderRadius: '999px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
       whiteSpace: 'nowrap',
     },
     rateBookingsBadge: {
@@ -301,9 +315,16 @@ const MyBookings = () => {
       borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
     },
     statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '28px' },
-    statCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', padding: '18px' },
-    statLabel: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px' },
-    statNum: { fontSize: '26px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    statCard: {
+      display: 'flex', alignItems: 'center', gap: '14px',
+      background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '14px', padding: '18px',
+    },
+    statIconBadge: (bg, color) => ({
+      width: '38px', height: '38px', borderRadius: '10px', flexShrink: 0,
+      background: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }),
+    statLabel: { fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '4px' },
+    statNum: { fontSize: '26px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     statusTabRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' },
     statusTab: (active) => ({
       display: 'flex', alignItems: 'center', gap: '6px',
@@ -331,11 +352,11 @@ const MyBookings = () => {
     list: { display: 'flex', flexDirection: 'column', gap: '16px' },
     card: {
       display: 'flex',
-      gap: '16px',
+      gap: '18px',
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '12px',
-      padding: '16px',
+      borderRadius: '16px',
+      padding: '18px',
       alignItems: 'center',
     },
     imgWrap: {
@@ -542,7 +563,7 @@ const MyBookings = () => {
       <div style={styles.headerRow}>
         <div>
           <h1 style={styles.title}>My Bookings</h1>
-          <p style={styles.subtitle}>View and manage your all car bookings</p>
+          <p style={styles.subtitle}>View and manage all your car rental bookings in one place.</p>
         </div>
         {!loading && unratedCount > 0 && (
           <button style={styles.rateBookingsBtn} onClick={() => navigate('/my-bookings/rate')}>
@@ -555,16 +576,25 @@ const MyBookings = () => {
       {!loading && bookings.length > 0 && (
         <div className="responsive-row-3" style={styles.statsRow}>
           <div style={styles.statCard}>
-            <div style={styles.statLabel}>Total Bookings</div>
-            <div style={styles.statNum}>{bookings.length}</div>
+            <div style={styles.statIconBadge(isDark ? 'rgba(232,161,0,0.15)' : '#faedc7', isDark ? GOLD_DARK : GOLD)}><BookingsIcon /></div>
+            <div>
+              <div style={styles.statLabel}>Total Bookings</div>
+              <div style={styles.statNum}>{bookings.length}</div>
+            </div>
           </div>
           <div style={styles.statCard}>
-            <div style={styles.statLabel}>Confirmed</div>
-            <div style={styles.statNum}>{confirmedCount}</div>
+            <div style={styles.statIconBadge(isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', '#16a34a')}><ConfirmedIcon /></div>
+            <div>
+              <div style={styles.statLabel}>Confirmed</div>
+              <div style={styles.statNum}>{confirmedCount}</div>
+            </div>
           </div>
           <div style={styles.statCard}>
-            <div style={styles.statLabel}>Total Spent</div>
-            <div style={styles.statNum}>₱{totalSpent}</div>
+            <div style={styles.statIconBadge(isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe', '#2563eb')}><SpentIcon /></div>
+            <div>
+              <div style={styles.statLabel}>Total Spent</div>
+              <div style={styles.statNum}>₱{totalSpent.toLocaleString()}</div>
+            </div>
           </div>
         </div>
       )}
