@@ -91,7 +91,7 @@ const AddCar = () => {
     return { url: data.url, fileId: data.fileId };
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, status) => {
     e.preventDefault();
     setError('');
 
@@ -129,8 +129,9 @@ const AddCar = () => {
         imageFileId: uploadedPhotos[0]?.fileId || '',
         photos: uploadedPhotos,
         availableBookingTypes: selectedBookingTypes,
+        status,
       });
-      setSuccess('Vehicle added successfully!');
+      setSuccess(status === 'draft' ? 'Saved as draft — not visible to customers yet.' : 'Vehicle published successfully!');
       setForm({ brand: '', model: '', year: '', pricePerDay: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '', transmission: '', fuelType: '', seats: '', description: '', plateNumber: '', color: '', mileage: '' });
       setBrandChoice('');
       setModelChoice('');
@@ -171,7 +172,9 @@ const AddCar = () => {
       borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff',
       fontSize: '13px', lineHeight: '20px', cursor: 'pointer', padding: 0,
     },
-    btn: { padding: '10px 28px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' },
+    btn: { padding: '10px 28px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+    draftBtn: { padding: '10px 28px', background: isDark ? '#18191a' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+    submitRow: { display: 'flex', gap: '10px' },
     checkboxRow: { display: 'flex', gap: '20px', alignItems: 'center' },
     checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#e4e6eb' : '#374151', cursor: 'pointer' },
     hint: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '4px' },
@@ -327,7 +330,14 @@ const AddCar = () => {
           <label style={s.label} htmlFor="ac-description">Description</label>
           <textarea id="ac-description" style={s.textarea} placeholder="e.g. A luxurious SUV..." value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} />
         </div>
-        <button style={s.btn} type="submit" disabled={loading}>{loading ? 'Adding...' : 'Add Vehicle'}</button>
+        <div style={s.submitRow}>
+          <button style={s.draftBtn} type="button" disabled={loading} onClick={(e) => handleSubmit(e, 'draft')}>
+            {loading ? 'Saving...' : 'Save Draft'}
+          </button>
+          <button style={s.btn} type="button" disabled={loading} onClick={(e) => handleSubmit(e, 'published')}>
+            {loading ? 'Publishing...' : 'Publish Listing'}
+          </button>
+        </div>
       </form>
     </AdminLayout>
   );

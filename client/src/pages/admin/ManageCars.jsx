@@ -94,6 +94,17 @@ const ManageCars = () => {
     }
   };
 
+  const handlePublish = async (car) => {
+    try {
+      const res = await api.put(`/cars/${car._id}`, { status: 'published' });
+      setCars(cars.map((c) => c._id === car._id ? res.data : c));
+      toast.success('Listing published — now visible to customers.');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to publish this car.');
+    }
+  };
+
   const handleFeature = async (car) => {
     try {
       const res = await api.put(`/cars/${car._id}/feature`);
@@ -322,6 +333,13 @@ const ManageCars = () => {
       border: `1px solid ${isDark ? 'rgba(220,38,38,0.4)' : '#fca5a5'}`,
     },
     staleFlag: { background: '#fef3c7', color: '#92400e', fontSize: '10px', padding: '2px 8px', borderRadius: '20px', marginLeft: '4px', fontWeight: '600', cursor: 'help' },
+    draftFlag: {
+      display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
+      padding: '3px 10px', borderRadius: '20px',
+      background: isDark ? 'rgba(148,163,184,0.15)' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#475569',
+      border: `1px solid ${isDark ? 'rgba(148,163,184,0.4)' : '#cbd5e1'}`,
+    },
+    publishBtn: { padding: '6px 14px', background: isDark ? GOLD_DARK : GOLD, border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', color: ON_GOLD },
     actions: { display: 'flex', gap: '6px' },
     editBtn: { padding: '6px 14px', background: isDark ? GOLD_DARK : GOLD, border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', color: ON_GOLD },
     toggleBtn: { padding: '6px 14px', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#1a1a1a' },
@@ -462,9 +480,13 @@ const ManageCars = () => {
                       <div style={styles.carInfo}>
                         <div style={styles.carNameRow}>
                           <span style={styles.carName}>{car.brand} {car.model}</span>
-                          <span style={car.isAvailable ? styles.available : styles.unavailable}>
-                            {car.isAvailable ? 'Available' : 'Unavailable'}
-                          </span>
+                          {car.status === 'draft' ? (
+                            <span style={styles.draftFlag}>Draft</span>
+                          ) : (
+                            <span style={car.isAvailable ? styles.available : styles.unavailable}>
+                              {car.isAvailable ? 'Available' : 'Unavailable'}
+                            </span>
+                          )}
                           {!car.isAvailable && !car.availabilityRequest?.requestedAt && (
                             <span
                               style={styles.staleFlag}
@@ -490,9 +512,13 @@ const ManageCars = () => {
                       </div>
                       <div className="admin-row-actions" style={styles.actions}>
                         <button style={styles.editBtn} onClick={() => handleEdit(car)}>Edit</button>
-                        <button style={styles.toggleBtn} onClick={() => handleToggle(car)}>
-                          {car.isAvailable ? 'Hide' : 'Show'}
-                        </button>
+                        {car.status === 'draft' ? (
+                          <button style={styles.publishBtn} onClick={() => handlePublish(car)}>Publish</button>
+                        ) : (
+                          <button style={styles.toggleBtn} onClick={() => handleToggle(car)}>
+                            {car.isAvailable ? 'Hide' : 'Show'}
+                          </button>
+                        )}
                         <button
                           style={styles.featureBtn(car.featured)}
                           onClick={() => handleFeature(car)}

@@ -37,7 +37,12 @@ function hidePlateNumber(car) {
 router.get('/', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
+    const role = getRequestRole(req);
     let cars = await Car.find({ archived: { $ne: true } });
+
+    if (role !== 'admin') {
+      cars = cars.filter((c) => c.status !== 'draft');
+    }
 
     if (startDate && endDate) {
       const start = new Date(startDate);
@@ -51,7 +56,7 @@ router.get('/', async (req, res) => {
       cars = cars.filter((c) => !bookedCarIds.has(c._id.toString()));
     }
 
-    if (getRequestRole(req) !== 'admin') {
+    if (role !== 'admin') {
       cars = cars.map(hidePlateNumber);
     }
 
@@ -310,12 +315,13 @@ router.get('/reviews/featured', async (req, res) => {
 router.get('/featured', async (req, res) => {
   try {
     const baseFilter = { archived: { $ne: true }, isAvailable: true };
-    let cars = await Car.find({ ...baseFilter, featured: true }).limit(6);
+    let cars = await Car.find({ ...baseFilter, featured: true });
+    cars = cars.filter((c) => c.status !== 'draft').slice(0, 6);
 
     if (cars.length === 0) {
-      cars = await Car.find({ ...baseFilter, ratingCount: { $gt: 0 } })
-        .sort({ avgRating: -1, ratingCount: -1 })
-        .limit(6);
+      const fallback = await Car.find({ ...baseFilter, ratingCount: { $gt: 0 } })
+        .sort({ avgRating: -1, ratingCount: -1 });
+      cars = fallback.filter((c) => c.status !== 'draft').slice(0, 6);
     }
 
     if (getRequestRole(req) !== 'admin') {
@@ -425,7 +431,9 @@ router.get('/:id', async (req, res) => {
   try {
     const car = await Car.findById(req.params.id);
     if (!car || car.archived) return res.status(404).json({ message: 'Car not found' });
-    res.json(getRequestRole(req) === 'admin' ? car : hidePlateNumber(car));
+    const role = getRequestRole(req);
+    if (car.status === 'draft' && role !== 'admin') return res.status(404).json({ message: 'Car not found' });
+    res.json(role === 'admin' ? car : hidePlateNumber(car));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

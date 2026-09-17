@@ -29,6 +29,12 @@ const carSchema = new mongoose.Schema({
   // falls back to the single `image` for those.
   photos: [{ url: String, fileId: String }],
   isAvailable: { type: Boolean, default: true },
+  // Lets admin double-check a listing before it's visible to customers.
+  // Defaults to 'published' so every car created before this field existed
+  // behaves exactly as it did (see the $ne: 'draft' checks in routes/cars.js
+  // rather than status: 'published' — a stored-but-missing field won't
+  // match an equality query, only a $ne one).
+  status: { type: String, enum: ['draft', 'published'], default: 'published' },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   avgRating: { type: Number, default: 0 },
   ratingCount: { type: Number, default: 0 },
