@@ -410,8 +410,8 @@ const MyBookings = () => {
       color: isDark ? '#8a8d91' : '#9ca3af',
     },
     info: { flex: 1, minWidth: 0 },
-    topRow: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' },
-    bookingNum: { fontSize: '19px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    topRow: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px', flexWrap: 'wrap' },
+    bookingNum: { fontSize: '19px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.02em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     // Every badge below shares this shape/type treatment — only the color
     // trio (bg/text/border) changes per status. Dark mode uses a
     // translucent tint + matching border (a "glowing chip" look) instead
@@ -524,12 +524,16 @@ const MyBookings = () => {
     pickupLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#86efac' : '#166534', fontWeight: '700' },
     returnLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#b0b3b8' : '#6b7280', fontWeight: '700', marginTop: '6px' },
     driverNote: { marginTop: '8px', fontStyle: 'italic', fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
-    // The divider spans the full card width, but the buttons themselves are
-    // indented to align under the booking info text rather than the photo —
+    // A short divider (only as wide as the buttons, not the full card) sits
+    // right above the indented button row — inline-flex so the element
+    // shrink-wraps to its content instead of stretching to fill the row.
     // .actions-indent's margin-left (index.css) matches imgWrap width + the
     // leftCol gap, and collapses to 0 on mobile where the card stacks.
-    actionsRow: { paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
-    actionsIndent: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
+    actionsRow: {},
+    actionsIndent: {
+      display: 'inline-flex', gap: '10px', flexWrap: 'wrap',
+      paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`,
+    },
     rescheduleBtn: {
       textAlign: 'center',
       padding: '7px 16px',
@@ -600,7 +604,7 @@ const MyBookings = () => {
     // Warm gold tint (not the neutral gray used for the pickup panel) so
     // this reads distinctly as a payment callout, not just another box.
     paymentPanel: {
-      marginTop: '10px', padding: '8px 12px', borderRadius: '10px', minWidth: '160px',
+      marginTop: '10px', padding: '7px 10px', borderRadius: '10px',
       background: isDark ? 'rgba(232,161,0,0.12)' : '#fffbeb',
       border: `1px solid ${isDark ? 'rgba(232,161,0,0.3)' : '#fde68a'}`,
       textAlign: 'right',
@@ -771,7 +775,7 @@ const MyBookings = () => {
                   </div>
                 </div>
 
-                {booking.status === 'confirmed' && (
+                {(booking.status === 'confirmed' || booking.status === 'pending') && (
                   <div style={styles.pickupPanel}>
                     <div style={styles.pickupLine}>
                       <PinLineIcon /> Pickup: {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
