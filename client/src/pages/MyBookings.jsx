@@ -512,7 +512,7 @@ const MyBookings = () => {
     // line's text is green, return line's text is neutral gray) so it
     // reads as its own box within the card rather than a colored alert.
     pickupPanel: {
-      flex: '1 1 220px', minWidth: '200px', maxWidth: '300px', alignSelf: 'stretch',
+      flex: '1 1 220px', minWidth: '200px', maxWidth: '300px',
       fontSize: '12px', lineHeight: '1.5', padding: '14px 16px', borderRadius: '12px',
       background: isDark ? '#1b1c1d' : '#f8fafc',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
