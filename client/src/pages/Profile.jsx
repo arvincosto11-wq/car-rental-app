@@ -13,6 +13,15 @@ import useResendCooldown from '../hooks/useResendCooldown';
 import { VALID_ID_TYPES } from '../data/validIdTypes';
 import api from '../api';
 
+// A real check-circle glyph, not a plain "✓" character — matches the
+// hand-drawn inline-SVG icon convention used elsewhere on the site.
+const CheckCircleIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="8 12.5 10.8 15.3 16 9.5" />
+  </svg>
+);
+
 const MIN_AGE_YEARS = 18;
 const maxBirthDate = () => {
   const d = new Date();
@@ -278,13 +287,14 @@ const Profile = () => {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
       background: isDark ? '#3a3b3c' : '#e5e7eb', color: isDark ? '#e4e6eb' : '#374151',
     },
-    // Solid fill, not the translucent tint used for the other tags below —
-    // this one specifically should read as a confident, settled "done"
-    // state rather than a soft badge.
+    // Translucent tint + border (same "glowing chip" language as the
+    // other tags), not a solid fill — an earlier pass tried a solid green
+    // here and that was a miss.
     verifiedTag: {
       display: 'inline-flex', alignItems: 'center', gap: '5px',
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '4px 12px', borderRadius: '20px',
-      background: '#16a34a', color: '#fff',
+      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
+      border: `1px solid ${isDark ? 'rgba(22,163,74,0.4)' : '#86efac'}`,
     },
     unverifiedTag: {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
@@ -406,7 +416,7 @@ const Profile = () => {
                     <span style={s.profileLabel}>Valid ID</span>
                     <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={profile.idVerified ? s.verifiedTag : s.unverifiedTag}>
-                        {profile.idVerified ? <>✓ ID Verified</> : 'Not Verified'}
+                        {profile.idVerified ? <><CheckCircleIcon /> ID Verified</> : 'Not Verified'}
                       </span>
                       {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
                         <span style={s.expiredTag}>Expired</span>
