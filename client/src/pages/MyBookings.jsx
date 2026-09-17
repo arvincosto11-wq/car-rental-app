@@ -371,12 +371,21 @@ const MyBookings = () => {
       borderRadius: '16px',
       padding: '26px',
     },
-    // A 3-column grid (image | everything else | price) instead of flex, so
-    // the divider above the action buttons (a separate grid row below, same
-    // template — see actionsRow) can share column 2's exact computed width
-    // instead of guessing a fixed indent that'd drift if content changes.
-    topSection: { display: 'grid', gridTemplateColumns: '160px minmax(0,1fr) auto', columnGap: '18px', rowGap: '12px' },
-    middleCol: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+    // One shared 3-column grid (image | details | price) for the whole top
+    // portion of the card, INCLUDING the action buttons row — not two
+    // separate grids with a matching template, because two independent
+    // grids don't actually compute the same column widths when one has
+    // content in column 3 and the other doesn't (auto/1fr tracks size off
+    // real content, not just the template string). One grid guarantees the
+    // divider (row 2, column 2) is exactly as wide as the details above it
+    // (row 1, column 2), no guessing.
+    topSection: {
+      display: 'grid', gridTemplateColumns: '160px minmax(0,1fr) auto', columnGap: '18px', rowGap: '12px',
+    },
+    imgWrapCell: { gridColumn: '1', gridRow: '1 / span 2' },
+    middleCol: { gridColumn: '2', gridRow: '1', display: 'flex', flexDirection: 'column', minWidth: 0 },
+    priceColCell: { gridColumn: '3', gridRow: '1' },
+    actionsCell: { gridColumn: '2', gridRow: '2' },
     detailsRow: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'flex-start' },
     // Ambient glow color follows the booking's own status — confirmed
     // (upcoming) is the one that actually needs attention, so it gets the
@@ -531,13 +540,11 @@ const MyBookings = () => {
     pickupLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#86efac' : '#166534', fontWeight: '700' },
     returnLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#b0b3b8' : '#6b7280', fontWeight: '700', marginTop: '6px' },
     driverNote: { marginTop: '8px', fontStyle: 'italic', fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
-    // actionsRow shares topSection's exact grid template so column 2 comes
-    // out the same pixel width in both — the divider (on actionsIndent,
-    // pinned to column 2) then spans exactly "date text start" to "pickup
-    // panel end" with no guessed indent number.
-    actionsRow: { display: 'grid', gridTemplateColumns: '160px minmax(0,1fr) auto', columnGap: '18px' },
+    // actionsIndent sits in topSection's own grid now (see actionsCell),
+    // so it's exactly as wide as the details row above it — no separate
+    // grid, no guessed indent number.
     actionsIndent: {
-      gridColumn: '2', display: 'flex', gap: '10px', flexWrap: 'wrap',
+      display: 'flex', gap: '10px', flexWrap: 'wrap',
       paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`,
     },
     rescheduleBtn: {
@@ -743,7 +750,7 @@ const MyBookings = () => {
           {pageBookings.map((booking, i) => (
             <div key={booking._id} className="booking-card" style={{ ...styles.card, ...styles.cardGlow(booking.status) }}>
               <div className="booking-grid" style={styles.topSection}>
-                <div style={styles.imgWrap}>
+                <div className="grid-cell" style={{ ...styles.imgWrap, ...styles.imgWrapCell }}>
                   {booking.car?.image ? (
                     <img src={booking.car.image} alt="" style={styles.img} />
                   ) : (
@@ -751,7 +758,7 @@ const MyBookings = () => {
                   )}
                 </div>
 
-                <div style={styles.middleCol}>
+                <div className="grid-cell" style={styles.middleCol}>
                   <div style={styles.topRow}>
                     <span style={styles.bookingNum}>Booking #{(page - 1) * PAGE_SIZE + i + 1}</span>
                     <span style={getStatusStyle(booking.status)}>
@@ -805,7 +812,7 @@ const MyBookings = () => {
                   </div>
                 </div>
 
-                <div className="booking-card-price" style={styles.priceCol}>
+                <div className="booking-card-price grid-cell" style={{ ...styles.priceCol, ...styles.priceColCell }}>
                   <span style={styles.priceLabel}>Total Price</span>
                   <div style={styles.priceDetails}>
                     <span style={styles.price}>₱{booking.totalPrice.toLocaleString()}</span>
@@ -822,6 +829,46 @@ const MyBookings = () => {
                     </span>
                   </div>
                 </div>
+
+                {(booking.status === 'pending' || booking.status === 'confirmed') &&
+                  (!booking.refundStatus || booking.refundStatus === 'none') && (
+                    <div className="grid-cell" style={styles.actionsCell}>
+                      <div style={styles.actionsIndent}>
+                        <button style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
+                          Request Refund
+                        </button>
+                        {booking.rescheduleRequest?.status !== 'pending' && (
+                          <button style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
+                            Reschedule
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                )}
+                {(booking.status === 'pending' || booking.status === 'confirmed') &&
+                  booking.payment !== 'paid' &&
+                  booking.refundStatus !== 'requested' && (
+                    <div className="grid-cell" style={styles.actionsCell}>
+                      <div style={styles.actionsIndent}>
+                        <button
+                          style={styles.bookAgainBtn}
+                          onClick={() => handleRetryPayment(booking._id)}
+                          disabled={retryingPaymentId === booking._id}
+                        >
+                          {retryingPaymentId === booking._id ? 'Redirecting...' : 'Retry GCash Payment'}
+                        </button>
+                      </div>
+                    </div>
+                )}
+                {booking.status === 'completed' && (
+                  <div className="grid-cell" style={styles.actionsCell}>
+                    <div style={styles.actionsIndent}>
+                      <button style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
+                        Book Again
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved' || booking.refundStatus === 'declined') && (
@@ -847,45 +894,6 @@ const MyBookings = () => {
                 </div>
               )}
 
-              {(booking.status === 'pending' || booking.status === 'confirmed') &&
-                (!booking.refundStatus || booking.refundStatus === 'none') && (
-                  <div className="booking-grid" style={styles.actionsRow}>
-                    <div className="actions-indent" style={styles.actionsIndent}>
-                      <button style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
-                        Request Refund
-                      </button>
-                      {booking.rescheduleRequest?.status !== 'pending' && (
-                        <button style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
-                          Reschedule
-                        </button>
-                      )}
-                    </div>
-                  </div>
-              )}
-              {(booking.status === 'pending' || booking.status === 'confirmed') &&
-                booking.payment !== 'paid' &&
-                booking.refundStatus !== 'requested' && (
-                  <div className="booking-grid" style={styles.actionsRow}>
-                    <div className="actions-indent" style={styles.actionsIndent}>
-                      <button
-                        style={styles.bookAgainBtn}
-                        onClick={() => handleRetryPayment(booking._id)}
-                        disabled={retryingPaymentId === booking._id}
-                      >
-                        {retryingPaymentId === booking._id ? 'Redirecting...' : 'Retry GCash Payment'}
-                      </button>
-                    </div>
-                  </div>
-              )}
-              {booking.status === 'completed' && (
-                <div className="booking-grid" style={styles.actionsRow}>
-                  <div className="actions-indent" style={styles.actionsIndent}>
-                    <button style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
-                      Book Again
-                    </button>
-                  </div>
-                </div>
-              )}
               {booking.payment === 'paid' && booking.paymongoPaymentId && (
                 <div style={styles.refNote}><TagLineIcon size={11} /> REF: {booking.paymongoPaymentId}</div>
               )}

@@ -446,16 +446,18 @@ select:disabled {
     text-align: left !important;
     margin-top: 8px;
   }
-  /* Collapses the image | details | price grid (topSection/actionsRow in
-     MyBookings.jsx) to one column so they stack instead of squeezing three
-     fixed-ish tracks into a phone-width card. actionsIndent's explicit
-     grid-column: 2 also needs resetting or it'd try to place into a track
-     that no longer exists. */
+  /* Collapses the image | details | price | actions grid (topSection in
+     MyBookings.jsx) to one column so they stack instead of squeezing four
+     explicitly-placed cells into a phone-width card. Each cell has an
+     inline grid-column/grid-row (1, 2, 2, 3) that survives the template
+     change on its own — explicit placement isn't reset just by changing
+     the number of columns — so every cell needs resetting back to auto. */
   .booking-grid {
     grid-template-columns: 1fr !important;
   }
-  .actions-indent {
+  .grid-cell {
     grid-column: 1 !important;
+    grid-row: auto !important;
   }
 }
 
