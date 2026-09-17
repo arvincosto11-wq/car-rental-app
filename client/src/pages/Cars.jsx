@@ -9,6 +9,17 @@ import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK } from '../theme';
 
+// Small feature-row icons — same hand-drawn inline-SVG approach used
+// elsewhere on the site.
+const MetaIcon = ({ children, color }) => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color }}>
+    {children}
+  </svg>
+);
+const SeatsIcon = (props) => <MetaIcon {...props}><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" /><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" /></MetaIcon>;
+const FuelIcon = (props) => <MetaIcon {...props}><path d="M12 21a7 7 0 0 0 5-11.9L12 3 7 9.1A7 7 0 0 0 12 21z" /></MetaIcon>;
+const TransmissionIcon = (props) => <MetaIcon {...props}><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" /></MetaIcon>;
+
 const Cars = () => {
   usePageTitle('Vehicles');
   const { canFavorite, isFavorite, toggleFavorite } = useFavorites();
@@ -92,16 +103,21 @@ const Cars = () => {
       padding: '32px',
     },
     title: {
-      fontSize: '28px',
-      fontWeight: '700',
-      color: isDark ? '#e4e6eb' : '#1a1a1a',
-      marginBottom: '24px',
+      fontSize: 'clamp(24px, 3.2vw, 32px)', fontWeight: '900', letterSpacing: '-0.01em',
+      textTransform: 'uppercase', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px',
     },
+    subtitle: { fontSize: '14px', fontStyle: 'italic', color: isDark ? GOLD_DARK : GOLD, marginBottom: '24px' },
     filters: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: '12px',
+      gap: '14px',
+      alignItems: 'flex-end',
       marginBottom: '24px',
+    },
+    filterGroup: { display: 'flex', flexDirection: 'column', gap: '5px' },
+    filterLabel: {
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.06em', textTransform: 'uppercase',
+      color: isDark ? '#8a8d91' : '#9ca3af',
     },
     searchInput: {
       flex: '1 1 200px',
@@ -138,7 +154,10 @@ const Cars = () => {
       display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px',
       color: isDark ? '#e4e6eb' : '#374151', cursor: 'pointer', whiteSpace: 'nowrap',
     },
-    resultsCount: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px' },
+    resultsCount: {
+      fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em', textTransform: 'uppercase',
+      color: isDark ? GOLD_DARK : GOLD, marginBottom: '14px',
+    },
     skeletonCard: {
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
@@ -152,13 +171,13 @@ const Cars = () => {
     card: {
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '12px',
+      borderRadius: '14px',
       overflow: 'hidden',
       cursor: 'pointer',
     },
     imgWrap: {
       position: 'relative',
-      height: '160px',
+      height: '190px',
       background: isDark ? '#3a3b3c' : '#f3f4f6',
     },
     img: {
@@ -179,64 +198,90 @@ const Cars = () => {
       position: 'absolute',
       top: '10px',
       left: '10px',
-      background: '#16a34a',
-      color: '#fff',
-      fontSize: '11px',
-      padding: '3px 10px',
+      fontSize: '10px',
+      fontWeight: '700',
+      letterSpacing: '0.04em',
+      textTransform: 'uppercase',
+      padding: '4px 11px',
       borderRadius: '20px',
     },
     priceBadge: {
       position: 'absolute',
       bottom: '10px',
       right: '10px',
-      background: 'rgba(0,0,0,0.6)',
-      color: '#fff',
-      fontSize: '12px',
-      padding: '3px 10px',
-      borderRadius: '6px',
+      background: 'rgba(0,0,0,0.72)',
+      fontSize: '15px',
+      fontWeight: '800',
+      color: isDark ? GOLD_DARK : GOLD,
+      padding: '5px 12px',
+      borderRadius: '8px',
     },
-    cardBody: { padding: '14px 16px' },
+    priceBadgeUnit: { fontSize: '11px', fontWeight: '500', color: '#d1d5db' },
+    cardBody: { padding: '16px' },
+    nameRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '2px' },
     carName: {
-      fontSize: '16px',
-      fontWeight: '600',
+      fontSize: '17px',
+      fontWeight: '800',
+      textTransform: 'uppercase',
+      letterSpacing: '-0.005em',
       color: isDark ? '#e4e6eb' : '#1a1a1a',
-      marginBottom: '4px',
     },
     carSub: {
-      fontSize: '13px',
-      color: isDark ? '#b0b3b8' : '#6b7280',
-      marginBottom: '10px',
+      fontSize: '12px',
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: '0.02em',
+      color: isDark ? '#8a8d91' : '#9ca3af',
+      marginBottom: '14px',
     },
     ratingRow: {
       display: 'flex',
       alignItems: 'center',
-      gap: '6px',
-      marginBottom: '8px',
+      gap: '5px',
+      flexShrink: 0,
     },
     ratingText: {
-      fontSize: '12px',
-      color: isDark ? '#b0b3b8' : '#6b7280',
-      fontWeight: '500',
+      fontSize: '13px',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+      fontWeight: '700',
     },
+    ratingCountText: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', fontWeight: '500' },
     carMeta: {
       display: 'grid',
       gridTemplateColumns: '1fr 1fr',
-      gap: '4px',
+      gap: '8px 14px',
       fontSize: '12px',
-      color: isDark ? '#b0b3b8' : '#6b7280',
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      color: isDark ? '#b0b3b8' : '#4b5563',
+      marginBottom: '14px',
     },
+    metaItem: { display: 'flex', alignItems: 'center', gap: '7px' },
     bookingTypeRow: {
       display: 'flex',
-      gap: '6px',
-      marginTop: '10px',
-      flexWrap: 'wrap',
+      gap: '8px',
+      marginBottom: '10px',
     },
     bookingTypeTag: {
+      flex: 1,
+      textAlign: 'center',
       fontSize: '11px',
-      color: isDark ? '#e4e6eb' : '#374151',
-      background: isDark ? '#3a3b3c' : '#f3f4f6',
-      padding: '3px 9px',
-      borderRadius: '20px',
+      fontWeight: '700',
+      letterSpacing: '0.03em',
+      textTransform: 'uppercase',
+      color: isDark ? '#b0b3b8' : '#4b5563',
+      background: isDark ? '#18191a' : '#f3f4f6',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      padding: '8px 9px',
+      borderRadius: '8px',
+    },
+    viewDetailsBtn: {
+      display: 'block', width: '100%', textAlign: 'center',
+      padding: '11px', fontSize: '12px', fontWeight: '800', letterSpacing: '0.04em', textTransform: 'uppercase',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+      background: isDark ? '#18191a' : '#f9fafb',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      borderRadius: '8px', cursor: 'pointer',
     },
     dateNotice: {
       display: 'flex',
@@ -265,6 +310,7 @@ const Cars = () => {
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>All Cars</h1>
+      <p style={styles.subtitle}>Browse our full fleet of well-maintained, ready-to-book vehicles.</p>
 
       {(pickupDate || returnDate) && (
         <div className="row-stack-sm" style={styles.dateNotice}>
@@ -276,73 +322,88 @@ const Cars = () => {
       )}
 
       <div style={styles.filters}>
-        <input
-          style={styles.searchInput}
-          type="text"
-          placeholder="Search by brand or model..."
-          aria-label="Search by brand or model"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          style={styles.select}
-          value={category}
-          aria-label="Filter by category"
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          <option value="">All Categories</option>
-          <option value="Sedan">Sedan</option>
-          <option value="SUV">SUV</option>
-          <option value="Hatchback">Hatchback</option>
-          <option value="Van">Van</option>
-          <option value="Truck">Truck</option>
-          <option value="Coupe">Coupe</option>
-          <option value="Motorcycle">Motorcycle</option>
-        </select>
-        <select
-          style={styles.select}
-          value={transmission}
-          aria-label="Filter by transmission"
-          onChange={(e) => setTransmission(e.target.value)}
-        >
-          <option value="">All Transmissions</option>
-          <option value="Automatic">Automatic</option>
-          <option value="Manual">Manual</option>
-          <option value="Semi-Automatic">Semi-Automatic</option>
-        </select>
-        <div style={styles.priceRangeGroup} role="group" aria-label="Price range">
+        <div style={{ ...styles.filterGroup, flex: '1 1 200px' }}>
+          <label style={styles.filterLabel} htmlFor="cars-search">Search</label>
           <input
-            style={styles.priceInput}
-            type="number"
-            placeholder="Min ₱"
-            aria-label="Minimum price"
-            value={minPrice}
-            onChange={(e) => setMinPrice(e.target.value)}
-            min="0"
-          />
-          <span style={styles.priceRangeSep}>–</span>
-          <input
-            style={styles.priceInput}
-            type="number"
-            placeholder="Max ₱"
-            aria-label="Maximum price"
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(e.target.value)}
-            min="0"
+            id="cars-search"
+            style={styles.searchInput}
+            type="text"
+            placeholder="Search by brand or model..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select
-          style={styles.select}
-          value={sortBy}
-          aria-label="Sort by"
-          onChange={(e) => setSortBy(e.target.value)}
-        >
-          <option value="">Sort By</option>
-          <option value="price-asc">Price: Low to High</option>
-          <option value="price-desc">Price: High to Low</option>
-          <option value="rating-desc">Highest Rated</option>
-          <option value="name-asc">Name: A to Z</option>
-        </select>
+        <div style={styles.filterGroup}>
+          <label style={styles.filterLabel} htmlFor="cars-category">Category</label>
+          <select
+            id="cars-category"
+            style={styles.select}
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="">All Categories</option>
+            <option value="Sedan">Sedan</option>
+            <option value="SUV">SUV</option>
+            <option value="Hatchback">Hatchback</option>
+            <option value="Van">Van</option>
+            <option value="Truck">Truck</option>
+            <option value="Coupe">Coupe</option>
+            <option value="Motorcycle">Motorcycle</option>
+          </select>
+        </div>
+        <div style={styles.filterGroup}>
+          <label style={styles.filterLabel} htmlFor="cars-transmission">Transmission</label>
+          <select
+            id="cars-transmission"
+            style={styles.select}
+            value={transmission}
+            onChange={(e) => setTransmission(e.target.value)}
+          >
+            <option value="">All Transmissions</option>
+            <option value="Automatic">Automatic</option>
+            <option value="Manual">Manual</option>
+            <option value="Semi-Automatic">Semi-Automatic</option>
+          </select>
+        </div>
+        <div style={styles.filterGroup}>
+          <span style={styles.filterLabel}>Price Range</span>
+          <div style={styles.priceRangeGroup} role="group" aria-label="Price range">
+            <input
+              style={styles.priceInput}
+              type="number"
+              placeholder="Min ₱"
+              aria-label="Minimum price"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+              min="0"
+            />
+            <span style={styles.priceRangeSep}>–</span>
+            <input
+              style={styles.priceInput}
+              type="number"
+              placeholder="Max ₱"
+              aria-label="Maximum price"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+              min="0"
+            />
+          </div>
+        </div>
+        <div style={styles.filterGroup}>
+          <label style={styles.filterLabel} htmlFor="cars-sort">Sort By</label>
+          <select
+            id="cars-sort"
+            style={styles.select}
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="">Newest</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="rating-desc">Highest Rated</option>
+            <option value="name-asc">Name: A to Z</option>
+          </select>
+        </div>
         <label style={styles.availableToggle}>
           <input type="checkbox" checked={availableOnly} onChange={(e) => setAvailableOnly(e.target.checked)} />
           Bookable only
@@ -385,7 +446,12 @@ const Cars = () => {
                 ) : (
                   <div style={styles.noImg}>No Image</div>
                 )}
-                <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#16a34a' }}>
+                <span style={{
+                  ...styles.availBadge,
+                  background: 'rgba(0,0,0,0.65)',
+                  color: car.isAvailable === false ? '#fca5a5' : '#86efac',
+                  border: `1px solid ${car.isAvailable === false ? 'rgba(248,113,113,0.4)' : 'rgba(134,239,172,0.4)'}`,
+                }}>
                   {car.isAvailable === false ? 'Not Listed' : 'Bookable'}
                 </span>
                 <FavoriteButton
@@ -395,33 +461,41 @@ const Cars = () => {
                   onToggle={toggleFavorite}
                   style={{ position: 'absolute', top: '10px', right: '10px' }}
                 />
-                <span style={styles.priceBadge}>₱{car.pricePerDay} / day</span>
+                <span style={styles.priceBadge}>₱{car.pricePerDay}<span style={styles.priceBadgeUnit}> / day</span></span>
               </div>
               <div style={styles.cardBody}>
-                <h3 style={styles.carName}>{car.brand} {car.model}</h3>
+                <div style={styles.nameRow}>
+                  <h3 style={styles.carName}>{car.brand} {car.model}</h3>
+                  {car.ratingCount > 0 ? (
+                    <div style={styles.ratingRow}>
+                      <StarRating value={car.avgRating} size={13} readOnly />
+                      <span style={styles.ratingText}>{car.avgRating.toFixed(1)}</span>
+                      <span style={styles.ratingCountText}>({car.ratingCount})</span>
+                    </div>
+                  ) : (
+                    <span style={styles.ratingCountText}>No reviews yet</span>
+                  )}
+                </div>
                 <p style={styles.carSub}>{car.category} · {car.year}</p>
-                {car.ratingCount > 0 ? (
-                  <div style={styles.ratingRow}>
-                    <StarRating value={car.avgRating} size={13} readOnly />
-                    <span style={styles.ratingText}>{car.avgRating.toFixed(1)} ({car.ratingCount})</span>
-                  </div>
-                ) : (
-                  <div style={styles.ratingRow}>
-                    <span style={styles.ratingText}>No reviews yet</span>
-                  </div>
-                )}
                 <div style={styles.carMeta}>
-                  <span>{car.seats} Seats</span>
-                  <span>{car.fuelType}</span>
-                  <span>{car.transmission}</span>
+                  <span style={styles.metaItem}><SeatsIcon color={isDark ? GOLD_DARK : GOLD} /> {car.seats} Seats</span>
+                  <span style={styles.metaItem}><FuelIcon color={isDark ? GOLD_DARK : GOLD} /> {car.fuelType}</span>
+                  <span style={styles.metaItem}><TransmissionIcon color={isDark ? GOLD_DARK : GOLD} /> {car.transmission}</span>
                 </div>
                 <div style={styles.bookingTypeRow}>
                   {(car.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver']).map((t) => (
                     <span key={t} style={styles.bookingTypeTag}>
-                      {t === 'self-drive' ? '🧍 Self Drive' : '🚘 With Driver'}
+                      {t === 'self-drive' ? 'Self Drive' : 'With Driver'}
                     </span>
                   ))}
                 </div>
+                <button
+                  type="button"
+                  style={styles.viewDetailsBtn}
+                  onClick={(e) => { e.stopPropagation(); navigate(carDetailUrl(car._id)); }}
+                >
+                  View Details
+                </button>
               </div>
             </div>
           ))}
