@@ -417,6 +417,23 @@ select:disabled {
 
 .booking-card {
   display: flex;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+/* !important: overrides the status-colored glow set inline per booking
+   (see cardGlow in MyBookings.jsx) — hover always shifts to this warm
+   gold glow + lift as the "this is interactive" cue, regardless of the
+   booking's own status color. */
+.booking-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 32px rgba(232,161,0,0.28) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .booking-card {
+    transition: none;
+  }
+  .booking-card:hover {
+    transform: none;
+  }
 }
 @media (max-width: 560px) {
   .booking-card {

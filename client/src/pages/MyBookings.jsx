@@ -359,6 +359,24 @@ const MyBookings = () => {
       padding: '18px',
       alignItems: 'center',
     },
+    // Ambient glow color follows the booking's own status — confirmed
+    // (upcoming) is the one that actually needs attention, so it gets the
+    // most prominent glow; cancelled fades into the background since
+    // there's nothing left to do with it. Hover state (see .booking-card
+    // in index.css) overrides this with a warm gold glow + lift regardless
+    // of status, as the "this is interactive" cue.
+    cardGlow: (status) => {
+      if (status === 'confirmed') {
+        return { boxShadow: isDark ? '0 0 0 1px rgba(22,163,74,0.35), 0 8px 28px rgba(22,163,74,0.18)' : '0 8px 24px rgba(22,163,74,0.12)' };
+      }
+      if (status === 'completed') {
+        return { boxShadow: isDark ? '0 0 0 1px rgba(37,99,235,0.25), 0 6px 20px rgba(37,99,235,0.1)' : '0 6px 18px rgba(37,99,235,0.08)' };
+      }
+      if (status === 'cancelled') {
+        return { opacity: isDark ? 0.75 : 0.85, boxShadow: isDark ? '0 0 0 1px rgba(220,38,38,0.2)' : 'none' };
+      }
+      return { boxShadow: isDark ? '0 0 0 1px rgba(217,119,6,0.25), 0 6px 18px rgba(217,119,6,0.1)' : '0 6px 16px rgba(217,119,6,0.08)' };
+    },
     imgWrap: {
       width: '100px',
       height: '70px',
@@ -380,54 +398,54 @@ const MyBookings = () => {
     info: { flex: 1 },
     topRow: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' },
     bookingNum: { fontSize: '14px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    // Every badge below shares this shape/type treatment — only the color
+    // trio (bg/text/border) changes per status. Dark mode uses a
+    // translucent tint + matching border (a "glowing chip" look) instead
+    // of the light-mode pastel fill, which read as washed-out and
+    // low-contrast against a dark card. Self-contained (not built by
+    // merging a shared base at each call site) since some of these are
+    // used directly, not just through getStatusStyle/getRefundBadgeStyle.
     badgePending: {
-      background: '#fef3c7',
-      color: '#92400e',
-      fontSize: '11px',
-      padding: '2px 10px',
-      borderRadius: '20px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7',
+      color: isDark ? '#fbbf24' : '#92400e',
+      border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
     },
     badgeConfirmed: {
-      background: '#d1fae5',
-      color: '#065f46',
-      fontSize: '11px',
-      padding: '2px 10px',
-      borderRadius: '20px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5',
+      color: isDark ? '#86efac' : '#065f46',
+      border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
     },
     badgeCancelled: {
-      background: '#fee2e2',
-      color: '#991b1b',
-      fontSize: '11px',
-      padding: '2px 10px',
-      borderRadius: '20px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2',
+      color: isDark ? '#fca5a5' : '#991b1b',
+      border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
     },
     badgeCompleted: {
-      background: '#dbeafe',
-      color: '#1e40af',
-      fontSize: '11px',
-      padding: '2px 10px',
-      borderRadius: '20px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe',
+      color: isDark ? '#93c5fd' : '#1e40af',
+      border: isDark ? '1px solid rgba(37,99,235,0.35)' : 'none',
     },
     badgeRefundRequested: {
-      background: '#fef3c7',
-      color: '#92400e',
-      fontSize: '11px',
-      padding: '2px 10px',
-      borderRadius: '20px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7',
+      color: isDark ? '#fbbf24' : '#92400e',
+      border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
     },
     badgeRefundApproved: {
-      background: '#dbeafe',
-      color: '#1e40af',
-      fontSize: '11px',
-      padding: '2px 10px',
-      borderRadius: '20px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe',
+      color: isDark ? '#93c5fd' : '#1e40af',
+      border: isDark ? '1px solid rgba(37,99,235,0.35)' : 'none',
     },
     badgeRefundDeclined: {
-      background: '#fee2e2',
-      color: '#991b1b',
-      fontSize: '11px',
-      padding: '2px 10px',
-      borderRadius: '20px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2',
+      color: isDark ? '#fca5a5' : '#991b1b',
+      border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
     },
     meta: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '4px' },
     carName: { fontSize: '14px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginTop: '6px' },
@@ -435,13 +453,13 @@ const MyBookings = () => {
     refundBtn: {
       flex: '1 1 130px',
       textAlign: 'center',
-      padding: '6px 14px',
+      padding: '7px 16px',
       fontSize: '12px',
-      fontWeight: '500',
+      fontWeight: '600',
       background: 'none',
       color: isDark ? '#f87171' : '#dc2626',
       border: `1px solid ${isDark ? '#f87171' : '#dc2626'}`,
-      borderRadius: '6px',
+      borderRadius: '999px',
       cursor: 'pointer',
     },
     refundNote: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '8px', fontStyle: 'italic' },
@@ -455,45 +473,42 @@ const MyBookings = () => {
     rescheduleBtn: {
       flex: '1 1 130px',
       textAlign: 'center',
-      padding: '6px 14px',
+      padding: '7px 16px',
       fontSize: '12px',
-      fontWeight: '500',
+      fontWeight: '600',
       background: 'none',
       color: isDark ? GOLD_DARK : GOLD,
       border: `1px solid ${isDark ? GOLD_DARK : GOLD}`,
-      borderRadius: '6px',
+      borderRadius: '999px',
       cursor: 'pointer',
     },
     bookAgainBtn: {
-      padding: '6px 14px',
+      padding: '7px 16px',
       fontSize: '12px',
       fontWeight: '600',
       background: isDark ? GOLD_DARK : GOLD,
       color: ON_GOLD,
       border: 'none',
-      borderRadius: '6px',
+      borderRadius: '999px',
       cursor: 'pointer',
     },
     badgeReschedulePending: {
-      background: '#fef3c7',
-      color: '#92400e',
-      fontSize: '11px',
-      padding: '2px 10px',
-      borderRadius: '20px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7',
+      color: isDark ? '#fbbf24' : '#92400e',
+      border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
     },
     badgeRescheduleApproved: {
-      background: '#d1fae5',
-      color: '#065f46',
-      fontSize: '11px',
-      padding: '2px 10px',
-      borderRadius: '20px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5',
+      color: isDark ? '#86efac' : '#065f46',
+      border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
     },
     badgeRescheduleDeclined: {
-      background: '#fee2e2',
-      color: '#991b1b',
-      fontSize: '11px',
-      padding: '2px 10px',
-      borderRadius: '20px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2',
+      color: isDark ? '#fca5a5' : '#991b1b',
+      border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
     },
     modalSub: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px', lineHeight: '1.5' },
     field: { marginBottom: '14px' },
@@ -637,7 +652,7 @@ const MyBookings = () => {
       ) : (
         <div style={styles.list}>
           {pageBookings.map((booking, i) => (
-            <div key={booking._id} className="booking-card" style={styles.card}>
+            <div key={booking._id} className="booking-card" style={{ ...styles.card, ...styles.cardGlow(booking.status) }}>
               <div style={styles.imgWrap}>
                 {booking.car?.image ? (
                   <img src={booking.car.image} alt="" style={styles.img} />
