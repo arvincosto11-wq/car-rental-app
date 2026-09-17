@@ -212,7 +212,7 @@ const ManageBookings = () => {
       flex: '1 1 220px', padding: '9px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px',
       fontSize: '13px', outline: 'none', background: isDark ? '#242526' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
     },
-    statusTabRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%' },
+    statusTabRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%', marginBottom: '20px' },
     statusTab: (active) => ({
       display: 'flex', alignItems: 'center', gap: '6px',
       padding: '8px 16px', borderRadius: '999px', fontSize: '13px', fontWeight: '600',
