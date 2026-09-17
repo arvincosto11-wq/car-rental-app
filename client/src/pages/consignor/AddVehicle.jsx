@@ -203,6 +203,8 @@ const AddVehicle = () => {
       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
     }),
     categoryFixed: { padding: '10px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', background: isDark ? '#18191a' : '#f9fafb', color: isDark ? '#b0b3b8' : '#6b7280' },
+    sectionTitle: { fontSize: '14px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', margin: '0 0 14px' },
+    sectionDivider: { border: 'none', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, margin: '24px 0 20px' },
   };
 
   return (
@@ -222,6 +224,7 @@ const AddVehicle = () => {
               <AnimatePresence mode="wait">
                 {step === 1 && (
                   <motion.div key="step1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
+                    <h2 style={s.sectionTitle}>Vehicle Type</h2>
                     <div style={s.typeToggleRow}>
                       <button type="button" style={s.typeToggleBtn(vehicleType === 'car')} onClick={() => handleVehicleTypeChange('car')}>
                         🚗 Car
@@ -231,6 +234,8 @@ const AddVehicle = () => {
                       </button>
                     </div>
 
+                    <hr style={s.sectionDivider} />
+                    <h2 style={s.sectionTitle}>Basic Information</h2>
                     <div className="responsive-row-2" style={s.row}>
                       <div style={s.field}>
                         <label style={s.label} htmlFor="av-brand">Brand</label>
@@ -291,6 +296,8 @@ const AddVehicle = () => {
                       <input id="av-reg-expiry" style={s.input} type="date" value={form.registrationExpiry} onChange={(e) => setForm({ ...form, registrationExpiry: e.target.value })} />
                     </div>
 
+                    <hr style={s.sectionDivider} />
+                    <h2 style={s.sectionTitle}>Technical Specifications</h2>
                     <div className="responsive-row-3" style={s.row3}>
                       <div style={s.field}>
                         <label style={s.label} htmlFor="av-category">Category</label>
@@ -324,6 +331,8 @@ const AddVehicle = () => {
                       <input id="av-seats" style={s.input} type="number" placeholder="e.g. 5" value={form.seats} onChange={(e) => setForm({ ...form, seats: e.target.value })} required />
                     </div>
 
+                    <hr style={s.sectionDivider} />
+                    <h2 style={s.sectionTitle}>Pricing &amp; Booking</h2>
                     <div style={s.field}>
                       <label style={s.label} htmlFor="av-price">Suggested Daily Price (₱)</label>
                       <input id="av-price" style={s.input} type="number" placeholder="e.g. 120" value={form.suggestedPricePerDay} onChange={(e) => setForm({ ...form, suggestedPricePerDay: e.target.value })} required />
@@ -362,6 +371,7 @@ const AddVehicle = () => {
 
                 {step === 2 && (
                   <motion.div key="step2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
+                    <h2 style={s.sectionTitle}>Registration Documents</h2>
                     <div className="responsive-row-2" style={s.row}>
                       <div style={s.field}>
                         <label style={s.label} htmlFor="av-or">OR (Official Receipt)</label>
@@ -393,6 +403,8 @@ const AddVehicle = () => {
                       </div>
                     </div>
 
+                    <hr style={s.sectionDivider} />
+                    <h2 style={s.sectionTitle}>Vehicle Photos</h2>
                     <div style={s.field}>
                       <label style={s.label} htmlFor="av-vehicle-photos">Vehicle Photos (multiple angles recommended)</label>
                       <div style={s.upload}>
