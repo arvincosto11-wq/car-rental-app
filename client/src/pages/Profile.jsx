@@ -244,23 +244,30 @@ const Profile = () => {
       textTransform: 'uppercase', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px',
     },
     subtitle: { fontSize: '14px', fontStyle: 'italic', color: isDark ? GOLD_DARK : GOLD, marginBottom: '24px' },
-    profileCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '16px', padding: '24px' },
+    profileCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '20px', padding: '24px' },
+    sectionDivider: { border: 'none', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, margin: '20px 0' },
     profileHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' },
     sectionTitle: {
       fontSize: '15px', fontWeight: '800', letterSpacing: '0.02em', textTransform: 'uppercase',
       color: isDark ? '#e4e6eb' : '#1a1a1a',
     },
+    // Subdued outline, not a solid gold fill — gold stays reserved for
+    // primary conversion CTAs (Reserve Now, Book Now); editing your own
+    // settings is a lower-stakes secondary action.
     editBtn: {
       padding: '8px 18px', fontSize: '11px', fontWeight: '800', letterSpacing: '0.04em', textTransform: 'uppercase',
-      border: 'none', borderRadius: '999px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '999px',
+      background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#374151', cursor: 'pointer',
     },
     cancelBtn: { padding: '9px 18px', fontSize: '13px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', background: 'none', color: isDark ? '#e4e6eb' : '#374151', cursor: 'pointer', fontWeight: '500' },
     saveBtn: { padding: '9px 18px', fontSize: '13px', border: 'none', borderRadius: '8px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '600' },
     profileGrid: { gap: '14px' },
     profileItem: { background: isDark ? '#18191a' : '#f9fafb', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
+    // Muted slate-blue, not gold — gold is reserved for accents/CTAs
+    // elsewhere on the site; these are just field labels.
     profileLabel: {
       display: 'block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase',
-      color: isDark ? GOLD_DARK : GOLD, marginBottom: '4px',
+      color: isDark ? '#94a3b8' : '#64748b', marginBottom: '4px',
     },
     profileValue: { fontSize: '14px', color: isDark ? '#e4e6eb' : '#1a1a1a', fontWeight: '700' },
     // Dark mode uses a translucent tint + matching border (a "glowing
@@ -271,10 +278,13 @@ const Profile = () => {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
       background: isDark ? '#3a3b3c' : '#e5e7eb', color: isDark ? '#e4e6eb' : '#374151',
     },
+    // Solid fill, not the translucent tint used for the other tags below —
+    // this one specifically should read as a confident, settled "done"
+    // state rather than a soft badge.
     verifiedTag: {
-      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
-      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
-      border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
+      display: 'inline-flex', alignItems: 'center', gap: '5px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '4px 12px', borderRadius: '20px',
+      background: '#16a34a', color: '#fff',
     },
     unverifiedTag: {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
@@ -378,6 +388,8 @@ const Profile = () => {
                 </div>
               </div>
 
+              <hr style={s.sectionDivider} />
+
               {(profile.licenseImage || profile.licenseImageBack) && (
                 <div style={{ marginTop: '14px' }}>
                   <span style={s.profileLabel}>License Photo</span>
@@ -394,7 +406,7 @@ const Profile = () => {
                     <span style={s.profileLabel}>Valid ID</span>
                     <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={profile.idVerified ? s.verifiedTag : s.unverifiedTag}>
-                        {profile.idVerified ? 'ID Verified' : 'Not Verified'}
+                        {profile.idVerified ? <>✓ ID Verified</> : 'Not Verified'}
                       </span>
                       {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
                         <span style={s.expiredTag}>Expired</span>
