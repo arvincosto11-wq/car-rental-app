@@ -371,12 +371,13 @@ const MyBookings = () => {
       borderRadius: '16px',
       padding: '26px',
     },
-    topSection: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'flex-start' },
-    // flex-start so the booking number sits at the top of the image, not
-    // vertically centered against it — the date/model lines that follow are
-    // then aligned with the pickup panel via pickupPanel's own marginTop
-    // below, not by centering the whole row.
-    leftCol: { display: 'flex', gap: '18px', flex: '1 1 260px', minWidth: 0, alignItems: 'flex-start' },
+    // A 3-column grid (image | everything else | price) instead of flex, so
+    // the divider above the action buttons (a separate grid row below, same
+    // template — see actionsRow) can share column 2's exact computed width
+    // instead of guessing a fixed indent that'd drift if content changes.
+    topSection: { display: 'grid', gridTemplateColumns: '160px minmax(0,1fr) auto', columnGap: '18px', rowGap: '12px' },
+    middleCol: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+    detailsRow: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'flex-start' },
     // Ambient glow color follows the booking's own status — confirmed
     // (upcoming) is the one that actually needs attention, so it gets the
     // most prominent glow; cancelled fades into the background since
@@ -519,11 +520,10 @@ const MyBookings = () => {
     // A separate info panel (not tinted green overall — only the pickup
     // line's text is green, return line's text is neutral gray) so it
     // reads as its own box within the card rather than a colored alert.
-    // marginTop lines its content up with the date/model lines beside it —
-    // both sit below the taller "BOOKING #N" heading, roughly the same
-    // vertical offset as topRow's own rendered height + margin.
+    // Sits inside detailsRow now, alongside the date/model text, so it
+    // naturally starts at the same Y — no marginTop hack needed.
     pickupPanel: {
-      flex: '1 1 220px', minWidth: '200px', maxWidth: '300px', marginTop: '38px',
+      flex: '1 1 220px', minWidth: '200px', maxWidth: '300px',
       fontSize: '12px', lineHeight: '1.5', padding: '14px 16px', borderRadius: '12px',
       background: isDark ? '#303132' : '#f8fafc',
       border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
@@ -531,14 +531,13 @@ const MyBookings = () => {
     pickupLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#86efac' : '#166534', fontWeight: '700' },
     returnLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#b0b3b8' : '#6b7280', fontWeight: '700', marginTop: '6px' },
     driverNote: { marginTop: '8px', fontStyle: 'italic', fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
-    // A short divider (only as wide as the buttons, not the full card) sits
-    // right above the indented button row — inline-flex so the element
-    // shrink-wraps to its content instead of stretching to fill the row.
-    // .actions-indent's margin-left (index.css) matches imgWrap width + the
-    // leftCol gap, and collapses to 0 on mobile where the card stacks.
-    actionsRow: {},
+    // actionsRow shares topSection's exact grid template so column 2 comes
+    // out the same pixel width in both — the divider (on actionsIndent,
+    // pinned to column 2) then spans exactly "date text start" to "pickup
+    // panel end" with no guessed indent number.
+    actionsRow: { display: 'grid', gridTemplateColumns: '160px minmax(0,1fr) auto', columnGap: '18px' },
     actionsIndent: {
-      display: 'inline-flex', gap: '10px', flexWrap: 'wrap',
+      gridColumn: '2', display: 'flex', gap: '10px', flexWrap: 'wrap',
       paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`,
     },
     rescheduleBtn: {
@@ -743,64 +742,68 @@ const MyBookings = () => {
         <div style={styles.list}>
           {pageBookings.map((booking, i) => (
             <div key={booking._id} className="booking-card" style={{ ...styles.card, ...styles.cardGlow(booking.status) }}>
-              <div style={styles.topSection}>
-                <div style={styles.leftCol}>
-                  <div style={styles.imgWrap}>
-                    {booking.car?.image ? (
-                      <img src={booking.car.image} alt="" style={styles.img} />
-                    ) : (
-                      <div style={styles.noImg}>No Image</div>
-                    )}
-                  </div>
-                  <div style={styles.info}>
-                    <div style={styles.topRow}>
-                      <span style={styles.bookingNum}>Booking #{(page - 1) * PAGE_SIZE + i + 1}</span>
-                      <span style={getStatusStyle(booking.status)}>
-                        {booking.status}
-                      </span>
-                      {booking.refundStatus && booking.refundStatus !== 'none' && (
-                        <span style={getRefundBadgeStyle(booking.refundStatus)}>
-                          {getRefundBadgeText(booking.refundStatus)}
-                        </span>
-                      )}
-                      {booking.rescheduleRequest?.status === 'pending' && (
-                        <span style={styles.badgeReschedulePending}>Reschedule Requested</span>
-                      )}
-                      {booking.rescheduleRequest?.status === 'declined' && (
-                        <span style={styles.badgeRescheduleDeclined}>Reschedule Declined</span>
-                      )}
-                      {booking.payment === 'gcash_pending' && booking.status !== 'cancelled' && (
-                        <span style={styles.badgeRefundRequested}>GCash Pending</span>
-                      )}
-                    </div>
-                    <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
-                      <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                      {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
-                    </div>
-                    <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
-                      <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                      <span style={styles.carSub}>
-                        {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
-                      </span>
-                    </div>
-                  </div>
+              <div className="booking-grid" style={styles.topSection}>
+                <div style={styles.imgWrap}>
+                  {booking.car?.image ? (
+                    <img src={booking.car.image} alt="" style={styles.img} />
+                  ) : (
+                    <div style={styles.noImg}>No Image</div>
+                  )}
                 </div>
 
-                {(booking.status === 'confirmed' || booking.status === 'pending') && (
-                  <div style={styles.pickupPanel}>
-                    <div style={styles.pickupLine}>
-                      <PinLineIcon /> Pickup: {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                    </div>
-                    <div style={styles.returnLine}>
-                      <ReturnLineIcon /> Return: {new Date(booking.endDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                    </div>
-                    <div style={styles.driverNote}>
-                      {booking.bookingType === 'self-drive'
-                        ? "Bring a valid ID and your driver's license to pick up the vehicle."
-                        : 'Your driver will meet you at the pickup location.'}
-                    </div>
+                <div style={styles.middleCol}>
+                  <div style={styles.topRow}>
+                    <span style={styles.bookingNum}>Booking #{(page - 1) * PAGE_SIZE + i + 1}</span>
+                    <span style={getStatusStyle(booking.status)}>
+                      {booking.status}
+                    </span>
+                    {booking.refundStatus && booking.refundStatus !== 'none' && (
+                      <span style={getRefundBadgeStyle(booking.refundStatus)}>
+                        {getRefundBadgeText(booking.refundStatus)}
+                      </span>
+                    )}
+                    {booking.rescheduleRequest?.status === 'pending' && (
+                      <span style={styles.badgeReschedulePending}>Reschedule Requested</span>
+                    )}
+                    {booking.rescheduleRequest?.status === 'declined' && (
+                      <span style={styles.badgeRescheduleDeclined}>Reschedule Declined</span>
+                    )}
+                    {booking.payment === 'gcash_pending' && booking.status !== 'cancelled' && (
+                      <span style={styles.badgeRefundRequested}>GCash Pending</span>
+                    )}
                   </div>
-                )}
+
+                  <div style={styles.detailsRow}>
+                    <div style={styles.info}>
+                      <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
+                        <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                        {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
+                      </div>
+                      <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
+                        <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                        <span style={styles.carSub}>
+                          {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
+                        </span>
+                      </div>
+                    </div>
+
+                    {(booking.status === 'confirmed' || booking.status === 'pending') && (
+                      <div style={styles.pickupPanel}>
+                        <div style={styles.pickupLine}>
+                          <PinLineIcon /> Pickup: {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                        </div>
+                        <div style={styles.returnLine}>
+                          <ReturnLineIcon /> Return: {new Date(booking.endDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                        </div>
+                        <div style={styles.driverNote}>
+                          {booking.bookingType === 'self-drive'
+                            ? "Bring a valid ID and your driver's license to pick up the vehicle."
+                            : 'Your driver will meet you at the pickup location.'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 <div className="booking-card-price" style={styles.priceCol}>
                   <span style={styles.priceLabel}>Total Price</span>
@@ -846,7 +849,7 @@ const MyBookings = () => {
 
               {(booking.status === 'pending' || booking.status === 'confirmed') &&
                 (!booking.refundStatus || booking.refundStatus === 'none') && (
-                  <div style={styles.actionsRow}>
+                  <div className="booking-grid" style={styles.actionsRow}>
                     <div className="actions-indent" style={styles.actionsIndent}>
                       <button style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
                         Request Refund
@@ -862,7 +865,7 @@ const MyBookings = () => {
               {(booking.status === 'pending' || booking.status === 'confirmed') &&
                 booking.payment !== 'paid' &&
                 booking.refundStatus !== 'requested' && (
-                  <div style={styles.actionsRow}>
+                  <div className="booking-grid" style={styles.actionsRow}>
                     <div className="actions-indent" style={styles.actionsIndent}>
                       <button
                         style={styles.bookAgainBtn}
@@ -875,7 +878,7 @@ const MyBookings = () => {
                   </div>
               )}
               {booking.status === 'completed' && (
-                <div style={styles.actionsRow}>
+                <div className="booking-grid" style={styles.actionsRow}>
                   <div className="actions-indent" style={styles.actionsIndent}>
                     <button style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
                       Book Again

@@ -420,18 +420,6 @@ select:disabled {
   display: flex;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-/* Indents the action buttons under the booking-info text instead of the
-   photo (see actionsRow/actionsIndent in MyBookings.jsx) — 140px image
-   width + 18px leftCol gap. Collapses to 0 on mobile, where the image
-   sits above the text instead of beside it. */
-.actions-indent {
-  margin-left: 158px;
-}
-@media (max-width: 560px) {
-  .actions-indent {
-    margin-left: 0;
-  }
-}
 /* !important: overrides the status-colored glow set inline per booking
    (see cardGlow in MyBookings.jsx) — hover always shifts to this warm
    gold glow + lift as the "this is interactive" cue, regardless of the
@@ -457,6 +445,17 @@ select:disabled {
     align-items: flex-start !important;
     text-align: left !important;
     margin-top: 8px;
+  }
+  /* Collapses the image | details | price grid (topSection/actionsRow in
+     MyBookings.jsx) to one column so they stack instead of squeezing three
+     fixed-ish tracks into a phone-width card. actionsIndent's explicit
+     grid-column: 2 also needs resetting or it'd try to place into a track
+     that no longer exists. */
+  .booking-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .actions-indent {
+    grid-column: 1 !important;
   }
 }
 
