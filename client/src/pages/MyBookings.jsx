@@ -598,11 +598,14 @@ const MyBookings = () => {
       textAlign: 'right',
       minWidth: '140px',
       flex: '0 0 auto',
-      alignSelf: 'center',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'flex-end',
     },
+    // Mirrors pickupPanel's marginTop: "Total Price" stays at the top,
+    // level with "BOOKING #N", while the actual amount/payment/booked-on
+    // sit lower, level with the date/model and pickup-panel content.
+    priceDetails: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginTop: '38px' },
     priceLabel: { fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af' },
     price: { fontSize: '30px', fontWeight: '900', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     // A distinct box — lighter than the card in dark mode (a "raised" panel
@@ -801,18 +804,20 @@ const MyBookings = () => {
 
                 <div className="booking-card-price" style={styles.priceCol}>
                   <span style={styles.priceLabel}>Total Price</span>
-                  <span style={styles.price}>₱{booking.totalPrice.toLocaleString()}</span>
-                  {booking.paymentType === 'downpayment' && booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
-                    <div style={styles.paymentPanel}>
-                      <div style={styles.paidAmount}>₱{booking.amountPaid.toLocaleString()} Paid</div>
-                      <div style={styles.balanceDue}>
-                        Bring ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} at pickup
+                  <div style={styles.priceDetails}>
+                    <span style={styles.price}>₱{booking.totalPrice.toLocaleString()}</span>
+                    {booking.paymentType === 'downpayment' && booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
+                      <div style={styles.paymentPanel}>
+                        <div style={styles.paidAmount}>₱{booking.amountPaid.toLocaleString()} Paid</div>
+                        <div style={styles.balanceDue}>
+                          Bring ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} at pickup
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  <span style={styles.bookedOn}>
-                    Booked on {new Date(booking.createdAt).toLocaleDateString()}
-                  </span>
+                    )}
+                    <span style={styles.bookedOn}>
+                      Booked on {new Date(booking.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
               </div>
 
