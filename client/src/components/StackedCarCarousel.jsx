@@ -140,7 +140,7 @@ const StackedCarCarousel = ({ isDark }) => {
       background: isDark
         ? 'radial-gradient(circle, rgba(232,161,0,0.28) 0%, rgba(232,161,0,0) 70%)'
         : 'radial-gradient(circle, rgba(184,121,10,0.22) 0%, rgba(184,121,10,0) 70%)',
-      filter: 'blur(20px)',
+      filter: 'blur(40px)',
     },
     // Sized as a percentage of `wrap` (13% + 74% + 13% = 100%, so the card
     // sits centered) rather than mixing px/vw clamps with a negative
@@ -156,8 +156,15 @@ const StackedCarCarousel = ({ isDark }) => {
       boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.5)' : '0 16px 40px rgba(0,0,0,0.12)',
       cursor: 'pointer',
     },
-    imgWrap: { position: 'relative', width: '100%', height: '210px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
-    img: { width: '100%', height: '100%', objectFit: 'cover' },
+    imgWrap: { position: 'relative', width: '100%', height: '250px', background: isDark ? '#18191a' : '#f3f4f6', overflow: 'hidden' },
+    // object-contain (not cover) + a deep drop-shadow instead of cropping
+    // the photo to fill the box — gives the "car floating on its own"
+    // look from the reference mockups, at the cost of some empty space
+    // around photos whose aspect ratio doesn't match the box exactly.
+    img: {
+      width: '100%', height: '100%', objectFit: 'contain', padding: '12px',
+      filter: 'drop-shadow(0 20px 30px rgba(0,0,0,0.5))',
+    },
     categoryBadge: {
       position: 'absolute', top: '14px', right: '14px',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
@@ -171,16 +178,16 @@ const StackedCarCarousel = ({ isDark }) => {
       fontSize: '11.5px', fontWeight: '600', letterSpacing: '0.03em', textTransform: 'uppercase',
       color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px',
     },
-    price: { fontSize: '18px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, textAlign: 'right' },
+    price: { fontSize: '26px', fontWeight: '900', letterSpacing: '-0.01em', color: isDark ? GOLD_DARK : GOLD, textAlign: 'right' },
     priceUnit: { fontSize: '11.5px', fontWeight: '500', color: isDark ? '#b0b3b8' : '#6b7280' },
     reserveBtn: {
       display: 'block', width: '100%', padding: '12px', marginTop: '2px',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
       border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
     },
-    dots: { display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '16px' },
+    dots: { display: 'flex', justifyContent: 'center', gap: '7px', marginTop: '16px' },
     dot: (active) => ({
-      width: active ? '18px' : '6px', height: '6px', borderRadius: '4px',
+      width: active ? '30px' : '8px', height: '8px', borderRadius: '4px',
       background: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#d1d5db'),
       transition: 'width 0.3s, background 0.3s',
     }),

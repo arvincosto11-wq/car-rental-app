@@ -97,21 +97,29 @@ const Home = () => {
     heroLeft: { textAlign: 'left', minWidth: 0 },
     heroRight: { display: 'flex', justifyContent: 'center', marginTop: '40px', minWidth: 0 },
     heroTitle: {
-      fontSize: 'clamp(38px, 5.4vw, 64px)',
-      lineHeight: '1.05',
-      fontWeight: '700',
+      fontSize: 'clamp(40px, 6vw, 72px)',
+      lineHeight: '1',
+      fontWeight: '900',
+      letterSpacing: '-0.02em',
       color: isDark ? '#e4e6eb' : '#1a1a1a',
       marginBottom: '18px',
     },
     // The last word rendered lighter/italic/muted instead of matching the
     // rest of the headline — a callout treatment, not a second sentence.
+    // Reference spec called for literal white at 40% opacity, but that
+    // only reads correctly against a dark background — this site's hero
+    // is theme-aware and near-white in light mode, so a literal white/40
+    // would be nearly invisible there (the same white-on-white bug the
+    // navbar had once already). Using the normal theme-aware muted color
+    // instead achieves the same "lighter, quieter" effect in both themes.
     heroTitleAccent: {
       fontStyle: 'italic',
       fontWeight: '400',
       color: isDark ? '#6b7280' : '#9ca3af',
     },
     heroSubtitle: {
-      fontSize: '16px',
+      fontSize: '18px',
+      fontWeight: '500',
       color: isDark ? '#b0b3b8' : '#6b7280',
       marginBottom: '32px',
       maxWidth: '46ch',
@@ -134,10 +142,12 @@ const Home = () => {
       display: 'flex',
       alignItems: 'center',
       gap: '5px',
-      fontSize: '11px',
+      fontSize: '10px',
+      fontWeight: '700',
+      letterSpacing: '0.08em',
+      textTransform: 'uppercase',
       color: isDark ? '#b0b3b8' : '#6b7280',
       marginBottom: '4px',
-      fontWeight: '500',
     },
     searchInput: {
       width: '100%',
@@ -157,12 +167,12 @@ const Home = () => {
       color: isDark ? '#b0b3b8' : '#6b7280', display: 'flex',
     },
     searchBtn: {
-      padding: '12px 28px',
+      padding: '16px 32px',
       margin: '10px',
       background: isDark ? GOLD_DARK : GOLD,
       color: ON_GOLD,
       border: 'none',
-      borderRadius: '8px',
+      borderRadius: '12px',
       fontSize: '14px',
       fontWeight: '600',
       cursor: 'pointer',
