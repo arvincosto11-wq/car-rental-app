@@ -10,6 +10,7 @@ import ValidIdUpload from '../components/ValidIdUpload';
 import LicensePhotoUpload from '../components/LicensePhotoUpload';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
+import { VALID_ID_TYPES } from '../data/validIdTypes';
 import api from '../api';
 
 const MIN_AGE_YEARS = 18;
@@ -237,23 +238,54 @@ const Profile = () => {
 
   const s = {
     page: { minHeight: '100vh', background: isDark ? '#18191a' : '#f9fafb' },
-    container: { maxWidth: '700px', margin: '0 auto', padding: '32px' },
-    title: { fontSize: '28px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
-    subtitle: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
-    profileCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', padding: '24px' },
-    profileHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
-    sectionTitle: { fontSize: '18px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    editBtn: { padding: '7px 16px', fontSize: '13px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#374151', cursor: 'pointer', fontWeight: '500' },
+    container: { maxWidth: '760px', margin: '0 auto', padding: '32px' },
+    title: {
+      fontSize: 'clamp(26px, 3.4vw, 34px)', fontWeight: '900', letterSpacing: '-0.01em',
+      textTransform: 'uppercase', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px',
+    },
+    subtitle: { fontSize: '14px', fontStyle: 'italic', color: isDark ? GOLD_DARK : GOLD, marginBottom: '24px' },
+    profileCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '16px', padding: '24px' },
+    profileHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' },
+    sectionTitle: {
+      fontSize: '15px', fontWeight: '800', letterSpacing: '0.02em', textTransform: 'uppercase',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    editBtn: {
+      padding: '8px 18px', fontSize: '11px', fontWeight: '800', letterSpacing: '0.04em', textTransform: 'uppercase',
+      border: 'none', borderRadius: '999px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer',
+    },
     cancelBtn: { padding: '9px 18px', fontSize: '13px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', background: 'none', color: isDark ? '#e4e6eb' : '#374151', cursor: 'pointer', fontWeight: '500' },
     saveBtn: { padding: '9px 18px', fontSize: '13px', border: 'none', borderRadius: '8px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '600' },
     profileGrid: { gap: '14px' },
     profileItem: { background: isDark ? '#18191a' : '#f9fafb', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
-    profileLabel: { display: 'block', fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '3px' },
-    profileValue: { fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a', fontWeight: '500' },
-    roleTag: { background: isDark ? '#3a3b3c' : '#e5e7eb', color: isDark ? '#e4e6eb' : '#374151', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600', textTransform: 'capitalize' },
-    verifiedTag: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
-    unverifiedTag: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
-    expiredTag: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
+    profileLabel: {
+      display: 'block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase',
+      color: isDark ? GOLD_DARK : GOLD, marginBottom: '4px',
+    },
+    profileValue: { fontSize: '14px', color: isDark ? '#e4e6eb' : '#1a1a1a', fontWeight: '700' },
+    // Dark mode uses a translucent tint + matching border (a "glowing
+    // chip" look), matching the badge treatment already used on My
+    // Bookings and Cars — the flat pastel fill read as washed-out on a
+    // dark card.
+    roleTag: {
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? '#3a3b3c' : '#e5e7eb', color: isDark ? '#e4e6eb' : '#374151',
+    },
+    verifiedTag: {
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
+      border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
+    },
+    unverifiedTag: {
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fbbf24' : '#92400e',
+      border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
+    },
+    expiredTag: {
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
+      border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
+    },
     idThumb: { width: '100%', maxWidth: '260px', height: '130px', objectFit: 'cover', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, marginTop: '8px' },
     field: { marginBottom: '14px' },
     label: { display: 'block', fontSize: '13px', color: isDark ? '#b0b3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
@@ -357,25 +389,39 @@ const Profile = () => {
               )}
 
               <div style={{ marginTop: '14px' }}>
-                <span style={s.profileLabel}>Valid ID</span>
-                <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <span style={profile.idVerified ? s.verifiedTag : s.unverifiedTag}>
-                    {profile.idVerified ? 'ID Verified' : 'Not Verified'}
-                  </span>
-                  {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
-                    <span style={s.expiredTag}>Expired</span>
-                  )}
-                  {profile.pendingIdSubmittedAt && (
-                    <span style={s.unverifiedTag}>Update Pending Review</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+                  <div>
+                    <span style={s.profileLabel}>Valid ID</span>
+                    <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={profile.idVerified ? s.verifiedTag : s.unverifiedTag}>
+                        {profile.idVerified ? 'ID Verified' : 'Not Verified'}
+                      </span>
+                      {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
+                        <span style={s.expiredTag}>Expired</span>
+                      )}
+                      {profile.pendingIdSubmittedAt && (
+                        <span style={s.unverifiedTag}>Update Pending Review</span>
+                      )}
+                    </div>
+                  </div>
+                  {profile.validIdExpiry && (
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={s.profileLabel}>Expires</span>
+                      <span style={{ ...s.profileValue, display: 'block', marginTop: '4px' }}>
+                        {new Date(profile.validIdExpiry).toLocaleDateString()}
+                      </span>
+                    </div>
                   )}
                 </div>
-                {profile.validIdExpiry && (
-                  <p style={{ ...s.uploadHint, marginTop: '6px' }}>
-                    Expires {new Date(profile.validIdExpiry).toLocaleDateString()}
-                  </p>
-                )}
                 {profile.validIdImage && (
-                  <img src={profile.validIdImage} alt="Valid ID" style={s.idThumb} />
+                  <>
+                    {profile.validIdType && (
+                      <p style={{ ...s.uploadHint, marginTop: '10px', marginBottom: '4px' }}>
+                        {VALID_ID_TYPES.find((t) => t.value === profile.validIdType)?.label || profile.validIdType}
+                      </p>
+                    )}
+                    <img src={profile.validIdImage} alt="Valid ID" style={s.idThumb} />
+                  </>
                 )}
                 {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
                   <p style={{ ...s.formError, marginTop: '10px', maxWidth: '360px' }}>
