@@ -41,8 +41,14 @@ const ExpiringDocuments = () => {
     name: { fontWeight: '600' },
     meta: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
     empty: { fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', padding: '24px 0', textAlign: 'center' },
-    pillExpired: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: '600', whiteSpace: 'nowrap' },
-    pillSoon: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: '600', whiteSpace: 'nowrap' },
+    pillExpired: {
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
+      fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: '600', whiteSpace: 'nowrap', border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
+    },
+    pillSoon: {
+      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fbbf24' : '#92400e',
+      fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: '600', whiteSpace: 'nowrap', border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
+    },
     summaryRow: { display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' },
     summaryCard: { flex: '1 1 160px', padding: '14px 16px', borderRadius: '12px', background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
     summaryCount: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },

@@ -114,10 +114,22 @@ const ManageClients = () => {
     td: { padding: '12px 16px', fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`, verticalAlign: 'middle' },
     nameCell: { fontWeight: '600' },
     subCell: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    verified: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-    unverified: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-    active: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-    blocked: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
+    verified: {
+      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
+    },
+    unverified: {
+      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fbbf24' : '#92400e',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
+    },
+    active: {
+      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
+    },
+    blocked: {
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
+    },
     viewBtn: { padding: '5px 12px', fontSize: '12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', background: 'none', color: isDark ? '#e4e6eb' : '#1a1a1a', cursor: 'pointer' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
     modalContent: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '600px', width: '100%', maxHeight: '85vh', overflow: 'auto', position: 'relative' },
@@ -139,7 +151,10 @@ const ManageClients = () => {
     historyTd: { padding: '8px 10px', color: isDark ? '#e4e6eb' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
     closeBtn: { marginTop: '18px', padding: '10px 24px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', width: '100%' },
     empty: { fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', padding: '12px 0' },
-    pendingTag: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
+    pendingTag: {
+      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fbbf24' : '#92400e',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600', border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
+    },
     pendingBox: { background: isDark ? 'rgba(217,119,6,0.12)' : '#fffbeb', border: `1px solid ${isDark ? 'rgba(217,119,6,0.35)' : '#fde68a'}`, borderRadius: '10px', padding: '14px', marginBottom: '18px' },
     modalTextarea: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', marginTop: '10px', marginBottom: '4px', color: isDark ? '#e4e6eb' : '#1a1a1a', background: isDark ? '#18191a' : '#fff', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' },
     modalActions: { display: 'flex', gap: '10px', marginTop: '14px' },

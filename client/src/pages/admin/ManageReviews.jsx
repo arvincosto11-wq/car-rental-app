@@ -85,7 +85,11 @@ const ManageReviews = () => {
     topRow: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' },
     carName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     reviewerName: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    hiddenBadge: { fontSize: '10px', fontWeight: '700', background: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: '20px' },
+    hiddenBadge: {
+      fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px',
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
+      border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
+    },
     date: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginLeft: 'auto' },
     comment: { fontSize: '13px', color: isDark ? '#cbd5e1' : '#374151', lineHeight: '1.5', marginTop: '6px' },
     photoGrid: { display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' },

@@ -97,9 +97,18 @@ const ManageConsignments = () => {
     ownerMeta: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
     carCell: { display: 'flex', alignItems: 'center', gap: '10px' },
     carThumb: { width: '48px', height: '36px', borderRadius: '6px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', flexShrink: 0 },
-    badgePending: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
-    badgeApproved: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
-    badgeDeclined: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
+    badgePending: {
+      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fbbf24' : '#92400e',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600', border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
+    },
+    badgeApproved: {
+      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600', border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
+    },
+    badgeDeclined: {
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600', border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
+    },
     viewBtn: { padding: '5px 12px', fontSize: '12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', background: 'none', color: isDark ? '#e4e6eb' : '#1a1a1a', cursor: 'pointer' },
     empty: { fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', padding: '24px 0', textAlign: 'center' },
 

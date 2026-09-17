@@ -143,8 +143,14 @@ const ManageAvailabilityRequests = () => {
     carThumb: { width: '48px', height: '36px', borderRadius: '6px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', flexShrink: 0 },
     reason: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', maxWidth: '220px' },
     empty: { fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', padding: '24px 0', textAlign: 'center' },
-    typeAvailable: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
-    typeUnavailable: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600' },
+    typeAvailable: {
+      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600', border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
+    },
+    typeUnavailable: {
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600', border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
+    },
     actions: { display: 'flex', gap: '6px' },
     approveBtn: { padding: '5px 12px', fontSize: '12px', border: 'none', borderRadius: '6px', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     declineBtn: { padding: '5px 12px', fontSize: '12px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },

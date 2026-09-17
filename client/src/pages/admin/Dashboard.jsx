@@ -97,8 +97,14 @@ const Dashboard = () => {
     bookingName: { fontSize: '13px', fontWeight: '500', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     bookingDate: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
     bookingPrice: { marginLeft: 'auto', fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    badgeConfirmed: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-    badgePending: { background: '#fef3c7', color: '#92400e', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
+    badgeConfirmed: {
+      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
+    },
+    badgePending: {
+      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fbbf24' : '#92400e',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
+    },
     revenueNum: { fontSize: '32px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, marginTop: '16px' },
     periodToggleRow: { display: 'flex', gap: '8px', marginTop: '4px' },
     trendWrap: { marginTop: '20px' },

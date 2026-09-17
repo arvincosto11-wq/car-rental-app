@@ -194,9 +194,18 @@ const ManageBookings = () => {
     clientMeta: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
     carThumb: { width: '44px', height: '32px', background: isDark ? '#3a3b3c' : '#f3f4f6', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 },
     balanceNote: { fontSize: '11px', color: isDark ? GOLD_DARK : GOLD, marginTop: '4px', maxWidth: '160px' },
-    confirmed: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-    cancelled: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-    completed: { background: '#dbeafe', color: '#1e40af', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
+    confirmed: {
+      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
+    },
+    cancelled: {
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
+    },
+    completed: {
+      background: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe', color: isDark ? '#93c5fd' : '#1e40af',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(37,99,235,0.35)' : 'none',
+    },
     returnBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '500' },
     noShowBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     acceptBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: '500' },
@@ -206,7 +215,11 @@ const ManageBookings = () => {
       padding: '5px 12px', fontSize: '12px', fontWeight: '500', borderRadius: '6px', cursor: 'pointer',
       border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#374151',
     },
-    lowRatingBadge: { background: '#fee2e2', color: '#991b1b', fontSize: '10px', padding: '1px 8px', borderRadius: '20px', marginLeft: '6px', fontWeight: '600' },
+    lowRatingBadge: {
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
+      fontSize: '10px', padding: '1px 8px', borderRadius: '20px', marginLeft: '6px', fontWeight: '600',
+      border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
+    },
     filterRow: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' },
     searchInput: {
       flex: '1 1 220px', padding: '9px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px',
