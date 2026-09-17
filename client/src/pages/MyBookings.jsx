@@ -464,10 +464,14 @@ const MyBookings = () => {
     // display:flex + gap keeps an icon and its text vertically centered and
     // evenly spaced regardless of which icon precedes it.
     lineWithIcon: { display: 'flex', alignItems: 'center', gap: '6px' },
-    meta: { fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginTop: '6px' },
+    // Hierarchy (dimmest to brightest, per the reference): date < car model <
+    // booking number. Date renders first (below the booking #), car model
+    // second — reversed from a plain "most important first" instinct because
+    // that's the order and weighting the reference actually uses.
+    meta: { fontSize: '12px', fontWeight: '600', color: isDark ? '#9ca3af' : '#6b7280', marginTop: '6px' },
     carName: {
-      fontSize: '11px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
-      color: isDark ? '#8a8d91' : '#9ca3af',
+      fontSize: '13px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
+      color: isDark ? '#cbd0d6' : '#4b5563', marginTop: '6px',
     },
     carSub: { fontWeight: '700', textTransform: 'uppercase' },
     refundBtn: {
@@ -754,15 +758,15 @@ const MyBookings = () => {
                         <span style={styles.badgeRefundRequested}>GCash Pending</span>
                       )}
                     </div>
+                    <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
+                      <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                      {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
+                    </div>
                     <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
                       <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
                       <span style={styles.carSub}>
                         {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
                       </span>
-                    </div>
-                    <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
-                      <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                      {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
                     </div>
                   </div>
                 </div>
