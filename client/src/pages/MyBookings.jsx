@@ -28,6 +28,18 @@ const BookingsIcon = () => <StatIcon><rect x="3" y="4" width="18" height="17" rx
 const ConfirmedIcon = () => <StatIcon><path d="M12 3l2.3 2.3 3.2-.4.4 3.2L20 10l-2.1 2.5.4 3.2-3.2.4L12 18.4l-2.3-2.3-3.2.4-.4-3.2L4 10.5l2.1-2.4-.4-3.2 3.2-.4L12 3z" /><polyline points="9 11 11 13 15 9" /></StatIcon>;
 const SpentIcon = () => <StatIcon><circle cx="12" cy="12" r="9" /><path d="M9 8h4a2 2 0 1 1 0 4H9h4a2 2 0 1 1 0 4H9" /><line x1="9" y1="6" x2="9" y2="18" /></StatIcon>;
 
+// Small inline icons used inline with text on each booking card.
+const LineIcon = ({ children, size = 13, color }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color }}>
+    {children}
+  </svg>
+);
+const CarLineIcon = (props) => <LineIcon {...props}><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11" /><rect x="3" y="11" width="18" height="6" rx="2" /><circle cx="7.5" cy="17" r="1.3" /><circle cx="16.5" cy="17" r="1.3" /></LineIcon>;
+const CalendarLineIcon = (props) => <LineIcon {...props}><rect x="3" y="4" width="18" height="17" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /></LineIcon>;
+const PinLineIcon = (props) => <LineIcon {...props}><path d="M12 21s7-6.4 7-12a7 7 0 0 0-14 0c0 5.6 7 12 7 12z" /><circle cx="12" cy="9" r="2.5" /></LineIcon>;
+const ReturnLineIcon = (props) => <LineIcon {...props}><path d="M3 12a9 9 0 1 0 3-6.7" /><polyline points="3 4 3 9 8 9" /></LineIcon>;
+const TagLineIcon = (props) => <LineIcon {...props}><path d="M20.6 12.6L12.6 20.6a2 2 0 0 1-2.8 0l-6.4-6.4a2 2 0 0 1 0-2.8L11.4 3.4A2 2 0 0 1 12.8 3H19a2 2 0 0 1 2 2v6.2a2 2 0 0 1-.4 1.4z" /><circle cx="16" cy="8" r="1.3" /></LineIcon>;
+
 // Mirrors getRefundPercentage in server/routes/bookings.js (based on time
 // since the booking was made, not the pickup date) — this is only a preview
 // shown before submitting; the server locks in the real amount at request time.
@@ -378,9 +390,9 @@ const MyBookings = () => {
       return { boxShadow: isDark ? '0 0 0 1px rgba(217,119,6,0.25), 0 6px 18px rgba(217,119,6,0.1)' : '0 6px 16px rgba(217,119,6,0.08)' };
     },
     imgWrap: {
-      width: '100px',
-      height: '70px',
-      borderRadius: '8px',
+      width: '140px',
+      height: '120px',
+      borderRadius: '14px',
       overflow: 'hidden',
       background: isDark ? '#3a3b3c' : '#f3f4f6',
       flexShrink: 0,
@@ -396,8 +408,8 @@ const MyBookings = () => {
       color: isDark ? '#8a8d91' : '#9ca3af',
     },
     info: { flex: 1 },
-    topRow: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' },
-    bookingNum: { fontSize: '14px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    topRow: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' },
+    bookingNum: { fontSize: '19px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     // Every badge below shares this shape/type treatment — only the color
     // trio (bg/text/border) changes per status. Dark mode uses a
     // translucent tint + matching border (a "glowing chip" look) instead
@@ -447,13 +459,18 @@ const MyBookings = () => {
       color: isDark ? '#fca5a5' : '#991b1b',
       border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
     },
-    meta: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '4px' },
-    carName: { fontSize: '14px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginTop: '6px' },
-    carSub: { fontWeight: '400', fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    // display:flex + gap keeps an icon and its text vertically centered and
+    // evenly spaced regardless of which icon precedes it.
+    lineWithIcon: { display: 'flex', alignItems: 'center', gap: '6px' },
+    meta: { fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginTop: '6px' },
+    carName: {
+      fontSize: '11px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
+      color: isDark ? '#8a8d91' : '#9ca3af',
+    },
+    carSub: { fontWeight: '700', textTransform: 'uppercase' },
     refundBtn: {
-      flex: '1 1 130px',
       textAlign: 'center',
-      padding: '7px 16px',
+      padding: '7px 18px',
       fontSize: '12px',
       fontWeight: '600',
       background: 'none',
@@ -462,16 +479,40 @@ const MyBookings = () => {
       borderRadius: '999px',
       cursor: 'pointer',
     },
-    refundNote: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '8px', fontStyle: 'italic' },
+    // A labeled callout box, color keyed to the refund's own outcome —
+    // green reads as "resolved in your favor" even though the status
+    // badge above it stays blue (a fixed part of the badge color
+    // language); amber while still pending; red if declined.
+    refundNoteBox: (refundStatus) => {
+      const tint = refundStatus === 'declined' ? { c: '220,38,38', light: '#fef2f2', border: '#fecaca' }
+        : refundStatus === 'requested' ? { c: '217,119,6', light: '#fffbeb', border: '#fde68a' }
+        : { c: '22,163,74', light: '#f0fdf4', border: '#bbf7d0' };
+      return {
+        fontSize: '12px', lineHeight: '1.6', marginTop: '10px', padding: '10px 14px', borderRadius: '10px',
+        background: isDark ? `rgba(${tint.c},0.1)` : tint.light,
+        border: `1px solid ${isDark ? `rgba(${tint.c},0.3)` : tint.border}`,
+        color: isDark ? '#b0b3b8' : '#4b5563',
+      };
+    },
+    refundNoteLabel: (refundStatus) => {
+      const color = refundStatus === 'declined' ? (isDark ? '#fca5a5' : '#991b1b')
+        : refundStatus === 'requested' ? (isDark ? '#fbbf24' : '#92400e')
+        : (isDark ? '#86efac' : '#166534');
+      return { fontWeight: '800', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.03em', color };
+    },
+    refNote: {
+      display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px',
+      fontSize: '10.5px', fontFamily: 'monospace', letterSpacing: '0.02em',
+      color: isDark ? '#6b7280' : '#9ca3af',
+    },
+    plainNote: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '8px', fontStyle: 'italic' },
     pickupReminder: {
-      fontSize: '12px', marginTop: '8px', padding: '8px 12px', borderRadius: '8px', lineHeight: '1.5',
-      background: isDark ? 'rgba(22,163,74,0.12)' : '#f0fdf4',
-      color: isDark ? '#86efac' : '#166534',
+      fontSize: '12px', marginTop: '10px', padding: '10px 14px', borderRadius: '10px', lineHeight: '1.5',
+      background: isDark ? 'rgba(22,163,74,0.1)' : '#f0fdf4',
       border: `1px solid ${isDark ? 'rgba(22,163,74,0.3)' : '#bbf7d0'}`,
     },
-    actionsRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' },
+    actionsRow: { display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '14px', paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
     rescheduleBtn: {
-      flex: '1 1 130px',
       textAlign: 'center',
       padding: '7px 16px',
       fontSize: '12px',
@@ -531,13 +572,20 @@ const MyBookings = () => {
       flexDirection: 'column',
       alignItems: 'flex-end',
     },
-    priceLabel: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    price: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    priceLabel: { fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af' },
+    price: { fontSize: '30px', fontWeight: '900', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    balancePaidPill: {
+      fontSize: '10px', fontWeight: '800', letterSpacing: '0.03em', textTransform: 'uppercase',
+      color: isDark ? GOLD_DARK : GOLD,
+      background: isDark ? 'rgba(232,161,0,0.15)' : '#faedc7',
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.35)' : '#edd693'}`,
+      padding: '3px 10px', borderRadius: '999px', marginTop: '8px',
+    },
     balanceDue: {
-      fontSize: '11px', fontWeight: '600', color: isDark ? GOLD_DARK : GOLD, marginTop: '4px',
+      fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '4px',
       textAlign: 'right', maxWidth: '160px',
     },
-    bookedOn: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '4px' },
+    bookedOn: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '8px' },
     modalOverlay: {
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       background: 'rgba(0,0,0,0.5)', display: 'flex',
@@ -681,25 +729,30 @@ const MyBookings = () => {
                     <span style={styles.badgeRefundRequested}>GCash Pending</span>
                   )}
                 </div>
-                <div style={styles.meta}>
-                  📅 Rental Period: {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
-                </div>
-                <div style={styles.carName}>
-                  {booking.car?.brand} {booking.car?.model}
+                <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
+                  <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
                   <span style={styles.carSub}>
-                    {' '}· {booking.car?.year} · {booking.car?.category}
+                    {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
                   </span>
+                </div>
+                <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
+                  <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                  {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
                 </div>
 
                 {booking.status === 'confirmed' && (
                   <div style={styles.pickupReminder}>
-                    🚗 <strong>Pickup:</strong> {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                    <br />
-                    ⏳ <strong>Return:</strong> {new Date(booking.endDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                    <br />
-                    {booking.bookingType === 'self-drive'
-                      ? "Bring a valid ID and your driver's license to pick up the vehicle."
-                      : 'Your driver will meet you at the pickup location.'}
+                    <div style={{ ...styles.lineWithIcon, color: isDark ? '#86efac' : '#166534', fontWeight: '700' }}>
+                      <PinLineIcon /> Pickup: {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </div>
+                    <div style={{ ...styles.lineWithIcon, color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '4px' }}>
+                      <ReturnLineIcon /> Return: {new Date(booking.endDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </div>
+                    <div style={{ marginTop: '6px', fontStyle: 'italic' }}>
+                      {booking.bookingType === 'self-drive'
+                        ? "Bring a valid ID and your driver's license to pick up the vehicle."
+                        : 'Your driver will meet you at the pickup location.'}
+                    </div>
                   </div>
                 )}
 
@@ -730,17 +783,20 @@ const MyBookings = () => {
                     </div>
                 )}
                 {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved' || booking.refundStatus === 'declined') && (
-                  <p style={styles.refundNote}>
-                    {booking.refundStatus === 'requested' ? 'Pending refund' : booking.refundStatus === 'approved' ? 'Refund' : 'No refund'}: ₱{booking.refundAmount?.toLocaleString() ?? 0}
+                  <div style={styles.refundNoteBox(booking.refundStatus)}>
+                    <span style={styles.refundNoteLabel(booking.refundStatus)}>
+                      {booking.refundStatus === 'requested' ? 'Refund Requested: ' : booking.refundStatus === 'approved' ? 'Refund Confirmed: ' : 'Refund Declined: '}
+                    </span>
+                    ₱{booking.refundAmount?.toLocaleString() ?? 0}
                     {booking.refundReason ? ` — Reason: ${booking.refundReason}` : ''}
                     {booking.paymongoRefundId ? ` — Ref: ${booking.paymongoRefundId}` : ''}
-                  </p>
-                )}
-                {booking.payment === 'paid' && booking.paymongoPaymentId && (
-                  <p style={styles.refundNote}>Payment reference: {booking.paymongoPaymentId}</p>
+                  </div>
                 )}
                 {booking.rescheduleRequest?.status === 'declined' && booking.rescheduleRequest.adminNotes && (
-                  <p style={styles.refundNote}>Reschedule declined: {booking.rescheduleRequest.adminNotes}</p>
+                  <p style={styles.plainNote}>Reschedule declined: {booking.rescheduleRequest.adminNotes}</p>
+                )}
+                {booking.payment === 'paid' && booking.paymongoPaymentId && (
+                  <div style={styles.refNote}><TagLineIcon size={11} /> REF: {booking.paymongoPaymentId}</div>
                 )}
                 {booking.status === 'completed' && (
                   <div style={styles.actionsRow}>
@@ -761,11 +817,14 @@ const MyBookings = () => {
               </div>
               <div className="booking-card-price" style={styles.priceCol}>
                 <span style={styles.priceLabel}>Total Price</span>
-                <span style={styles.price}>₱{booking.totalPrice}</span>
+                <span style={styles.price}>₱{booking.totalPrice.toLocaleString()}</span>
                 {booking.paymentType === 'downpayment' && booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
-                  <span style={styles.balanceDue}>
-                    ₱{booking.amountPaid.toLocaleString()} paid — bring ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} at pickup
-                  </span>
+                  <>
+                    <span style={styles.balancePaidPill}>₱{booking.amountPaid.toLocaleString()} Paid</span>
+                    <span style={styles.balanceDue}>
+                      Bring ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} at pickup
+                    </span>
+                  </>
                 )}
                 <span style={styles.bookedOn}>
                   Booked on {new Date(booking.createdAt).toLocaleDateString()}
