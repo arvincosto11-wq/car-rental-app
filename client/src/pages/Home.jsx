@@ -14,13 +14,16 @@ const CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe', 'Motor
 // Hand-drawn inline SVGs, matching the same approach used for the admin
 // sidebar icons — a small icon library isn't worth pulling in for three
 // glyphs.
-const FieldIcon = ({ children }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+// color is optional — when unset the icon inherits the label's own text
+// color; passed explicitly wherever the icon should stand out on its own
+// (e.g. the gold accent color) independent of the label text next to it.
+const FieldIcon = ({ children, color }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color }}>
     {children}
   </svg>
 );
-const CalendarIcon = () => <FieldIcon><rect x="3" y="4" width="18" height="17" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /></FieldIcon>;
-const CarIcon = () => <FieldIcon><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11" /><rect x="3" y="11" width="18" height="6" rx="2" /><circle cx="7.5" cy="17" r="1.3" /><circle cx="16.5" cy="17" r="1.3" /></FieldIcon>;
+const CalendarIcon = ({ color }) => <FieldIcon color={color}><rect x="3" y="4" width="18" height="17" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /></FieldIcon>;
+const CarIcon = ({ color }) => <FieldIcon color={color}><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11" /><rect x="3" y="11" width="18" height="6" rx="2" /><circle cx="7.5" cy="17" r="1.3" /><circle cx="16.5" cy="17" r="1.3" /></FieldIcon>;
 const ChevronIcon = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, pointerEvents: 'none' }}>
     <polyline points="6 9 12 15 18 9" />
@@ -471,7 +474,7 @@ const Home = () => {
 
             <div className="hero-search-box" style={styles.searchBox}>
               <div className="hero-search-field" style={styles.searchField}>
-                <label style={styles.searchLabel} htmlFor="home-pickup-date"><CalendarIcon /> Pick-up Date</label>
+                <label style={styles.searchLabel} htmlFor="home-pickup-date"><CalendarIcon color={isDark ? GOLD_DARK : GOLD} /> Pick-up Date</label>
                 <input
                   id="home-pickup-date"
                   style={styles.searchInput}
@@ -482,7 +485,7 @@ const Home = () => {
                 />
               </div>
               <div className="hero-search-field" style={styles.searchField}>
-                <label style={styles.searchLabel} htmlFor="home-return-date"><CalendarIcon /> Return Date</label>
+                <label style={styles.searchLabel} htmlFor="home-return-date"><CalendarIcon color={isDark ? GOLD_DARK : GOLD} /> Return Date</label>
                 <input
                   id="home-return-date"
                   style={styles.searchInput}
@@ -493,7 +496,7 @@ const Home = () => {
                 />
               </div>
               <div className="hero-search-field" style={{ ...styles.searchField, borderRight: 'none' }}>
-                <label style={styles.searchLabel} htmlFor="home-search-category"><CarIcon /> Vehicle Type</label>
+                <label style={styles.searchLabel} htmlFor="home-search-category"><CarIcon color={isDark ? GOLD_DARK : GOLD} /> Vehicle Type</label>
                 <div style={styles.selectWrap}>
                   <select
                     id="home-search-category"
