@@ -365,14 +365,14 @@ const MyBookings = () => {
     card: {
       display: 'flex',
       flexDirection: 'column',
-      gap: '14px',
+      gap: '16px',
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '16px',
-      padding: '18px',
+      padding: '26px',
     },
-    topSection: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'flex-start' },
-    leftCol: { display: 'flex', gap: '18px', flex: '1 1 260px', minWidth: 0 },
+    topSection: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'center' },
+    leftCol: { display: 'flex', gap: '18px', flex: '1 1 260px', minWidth: 0, alignItems: 'center' },
     // Ambient glow color follows the booking's own status — confirmed
     // (upcoming) is the one that actually needs attention, so it gets the
     // most prominent glow; cancelled fades into the background since
@@ -392,8 +392,8 @@ const MyBookings = () => {
       return { boxShadow: isDark ? '0 0 0 1px rgba(217,119,6,0.25), 0 6px 18px rgba(217,119,6,0.1)' : '0 6px 16px rgba(217,119,6,0.08)' };
     },
     imgWrap: {
-      width: '140px',
-      height: '120px',
+      width: '160px',
+      height: '170px',
       borderRadius: '14px',
       overflow: 'hidden',
       background: isDark ? '#3a3b3c' : '#f3f4f6',
