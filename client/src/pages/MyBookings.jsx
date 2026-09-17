@@ -514,8 +514,8 @@ const MyBookings = () => {
     pickupPanel: {
       flex: '1 1 220px', minWidth: '200px', maxWidth: '300px',
       fontSize: '12px', lineHeight: '1.5', padding: '14px 16px', borderRadius: '12px',
-      background: isDark ? '#1b1c1d' : '#f8fafc',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      background: isDark ? '#303132' : '#f8fafc',
+      border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
     },
     pickupLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#86efac' : '#166534', fontWeight: '700' },
     returnLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#b0b3b8' : '#6b7280', fontWeight: '700', marginTop: '6px' },
@@ -584,13 +584,14 @@ const MyBookings = () => {
     },
     priceLabel: { fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af' },
     price: { fontSize: '30px', fontWeight: '900', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    // A distinct box (darker than the card, its own border/radius) rather
-    // than a loose pill + text line, so paid/remaining reads as one
+    // A distinct box — lighter than the card in dark mode (a "raised" panel
+    // reads better against a near-black card than a darker recessed one) —
+    // rather than a loose pill + text line, so paid/remaining reads as one
     // self-contained payment summary separate from the total price above it.
     paymentPanel: {
       marginTop: '10px', padding: '10px 14px', borderRadius: '10px', minWidth: '160px',
-      background: isDark ? '#1b1c1d' : '#f8fafc',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      background: isDark ? '#303132' : '#f8fafc',
+      border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
       textAlign: 'right',
     },
     paidAmount: {
