@@ -7,7 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
-import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, GOLD_TINT_BORDER, GOLD_TINT_BORDER_DARK, ON_GOLD } from '../../theme';
+import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../../theme';
 import usePageTitle from '../../hooks/usePageTitle';
 import useModalA11y from '../../hooks/useModalA11y';
 import ColorPicker from '../../components/ColorPicker';
@@ -298,23 +298,36 @@ const ManageCars = () => {
     subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
     carCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', marginBottom: '12px', overflow: 'hidden' },
     carRow: { display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 16px' },
-    carThumbWrap: { width: '60px', height: '44px', borderRadius: '8px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', flexShrink: 0 },
+    carThumbWrap: { width: '64px', height: '48px', borderRadius: '10px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', flexShrink: 0 },
     carThumbImg: { width: '100%', height: '100%', objectFit: 'cover' },
     carThumb: { width: '100%', height: '100%', background: isDark ? '#3a3b3c' : '#f3f4f6' },
-    carInfo: { flex: 1 },
-    carName: { fontSize: '14px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    carSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#9ca3af', marginTop: '2px' },
+    carInfo: { flex: 1, minWidth: 0 },
+    carNameRow: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
+    carName: { fontSize: '15px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    carSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#9ca3af', marginTop: '3px' },
     carRatingText: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#9ca3af', marginTop: '4px' },
-    carPrice: { fontSize: '14px', fontWeight: '500', color: isDark ? '#e4e6eb' : '#1a1a1a', minWidth: '80px' },
-    available: { background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
-    unavailable: { background: '#fee2e2', color: '#991b1b', fontSize: '11px', padding: '2px 10px', borderRadius: '20px' },
+    carPriceWrap: { textAlign: 'right', minWidth: '80px' },
+    carPrice: { fontSize: '16px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    carPriceUnit: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '1px' },
+    available: {
+      display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
+      padding: '3px 10px', borderRadius: '20px',
+      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
+      border: `1px solid ${isDark ? 'rgba(22,163,74,0.4)' : '#86efac'}`,
+    },
+    unavailable: {
+      display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
+      padding: '3px 10px', borderRadius: '20px',
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
+      border: `1px solid ${isDark ? 'rgba(220,38,38,0.4)' : '#fca5a5'}`,
+    },
     staleFlag: { background: '#fef3c7', color: '#92400e', fontSize: '10px', padding: '2px 8px', borderRadius: '20px', marginLeft: '4px', fontWeight: '600', cursor: 'help' },
     actions: { display: 'flex', gap: '6px' },
-    editBtn: { padding: '5px 12px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT, border: `1px solid ${isDark ? GOLD_TINT_BORDER_DARK : GOLD_TINT_BORDER}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? GOLD_DARK : GOLD },
-    toggleBtn: { padding: '5px 12px', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    archiveBtn: { padding: '5px 12px', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    editBtn: { padding: '6px 14px', background: isDark ? GOLD_DARK : GOLD, border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', color: ON_GOLD },
+    toggleBtn: { padding: '6px 14px', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    archiveBtn: { padding: '6px 14px', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     featureBtn: (active) => ({
-      padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer',
+      padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
       border: `1px solid ${active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#d1d5db')}`,
       background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#18191a' : '#f3f4f6'),
       color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a'),
@@ -447,7 +460,20 @@ const ManageCars = () => {
                         )}
                       </div>
                       <div style={styles.carInfo}>
-                        <div style={styles.carName}>{car.brand} {car.model}</div>
+                        <div style={styles.carNameRow}>
+                          <span style={styles.carName}>{car.brand} {car.model}</span>
+                          <span style={car.isAvailable ? styles.available : styles.unavailable}>
+                            {car.isAvailable ? 'Available' : 'Unavailable'}
+                          </span>
+                          {!car.isAvailable && !car.availabilityRequest?.requestedAt && (
+                            <span
+                              style={styles.staleFlag}
+                              title="Hidden without a consignor unavailability request on file — worth double-checking this isn't left over from a past bug rather than a deliberate hide."
+                            >
+                              ⚠ Check
+                            </span>
+                          )}
+                        </div>
                         <div style={styles.carSub}>{car.seats} · {car.transmission} · {car.category} · {car.plateNumber || 'No plate on file'}</div>
                         {car.ratingCount > 0 ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
@@ -458,18 +484,10 @@ const ManageCars = () => {
                           <div style={styles.carRatingText}>No reviews yet</div>
                         )}
                       </div>
-                      <div style={styles.carPrice}>₱{car.pricePerDay}/day</div>
-                      <span style={car.isAvailable ? styles.available : styles.unavailable}>
-                        {car.isAvailable ? 'Available' : 'Unavailable'}
-                      </span>
-                      {!car.isAvailable && !car.availabilityRequest?.requestedAt && (
-                        <span
-                          style={styles.staleFlag}
-                          title="Hidden without a consignor unavailability request on file — worth double-checking this isn't left over from a past bug rather than a deliberate hide."
-                        >
-                          ⚠ Check
-                        </span>
-                      )}
+                      <div style={styles.carPriceWrap}>
+                        <div style={styles.carPrice}>₱{car.pricePerDay.toLocaleString()}</div>
+                        <div style={styles.carPriceUnit}>/day</div>
+                      </div>
                       <div className="admin-row-actions" style={styles.actions}>
                         <button style={styles.editBtn} onClick={() => handleEdit(car)}>Edit</button>
                         <button style={styles.toggleBtn} onClick={() => handleToggle(car)}>
