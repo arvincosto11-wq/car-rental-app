@@ -86,7 +86,7 @@ const Home = () => {
     heroGrid: {
       position: 'relative',
       width: '100%',
-      maxWidth: '1200px',
+      maxWidth: '1400px',
       margin: '0 auto',
       padding: '80px 32px',
       gap: '48px',
@@ -193,7 +193,7 @@ const Home = () => {
     },
     section: {
       padding: '48px 32px',
-      maxWidth: '1200px',
+      maxWidth: '1400px',
       margin: '0 auto',
     },
     sectionTitle: {
