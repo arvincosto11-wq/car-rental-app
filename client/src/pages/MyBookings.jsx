@@ -364,13 +364,15 @@ const MyBookings = () => {
     list: { display: 'flex', flexDirection: 'column', gap: '16px' },
     card: {
       display: 'flex',
-      gap: '18px',
+      flexDirection: 'column',
+      gap: '14px',
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '16px',
       padding: '18px',
-      alignItems: 'center',
     },
+    topSection: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'flex-start' },
+    leftCol: { display: 'flex', gap: '18px', flex: '1 1 260px', minWidth: 0 },
     // Ambient glow color follows the booking's own status — confirmed
     // (upcoming) is the one that actually needs attention, so it gets the
     // most prominent glow; cancelled fades into the background since
@@ -407,7 +409,7 @@ const MyBookings = () => {
       fontSize: '11px',
       color: isDark ? '#8a8d91' : '#9ca3af',
     },
-    info: { flex: 1 },
+    info: { flex: 1, minWidth: 0 },
     topRow: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' },
     bookingNum: { fontSize: '19px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     // Every badge below shares this shape/type treatment — only the color
@@ -488,7 +490,7 @@ const MyBookings = () => {
         : refundStatus === 'requested' ? { c: '217,119,6', light: '#fffbeb', border: '#fde68a' }
         : { c: '22,163,74', light: '#f0fdf4', border: '#bbf7d0' };
       return {
-        fontSize: '12px', lineHeight: '1.6', marginTop: '10px', padding: '10px 14px', borderRadius: '10px',
+        fontSize: '12px', lineHeight: '1.6', padding: '10px 14px', borderRadius: '10px',
         background: isDark ? `rgba(${tint.c},0.1)` : tint.light,
         border: `1px solid ${isDark ? `rgba(${tint.c},0.3)` : tint.border}`,
         color: isDark ? '#b0b3b8' : '#4b5563',
@@ -501,17 +503,24 @@ const MyBookings = () => {
       return { fontWeight: '800', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.03em', color };
     },
     refNote: {
-      display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px',
+      display: 'flex', alignItems: 'center', gap: '6px',
       fontSize: '10.5px', fontFamily: 'monospace', letterSpacing: '0.02em',
       color: isDark ? '#6b7280' : '#9ca3af',
     },
-    plainNote: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '8px', fontStyle: 'italic' },
-    pickupReminder: {
-      fontSize: '12px', marginTop: '10px', padding: '10px 14px', borderRadius: '10px', lineHeight: '1.5',
-      background: isDark ? 'rgba(22,163,74,0.1)' : '#f0fdf4',
-      border: `1px solid ${isDark ? 'rgba(22,163,74,0.3)' : '#bbf7d0'}`,
+    plainNote: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic' },
+    // A separate info panel (not tinted green overall — only the pickup
+    // line's text is green, return line's text is neutral gray) so it
+    // reads as its own box within the card rather than a colored alert.
+    pickupPanel: {
+      flex: '1 1 220px', minWidth: '200px', maxWidth: '300px', alignSelf: 'stretch',
+      fontSize: '12px', lineHeight: '1.5', padding: '14px 16px', borderRadius: '12px',
+      background: isDark ? '#1b1c1d' : '#f8fafc',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
-    actionsRow: { display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '14px', paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
+    pickupLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#86efac' : '#166534', fontWeight: '700' },
+    returnLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#b0b3b8' : '#6b7280', fontWeight: '700', marginTop: '6px' },
+    driverNote: { marginTop: '8px', fontStyle: 'italic', fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
+    actionsRow: { display: 'flex', gap: '10px', flexWrap: 'wrap', paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
     rescheduleBtn: {
       textAlign: 'center',
       padding: '7px 16px',
@@ -554,7 +563,7 @@ const MyBookings = () => {
     modalSub: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px', lineHeight: '1.5' },
     field: { marginBottom: '14px' },
     rescheduleSelectedNote: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '-6px', marginBottom: '14px' },
-    ratingSummary: { marginTop: '10px' },
+    ratingSummary: {},
     ratingScore: { fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     editRatingBtn: {
       background: 'none',
@@ -567,23 +576,29 @@ const MyBookings = () => {
     },
     priceCol: {
       textAlign: 'right',
-      minWidth: '100px',
+      minWidth: '140px',
+      flex: '0 0 auto',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'flex-end',
     },
     priceLabel: { fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af' },
     price: { fontSize: '30px', fontWeight: '900', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    balancePaidPill: {
-      fontSize: '10px', fontWeight: '800', letterSpacing: '0.03em', textTransform: 'uppercase',
+    // A distinct box (darker than the card, its own border/radius) rather
+    // than a loose pill + text line, so paid/remaining reads as one
+    // self-contained payment summary separate from the total price above it.
+    paymentPanel: {
+      marginTop: '10px', padding: '10px 14px', borderRadius: '10px', minWidth: '160px',
+      background: isDark ? '#1b1c1d' : '#f8fafc',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      textAlign: 'right',
+    },
+    paidAmount: {
+      fontSize: '11px', fontWeight: '800', letterSpacing: '0.03em', textTransform: 'uppercase',
       color: isDark ? GOLD_DARK : GOLD,
-      background: isDark ? 'rgba(232,161,0,0.15)' : '#faedc7',
-      border: `1px solid ${isDark ? 'rgba(232,161,0,0.35)' : '#edd693'}`,
-      padding: '3px 10px', borderRadius: '999px', marginTop: '8px',
     },
     balanceDue: {
       fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '4px',
-      textAlign: 'right', maxWidth: '160px',
     },
     bookedOn: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '8px' },
     modalOverlay: {
@@ -701,54 +716,58 @@ const MyBookings = () => {
         <div style={styles.list}>
           {pageBookings.map((booking, i) => (
             <div key={booking._id} className="booking-card" style={{ ...styles.card, ...styles.cardGlow(booking.status) }}>
-              <div style={styles.imgWrap}>
-                {booking.car?.image ? (
-                  <img src={booking.car.image} alt="" style={styles.img} />
-                ) : (
-                  <div style={styles.noImg}>No Image</div>
-                )}
-              </div>
-              <div style={styles.info}>
-                <div style={styles.topRow}>
-                  <span style={styles.bookingNum}>Booking #{(page - 1) * PAGE_SIZE + i + 1}</span>
-                  <span style={getStatusStyle(booking.status)}>
-                    {booking.status}
-                  </span>
-                  {booking.refundStatus && booking.refundStatus !== 'none' && (
-                    <span style={getRefundBadgeStyle(booking.refundStatus)}>
-                      {getRefundBadgeText(booking.refundStatus)}
-                    </span>
-                  )}
-                  {booking.rescheduleRequest?.status === 'pending' && (
-                    <span style={styles.badgeReschedulePending}>Reschedule Requested</span>
-                  )}
-                  {booking.rescheduleRequest?.status === 'declined' && (
-                    <span style={styles.badgeRescheduleDeclined}>Reschedule Declined</span>
-                  )}
-                  {booking.payment === 'gcash_pending' && booking.status !== 'cancelled' && (
-                    <span style={styles.badgeRefundRequested}>GCash Pending</span>
-                  )}
-                </div>
-                <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
-                  <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                  <span style={styles.carSub}>
-                    {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
-                  </span>
-                </div>
-                <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
-                  <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                  {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
+              <div style={styles.topSection}>
+                <div style={styles.leftCol}>
+                  <div style={styles.imgWrap}>
+                    {booking.car?.image ? (
+                      <img src={booking.car.image} alt="" style={styles.img} />
+                    ) : (
+                      <div style={styles.noImg}>No Image</div>
+                    )}
+                  </div>
+                  <div style={styles.info}>
+                    <div style={styles.topRow}>
+                      <span style={styles.bookingNum}>Booking #{(page - 1) * PAGE_SIZE + i + 1}</span>
+                      <span style={getStatusStyle(booking.status)}>
+                        {booking.status}
+                      </span>
+                      {booking.refundStatus && booking.refundStatus !== 'none' && (
+                        <span style={getRefundBadgeStyle(booking.refundStatus)}>
+                          {getRefundBadgeText(booking.refundStatus)}
+                        </span>
+                      )}
+                      {booking.rescheduleRequest?.status === 'pending' && (
+                        <span style={styles.badgeReschedulePending}>Reschedule Requested</span>
+                      )}
+                      {booking.rescheduleRequest?.status === 'declined' && (
+                        <span style={styles.badgeRescheduleDeclined}>Reschedule Declined</span>
+                      )}
+                      {booking.payment === 'gcash_pending' && booking.status !== 'cancelled' && (
+                        <span style={styles.badgeRefundRequested}>GCash Pending</span>
+                      )}
+                    </div>
+                    <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
+                      <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                      <span style={styles.carSub}>
+                        {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
+                      </span>
+                    </div>
+                    <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
+                      <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                      {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
+                    </div>
+                  </div>
                 </div>
 
                 {booking.status === 'confirmed' && (
-                  <div style={styles.pickupReminder}>
-                    <div style={{ ...styles.lineWithIcon, color: isDark ? '#86efac' : '#166534', fontWeight: '700' }}>
-                      <PinLineIcon /> Pickup: {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  <div style={styles.pickupPanel}>
+                    <div style={styles.pickupLine}>
+                      <PinLineIcon /> Pickup: {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                     </div>
-                    <div style={{ ...styles.lineWithIcon, color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '4px' }}>
-                      <ReturnLineIcon /> Return: {new Date(booking.endDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    <div style={styles.returnLine}>
+                      <ReturnLineIcon /> Return: {new Date(booking.endDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                     </div>
-                    <div style={{ marginTop: '6px', fontStyle: 'italic' }}>
+                    <div style={styles.driverNote}>
                       {booking.bookingType === 'self-drive'
                         ? "Bring a valid ID and your driver's license to pick up the vehicle."
                         : 'Your driver will meet you at the pickup location.'}
@@ -756,80 +775,82 @@ const MyBookings = () => {
                   </div>
                 )}
 
-                {(booking.status === 'pending' || booking.status === 'confirmed') &&
-                  (!booking.refundStatus || booking.refundStatus === 'none') && (
-                    <div style={styles.actionsRow}>
-                      <button style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
-                        Request Refund
-                      </button>
-                      {booking.rescheduleRequest?.status !== 'pending' && (
-                        <button style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
-                          Reschedule
-                        </button>
-                      )}
+                <div className="booking-card-price" style={styles.priceCol}>
+                  <span style={styles.priceLabel}>Total Price</span>
+                  <span style={styles.price}>₱{booking.totalPrice.toLocaleString()}</span>
+                  {booking.paymentType === 'downpayment' && booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
+                    <div style={styles.paymentPanel}>
+                      <div style={styles.paidAmount}>₱{booking.amountPaid.toLocaleString()} Paid</div>
+                      <div style={styles.balanceDue}>
+                        Bring ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} at pickup
+                      </div>
                     </div>
-                )}
-                {(booking.status === 'pending' || booking.status === 'confirmed') &&
-                  booking.payment !== 'paid' &&
-                  booking.refundStatus !== 'requested' && (
-                    <div style={styles.actionsRow}>
-                      <button
-                        style={styles.bookAgainBtn}
-                        onClick={() => handleRetryPayment(booking._id)}
-                        disabled={retryingPaymentId === booking._id}
-                      >
-                        {retryingPaymentId === booking._id ? 'Redirecting...' : 'Retry GCash Payment'}
-                      </button>
-                    </div>
-                )}
-                {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved' || booking.refundStatus === 'declined') && (
-                  <div style={styles.refundNoteBox(booking.refundStatus)}>
-                    <span style={styles.refundNoteLabel(booking.refundStatus)}>
-                      {booking.refundStatus === 'requested' ? 'Refund Requested: ' : booking.refundStatus === 'approved' ? 'Refund Confirmed: ' : 'Refund Declined: '}
-                    </span>
-                    ₱{booking.refundAmount?.toLocaleString() ?? 0}
-                    {booking.refundReason ? ` — Reason: ${booking.refundReason}` : ''}
-                    {booking.paymongoRefundId ? ` — Ref: ${booking.paymongoRefundId}` : ''}
+                  )}
+                  <span style={styles.bookedOn}>
+                    Booked on {new Date(booking.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+
+              {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved' || booking.refundStatus === 'declined') && (
+                <div style={styles.refundNoteBox(booking.refundStatus)}>
+                  <span style={styles.refundNoteLabel(booking.refundStatus)}>
+                    {booking.refundStatus === 'requested' ? 'Refund Requested: ' : booking.refundStatus === 'approved' ? 'Refund Confirmed: ' : 'Refund Declined: '}
+                  </span>
+                  ₱{booking.refundAmount?.toLocaleString() ?? 0}
+                  {booking.refundReason ? ` — Reason: ${booking.refundReason}` : ''}
+                  {booking.paymongoRefundId ? ` — Ref: ${booking.paymongoRefundId}` : ''}
+                </div>
+              )}
+              {booking.rescheduleRequest?.status === 'declined' && booking.rescheduleRequest.adminNotes && (
+                <p style={styles.plainNote}>Reschedule declined: {booking.rescheduleRequest.adminNotes}</p>
+              )}
+              {booking.status === 'completed' && booking.carRating?.ratedAt && (
+                <div style={styles.ratingSummary}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <StarRating value={booking.carRating.overall} size={14} readOnly />
+                    <span style={styles.ratingScore}>{booking.carRating.overall.toFixed(1)}</span>
+                    <button style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
                   </div>
-                )}
-                {booking.rescheduleRequest?.status === 'declined' && booking.rescheduleRequest.adminNotes && (
-                  <p style={styles.plainNote}>Reschedule declined: {booking.rescheduleRequest.adminNotes}</p>
-                )}
-                {booking.payment === 'paid' && booking.paymongoPaymentId && (
-                  <div style={styles.refNote}><TagLineIcon size={11} /> REF: {booking.paymongoPaymentId}</div>
-                )}
-                {booking.status === 'completed' && (
+                </div>
+              )}
+
+              {(booking.status === 'pending' || booking.status === 'confirmed') &&
+                (!booking.refundStatus || booking.refundStatus === 'none') && (
                   <div style={styles.actionsRow}>
-                    <button style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
-                      Book Again
+                    <button style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
+                      Request Refund
+                    </button>
+                    {booking.rescheduleRequest?.status !== 'pending' && (
+                      <button style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
+                        Reschedule
+                      </button>
+                    )}
+                  </div>
+              )}
+              {(booking.status === 'pending' || booking.status === 'confirmed') &&
+                booking.payment !== 'paid' &&
+                booking.refundStatus !== 'requested' && (
+                  <div style={styles.actionsRow}>
+                    <button
+                      style={styles.bookAgainBtn}
+                      onClick={() => handleRetryPayment(booking._id)}
+                      disabled={retryingPaymentId === booking._id}
+                    >
+                      {retryingPaymentId === booking._id ? 'Redirecting...' : 'Retry GCash Payment'}
                     </button>
                   </div>
-                )}
-                {booking.status === 'completed' && booking.carRating?.ratedAt && (
-                  <div style={styles.ratingSummary}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <StarRating value={booking.carRating.overall} size={14} readOnly />
-                      <span style={styles.ratingScore}>{booking.carRating.overall.toFixed(1)}</span>
-                      <button style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="booking-card-price" style={styles.priceCol}>
-                <span style={styles.priceLabel}>Total Price</span>
-                <span style={styles.price}>₱{booking.totalPrice.toLocaleString()}</span>
-                {booking.paymentType === 'downpayment' && booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
-                  <>
-                    <span style={styles.balancePaidPill}>₱{booking.amountPaid.toLocaleString()} Paid</span>
-                    <span style={styles.balanceDue}>
-                      Bring ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} at pickup
-                    </span>
-                  </>
-                )}
-                <span style={styles.bookedOn}>
-                  Booked on {new Date(booking.createdAt).toLocaleDateString()}
-                </span>
-              </div>
+              )}
+              {booking.status === 'completed' && (
+                <div style={styles.actionsRow}>
+                  <button style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
+                    Book Again
+                  </button>
+                </div>
+              )}
+              {booking.payment === 'paid' && booking.paymongoPaymentId && (
+                <div style={styles.refNote}><TagLineIcon size={11} /> REF: {booking.paymongoPaymentId}</div>
+              )}
             </div>
           ))}
         </div>
