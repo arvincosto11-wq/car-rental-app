@@ -119,8 +119,14 @@ const Cars = () => {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.06em', textTransform: 'uppercase',
       color: isDark ? '#8a8d91' : '#9ca3af',
     },
+    // No `flex` shorthand here — this now lives inside a column-direction
+    // wrapper (filterGroup, with the label above it) rather than being a
+    // direct child of the horizontal .filters row, so a flex-basis here
+    // would size its HEIGHT, not its width (that's what blew this input
+    // up into a tall box — the growing/shrinking behavior belongs on the
+    // wrapper div, which already gets it inline where it's rendered).
     searchInput: {
-      flex: '1 1 200px',
+      width: '100%',
       padding: '10px 14px',
       border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       borderRadius: '8px',
@@ -128,6 +134,7 @@ const Cars = () => {
       outline: 'none',
       background: isDark ? '#242526' : '#fff',
       color: isDark ? '#e4e6eb' : '#111827',
+      boxSizing: 'border-box',
     },
     select: {
       padding: '10px 14px',
