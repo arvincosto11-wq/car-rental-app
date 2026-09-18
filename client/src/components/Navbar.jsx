@@ -213,9 +213,13 @@ const Navbar = () => {
                   width: '22px', height: '22px', borderRadius: '50%',
                   background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, fontSize: '11px',
                   fontWeight: '700', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', flexShrink: 0,
+                  justifyContent: 'center', flexShrink: 0, overflow: 'hidden',
                 }}>
-                  {user.name?.charAt(0).toUpperCase()}
+                  {user.image ? (
+                    <img src={user.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    user.name?.charAt(0).toUpperCase()
+                  )}
                 </span>
                 {user.name}
                 <span style={{ fontSize: '10px', opacity: 0.7 }}>{menuOpen ? '▲' : '▼'}</span>

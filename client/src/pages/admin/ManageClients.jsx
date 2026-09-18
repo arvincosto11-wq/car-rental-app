@@ -7,6 +7,7 @@ import { paginate } from '../../utils/paginate';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
+import { GOLD, GOLD_DARK } from '../../theme';
 import api from '../../api';
 
 const PAGE_SIZE = 10;
@@ -114,6 +115,12 @@ const ManageClients = () => {
     td: { padding: '12px 16px', fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`, verticalAlign: 'middle' },
     nameCell: { fontWeight: '600' },
     subCell: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    clientCell: { display: 'flex', alignItems: 'center', gap: '10px' },
+    clientAvatar: {
+      width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+      background: isDark ? '#3a3b3c' : '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '13px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD,
+    },
     verified: {
       background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
       fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
@@ -193,8 +200,19 @@ const ManageClients = () => {
             {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : pageClients.map((client) => (
               <tr key={client._id}>
                 <td style={s.td}>
-                  <div style={s.nameCell}>{client.name}</div>
-                  <div style={s.subCell}>{client.email}</div>
+                  <div style={s.clientCell}>
+                    <div style={s.clientAvatar}>
+                      {client.image ? (
+                        <img src={client.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        client.name?.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div>
+                      <div style={s.nameCell}>{client.name}</div>
+                      <div style={s.subCell}>{client.email}</div>
+                    </div>
+                  </div>
                 </td>
                 <td style={s.td}>{client.phone || '—'}</td>
                 <td style={s.td}>{new Date(client.createdAt).toLocaleDateString()}</td>

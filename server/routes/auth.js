@@ -54,7 +54,8 @@ router.put('/me', protect, async (req, res) => {
       licenseImage, licenseImageFileId, licenseImageBack, licenseImageBackFileId,
       emergencyContactName, emergencyContactNumber,
       validIdType, validIdImage, validIdImageFileId,
-      validIdImageBack, validIdImageBackFileId, validIdExpiry
+      validIdImageBack, validIdImageBackFileId, validIdExpiry,
+      image, imageFileId
     } = req.body;
 
     const user = await User.findById(req.user.id);
@@ -63,6 +64,9 @@ router.put('/me', protect, async (req, res) => {
     if (name !== undefined) user.name = name;
     if (phone !== undefined) user.phone = phone;
     if (address !== undefined) user.address = address;
+    // Profile photo — purely cosmetic (avatar in the navbar/admin lists),
+    // not gated behind admin review the way the valid ID is.
+    if (image) { user.image = image; user.imageFileId = imageFileId || ''; }
     if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
     if (licenseExpiry !== undefined) user.licenseExpiry = licenseExpiry;
     if (emergencyContactName !== undefined) user.emergencyContactName = emergencyContactName;

@@ -31,7 +31,7 @@ const maxBirthDate = () => {
 
 const Profile = () => {
   usePageTitle('My Profile');
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
 
@@ -51,6 +51,8 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
 
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [pwSaving, setPwSaving] = useState(false);
@@ -118,6 +120,27 @@ const Profile = () => {
     const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', body: formData });
     const data = await uploadRes.json();
     return { url: data.url, fileId: data.fileId };
+  };
+
+  // Uploads and saves immediately on selection, independent of Edit
+  // Profile/Save — a photo swap doesn't need the same review step as the
+  // rest of the form (birthdate, ID docs, etc.).
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setAvatarError('');
+    setAvatarUploading(true);
+    try {
+      const uploaded = await uploadToImageKit(file);
+      const res = await api.put('/auth/me', { image: uploaded.url, imageFileId: uploaded.fileId });
+      setProfile(res.data);
+      updateUser({ image: res.data.image });
+    } catch (err) {
+      setAvatarError(err.response?.data?.message || 'Failed to upload photo.');
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   const handleSave = async (e) => {
@@ -319,6 +342,26 @@ const Profile = () => {
     fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
     formError: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
     formSuccess: { background: isDark ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: isDark ? '#86efac' : '#166534', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
+    avatarRow: { display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '20px' },
+    avatarWrap: {
+      position: 'relative', width: '84px', height: '84px', borderRadius: '50%', flexShrink: 0,
+      overflow: 'hidden', background: isDark ? '#3a3b3c' : '#e5e7eb',
+      border: `2px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    avatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
+    avatarInitial: {
+      width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '32px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD,
+    },
+    avatarUploadBtn: {
+      position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: '10px', fontWeight: '600',
+      textAlign: 'center', cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s',
+    },
+    avatarFileInput: { position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' },
+    avatarMeta: { display: 'flex', flexDirection: 'column', gap: '2px' },
+    avatarName: { fontSize: '18px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    avatarHint: { fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280' },
   };
 
   return (
@@ -326,6 +369,35 @@ const Profile = () => {
       <div style={s.container}>
         <h1 style={s.title}>My Profile</h1>
         <p style={s.subtitle}>View and update your account information.</p>
+
+        {profile && (
+          <div style={s.avatarRow}>
+            <div className="avatar-wrap" style={s.avatarWrap}>
+              {profile.image ? (
+                <img src={profile.image} alt="" style={s.avatarImg} />
+              ) : (
+                <div style={s.avatarInitial}>{profile.name?.charAt(0).toUpperCase()}</div>
+              )}
+              <label className="avatar-upload-overlay" style={s.avatarUploadBtn} htmlFor="profile-avatar-input">
+                {avatarUploading ? 'Uploading...' : (profile.image ? 'Change Photo' : 'Add Photo')}
+              </label>
+              <input
+                id="profile-avatar-input"
+                type="file"
+                accept="image/*"
+                style={s.avatarFileInput}
+                onChange={handleAvatarChange}
+                disabled={avatarUploading}
+                aria-label={profile.image ? 'Change profile photo' : 'Add profile photo'}
+              />
+            </div>
+            <div style={s.avatarMeta}>
+              <span style={s.avatarName}>{profile.name}</span>
+              <span style={s.avatarHint}>Hover your photo to {profile.image ? 'change' : 'add'} it.</span>
+            </div>
+          </div>
+        )}
+        {avatarError && <div style={s.formError}>{avatarError}</div>}
 
         {saveSuccess && <div style={s.formSuccess}>{saveSuccess}</div>}
 

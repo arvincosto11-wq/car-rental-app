@@ -4,6 +4,10 @@
   box-sizing: border-box;
 }
 
+.avatar-wrap:hover .avatar-upload-overlay {
+  opacity: 1;
+}
+
 :root {
   --bg: #ffffff;
   --bg-secondary: #f9fafb;
