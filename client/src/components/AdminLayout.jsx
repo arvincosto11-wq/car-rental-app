@@ -47,25 +47,49 @@ const AdminLayout = ({ children, activePage }) => {
     sidebar: { background: isDark ? '#242526' : '#fff', borderRight: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, padding: '24px 0', minHeight: 'calc(100vh - 45px)' },
     avatar: { width: '48px', height: '48px', borderRadius: '50%', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '600', margin: '0 auto 8px' },
     adminName: { textAlign: 'center', fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '24px' },
-    sideNav: { display: 'flex', flexDirection: 'column', gap: '2px', padding: '0 12px' },
+    sideNav: { display: 'flex', flexDirection: 'column', padding: '0 12px' },
+    sideGroup: { display: 'flex', flexDirection: 'column', gap: '2px' },
+    // Every group after the first gets a divider line above it — the first
+    // group sits right under the admin name/avatar, which already reads as
+    // a natural break, so it doesn't need one too.
+    sideGroupSpacer: (first) => ({
+      marginTop: first ? 0 : '18px', paddingTop: first ? 0 : '16px',
+      borderTop: first ? 'none' : `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    }),
+    sideGroupLabel: {
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase',
+      color: isDark ? '#6b7280' : '#9ca3af', padding: '0 14px', marginBottom: '6px',
+    },
     sideItem: { display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 14px', borderRadius: '10px', fontSize: '13px', color: isDark ? '#b0b3b8' : '#4b5563', textDecoration: 'none' },
     sideItemActive: { background: isDark ? GOLD_TINT_DARK : GOLD_TINT, color: isDark ? GOLD_DARK : GOLD, fontWeight: '600' },
     sideItemLabel: { flex: 1 },
     sideDot: { width: '8px', height: '8px', borderRadius: '50%', background: '#dc2626', flexShrink: 0 },
   };
 
-    const sideLinks = [
-    { to: '/admin', label: 'Dashboard', Icon: DashboardIcon },
-    { to: '/admin/analytics', label: 'Analytics', Icon: AnalyticsIcon },
-    { to: '/admin/add-car', label: 'Add Vehicle', Icon: AddVehicleIcon },
-    { to: '/admin/manage-cars', label: 'Manage Cars', Icon: CarIcon },
-    { to: '/admin/gps-tracking', label: 'GPS Tracking', Icon: GpsIcon },
-    { to: '/admin/manage-bookings', label: 'Manage Bookings', Icon: BookingsIcon },
-    { to: '/admin/manage-clients', label: 'Manage Clients', Icon: ClientsIcon },
-    { to: '/admin/manage-consignments', label: 'Manage Consignments', Icon: ConsignmentsIcon },
-    { to: '/admin/availability-requests', label: 'Availability Requests', Icon: AvailabilityIcon },
-    { to: '/admin/manage-reviews', label: 'Manage Reviews', Icon: ReviewsIcon },
-    { to: '/admin/expiring-documents', label: 'Expiring Documents', Icon: ExpiringDocsIcon },
+  const sideGroups = [
+    {
+      label: 'Core', links: [
+        { to: '/admin', label: 'Dashboard', Icon: DashboardIcon },
+        { to: '/admin/analytics', label: 'Analytics', Icon: AnalyticsIcon },
+        { to: '/admin/manage-bookings', label: 'Manage Bookings', Icon: BookingsIcon },
+      ],
+    },
+    {
+      label: 'Vehicles', links: [
+        { to: '/admin/add-car', label: 'Add Vehicle', Icon: AddVehicleIcon },
+        { to: '/admin/manage-cars', label: 'Manage Cars', Icon: CarIcon },
+        { to: '/admin/gps-tracking', label: 'GPS Tracking', Icon: GpsIcon },
+        { to: '/admin/availability-requests', label: 'Availability Requests', Icon: AvailabilityIcon },
+      ],
+    },
+    {
+      label: 'Operations', links: [
+        { to: '/admin/manage-clients', label: 'Manage Clients', Icon: ClientsIcon },
+        { to: '/admin/manage-consignments', label: 'Manage Consignments', Icon: ConsignmentsIcon },
+        { to: '/admin/manage-reviews', label: 'Manage Reviews', Icon: ReviewsIcon },
+        { to: '/admin/expiring-documents', label: 'Expiring Documents', Icon: ExpiringDocsIcon },
+      ],
+    },
   ];
 
   return (
@@ -102,17 +126,30 @@ const AdminLayout = ({ children, activePage }) => {
           <div style={s.avatar}>{user?.name?.charAt(0).toUpperCase()}</div>
           <div style={s.adminName}>{user?.name}</div>
           <nav style={s.sideNav}>
-            {sideLinks.map((link) => {
-              const count = counts[link.to] || 0;
-              const Icon = link.Icon;
-              return (
-                <Link key={link.to} to={link.to} onClick={() => setSidebarOpen(false)} style={activePage === link.label ? { ...s.sideItem, ...s.sideItemActive } : s.sideItem}>
-                  <Icon />
-                  <span style={s.sideItemLabel}>{link.label}</span>
-                  {count > 0 && <span className="pending-dot" style={s.sideDot} title={`${count} needs attention`} />}
-                </Link>
-              );
-            })}
+            {sideGroups.map((group, gi) => (
+              <div key={group.label} style={s.sideGroupSpacer(gi === 0)}>
+                <div style={s.sideGroupLabel}>{group.label}</div>
+                <div style={s.sideGroup}>
+                  {group.links.map((link) => {
+                    const count = counts[link.to] || 0;
+                    const Icon = link.Icon;
+                    return (
+                      <Link
+                        key={link.to}
+                        to={link.to}
+                        onClick={() => setSidebarOpen(false)}
+                        className="admin-side-item"
+                        style={activePage === link.label ? { ...s.sideItem, ...s.sideItemActive } : s.sideItem}
+                      >
+                        <Icon />
+                        <span style={s.sideItemLabel}>{link.label}</span>
+                        {count > 0 && <span className="pending-dot" style={s.sideDot} title={`${count} needs attention`} />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
         </div>
         <div style={{ padding: '28px 32px', minWidth: 0 }}>{children}</div>

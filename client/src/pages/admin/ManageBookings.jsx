@@ -194,18 +194,31 @@ const ManageBookings = () => {
     clientMeta: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
     carThumb: { width: '44px', height: '32px', background: isDark ? '#3a3b3c' : '#f3f4f6', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 },
     balanceNote: { fontSize: '11px', color: isDark ? GOLD_DARK : GOLD, marginTop: '4px', maxWidth: '160px' },
+    rentalLengthNote: {
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase',
+      color: isDark ? GOLD_DARK : GOLD, marginTop: '4px',
+    },
     confirmed: {
+      display: 'inline-flex', alignItems: 'center', gap: '6px',
       background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
-      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
+      fontSize: '11px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
+      padding: '3px 11px', borderRadius: '20px', border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
     },
     cancelled: {
+      display: 'inline-flex', alignItems: 'center', gap: '6px',
       background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
-      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
+      fontSize: '11px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
+      padding: '3px 11px', borderRadius: '20px', border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
     },
     completed: {
+      display: 'inline-flex', alignItems: 'center', gap: '6px',
       background: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe', color: isDark ? '#93c5fd' : '#1e40af',
-      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(37,99,235,0.35)' : 'none',
+      fontSize: '11px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
+      padding: '3px 11px', borderRadius: '20px', border: isDark ? '1px solid rgba(37,99,235,0.35)' : 'none',
     },
+    // A small solid dot before the label — matches the color of its own
+    // badge, e.g. dotStyle('#16a34a') for the confirmed badge's dot.
+    statusDot: (color) => ({ width: '6px', height: '6px', borderRadius: '50%', background: color, flexShrink: 0 }),
     returnBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '500' },
     noShowBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     acceptBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: '500' },
@@ -374,7 +387,14 @@ const ManageBookings = () => {
                     </div>
                   </div>
                 </td>
-                <td style={s.td}>{new Date(booking.startDate).toLocaleDateString()} to {new Date(booking.endDate).toLocaleDateString()}</td>
+                <td style={s.td}>
+                  {new Date(booking.startDate).toLocaleDateString()} to {new Date(booking.endDate).toLocaleDateString()}
+                  {booking.totalDays && (
+                    <div style={s.rentalLengthNote}>
+                      {booking.totalDays} DAY{booking.totalDays === 1 ? '' : 'S'} RENTAL
+                    </div>
+                  )}
+                </td>
                 <td style={s.td}>
                   ₱{booking.totalPrice}
                   {booking.paymentType === 'downpayment' && booking.amountPaid < booking.totalPrice && (
@@ -425,7 +445,7 @@ const ManageBookings = () => {
                     </div>
                   ) : booking.status === 'confirmed' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={s.confirmed}>confirmed</span>
+                      <span style={s.confirmed}><span style={s.statusDot(isDark ? '#86efac' : '#065f46')} />Confirmed</span>
                       {new Date() >= new Date(booking.startDate) ? (
                         <>
                           <button
@@ -450,10 +470,10 @@ const ManageBookings = () => {
                       )}
                     </div>
                   ) : booking.status === 'cancelled' ? (
-                    <span style={s.cancelled}>cancelled</span>
+                    <span style={s.cancelled}><span style={s.statusDot(isDark ? '#fca5a5' : '#991b1b')} />Cancelled</span>
                   ) : booking.status === 'completed' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={s.completed}>completed</span>
+                      <span style={s.completed}><span style={s.statusDot(isDark ? '#93c5fd' : '#1e40af')} />Completed</span>
                       {booking.clientRating?.ratedAt && (
                         <>
                           <StarRating value={booking.clientRating.rating} size={12} readOnly />

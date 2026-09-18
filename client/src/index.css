@@ -550,6 +550,18 @@ select:disabled {
 .admin-mobile-toggle {
   display: none;
 }
+.admin-side-item {
+  transition: background 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+}
+.admin-side-item:hover {
+  background: rgba(232,161,0,0.08);
+  box-shadow: 0 0 0 1px rgba(232,161,0,0.25), 0 0 16px rgba(232,161,0,0.15);
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-side-item {
+    transition: none;
+  }
+}
 @media (max-width: 800px) {
   .admin-layout { grid-template-columns: 1fr; }
   .admin-sidebar {
