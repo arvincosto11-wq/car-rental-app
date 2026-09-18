@@ -21,12 +21,6 @@ const CheckCircleIcon = () => (
     <polyline points="8 12.5 10.8 15.3 16 9.5" />
   </svg>
 );
-const CameraIcon = ({ size = 22 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-    <circle cx="12" cy="13" r="4" />
-  </svg>
-);
 const EditPencilIcon = ({ size = 13 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 20h9" />
@@ -373,29 +367,38 @@ const Profile = () => {
     formError: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
     formSuccess: { background: isDark ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: isDark ? '#86efac' : '#166534', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
     avatarRow: { display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '24px' },
+    // No overflow:hidden here — that lives on avatarWrap instead, so the
+    // edit badge (a child of THIS element, not avatarWrap) can sit outside
+    // the box's edge without getting clipped by the box's own rounded-
+    // corner mask.
+    avatarOuter: { position: 'relative', width: '96px', height: '96px', flexShrink: 0 },
     // Rounded square, not a circle — matches the corner radius used on
     // every other image/card on the site (booking thumbs, car photos)
-    // rather than introducing a one-off circular shape.
+    // rather than introducing a one-off circular shape. Dashed border when
+    // empty (an "upload here" cue), solid once a real photo is set — see
+    // the border override applied inline where this is used.
     avatarWrap: {
-      position: 'relative', width: '96px', height: '96px', borderRadius: '18px', flexShrink: 0,
+      position: 'relative', width: '100%', height: '100%', borderRadius: '18px',
       overflow: 'hidden', background: isDark ? '#18191a' : '#f3f4f6',
-      border: `2px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
     avatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
-    // Shown in place of the photo when none is set yet — a camera glyph
-    // reads as "add a photo here" more clearly than a plain initial letter.
+    // Shown in place of the photo when none is set yet.
     avatarEmpty: {
       width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: isDark ? '#4e4f50' : '#c5c9d0',
+      fontSize: '30px', fontWeight: '700', color: isDark ? '#8a6d1f' : '#a68a3f',
     },
     // Covers the whole avatar as the actual click target (bigger, easier to
     // hit than just the small pencil badge) — the pencil below is purely a
     // visual affordance layered on top, not a separate interactive element.
     avatarFileInput: { position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', zIndex: 2 },
+    // Positioned relative to avatarOuter (not avatarWrap), so most of the
+    // circle sits outside the box's edge instead of being clipped by
+    // avatarWrap's overflow:hidden.
     avatarEditBadge: {
-      position: 'absolute', bottom: '-4px', right: '-4px', width: '28px', height: '28px', borderRadius: '50%',
+      position: 'absolute', bottom: '-10px', right: '-10px', width: '30px', height: '30px', borderRadius: '50%',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center',
       border: `2px solid ${isDark ? '#18191a' : '#f9fafb'}`, pointerEvents: 'none',
+      boxShadow: isDark ? '0 0 14px rgba(232,161,0,0.65)' : '0 0 10px rgba(184,121,10,0.45)',
     },
     avatarMeta: { display: 'flex', flexDirection: 'column', gap: '4px' },
     avatarName: { fontSize: '19px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
@@ -421,6 +424,15 @@ const Profile = () => {
     ? new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
     : '';
 
+  // First + last initials (e.g. "John Doe" -> "JD"), not just one letter.
+  const initials = (name) => {
+    const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '';
+    const first = parts[0].charAt(0);
+    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+    return (first + last).toUpperCase();
+  };
+
   return (
     <div style={s.page}>
       <div style={s.container}>
@@ -429,21 +441,28 @@ const Profile = () => {
 
         {profile && (
           <div style={s.avatarRow}>
-            <div style={s.avatarWrap}>
-              {profile.image ? (
-                <img src={profile.image} alt="" style={s.avatarImg} />
-              ) : (
-                <div style={s.avatarEmpty}><CameraIcon /></div>
-              )}
-              <input
-                id="profile-avatar-input"
-                type="file"
-                accept="image/*"
-                style={s.avatarFileInput}
-                onChange={handleAvatarChange}
-                disabled={avatarUploading}
-                aria-label={profile.image ? 'Change profile photo' : 'Add profile photo'}
-              />
+            <div style={s.avatarOuter}>
+              <div style={{
+                ...s.avatarWrap,
+                border: profile.image
+                  ? `2px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`
+                  : `2px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+              }}>
+                {profile.image ? (
+                  <img src={profile.image} alt="" style={s.avatarImg} />
+                ) : (
+                  <div style={s.avatarEmpty}>{initials(profile.name)}</div>
+                )}
+                <input
+                  id="profile-avatar-input"
+                  type="file"
+                  accept="image/*"
+                  style={s.avatarFileInput}
+                  onChange={handleAvatarChange}
+                  disabled={avatarUploading}
+                  aria-label={profile.image ? 'Change profile photo' : 'Add profile photo'}
+                />
+              </div>
               <div style={s.avatarEditBadge}><EditPencilIcon /></div>
             </div>
             <div style={s.avatarMeta}>
