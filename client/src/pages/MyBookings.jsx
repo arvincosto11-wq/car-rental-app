@@ -365,11 +365,11 @@ const MyBookings = () => {
     card: {
       display: 'flex',
       flexDirection: 'column',
-      gap: '16px',
+      gap: '20px',
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '16px',
-      padding: '26px',
+      borderRadius: '32px',
+      padding: '40px',
     },
     // One shared 3-column grid (image | details | price) for the whole top
     // portion of the card, INCLUDING the action buttons row — not two
@@ -380,7 +380,7 @@ const MyBookings = () => {
     // divider (row 2, column 2) is exactly as wide as the details above it
     // (row 1, column 2), no guessing.
     topSection: {
-      display: 'grid', gridTemplateColumns: '160px minmax(0,1fr) auto', columnGap: '18px', rowGap: '12px',
+      display: 'grid', gridTemplateColumns: '170px minmax(0,1fr) auto', columnGap: '34px', rowGap: '12px',
     },
     imgWrapCell: { gridColumn: '1', gridRow: '1 / span 2' },
     middleCol: { gridColumn: '2', gridRow: '1', display: 'flex', flexDirection: 'column', minWidth: 0 },
@@ -394,26 +394,50 @@ const MyBookings = () => {
     // in index.css) overrides this with a warm gold glow + lift regardless
     // of status, as the "this is interactive" cue.
     cardGlow: (status) => {
+      // Confirmed/pending (the two "still active, needs attention" states)
+      // carry a faint gold wash across the card, not just the border glow.
+      const goldWash = isDark
+        ? 'linear-gradient(180deg, rgba(232,161,0,0.07), transparent 45%), #242526'
+        : 'linear-gradient(180deg, rgba(184,121,10,0.06), transparent 45%), #fff';
       if (status === 'confirmed') {
-        return { boxShadow: isDark ? '0 0 0 1px rgba(22,163,74,0.35), 0 8px 28px rgba(22,163,74,0.18)' : '0 8px 24px rgba(22,163,74,0.12)' };
+        return {
+          background: goldWash,
+          boxShadow: isDark ? '0 0 0 1px rgba(22,163,74,0.35), 0 8px 28px rgba(22,163,74,0.18)' : '0 8px 24px rgba(22,163,74,0.12)',
+        };
       }
       if (status === 'completed') {
         return { boxShadow: isDark ? '0 0 0 1px rgba(37,99,235,0.25), 0 6px 20px rgba(37,99,235,0.1)' : '0 6px 18px rgba(37,99,235,0.08)' };
       }
       if (status === 'cancelled') {
-        return { opacity: isDark ? 0.75 : 0.85, boxShadow: isDark ? '0 0 0 1px rgba(220,38,38,0.2)' : 'none' };
+        // Recedes until you actually look at it — .booking-card-cancelled in
+        // index.css clears the grayscale/opacity on hover.
+        return { opacity: 0.7, filter: 'grayscale(0.5)', boxShadow: isDark ? '0 0 0 1px rgba(220,38,38,0.2)' : 'none' };
       }
-      return { boxShadow: isDark ? '0 0 0 1px rgba(217,119,6,0.25), 0 6px 18px rgba(217,119,6,0.1)' : '0 6px 16px rgba(217,119,6,0.08)' };
+      return {
+        background: goldWash,
+        boxShadow: isDark ? '0 0 0 1px rgba(217,119,6,0.25), 0 6px 18px rgba(217,119,6,0.1)' : '0 6px 16px rgba(217,119,6,0.08)',
+      };
     },
+    // A "dark room" stage instead of a flat cropped thumbnail — the real
+    // photo floats on a radial-gradient backdrop with a drop-shadow
+    // (object-fit: contain, not cover, so the whole car shows rather than
+    // cropping to fill the box).
     imgWrap: {
-      width: '160px',
-      height: '170px',
-      borderRadius: '14px',
+      width: '170px',
+      height: '150px',
+      borderRadius: '20px',
       overflow: 'hidden',
-      background: isDark ? '#3a3b3c' : '#f3f4f6',
+      background: isDark
+        ? 'radial-gradient(120% 82% at 50% 10%, #2a2b2f 0%, #101215 100%)'
+        : 'radial-gradient(120% 82% at 50% 10%, #eef0f2 0%, #e5e7eb 100%)',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
     },
-    img: { width: '100%', height: '100%', objectFit: 'cover' },
+    img: {
+      width: '100%', height: '100%', objectFit: 'contain', padding: '14px',
+      filter: `drop-shadow(0 14px 18px rgba(0,0,0,${isDark ? '0.45' : '0.22'}))`,
+    },
     noImg: {
       width: '100%',
       height: '100%',
@@ -748,7 +772,11 @@ const MyBookings = () => {
       ) : (
         <div style={styles.list}>
           {pageBookings.map((booking, i) => (
-            <div key={booking._id} className="booking-card" style={{ ...styles.card, ...styles.cardGlow(booking.status) }}>
+            <div
+              key={booking._id}
+              className={`booking-card${booking.status === 'cancelled' ? ' booking-card-cancelled' : ''}`}
+              style={{ ...styles.card, ...styles.cardGlow(booking.status) }}
+            >
               <div className="booking-grid" style={styles.topSection}>
                 <div className="grid-cell" style={{ ...styles.imgWrap, ...styles.imgWrapCell }}>
                   {booking.car?.image ? (

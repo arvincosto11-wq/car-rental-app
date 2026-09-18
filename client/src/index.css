@@ -422,7 +422,8 @@ select:disabled {
 
 .booking-card {
   display: flex;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease,
+              filter 0.24s ease, opacity 0.24s ease;
 }
 /* !important: overrides the status-colored glow set inline per booking
    (see cardGlow in MyBookings.jsx) — hover always shifts to this warm
@@ -430,7 +431,14 @@ select:disabled {
    booking's own status color. */
 .booking-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 14px 32px rgba(232,161,0,0.28) !important;
+  border-color: rgba(232,161,0,0.35) !important;
+  box-shadow: 0 20px 44px rgba(0,0,0,0.16), 0 14px 32px rgba(232,161,0,0.28) !important;
+}
+/* Cancelled bookings recede (grayscale + dimmed, set inline via cardGlow)
+   until you actually hover the card, then snap back to full color. */
+.booking-card-cancelled:hover {
+  filter: grayscale(0) !important;
+  opacity: 1 !important;
 }
 @media (prefers-reduced-motion: reduce) {
   .booking-card {
@@ -444,6 +452,8 @@ select:disabled {
   .booking-card {
     flex-direction: column;
     align-items: stretch !important;
+    padding: 24px !important;
+    border-radius: 24px !important;
   }
   .booking-card .booking-card-price {
     align-items: flex-start !important;
