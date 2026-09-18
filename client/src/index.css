@@ -292,13 +292,31 @@ select:disabled {
 
 /* Hover lift for clickable car cards (Home featured vehicles, Vehicles listing). */
 .car-card-hover {
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 .car-card-hover:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 16px 32px rgba(232,161,0,0.22);
+  transform: translateY(-8px);
+  box-shadow: 0 18px 38px rgba(232,161,0,0.22);
   border-color: rgba(232,161,0,0.4) !important;
 }
+
+/* The photo keeps scaling for ~400ms after the card has finished lifting.
+   That stagger is what makes the vehicle read as sitting on a lit stage
+   rather than the whole card simply getting bigger. */
+.car-stage-img {
+  transition: transform 0.7s cubic-bezier(0.16, 0.84, 0.44, 1);
+}
+.car-card-hover:hover .car-stage-img {
+  transform: scale(1.1);
+}
+
+/* Inline styles can't express :hover, and the resting look is set inline. */
+.car-view-details:hover {
+  background: var(--gold) !important;
+  border-color: var(--gold) !important;
+  color: var(--on-gold) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .car-card-hover {
     transition: none;
@@ -306,6 +324,68 @@ select:disabled {
   .car-card-hover:hover {
     transform: none;
   }
+  .car-stage-img {
+    transition: none;
+  }
+  .car-card-hover:hover .car-stage-img {
+    transform: none;
+  }
+}
+
+/* ---- Vehicles listing filter panel (pages/Cars.jsx) ---- */
+/* Five columns while they fit; the price range keeps its natural width so
+   the two number inputs and their dash never squeeze. */
+.filter-grid {
+  display: grid;
+  grid-template-columns: minmax(200px, 2fr) 1fr 1.15fr auto 1.15fr;
+  gap: 16px;
+  align-items: end;
+}
+@media (max-width: 900px) {
+  .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filter-grid > .filter-search { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .filter-grid { grid-template-columns: minmax(0, 1fr); }
+  .filter-grid > .filter-search { grid-column: auto; }
+}
+
+/* :focus can't be set inline, so the gold focus edge lives here. */
+.filter-control:focus {
+  outline: none;
+  border-color: var(--gold) !important;
+}
+
+/* Checkbox drawn from scratch — the tick is the right and bottom edge of a
+   rectangle turned 45 degrees, so it needs no icon and inherits the gold. */
+.gold-check {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex-shrink: 0;
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--input-bg);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.gold-check:checked {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.gold-check:checked::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 4px;
+  height: 9px;
+  border: solid var(--on-gold);
+  border-width: 0 2.2px 2.2px 0;
+  transform: rotate(45deg);
 }
 
 /* Shimmering loading placeholders (see components/Skeleton.jsx). */
@@ -334,15 +414,17 @@ select:disabled {
    properties below, keeping colors/spacing inline. Breakpoints collapse
    multi-column layouts down for phones/tablets. */
 
+/* minmax(0, 1fr) rather than a bare 1fr: a long vehicle name would
+   otherwise force its column wider than its share of the row. */
 .responsive-grid-3 {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 @media (max-width: 900px) {
-  .responsive-grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .responsive-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
-  .responsive-grid-3 { grid-template-columns: 1fr; }
+  .responsive-grid-3 { grid-template-columns: minmax(0, 1fr); }
 }
 
 .responsive-row-2 {

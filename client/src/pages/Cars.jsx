@@ -20,6 +20,19 @@ const SeatsIcon = (props) => <MetaIcon {...props}><path d="M12 12a4 4 0 1 0 0-8 
 const FuelIcon = (props) => <MetaIcon {...props}><path d="M12 21a7 7 0 0 0 5-11.9L12 3 7 9.1A7 7 0 0 0 12 21z" /></MetaIcon>;
 const TransmissionIcon = (props) => <MetaIcon {...props}><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" /></MetaIcon>;
 
+// Filter-panel icons. Both sit inside their field rather than beside it, so
+// they're positioned absolutely by the caller and never take pointer events.
+const SearchIcon = ({ style }) => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={style} aria-hidden="true">
+    <circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="21" y2="21" />
+  </svg>
+);
+const ChevronDownIcon = ({ style }) => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={style} aria-hidden="true">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
 const Cars = () => {
   usePageTitle('Vehicles');
   const { canFavorite, isFavorite, toggleFavorite } = useFavorites();
@@ -107,59 +120,58 @@ const Cars = () => {
       textTransform: 'uppercase', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px',
     },
     subtitle: { fontSize: '14px', fontStyle: 'italic', color: isDark ? GOLD_DARK : GOLD, marginBottom: '24px' },
-    filters: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: '14px',
-      alignItems: 'flex-end',
-      marginBottom: '24px',
+    // The filters used to float loose above the grid; collecting them into
+    // one panel is what makes the row read as designed rather than assembled.
+    toolbelt: {
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      borderRadius: '20px',
+      padding: '22px 24px 20px',
+      marginBottom: '26px',
     },
-    filterGroup: { display: 'flex', flexDirection: 'column', gap: '5px' },
+    filterGroup: { display: 'flex', flexDirection: 'column', gap: '7px', minWidth: 0 },
     filterLabel: {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.06em', textTransform: 'uppercase',
       color: isDark ? '#8a8d91' : '#9ca3af',
     },
-    // No `flex` shorthand here — this now lives inside a column-direction
-    // wrapper (filterGroup, with the label above it) rather than being a
-    // direct child of the horizontal .filters row, so a flex-basis here
-    // would size its HEIGHT, not its width (that's what blew this input
-    // up into a tall box — the growing/shrinking behavior belongs on the
-    // wrapper div, which already gets it inline where it's rendered).
-    searchInput: {
+    // One shared shape for all seven controls, so nothing in the row is a
+    // different height from its neighbour. Sizing lives on filterGroup (the
+    // grid cell); a flex-basis here would size the input's HEIGHT, not width.
+    control: {
       width: '100%',
-      padding: '10px 14px',
+      height: '44px',
+      padding: '0 13px',
       border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      borderRadius: '8px',
+      borderRadius: '10px',
+      fontFamily: 'inherit',
       fontSize: '14px',
       outline: 'none',
-      background: isDark ? '#242526' : '#fff',
+      background: isDark ? '#18191a' : '#fff',
       color: isDark ? '#e4e6eb' : '#111827',
       boxSizing: 'border-box',
     },
-    select: {
-      padding: '10px 14px',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      borderRadius: '8px',
-      fontSize: '14px',
-      outline: 'none',
-      background: isDark ? '#242526' : '#fff',
-      color: isDark ? '#e4e6eb' : '#111827',
+    searchWrap: { position: 'relative' },
+    searchIcon: {
+      position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)',
+      color: isDark ? '#8a8d91' : '#9ca3af', pointerEvents: 'none',
     },
-    priceInput: {
-      width: '90px',
-      padding: '10px 12px',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      borderRadius: '8px',
-      fontSize: '14px',
-      outline: 'none',
-      background: isDark ? '#242526' : '#fff',
-      color: isDark ? '#e4e6eb' : '#111827',
+    // A native select's arrow can't be styled, so it's hidden and redrawn.
+    selectWrap: { position: 'relative' },
+    selectArrow: {
+      position: 'absolute', right: '13px', top: '50%', transform: 'translateY(-50%)',
+      color: isDark ? '#8a8d91' : '#9ca3af', pointerEvents: 'none',
     },
-    priceRangeGroup: { display: 'flex', alignItems: 'center', gap: '6px' },
-    priceRangeSep: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    priceRangeGroup: { display: 'flex', alignItems: 'center', gap: '7px' },
+    priceRangeSep: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', flexShrink: 0 },
+    bookableRow: {
+      marginTop: '16px',
+      paddingTop: '16px',
+      borderTop: `1px solid ${isDark ? '#303132' : '#eef0f2'}`,
+    },
     availableToggle: {
-      display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px',
-      color: isDark ? '#e4e6eb' : '#374151', cursor: 'pointer', whiteSpace: 'nowrap',
+      display: 'inline-flex', alignItems: 'center', gap: '10px',
+      fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em', textTransform: 'uppercase',
+      color: isDark ? '#b0b3b8' : '#4b5563', cursor: 'pointer', whiteSpace: 'nowrap',
     },
     resultsCount: {
       fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em', textTransform: 'uppercase',
@@ -168,64 +180,91 @@ const Cars = () => {
     skeletonCard: {
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '12px',
+      borderRadius: '24px',
       overflow: 'hidden',
     },
-    skeletonBody: { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' },
+    skeletonBody: { padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' },
     grid: {
       gap: '20px',
     },
     card: {
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '14px',
+      borderRadius: '24px',
       overflow: 'hidden',
       cursor: 'pointer',
+      display: 'flex',
+      flexDirection: 'column',
     },
+    // A lit stage rather than a flat grey box: a soft pool of light over a
+    // gradient floor. Photos still cover it, so this mostly shows through
+    // for the no-image case and anything with transparency — but it's also
+    // what the hover zoom happens inside.
     imgWrap: {
       position: 'relative',
-      height: '190px',
-      background: isDark ? '#3a3b3c' : '#f3f4f6',
+      aspectRatio: '16 / 11',
+      overflow: 'hidden',
+      display: 'grid',
+      placeItems: 'center',
+      background: isDark
+        ? 'radial-gradient(68% 56% at 50% 60%, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 72%), linear-gradient(180deg, #2a2b2f 0%, #101215 100%)'
+        : 'radial-gradient(68% 56% at 50% 60%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 72%), linear-gradient(180deg, #f4f5f7 0%, #e3e6ea 100%)',
     },
     img: {
       width: '100%',
       height: '100%',
       objectFit: 'cover',
+      display: 'block',
     },
     noImg: {
-      width: '100%',
-      height: '100%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       color: isDark ? '#8a8d91' : '#9ca3af',
       fontSize: '13px',
     },
+    // Dark glass base rather than a pastel fill: these sit on top of a
+    // photo, and only the text and border carry the status color.
     availBadge: {
       position: 'absolute',
-      top: '10px',
-      left: '10px',
+      top: '12px',
+      left: '12px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
       fontSize: '10px',
       fontWeight: '700',
-      letterSpacing: '0.04em',
+      letterSpacing: '0.06em',
       textTransform: 'uppercase',
-      padding: '4px 11px',
-      borderRadius: '20px',
+      padding: '5px 11px',
+      borderRadius: '999px',
+      backdropFilter: 'blur(10px)',
+      WebkitBackdropFilter: 'blur(10px)',
     },
+    availDot: { width: '5px', height: '5px', borderRadius: '50%', background: 'currentColor', flexShrink: 0 },
     priceBadge: {
       position: 'absolute',
-      bottom: '10px',
-      right: '10px',
-      background: 'rgba(0,0,0,0.72)',
-      fontSize: '15px',
+      bottom: '12px',
+      right: '12px',
+      display: 'flex',
+      alignItems: 'baseline',
+      gap: '4px',
+      background: 'rgba(0,0,0,0.55)',
+      border: '1px solid rgba(255,255,255,0.14)',
+      backdropFilter: 'blur(14px) saturate(150%)',
+      WebkitBackdropFilter: 'blur(14px) saturate(150%)',
+      fontSize: '17px',
       fontWeight: '800',
-      color: isDark ? GOLD_DARK : GOLD,
-      padding: '5px 12px',
-      borderRadius: '8px',
+      letterSpacing: '-0.02em',
+      // Always the brighter gold, in both themes — this pill sits on a dark
+      // glass base, where the light-theme gold is too dark to read.
+      color: GOLD_DARK,
+      padding: '7px 14px',
+      borderRadius: '12px',
     },
     priceBadgeUnit: { fontSize: '11px', fontWeight: '500', color: '#d1d5db' },
-    cardBody: { padding: '16px' },
-    nameRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '2px' },
+    cardBody: { flex: 1, padding: '18px 18px 20px', display: 'flex', flexDirection: 'column', gap: '14px' },
+    nameRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' },
     carName: {
       fontSize: '17px',
       fontWeight: '800',
@@ -239,7 +278,6 @@ const Cars = () => {
       textTransform: 'uppercase',
       letterSpacing: '0.02em',
       color: isDark ? '#8a8d91' : '#9ca3af',
-      marginBottom: '14px',
     },
     ratingRow: {
       display: 'flex',
@@ -253,42 +291,65 @@ const Cars = () => {
       fontWeight: '700',
     },
     ratingCountText: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', fontWeight: '500' },
+    // Three across on a single row — seats, fuel and transmission are the
+    // three specs every vehicle actually stores, so there's no fourth slot
+    // to pad out.
     carMeta: {
       display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: '8px 14px',
-      fontSize: '12px',
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gap: '10px',
+      fontSize: '11px',
       fontWeight: '600',
       textTransform: 'uppercase',
       color: isDark ? '#b0b3b8' : '#4b5563',
-      marginBottom: '14px',
     },
-    metaItem: { display: 'flex', alignItems: 'center', gap: '7px' },
+    metaItem: { display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 },
+    // Truncates instead of wrapping, so one long value ("Semi-Automatic")
+    // can't push this row to two lines on only some cards.
+    metaText: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
     bookingTypeRow: {
-      display: 'flex',
+      display: 'grid',
       gap: '8px',
-      marginBottom: '10px',
     },
     bookingTypeTag: {
-      flex: 1,
       textAlign: 'center',
-      fontSize: '11px',
+      fontSize: '10.5px',
       fontWeight: '700',
       letterSpacing: '0.03em',
       textTransform: 'uppercase',
       color: isDark ? '#b0b3b8' : '#4b5563',
       background: isDark ? '#18191a' : '#f3f4f6',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      padding: '8px 9px',
+      padding: '8px 6px',
       borderRadius: '8px',
     },
+    // marginTop auto is the real fix here: a vehicle name that wraps to two
+    // lines no longer pushes this card's button below its neighbours'.
     viewDetailsBtn: {
+      marginTop: 'auto',
       display: 'block', width: '100%', textAlign: 'center',
       padding: '11px', fontSize: '12px', fontWeight: '800', letterSpacing: '0.04em', textTransform: 'uppercase',
+      fontFamily: 'inherit',
       color: isDark ? '#e4e6eb' : '#1a1a1a',
       background: isDark ? '#18191a' : '#f9fafb',
       border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      borderRadius: '8px', cursor: 'pointer',
+      borderRadius: '10px', cursor: 'pointer',
+      transition: 'background 0.22s ease, color 0.22s ease, border-color 0.22s ease',
+    },
+    emptyState: {
+      border: `1px dashed ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      borderRadius: '24px',
+      padding: '56px 28px',
+      textAlign: 'center',
+      color: isDark ? '#8a8d91' : '#9ca3af',
+      fontSize: '13px',
+    },
+    emptyTitle: {
+      display: 'block',
+      fontSize: '15px',
+      fontWeight: '800',
+      color: isDark ? '#b0b3b8' : '#4b5563',
+      marginBottom: '6px',
     },
     dateNotice: {
       display: 'flex',
@@ -314,6 +375,17 @@ const Cars = () => {
     },
   };
 
+  // Hides the native dropdown arrow so the drawn one can take its place,
+  // and leaves room on the right for it.
+  const selectStyle = {
+    ...styles.control,
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    MozAppearance: 'none',
+    paddingRight: '36px',
+    cursor: 'pointer',
+  };
+
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>All Cars</h1>
@@ -328,100 +400,127 @@ const Cars = () => {
         </div>
       )}
 
-      <div style={styles.filters}>
-        <div style={{ ...styles.filterGroup, flex: '1 1 200px' }}>
-          <label style={styles.filterLabel} htmlFor="cars-search">Search</label>
-          <input
-            id="cars-search"
-            style={styles.searchInput}
-            type="text"
-            placeholder="Search by brand or model..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div style={styles.filterGroup}>
-          <label style={styles.filterLabel} htmlFor="cars-category">Category</label>
-          <select
-            id="cars-category"
-            style={styles.select}
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            <option value="">All Categories</option>
-            <option value="Sedan">Sedan</option>
-            <option value="SUV">SUV</option>
-            <option value="Hatchback">Hatchback</option>
-            <option value="Van">Van</option>
-            <option value="Truck">Truck</option>
-            <option value="Coupe">Coupe</option>
-            <option value="Motorcycle">Motorcycle</option>
-          </select>
-        </div>
-        <div style={styles.filterGroup}>
-          <label style={styles.filterLabel} htmlFor="cars-transmission">Transmission</label>
-          <select
-            id="cars-transmission"
-            style={styles.select}
-            value={transmission}
-            onChange={(e) => setTransmission(e.target.value)}
-          >
-            <option value="">All Transmissions</option>
-            <option value="Automatic">Automatic</option>
-            <option value="Manual">Manual</option>
-            <option value="Semi-Automatic">Semi-Automatic</option>
-          </select>
-        </div>
-        <div style={styles.filterGroup}>
-          <span style={styles.filterLabel}>Price Range</span>
-          <div style={styles.priceRangeGroup} role="group" aria-label="Price range">
-            <input
-              style={styles.priceInput}
-              type="number"
-              placeholder="Min ₱"
-              aria-label="Minimum price"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-              min="0"
-            />
-            <span style={styles.priceRangeSep}>–</span>
-            <input
-              style={styles.priceInput}
-              type="number"
-              placeholder="Max ₱"
-              aria-label="Maximum price"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-              min="0"
-            />
+      <div style={styles.toolbelt}>
+        <div className="filter-grid">
+          <div className="filter-search" style={styles.filterGroup}>
+            <label style={styles.filterLabel} htmlFor="cars-search">Search</label>
+            <div style={styles.searchWrap}>
+              <SearchIcon style={styles.searchIcon} />
+              <input
+                id="cars-search"
+                className="filter-control"
+                style={{ ...styles.control, paddingLeft: '40px' }}
+                type="text"
+                placeholder="Search by brand or model..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+          <div style={styles.filterGroup}>
+            <label style={styles.filterLabel} htmlFor="cars-category">Category</label>
+            <div style={styles.selectWrap}>
+              <select
+                id="cars-category"
+                className="filter-control"
+                style={selectStyle}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="">All Categories</option>
+                <option value="Sedan">Sedan</option>
+                <option value="SUV">SUV</option>
+                <option value="Hatchback">Hatchback</option>
+                <option value="Van">Van</option>
+                <option value="Truck">Truck</option>
+                <option value="Coupe">Coupe</option>
+                <option value="Motorcycle">Motorcycle</option>
+              </select>
+              <ChevronDownIcon style={styles.selectArrow} />
+            </div>
+          </div>
+          <div style={styles.filterGroup}>
+            <label style={styles.filterLabel} htmlFor="cars-transmission">Transmission</label>
+            <div style={styles.selectWrap}>
+              <select
+                id="cars-transmission"
+                className="filter-control"
+                style={selectStyle}
+                value={transmission}
+                onChange={(e) => setTransmission(e.target.value)}
+              >
+                <option value="">All Transmissions</option>
+                <option value="Automatic">Automatic</option>
+                <option value="Manual">Manual</option>
+                <option value="Semi-Automatic">Semi-Automatic</option>
+              </select>
+              <ChevronDownIcon style={styles.selectArrow} />
+            </div>
+          </div>
+          <div style={styles.filterGroup}>
+            <span style={styles.filterLabel} id="cars-price-label">Price Range</span>
+            <div style={styles.priceRangeGroup} role="group" aria-labelledby="cars-price-label">
+              <input
+                className="filter-control"
+                style={{ ...styles.control, width: '96px', padding: '0 12px' }}
+                type="number"
+                placeholder="Min ₱"
+                aria-label="Minimum price"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+                min="0"
+              />
+              <span style={styles.priceRangeSep}>–</span>
+              <input
+                className="filter-control"
+                style={{ ...styles.control, width: '96px', padding: '0 12px' }}
+                type="number"
+                placeholder="Max ₱"
+                aria-label="Maximum price"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+                min="0"
+              />
+            </div>
+          </div>
+          <div style={styles.filterGroup}>
+            <label style={styles.filterLabel} htmlFor="cars-sort">Sort By</label>
+            <div style={styles.selectWrap}>
+              <select
+                id="cars-sort"
+                className="filter-control"
+                style={selectStyle}
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="">Newest</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+                <option value="rating-desc">Highest Rated</option>
+                <option value="name-asc">Name: A to Z</option>
+              </select>
+              <ChevronDownIcon style={styles.selectArrow} />
+            </div>
           </div>
         </div>
-        <div style={styles.filterGroup}>
-          <label style={styles.filterLabel} htmlFor="cars-sort">Sort By</label>
-          <select
-            id="cars-sort"
-            style={styles.select}
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-          >
-            <option value="">Newest</option>
-            <option value="price-asc">Price: Low to High</option>
-            <option value="price-desc">Price: High to Low</option>
-            <option value="rating-desc">Highest Rated</option>
-            <option value="name-asc">Name: A to Z</option>
-          </select>
+        <div style={styles.bookableRow}>
+          <label style={styles.availableToggle}>
+            <input
+              type="checkbox"
+              className="gold-check"
+              checked={availableOnly}
+              onChange={(e) => setAvailableOnly(e.target.checked)}
+            />
+            Bookable only
+          </label>
         </div>
-        <label style={styles.availableToggle}>
-          <input type="checkbox" checked={availableOnly} onChange={(e) => setAvailableOnly(e.target.checked)} />
-          Bookable only
-        </label>
       </div>
 
       {loading ? (
         <div className="responsive-grid-3" style={styles.grid}>
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} style={styles.skeletonCard}>
-              <Skeleton height="160px" radius="0" isDark={isDark} />
+              <Skeleton height="190px" radius="0" isDark={isDark} />
               <div style={styles.skeletonBody}>
                 <Skeleton height="18px" width="70%" isDark={isDark} />
                 <Skeleton height="13px" width="45%" isDark={isDark} />
@@ -431,7 +530,10 @@ const Cars = () => {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <p style={{ textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280' }}>No cars found.</p>
+        <div style={styles.emptyState}>
+          <strong style={styles.emptyTitle}>No cars found</strong>
+          Widen the price range or clear a filter to see more of the fleet.
+        </div>
       ) : (
         <>
         <p style={styles.resultsCount}>{filtered.length} vehicle{filtered.length === 1 ? '' : 's'} found</p>
@@ -449,7 +551,7 @@ const Cars = () => {
             >
               <div style={styles.imgWrap}>
                 {car.image ? (
-                  <img src={car.image} alt={car.model} style={styles.img} />
+                  <img src={car.image} alt={car.model} className="car-stage-img" style={styles.img} />
                 ) : (
                   <div style={styles.noImg}>No Image</div>
                 )}
@@ -459,6 +561,7 @@ const Cars = () => {
                   color: car.isAvailable === false ? '#fca5a5' : '#86efac',
                   border: `1px solid ${car.isAvailable === false ? 'rgba(248,113,113,0.4)' : 'rgba(134,239,172,0.4)'}`,
                 }}>
+                  <span style={styles.availDot} />
                   {car.isAvailable === false ? 'Not Listed' : 'Bookable'}
                 </span>
                 <FavoriteButton
@@ -472,7 +575,10 @@ const Cars = () => {
               </div>
               <div style={styles.cardBody}>
                 <div style={styles.nameRow}>
-                  <h3 style={styles.carName}>{car.brand} {car.model}</h3>
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={styles.carName}>{car.brand} {car.model}</h3>
+                    <p style={styles.carSub}>{car.category} · {car.year}</p>
+                  </div>
                   {car.ratingCount > 0 ? (
                     <div style={styles.ratingRow}>
                       <StarRating value={car.avgRating} size={13} readOnly />
@@ -480,24 +586,38 @@ const Cars = () => {
                       <span style={styles.ratingCountText}>({car.ratingCount})</span>
                     </div>
                   ) : (
-                    <span style={styles.ratingCountText}>No reviews yet</span>
+                    <span style={{ ...styles.ratingCountText, flexShrink: 0, whiteSpace: 'nowrap' }}>No reviews yet</span>
                   )}
                 </div>
-                <p style={styles.carSub}>{car.category} · {car.year}</p>
                 <div style={styles.carMeta}>
-                  <span style={styles.metaItem}><SeatsIcon color={isDark ? GOLD_DARK : GOLD} /> {car.seats} Seats</span>
-                  <span style={styles.metaItem}><FuelIcon color={isDark ? GOLD_DARK : GOLD} /> {car.fuelType}</span>
-                  <span style={styles.metaItem}><TransmissionIcon color={isDark ? GOLD_DARK : GOLD} /> {car.transmission}</span>
+                  <span style={styles.metaItem}>
+                    <SeatsIcon color={isDark ? GOLD_DARK : GOLD} />
+                    <span style={styles.metaText}>{car.seats} Seats</span>
+                  </span>
+                  <span style={styles.metaItem}>
+                    <FuelIcon color={isDark ? GOLD_DARK : GOLD} />
+                    <span style={styles.metaText}>{car.fuelType}</span>
+                  </span>
+                  <span style={styles.metaItem}>
+                    <TransmissionIcon color={isDark ? GOLD_DARK : GOLD} />
+                    <span style={styles.metaText}>{car.transmission}</span>
+                  </span>
                 </div>
-                <div style={styles.bookingTypeRow}>
-                  {(car.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver']).map((t) => (
-                    <span key={t} style={styles.bookingTypeTag}>
-                      {t === 'self-drive' ? 'Self Drive' : 'With Driver'}
-                    </span>
-                  ))}
-                </div>
+                {(() => {
+                  const modes = car.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver'];
+                  return (
+                    <div style={{ ...styles.bookingTypeRow, gridTemplateColumns: `repeat(${modes.length}, minmax(0, 1fr))` }}>
+                      {modes.map((t) => (
+                        <span key={t} style={styles.bookingTypeTag}>
+                          {t === 'self-drive' ? 'Self Drive' : 'With Driver'}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
                 <button
                   type="button"
+                  className="car-view-details"
                   style={styles.viewDetailsBtn}
                   onClick={(e) => { e.stopPropagation(); navigate(carDetailUrl(car._id)); }}
                 >
