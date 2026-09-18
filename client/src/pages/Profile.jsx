@@ -398,7 +398,6 @@ const Profile = () => {
       position: 'absolute', bottom: '-10px', right: '-10px', width: '30px', height: '30px', borderRadius: '50%',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center',
       border: `2px solid ${isDark ? '#18191a' : '#f9fafb'}`, pointerEvents: 'none',
-      boxShadow: isDark ? '0 0 14px rgba(232,161,0,0.65)' : '0 0 10px rgba(184,121,10,0.45)',
     },
     avatarMeta: { display: 'flex', flexDirection: 'column', gap: '4px' },
     avatarName: { fontSize: '19px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
