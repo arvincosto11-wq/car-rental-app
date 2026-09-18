@@ -161,8 +161,32 @@ const Cars = () => {
       position: 'absolute', right: '13px', top: '50%', transform: 'translateY(-50%)',
       color: isDark ? '#8a8d91' : '#9ca3af', pointerEvents: 'none',
     },
-    priceRangeGroup: { display: 'flex', alignItems: 'center', gap: '7px' },
-    priceRangeSep: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', flexShrink: 0 },
+    // Min and max share one bordered box instead of sitting in two of their
+    // own, so the pair reads as a single range control and the two fields
+    // get back the width the (now hidden) native spinners were eating.
+    priceRangeGroup: {
+      display: 'flex',
+      alignItems: 'center',
+      width: '196px',
+      height: '44px',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      borderRadius: '10px',
+      background: isDark ? '#18191a' : '#fff',
+      overflow: 'hidden',
+    },
+    priceRangeInput: {
+      width: '100%',
+      minWidth: 0,
+      height: '100%',
+      padding: '0 12px',
+      border: 'none',
+      background: 'transparent',
+      fontFamily: 'inherit',
+      fontSize: '14px',
+      outline: 'none',
+      color: isDark ? '#e4e6eb' : '#111827',
+    },
+    priceRangeSep: { fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', flexShrink: 0 },
     bookableRow: {
       marginTop: '16px',
       paddingTop: '16px',
@@ -459,10 +483,10 @@ const Cars = () => {
           </div>
           <div style={styles.filterGroup}>
             <span style={styles.filterLabel} id="cars-price-label">Price Range</span>
-            <div style={styles.priceRangeGroup} role="group" aria-labelledby="cars-price-label">
+            <div className="filter-range" style={styles.priceRangeGroup} role="group" aria-labelledby="cars-price-label">
               <input
-                className="filter-control"
-                style={{ ...styles.control, width: '96px', padding: '0 12px' }}
+                className="no-spinner"
+                style={styles.priceRangeInput}
                 type="number"
                 placeholder="Min ₱"
                 aria-label="Minimum price"
@@ -472,8 +496,8 @@ const Cars = () => {
               />
               <span style={styles.priceRangeSep}>–</span>
               <input
-                className="filter-control"
-                style={{ ...styles.control, width: '96px', padding: '0 12px' }}
+                className="no-spinner"
+                style={styles.priceRangeInput}
                 type="number"
                 placeholder="Max ₱"
                 aria-label="Maximum price"

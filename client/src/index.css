@@ -356,6 +356,28 @@ select:disabled {
   border-color: var(--gold) !important;
 }
 
+/* Min and max share one border, so the focus edge belongs to the box
+   around them rather than to whichever of the two is being typed in. */
+.filter-range:focus-within {
+  border-color: var(--gold) !important;
+}
+@media (max-width: 560px) {
+  .filter-range { width: 100% !important; }
+}
+
+/* The native number spinner is drawn by the browser and ignores the dark
+   theme, so it renders as a pale box in the corner of the field. Prices
+   are typed, not stepped, so it goes. */
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* Checkbox drawn from scratch — the tick is the right and bottom edge of a
    rectangle turned 45 degrees, so it needs no icon and inherits the gold. */
 .gold-check {
