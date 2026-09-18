@@ -297,12 +297,13 @@ const Navbar = () => {
                   itself links onward to Register for anyone new. Keeping a
                   plain Log In link alongside it so returning users still
                   have an obvious, low-emphasis way back in. */}
-              <Link className="btn-like" to="/login" style={{
+              <Link className="nav-link" to="/login" style={{
                 padding: '7px 4px',
                 textDecoration: 'none',
                 fontSize: '13.5px',
                 color: textColor,
                 whiteSpace: 'nowrap',
+                '--nav-hover-color': isDark ? GOLD_DARK : GOLD,
               }}>Log In</Link>
               <Link className="btn-like" to="/cars" style={{
                 padding: '12px 28px',
