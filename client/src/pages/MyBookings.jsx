@@ -39,6 +39,11 @@ const CalendarLineIcon = (props) => <LineIcon {...props}><rect x="3" y="4" width
 const PinLineIcon = (props) => <LineIcon {...props}><path d="M12 21s7-6.4 7-12a7 7 0 0 0-14 0c0 5.6 7 12 7 12z" /><circle cx="12" cy="9" r="2.5" /></LineIcon>;
 const ReturnLineIcon = (props) => <LineIcon {...props}><path d="M3 12a9 9 0 1 0 3-6.7" /><polyline points="3 4 3 9 8 9" /></LineIcon>;
 const TagLineIcon = (props) => <LineIcon {...props}><path d="M20.6 12.6L12.6 20.6a2 2 0 0 1-2.8 0l-6.4-6.4a2 2 0 0 1 0-2.8L11.4 3.4A2 2 0 0 1 12.8 3H19a2 2 0 0 1 2 2v6.2a2 2 0 0 1-.4 1.4z" /><circle cx="16" cy="8" r="1.3" /></LineIcon>;
+// Action-button icons. stroke="currentColor" (from LineIcon) means each
+// one picks up its own button's color — no per-icon color rules needed.
+const CalendarPlusIcon = (props) => <LineIcon {...props}><rect x="3" y="4" width="18" height="17" rx="3" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="12" y1="13" x2="12" y2="17" /><line x1="10" y1="15" x2="14" y2="15" /></LineIcon>;
+const RepeatIcon = (props) => <LineIcon {...props}><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></LineIcon>;
+const PencilIcon = (props) => <LineIcon {...props}><path d="M17 3l4 4-11 11H6v-4z" /><line x1="14" y1="6" x2="18" y2="10" /></LineIcon>;
 
 // Mirrors getRefundPercentage in server/routes/bookings.js (based on time
 // since the booking was made, not the pickup date) — this is only a preview
@@ -512,14 +517,23 @@ const MyBookings = () => {
       color: isDark ? '#cbd0d6' : '#4b5563', marginTop: '6px',
     },
     carSub: { fontWeight: '700', textTransform: 'uppercase' },
+    // Ghost (outlined) and solid action buttons share one type treatment:
+    // uppercase, 700 weight, wide tracking. Their hover "glow" is a
+    // full-saturation ring (box-shadow) added OUTSIDE the translucent
+    // border by .btn-ghost-*/.btn-solid-gold in index.css — the border
+    // itself never changes, so nothing shifts on hover.
     refundBtn: {
-      textAlign: 'center',
-      padding: '7px 18px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '11px 24px',
       fontSize: '12px',
-      fontWeight: '600',
-      background: 'none',
+      fontWeight: '700',
+      letterSpacing: '0.08em',
+      textTransform: 'uppercase',
+      background: 'transparent',
       color: isDark ? '#f87171' : '#dc2626',
-      border: `1px solid ${isDark ? '#f87171' : '#dc2626'}`,
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.45)' : 'rgba(220,38,38,0.45)'}`,
       borderRadius: '999px',
       cursor: 'pointer',
     },
@@ -572,20 +586,29 @@ const MyBookings = () => {
       paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`,
     },
     rescheduleBtn: {
-      textAlign: 'center',
-      padding: '7px 16px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '11px 24px',
       fontSize: '12px',
-      fontWeight: '600',
-      background: 'none',
+      fontWeight: '700',
+      letterSpacing: '0.08em',
+      textTransform: 'uppercase',
+      background: 'transparent',
       color: isDark ? GOLD_DARK : GOLD,
-      border: `1px solid ${isDark ? GOLD_DARK : GOLD}`,
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.45)' : 'rgba(184,121,10,0.45)'}`,
       borderRadius: '999px',
       cursor: 'pointer',
     },
     bookAgainBtn: {
-      padding: '7px 16px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '9px',
+      padding: '11px 22px',
       fontSize: '12px',
-      fontWeight: '600',
+      fontWeight: '700',
+      letterSpacing: '0.08em',
+      textTransform: 'uppercase',
       background: isDark ? GOLD_DARK : GOLD,
       color: ON_GOLD,
       border: 'none',
@@ -613,16 +636,22 @@ const MyBookings = () => {
     modalSub: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px', lineHeight: '1.5' },
     field: { marginBottom: '14px' },
     rescheduleSelectedNote: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '-6px', marginBottom: '14px' },
-    ratingSummary: {},
-    ratingScore: { fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    ratingSummary: { display: 'flex', alignItems: 'center', gap: '8px' },
+    ratingScore: { fontSize: '14px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     editRatingBtn: {
-      background: 'none',
-      border: 'none',
-      color: isDark ? GOLD_DARK : GOLD,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '11px 24px',
       fontSize: '12px',
+      fontWeight: '700',
+      letterSpacing: '0.08em',
+      textTransform: 'uppercase',
+      background: 'transparent',
+      color: isDark ? GOLD_DARK : GOLD,
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.45)' : 'rgba(184,121,10,0.45)'}`,
+      borderRadius: '999px',
       cursor: 'pointer',
-      padding: 0,
-      textDecoration: 'underline',
     },
     priceCol: {
       textAlign: 'right',
@@ -862,12 +891,12 @@ const MyBookings = () => {
                   (!booking.refundStatus || booking.refundStatus === 'none') && (
                     <div className="grid-cell" style={styles.actionsCell}>
                       <div style={styles.actionsIndent}>
-                        <button style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
-                          Request Refund
+                        <button className="btn-ghost-rose" style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
+                          <ReturnLineIcon /> Request Refund
                         </button>
                         {booking.rescheduleRequest?.status !== 'pending' && (
-                          <button style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
-                            Reschedule
+                          <button className="btn-ghost-amber" style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
+                            <CalendarPlusIcon /> Reschedule
                           </button>
                         )}
                       </div>
@@ -879,6 +908,7 @@ const MyBookings = () => {
                     <div className="grid-cell" style={styles.actionsCell}>
                       <div style={styles.actionsIndent}>
                         <button
+                          className="btn-solid-gold"
                           style={styles.bookAgainBtn}
                           onClick={() => handleRetryPayment(booking._id)}
                           disabled={retryingPaymentId === booking._id}
@@ -890,10 +920,21 @@ const MyBookings = () => {
                 )}
                 {booking.status === 'completed' && (
                   <div className="grid-cell" style={styles.actionsCell}>
-                    <div style={styles.actionsIndent}>
-                      <button style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
-                        Book Again
+                    <div style={{ ...styles.actionsIndent, alignItems: 'center' }}>
+                      <button className="btn-solid-gold" style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
+                        <RepeatIcon /> Book Again
                       </button>
+                      {booking.carRating?.ratedAt && (
+                        <>
+                          <button className="btn-ghost-amber" style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>
+                            <PencilIcon /> Edit Rating
+                          </button>
+                          <div style={styles.ratingSummary}>
+                            <StarRating value={booking.carRating.overall} size={14} readOnly />
+                            <span style={styles.ratingScore}>{booking.carRating.overall.toFixed(1)}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -912,16 +953,6 @@ const MyBookings = () => {
               {booking.rescheduleRequest?.status === 'declined' && booking.rescheduleRequest.adminNotes && (
                 <p style={styles.plainNote}>Reschedule declined: {booking.rescheduleRequest.adminNotes}</p>
               )}
-              {booking.status === 'completed' && booking.carRating?.ratedAt && (
-                <div style={styles.ratingSummary}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <StarRating value={booking.carRating.overall} size={14} readOnly />
-                    <span style={styles.ratingScore}>{booking.carRating.overall.toFixed(1)}</span>
-                    <button style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
-                  </div>
-                </div>
-              )}
-
               {booking.payment === 'paid' && booking.paymongoPaymentId && (
                 <div style={styles.refNote}><TagLineIcon size={11} /> REF: {booking.paymongoPaymentId}</div>
               )}
