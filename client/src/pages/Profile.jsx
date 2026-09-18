@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
@@ -20,6 +20,36 @@ const CheckCircleIcon = () => (
     <circle cx="12" cy="12" r="10" />
     <polyline points="8 12.5 10.8 15.3 16 9.5" />
   </svg>
+);
+const CameraIcon = ({ size = 22 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+    <circle cx="12" cy="13" r="4" />
+  </svg>
+);
+const EditPencilIcon = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </svg>
+);
+const EyeIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+// A reusable ID/license photo thumbnail with a "View Full Document" hover
+// overlay — opens the full-size image in a new tab, no custom lightbox
+// needed since we already have the real full-resolution URL.
+const IdImageThumb = ({ src, alt, thumbStyle, overlayStyle }) => (
+  <a href={src} target="_blank" rel="noreferrer" className="id-thumb-wrap" style={{ position: 'relative', display: 'block', width: '100%', maxWidth: '260px' }}>
+    <img src={src} alt={alt} style={thumbStyle} />
+    <span className="id-thumb-overlay" style={overlayStyle}>
+      <EyeIcon /> View Full Document
+    </span>
+  </a>
 );
 
 const MIN_AGE_YEARS = 18;
@@ -342,27 +372,54 @@ const Profile = () => {
     fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
     formError: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
     formSuccess: { background: isDark ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: isDark ? '#86efac' : '#166534', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
-    avatarRow: { display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '20px' },
+    avatarRow: { display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '24px' },
+    // Rounded square, not a circle — matches the corner radius used on
+    // every other image/card on the site (booking thumbs, car photos)
+    // rather than introducing a one-off circular shape.
     avatarWrap: {
-      position: 'relative', width: '84px', height: '84px', borderRadius: '50%', flexShrink: 0,
-      overflow: 'hidden', background: isDark ? '#3a3b3c' : '#e5e7eb',
+      position: 'relative', width: '96px', height: '96px', borderRadius: '18px', flexShrink: 0,
+      overflow: 'hidden', background: isDark ? '#18191a' : '#f3f4f6',
       border: `2px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
     avatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
-    avatarInitial: {
+    // Shown in place of the photo when none is set yet — a camera glyph
+    // reads as "add a photo here" more clearly than a plain initial letter.
+    avatarEmpty: {
       width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '32px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD,
+      color: isDark ? '#4e4f50' : '#c5c9d0',
     },
-    avatarUploadBtn: {
-      position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: '10px', fontWeight: '600',
-      textAlign: 'center', cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s',
+    // Covers the whole avatar as the actual click target (bigger, easier to
+    // hit than just the small pencil badge) — the pencil below is purely a
+    // visual affordance layered on top, not a separate interactive element.
+    avatarFileInput: { position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', zIndex: 2 },
+    avatarEditBadge: {
+      position: 'absolute', bottom: '-4px', right: '-4px', width: '28px', height: '28px', borderRadius: '50%',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      border: `2px solid ${isDark ? '#18191a' : '#f9fafb'}`, pointerEvents: 'none',
     },
-    avatarFileInput: { position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' },
-    avatarMeta: { display: 'flex', flexDirection: 'column', gap: '2px' },
-    avatarName: { fontSize: '18px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    avatarHint: { fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280' },
+    avatarMeta: { display: 'flex', flexDirection: 'column', gap: '4px' },
+    avatarName: { fontSize: '19px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    avatarHint: { fontSize: '12.5px', color: isDark ? '#8a8d91' : '#6b7280' },
+    avatarBadgeRow: { display: 'flex', gap: '8px', marginTop: '4px' },
+    // Small colored bar before a card's heading — purely a visual accent to
+    // tell the Account Details and Identity Verification cards apart at a
+    // glance, no meaning attached to the specific color.
+    sectionTitleRow: { display: 'flex', alignItems: 'center', gap: '10px' },
+    accentBar: (color) => ({ width: '4px', height: '16px', borderRadius: '2px', background: color, flexShrink: 0 }),
+    idThumbWrap: { marginTop: '8px' },
+    idThumbOverlay: {
+      position: 'absolute', left: 0, right: 0, bottom: 0, padding: '8px 10px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+      background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: '11px', fontWeight: '600',
+      opacity: 0, transition: 'opacity 0.15s',
+    },
+    helpFooter: { textAlign: 'center', marginTop: '28px', fontSize: '13px', color: isDark ? '#8a8d91' : '#6b7280' },
+    helpLink: { color: isDark ? GOLD_DARK : GOLD, fontWeight: '600', textDecoration: 'none' },
   };
+
+  const memberSince = profile?.createdAt
+    ? new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    : '';
 
   return (
     <div style={s.page}>
@@ -372,15 +429,12 @@ const Profile = () => {
 
         {profile && (
           <div style={s.avatarRow}>
-            <div className="avatar-wrap" style={s.avatarWrap}>
+            <div style={s.avatarWrap}>
               {profile.image ? (
                 <img src={profile.image} alt="" style={s.avatarImg} />
               ) : (
-                <div style={s.avatarInitial}>{profile.name?.charAt(0).toUpperCase()}</div>
+                <div style={s.avatarEmpty}><CameraIcon /></div>
               )}
-              <label className="avatar-upload-overlay" style={s.avatarUploadBtn} htmlFor="profile-avatar-input">
-                {avatarUploading ? 'Uploading...' : (profile.image ? 'Change Photo' : 'Add Photo')}
-              </label>
               <input
                 id="profile-avatar-input"
                 type="file"
@@ -390,10 +444,17 @@ const Profile = () => {
                 disabled={avatarUploading}
                 aria-label={profile.image ? 'Change profile photo' : 'Add profile photo'}
               />
+              <div style={s.avatarEditBadge}><EditPencilIcon /></div>
             </div>
             <div style={s.avatarMeta}>
               <span style={s.avatarName}>{profile.name}</span>
-              <span style={s.avatarHint}>Hover your photo to {profile.image ? 'change' : 'add'} it.</span>
+              {memberSince && <span style={s.avatarHint}>Member since {memberSince}</span>}
+              <div style={s.avatarBadgeRow}>
+                <span style={profile.idVerified ? s.verifiedTag : s.unverifiedTag}>
+                  {profile.idVerified ? <><CheckCircleIcon /> ID Verified</> : 'Not Verified'}
+                </span>
+              </div>
+              {avatarUploading && <span style={s.avatarHint}>Uploading photo...</span>}
             </div>
           </div>
         )}
@@ -403,7 +464,10 @@ const Profile = () => {
 
         <div style={s.profileCard}>
           <div style={s.profileHeaderRow}>
-            <div style={s.sectionTitle}>Account Details</div>
+            <div style={s.sectionTitleRow}>
+              <span style={s.accentBar('#8b5cf6')} />
+              <div style={s.sectionTitle}>Account Details</div>
+            </div>
             {!editMode && profile && (
               <button style={s.editBtn} onClick={startEdit}>Edit Profile</button>
             )}
@@ -469,73 +533,10 @@ const Profile = () => {
                   <span style={s.profileValue}>{profile.emergencyContactNumber || '—'}</span>
                 </div>
               </div>
-
-              <hr style={s.sectionDivider} />
-
-              {(profile.licenseImage || profile.licenseImageBack) && (
-                <div style={{ marginTop: '14px' }}>
-                  <span style={s.profileLabel}>License Photo</span>
-                  <div style={{ marginTop: '6px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    {profile.licenseImage && <img src={profile.licenseImage} alt="License front" style={s.idThumb} />}
-                    {profile.licenseImageBack && <img src={profile.licenseImageBack} alt="License back" style={s.idThumb} />}
-                  </div>
-                </div>
-              )}
-
-              <div style={{ marginTop: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
-                  <div>
-                    <span style={s.profileLabel}>Valid ID</span>
-                    <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={profile.idVerified ? s.verifiedTag : s.unverifiedTag}>
-                        {profile.idVerified ? <><CheckCircleIcon /> ID Verified</> : 'Not Verified'}
-                      </span>
-                      {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
-                        <span style={s.expiredTag}>Expired</span>
-                      )}
-                      {profile.pendingIdSubmittedAt && (
-                        <span style={s.unverifiedTag}>Update Pending Review</span>
-                      )}
-                    </div>
-                  </div>
-                  {profile.validIdExpiry && (
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={s.profileLabel}>Expires</span>
-                      <span style={{ ...s.profileValue, display: 'block', marginTop: '4px' }}>
-                        {new Date(profile.validIdExpiry).toLocaleDateString()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                {profile.validIdImage && (
-                  <>
-                    {profile.validIdType && (
-                      <p style={{ ...s.uploadHint, marginTop: '10px', marginBottom: '4px' }}>
-                        {VALID_ID_TYPES.find((t) => t.value === profile.validIdType)?.label || profile.validIdType}
-                      </p>
-                    )}
-                    <img src={profile.validIdImage} alt="Valid ID" style={s.idThumb} />
-                  </>
-                )}
-                {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
-                  <p style={{ ...s.formError, marginTop: '10px', maxWidth: '360px' }}>
-                    Your ID has expired. Please upload an updated photo below — you won't be able to book until it's renewed and re-verified.
-                  </p>
-                )}
-                {profile.pendingIdSubmittedAt && (
-                  <div style={{ marginTop: '12px' }}>
-                    <p style={s.uploadHint}>
-                      Submitted {new Date(profile.pendingIdSubmittedAt).toLocaleDateString()}, awaiting admin review. Your ID above stays verified and active in the meantime.
-                    </p>
-                    <div style={{ marginTop: '6px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                      {profile.pendingValidIdImage && <img src={profile.pendingValidIdImage} alt="Pending ID front" style={s.idThumb} />}
-                      {profile.pendingValidIdImageBack && <img src={profile.pendingValidIdImageBack} alt="Pending ID back" style={s.idThumb} />}
-                    </div>
-                  </div>
-                )}
-              </div>
             </>
-          ) : (
+          ) : null}
+
+          {editMode && (
             <form onSubmit={handleSave}>
               {saveError && <div style={s.formError}>{saveError}</div>}
 
@@ -648,6 +649,80 @@ const Profile = () => {
             </form>
           )}
         </div>
+
+        {profile && (
+          <div style={{ ...s.profileCard, marginTop: '20px' }}>
+            <div style={s.profileHeaderRow}>
+              <div style={s.sectionTitleRow}>
+                <span style={s.accentBar('#3b82f6')} />
+                <div style={s.sectionTitle}>Identity Verification</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                {profile.validIdExpiry && (
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={s.profileLabel}>Document Expiry</span>
+                    <span style={{ ...s.profileValue, display: 'block', marginTop: '4px' }}>
+                      {new Date(profile.validIdExpiry).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+                <span style={profile.idVerified ? s.verifiedTag : s.unverifiedTag}>
+                  {profile.idVerified ? <><CheckCircleIcon /> ID Verified</> : 'Not Verified'}
+                </span>
+                {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
+                  <span style={s.expiredTag}>Expired</span>
+                )}
+                {profile.pendingIdSubmittedAt && (
+                  <span style={s.unverifiedTag}>Update Pending Review</span>
+                )}
+              </div>
+            </div>
+
+            {profile.validIdImage ? (
+              <div style={s.idThumbWrap}>
+                {profile.validIdType && (
+                  <p style={{ ...s.uploadHint, marginBottom: '4px' }}>
+                    {VALID_ID_TYPES.find((t) => t.value === profile.validIdType)?.label || profile.validIdType}
+                  </p>
+                )}
+                <IdImageThumb src={profile.validIdImage} alt="Valid ID" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />
+              </div>
+            ) : (
+              <p style={s.uploadHint}>No valid ID on file yet — add one from Edit Profile above.</p>
+            )}
+
+            {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
+              <p style={{ ...s.formError, marginTop: '10px', maxWidth: '360px' }}>
+                Your ID has expired. Please upload an updated photo from Edit Profile above — you won't be able to book until it's renewed and re-verified.
+              </p>
+            )}
+            {profile.pendingIdSubmittedAt && (
+              <div style={{ marginTop: '12px' }}>
+                <p style={s.uploadHint}>
+                  Submitted {new Date(profile.pendingIdSubmittedAt).toLocaleDateString()}, awaiting admin review. Your ID above stays verified and active in the meantime.
+                </p>
+                <div style={{ marginTop: '6px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {profile.pendingValidIdImage && <IdImageThumb src={profile.pendingValidIdImage} alt="Pending ID front" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
+                  {profile.pendingValidIdImageBack && <IdImageThumb src={profile.pendingValidIdImageBack} alt="Pending ID back" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
+                </div>
+              </div>
+            )}
+
+            {(profile.licenseImage || profile.licenseImageBack) && (
+              <div style={{ marginTop: '16px' }}>
+                <span style={s.profileLabel}>License Photo</span>
+                <div style={{ marginTop: '6px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {profile.licenseImage && <IdImageThumb src={profile.licenseImage} alt="License front" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
+                  {profile.licenseImageBack && <IdImageThumb src={profile.licenseImageBack} alt="License back" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <p style={s.helpFooter}>
+          Need help with your account? <Link to="/help" style={s.helpLink}>Contact our support team</Link>
+        </p>
 
         <div style={{ ...s.profileCard, marginTop: '20px' }}>
           <div style={s.sectionTitle}>Change Password</div>

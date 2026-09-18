@@ -4,7 +4,7 @@
   box-sizing: border-box;
 }
 
-.avatar-wrap:hover .avatar-upload-overlay {
+.id-thumb-wrap:hover .id-thumb-overlay {
   opacity: 1;
 }
 
