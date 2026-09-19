@@ -7,7 +7,7 @@ import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { fetchAikaGps } from '../utils/aikaGps.js';
 import { validatePromo } from '../utils/promo.js';
 import { cancelBookingWithRefund, refundAmountFor, isUnderway } from '../utils/cancelBooking.js';
-import { BLOCK_REASON_CODES, clientTextFor, blockLabelFor } from '../utils/blockReasons.js';
+import { BLOCK_REASON_CODES, causeFor, blockLabelFor } from '../utils/blockReasons.js';
 import User from '../models/User.js';
 
 const router = express.Router();
@@ -195,8 +195,8 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
       for (const booking of cancellable) {
         await cancelBookingWithRefund(booking, {
           reason: 'vehicle_unavailable',
-          // The mapped, client-safe sentence — never the private note.
-          note: `Cancelled because ${clientTextFor(reasonCode)}.`,
+          // The mapped, client-safe phrase — never the private note.
+          cause: causeFor(reasonCode),
         });
       }
     }

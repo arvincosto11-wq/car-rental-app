@@ -1,5 +1,7 @@
+import Car from '../models/Car.js';
 import { refundBookingPayment } from './paymongo.js';
 import { notifyUser, notifyAdmins } from './notify.js';
+import { vehicleUnavailableMessage, formatTripDates } from './blockReasons.js';
 
 // Tiered on how long ago the booking was MADE, not on the pickup date.
 // Lives here rather than in routes/bookings.js so the admin cancel path and
@@ -12,12 +14,6 @@ export function getRefundPercentage(createdAt, now = new Date()) {
 }
 
 export const CANCEL_REASONS = ['vehicle_unavailable', 'client_requested', 'other'];
-
-const REASON_TEXT = {
-  vehicle_unavailable: 'the vehicle became unavailable',
-  client_requested: 'you asked us to cancel it',
-  other: 'it was cancelled by our team',
-};
 
 // What admin cancelling this booking should refund.
 //
@@ -45,17 +41,62 @@ export function refundAmountFor(booking, reason, customAmount) {
 export const isUnderway = (booking, now = new Date()) =>
   new Date(booking.startDate) <= now && new Date(booking.endDate) >= now;
 
+// The full message the client receives, and the short line shown beside
+// the refund on their bookings page. Kept apart because a full apology
+// reads oddly after "Refund Confirmed: ₱2,000 — Reason:".
+function clientWording(booking, reason, amount, carName, cause, clientNote) {
+  const trip = `${carName ? `the ${carName}` : 'your vehicle'} (${formatTripDates(booking.startDate, booking.endDate)})`;
+  const peso = `₱${amount.toLocaleString()}`;
+
+  if (reason === 'vehicle_unavailable') {
+    return {
+      message: vehicleUnavailableMessage({
+        carName, startDate: booking.startDate, endDate: booking.endDate, cause, amount,
+      }),
+      short: `Vehicle unavailable due to ${cause}.`,
+    };
+  }
+
+  if (reason === 'client_requested') {
+    return {
+      message: `As you requested, your booking for ${trip} has been cancelled.` +
+        (amount > 0
+          ? ` A refund of ${peso} will be processed in line with our refund policy.`
+          : ' Under our refund policy, this booking is no longer eligible for a refund.') +
+        ' Thank you for choosing Rent-A-Ride Albay.',
+      short: 'Cancelled at your request.',
+    };
+  }
+
+  return {
+    message: `We regret to inform you that your booking for ${trip} has been cancelled by our team.` +
+      (amount > 0 ? ` A refund of ${peso} will be processed.` : '') +
+      (clientNote ? ` ${clientNote.trim().replace(/([^.!?])$/, '$1.')}` : '') +
+      ' If you have any questions, please contact us.',
+    short: clientNote || 'Cancelled by our team.',
+  };
+}
+
 // Cancels and settles a booking in one place, so every caller produces the
 // same record. Never throws on a refund failure — the cancellation itself
 // must stand even when the payment provider doesn't cooperate, or a broken
 // vehicle would stay bookable because of a network error. A failure is
 // flagged for admin to settle by hand instead.
-export async function cancelBookingWithRefund(booking, { reason, customAmount, note = '' }) {
+//
+// cause   — what follows "unavailable due to", for vehicle_unavailable.
+//           Always the client-safe phrase, never admin's private note.
+// clientNote — optional text admin wrote FOR the client, from the cancel
+//           dialog. Distinct from any private note.
+export async function cancelBookingWithRefund(booking, { reason, customAmount, cause = 'unforeseen circumstances', clientNote = '' }) {
   const amount = refundAmountFor(booking, reason, customAmount);
+
+  const carDoc = booking.car?.brand ? booking.car : await Car.findById(booking.car).select('brand model');
+  const carName = carDoc ? `${carDoc.brand} ${carDoc.model}` : '';
+  const { message, short } = clientWording(booking, reason, amount, carName, cause, clientNote);
 
   booking.status = 'cancelled';
   booking.cancelReason = reason;
-  booking.cancelNote = note;
+  booking.cancelNote = clientNote;
   // Never actually paid — nothing to refund, and it shouldn't keep showing
   // as "GCash Pending" once the booking is dead.
   if (booking.payment === 'gcash_pending') booking.payment = 'offline';
@@ -63,7 +104,7 @@ export async function cancelBookingWithRefund(booking, { reason, customAmount, n
   if (amount > 0) {
     booking.refundStatus = 'approved';
     booking.refundAmount = amount;
-    booking.refundReason = note || `Cancelled by our team: ${REASON_TEXT[reason] || 'cancelled'}.`;
+    booking.refundReason = short;
     try {
       await refundBookingPayment(booking);
     } catch (err) {
@@ -78,13 +119,10 @@ export async function cancelBookingWithRefund(booking, { reason, customAmount, n
 
   await booking.save();
 
-  const refundLine = amount > 0
-    ? ` A refund of ₱${amount.toLocaleString()} has been approved.`
-    : '';
   await notifyUser(
     booking.user,
-    'Booking Cancelled',
-    `Your booking was cancelled because ${REASON_TEXT[reason] || 'it was cancelled by our team'}.${refundLine}`,
+    reason === 'vehicle_unavailable' ? 'Booking Cancelled: Vehicle Unavailable' : 'Booking Cancelled',
+    message,
     '/my-bookings'
   );
 

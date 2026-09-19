@@ -386,7 +386,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       await cancelBookingWithRefund(booking, {
         reason: cancelReason,
         customAmount: cancelAmount,
-        note: cancelNote || '',
+        clientNote: cancelNote || '',
       });
       return res.json(booking);
     }

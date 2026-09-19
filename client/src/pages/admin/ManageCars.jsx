@@ -15,7 +15,7 @@ import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
 import { hasPromo, isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
 import { splitBlockedDates } from '../../utils/blockedDates';
-import { BLOCK_REASONS, blockLabelFor } from '../../utils/blockReasons';
+import { BLOCK_REASONS, blockLabelFor, causeFor, vehicleUnavailableMessage } from '../../utils/blockReasons';
 
 // Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
 // the wrong day in timezones ahead of UTC, like PH).
@@ -554,6 +554,17 @@ Set the promo anyway?`,
       border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
       color: isDark ? '#fca5a5' : '#991b1b',
     },
+    clientPreview: {
+      marginTop: '12px', padding: '11px 13px', borderRadius: '10px',
+      fontSize: '12px', lineHeight: 1.5, fontStyle: 'italic',
+      background: isDark ? '#18191a' : '#f9fafb',
+      border: `1px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      color: isDark ? '#b0b3b8' : '#4b5563',
+    },
+    clientPreviewLabel: {
+      fontStyle: 'normal', fontSize: '10px', fontWeight: '700', letterSpacing: '0.06em',
+      textTransform: 'uppercase', marginBottom: '5px', color: isDark ? '#8a8d91' : '#9ca3af',
+    },
     blockConfirmBtn: {
       flex: 1, padding: '9px 18px', borderRadius: '8px', border: 'none', cursor: 'pointer',
       fontSize: '13px', fontWeight: '700',
@@ -1016,8 +1027,8 @@ Set the promo anyway?`,
                           placeholder="Private note (optional) — never shown to clients"
                           value={blockForm.note} onChange={(e) => setBlockForm({ ...blockForm, note: e.target.value })} />
                         <div style={styles.hint}>
-                          If these dates have bookings, clients are told the reason above in
-                          neutral wording. The note stays with you.
+                          If these dates have bookings, you&apos;ll see the exact message each
+                          client receives before anything happens. The note stays with you.
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
@@ -1078,6 +1089,25 @@ Set the promo anyway?`,
                 ))}
               </div>
             )}
+
+            {blockConflicts.cancellable?.length > 0 && (() => {
+              // Built by the same function the server uses to write the real
+              // notification, so this preview can't say something different.
+              const sample = blockConflicts.cancellable[0];
+              const car = cars.find((c) => c._id === blockConflicts.carId);
+              return (
+                <div style={styles.clientPreview}>
+                  <div style={styles.clientPreviewLabel}>{sample.client} will be told:</div>
+                  {vehicleUnavailableMessage({
+                    carName: car ? `${car.brand} ${car.model}` : '',
+                    startDate: sample.startDate,
+                    endDate: sample.endDate,
+                    cause: causeFor(blockForm.reasonCode),
+                    amount: sample.refund,
+                  })}
+                </div>
+              );
+            })()}
 
             {blockConflicts.underway?.length > 0 && (
               <div style={styles.conflictWarn}>
