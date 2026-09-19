@@ -6,6 +6,7 @@ import User from '../models/User.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { refundBookingPayment } from '../utils/paymongo.js';
+import { computeBookingPrice } from '../utils/promo.js';
 
 const router = express.Router();
 
@@ -157,7 +158,12 @@ router.post('/', protect, async (req, res) => {
     // price, never trusted from the client — otherwise a tampered request
     // could set amountPaid to whatever it wants and still get a "paid"
     // booking through GCash for a fraction of the real cost.
-    const computedTotalPrice = totalDays * car.pricePerDay;
+    // Any promo discount is applied here too, so a tampered request can't
+    // claim one it doesn't qualify for. The promo is copied onto the booking
+    // rather than read back off the car later — the car's promo can be
+    // edited or cleared at any time, this receipt can't change.
+    const { subtotal, discountAmount, totalPrice: computedTotalPrice, promoLabel } =
+      computeBookingPrice(car, totalDays, start, end);
     const validPaymentType = paymentType === 'full' ? 'full' : 'downpayment';
     const computedAmountPaid = validPaymentType === 'full' ? computedTotalPrice : Math.ceil(computedTotalPrice * 0.20);
 
@@ -168,6 +174,9 @@ router.post('/', protect, async (req, res) => {
       endDate: end,
       totalDays,
       totalPrice: computedTotalPrice,
+      subtotal,
+      discountAmount,
+      promoLabel,
       amountPaid: computedAmountPaid,
       paymentType: validPaymentType,
       bookingType: bookingType || 'with-driver',

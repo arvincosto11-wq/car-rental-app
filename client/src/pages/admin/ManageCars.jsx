@@ -13,6 +13,7 @@ import useModalA11y from '../../hooks/useModalA11y';
 import ColorPicker from '../../components/ColorPicker';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
+import { hasPromo, isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
 
 // Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
 // the wrong day in timezones ahead of UTC, like PH).
@@ -45,6 +46,9 @@ const ManageCars = () => {
   const [blockForm, setBlockForm] = useState({ startDate: '', endDate: '', reason: '' });
   const [blockSubmitting, setBlockSubmitting] = useState(false);
   const [blockPickerOpen, setBlockPickerOpen] = useState(false);
+  const [promoCar, setPromoCar] = useState(null);
+  const [promoForm, setPromoForm] = useState({ label: '', type: 'percent', value: '', startDate: '', endDate: '' });
+  const [promoSaving, setPromoSaving] = useState(false);
 
   const editingCarData = cars.find((c) => c._id === editingCar) || null;
   const closeEditModal = () => setEditingCar(null);
@@ -102,6 +106,71 @@ const ManageCars = () => {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Failed to publish this car.');
+    }
+  };
+
+  const openPromo = (car) => {
+    setPromoCar(car);
+    setPromoForm(hasPromo(car.promo)
+      ? {
+          label: car.promo.label,
+          type: car.promo.type,
+          value: String(car.promo.value),
+          startDate: car.promo.startDate.slice(0, 10),
+          endDate: car.promo.endDate.slice(0, 10),
+        }
+      : { label: '', type: 'percent', value: '', startDate: '', endDate: '' });
+  };
+
+  // The first save deliberately goes out without confirmOverlap so the server
+  // gets a chance to report clashing bookings (409). Admin sees exactly which
+  // dates are affected, then the same payload goes back confirmed.
+  const savePromo = async (confirmOverlap = false) => {
+    setPromoSaving(true);
+    try {
+      const res = await api.put(`/cars/${promoCar._id}/promo`, { ...promoForm, confirmOverlap });
+      setCars((prev) => prev.map((c) => (c._id === res.data._id ? res.data : c)));
+      setPromoCar(null);
+      toast.success('Promo saved. Anyone who favourited this vehicle has been notified.');
+    } catch (err) {
+      const data = err.response?.data;
+      if (data?.needsConfirmation) {
+        const dates = data.clashes
+          .map((c) => `${new Date(c.startDate).toLocaleDateString()} to ${new Date(c.endDate).toLocaleDateString()}`)
+          .join(', ');
+        const ok = await confirm(
+          `${data.message}
+
+Already booked: ${dates}
+
+Set the promo anyway?`,
+          { confirmLabel: 'Set promo' }
+        );
+        if (ok) return savePromo(true);
+      } else {
+        toast.error(data?.message || 'Failed to save this promo.');
+      }
+    } finally {
+      setPromoSaving(false);
+    }
+  };
+
+  const clearPromo = async () => {
+    const ok = await confirm(
+      'Remove this promo? Bookings already made with it keep their price.',
+      { confirmLabel: 'Remove promo', danger: true }
+    );
+    if (!ok) return;
+    setPromoSaving(true);
+    try {
+      const res = await api.delete(`/cars/${promoCar._id}/promo`);
+      setCars((prev) => prev.map((c) => (c._id === res.data._id ? res.data : c)));
+      setPromoCar(null);
+      toast.success('Promo removed.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove this promo.');
+    } finally {
+      setPromoSaving(false);
     }
   };
 
@@ -398,6 +467,40 @@ const ManageCars = () => {
     }),
     categoryFixed: { padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', background: isDark ? '#18191a' : '#f9fafb', color: isDark ? '#b0b3b8' : '#6b7280' },
     hint: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '4px' },
+    promoBtn: (live) => ({
+      padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+      display: 'inline-flex', alignItems: 'center', gap: '6px',
+      border: live ? `1px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      background: live ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#18191a' : '#f3f4f6'),
+      color: live ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a'),
+    }),
+    promoRowTag: {
+      display: 'inline-flex', alignItems: 'center', gap: '5px',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
+      padding: '3px 9px', borderRadius: '999px', whiteSpace: 'nowrap',
+      background: isDark ? GOLD_TINT_DARK : GOLD_TINT,
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.35)' : 'rgba(184,121,10,0.35)'}`,
+      color: isDark ? GOLD_DARK : GOLD,
+    },
+    promoCard: {
+      position: 'relative', width: '100%', maxWidth: '460px',
+      background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      borderRadius: '16px', padding: '24px', outline: 'none',
+    },
+    promoSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px' },
+    promoTypeRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' },
+    promoTypeBtn: (active) => ({
+      padding: '10px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+      border: active ? `2px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#18191a' : '#fff'),
+      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#b0b3b8' : '#374151'),
+    }),
+    promoPreview: {
+      marginTop: '14px', padding: '12px 14px', borderRadius: '10px',
+      background: isDark ? '#18191a' : '#f9fafb',
+      border: `1px dashed ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280',
+    },
     blockedList: { display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' },
     blockedItem: {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
@@ -495,6 +598,11 @@ const ManageCars = () => {
                               ⚠ Check
                             </span>
                           )}
+                          {isPromoVisible(car.promo) && (
+                            <span style={styles.promoRowTag}>
+                              {car.promo.label} · {promoOffer(car.promo)} · {promoDateRange(car.promo)}
+                            </span>
+                          )}
                         </div>
                         <div style={styles.carSub}>{car.seats} · {car.transmission} · {car.category} · {car.plateNumber || 'No plate on file'}</div>
                         {car.ratingCount > 0 ? (
@@ -525,6 +633,13 @@ const ManageCars = () => {
                           title={car.featured ? 'Shown in the homepage carousel' : 'Add to the homepage carousel'}
                         >
                           {car.featured ? '★ Featured' : '☆ Feature'}
+                        </button>
+                        <button
+                          style={styles.promoBtn(isPromoVisible(car.promo))}
+                          onClick={() => openPromo(car)}
+                          title={hasPromo(car.promo) ? 'Edit the promo on this vehicle' : 'Put this vehicle on promo'}
+                        >
+                          {isPromoVisible(car.promo) ? promoOffer(car.promo) : 'Set Promo'}
                         </button>
                         <button style={styles.archiveBtn} onClick={() => handleArchive(car._id)}>Archive</button>
                       </div>
@@ -788,6 +903,81 @@ const ManageCars = () => {
           </div>
         );
       })()}
+      {promoCar && (
+        <div style={styles.editModalOverlay} onClick={() => !promoSaving && setPromoCar(null)}>
+          <div style={styles.promoCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="promo-title">
+            <button style={styles.editModalCloseBtn} onClick={() => setPromoCar(null)} aria-label="Close">×</button>
+            <div id="promo-title" style={styles.editTitle}>Promo · {promoCar.brand} {promoCar.model}</div>
+            <p style={styles.promoSub}>
+              The discount comes off the booking total, and only when the whole rental
+              falls inside these dates.
+            </p>
+
+            <div style={styles.field}>
+              <label style={styles.label} htmlFor="promo-label">Promo name</label>
+              <input id="promo-label" style={styles.input} type="text" placeholder="e.g. Holiday Promo" maxLength={40}
+                value={promoForm.label} onChange={(e) => setPromoForm({ ...promoForm, label: e.target.value })} />
+              <div style={styles.hint}>Customers see this on the card and on their receipt.</div>
+            </div>
+
+            <div style={styles.field}>
+              <span style={styles.label}>Discount type</span>
+              <div style={styles.promoTypeRow}>
+                <button style={styles.promoTypeBtn(promoForm.type === 'percent')}
+                  onClick={() => setPromoForm({ ...promoForm, type: 'percent', value: '' })}>Percentage</button>
+                <button style={styles.promoTypeBtn(promoForm.type === 'amount')}
+                  onClick={() => setPromoForm({ ...promoForm, type: 'amount', value: '' })}>Fixed amount</button>
+              </div>
+            </div>
+
+            <div style={styles.field}>
+              <label style={styles.label} htmlFor="promo-value">
+                {promoForm.type === 'percent' ? 'Percentage off' : 'Pesos off'}
+              </label>
+              <input id="promo-value" style={styles.input} type="text" inputMode="decimal"
+                placeholder={promoForm.type === 'percent' ? 'e.g. 10' : 'e.g. 500'}
+                value={promoForm.value}
+                onChange={(e) => setPromoForm({ ...promoForm, value: sanitizeDecimal(e.target.value, 6) })} />
+              <div style={styles.hint}>
+                {promoForm.type === 'percent'
+                  ? 'Up to 50%.'
+                  : `Must be under one day's rate (₱${promoCar.pricePerDay.toLocaleString()}), so no booking can reach zero.`}
+              </div>
+            </div>
+
+            <div style={styles.editGrid}>
+              <div style={styles.field}>
+                <label style={styles.label} htmlFor="promo-start">Starts</label>
+                <input id="promo-start" style={styles.input} type="date" value={promoForm.startDate}
+                  onChange={(e) => setPromoForm({ ...promoForm, startDate: e.target.value })} />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label} htmlFor="promo-end">Ends</label>
+                <input id="promo-end" style={styles.input} type="date" min={promoForm.startDate}
+                  onChange={(e) => setPromoForm({ ...promoForm, endDate: e.target.value })} value={promoForm.endDate} />
+              </div>
+            </div>
+
+            {promoForm.value && promoForm.startDate && promoForm.endDate && (
+              <div style={styles.promoPreview}>
+                Customers will see <strong style={{ color: isDark ? GOLD_DARK : GOLD }}>
+                  {promoForm.label || 'Promo'} · {promoOffer({ ...promoForm, value: Number(promoForm.value) })} · {promoDateRange({ ...promoForm, value: Number(promoForm.value) })}
+                </strong>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button style={styles.saveBtn} onClick={() => savePromo(false)} disabled={promoSaving}>
+                {promoSaving ? 'Saving...' : hasPromo(promoCar.promo) ? 'Update Promo' : 'Start Promo'}
+              </button>
+              {hasPromo(promoCar.promo) && (
+                <button style={styles.cancelBtn} onClick={clearPromo} disabled={promoSaving}>Remove</button>
+              )}
+              <button style={styles.cancelBtn} onClick={() => setPromoCar(null)} disabled={promoSaving}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };

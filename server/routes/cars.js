@@ -5,6 +5,8 @@ import Booking from '../models/Booking.js';
 import { protect, adminOnly, consignorOnly, adminOrConsignor } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { fetchAikaGps } from '../utils/aikaGps.js';
+import { validatePromo } from '../utils/promo.js';
+import User from '../models/User.js';
 
 const router = express.Router();
 
@@ -520,6 +522,89 @@ router.put('/:id/feature', protect, adminOnly, async (req, res) => {
     const car = await Car.findById(req.params.id);
     if (!car) return res.status(404).json({ message: 'Car not found' });
     car.featured = !car.featured;
+    await car.save();
+    res.json(car);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Set or replace this vehicle's promo (admin only — a consignor can never
+// discount their own car, since it's admin who carries the cost).
+//
+// Overlapping bookings are a WARNING, not a block: one booking mid-week
+// would otherwise make a promo impossible on exactly the cars that book
+// most. The first call reports the clash, and the client re-sends with
+// confirmOverlap once admin has seen it.
+router.put('/:id/promo', protect, adminOnly, async (req, res) => {
+  try {
+    const { label, type, value, startDate, endDate, confirmOverlap } = req.body;
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+
+    const problem = validatePromo({ label, type, value, startDate, endDate }, car);
+    if (problem) return res.status(400).json({ message: problem });
+
+    const windowStart = new Date(startDate);
+    const windowEnd = new Date(endDate);
+    windowEnd.setUTCHours(23, 59, 59, 999);
+
+    if (!confirmOverlap) {
+      // Pending counts the same as confirmed here: the client has already
+      // paid, so they'd be the one who missed out on the discount.
+      const clashes = await Booking.find({
+        car: car._id,
+        status: { $in: ['pending', 'confirmed'] },
+        startDate: { $lt: windowEnd },
+        endDate: { $gt: windowStart },
+      }).select('startDate endDate').sort({ startDate: 1 });
+
+      if (clashes.length) {
+        return res.status(409).json({
+          needsConfirmation: true,
+          message: 'Some of those dates are already booked. Those bookings keep the price they were made at.',
+          clashes: clashes.map((b) => ({ startDate: b.startDate, endDate: b.endDate })),
+        });
+      }
+    }
+
+    car.promo = {
+      label: label.trim(),
+      type,
+      value: Number(value),
+      startDate: windowStart,
+      endDate: new Date(endDate),
+      createdAt: new Date(),
+    };
+    await car.save();
+
+    // Everyone who favourited this car hears about it. Favourites are an
+    // array of car ids on the user, so this is a single lookup.
+    const label_ = car.promo.label;
+    const offer = type === 'percent' ? `${value}% off` : `₱${Number(value).toLocaleString()} off`;
+    const fans = await User.find({ favorites: car._id }).select('_id');
+    for (const fan of fans) {
+      await notifyUser(
+        fan._id,
+        `${label_}: ${car.brand} ${car.model}`,
+        `${offer} the ${car.brand} ${car.model} — book dates within this promo to save.`,
+        `/cars/${car._id}`
+      );
+    }
+
+    res.json(car);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Clear the promo (admin only). Safe at any time — bookings already made
+// under it keep their own stored price and label.
+router.delete('/:id/promo', protect, adminOnly, async (req, res) => {
+  try {
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Car not found' });
+    car.promo = undefined;
     await car.save();
     res.json(car);
   } catch (err) {

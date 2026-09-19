@@ -14,6 +14,7 @@ import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { hasPromo, isPromoVisible, promoOffer, promoDateRange, promoCoversRange, promoDiscountOn } from '../utils/promo';
 import api from '../api';
 
 const CarDetail = () => {
@@ -126,7 +127,13 @@ const CarDetail = () => {
     ? Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24))
     : 0;
 
-  const totalPrice = totalDays > 0 ? totalDays * car?.pricePerDay : 0;
+  // Mirrors computeBookingPrice on the server. The server recomputes all of
+  // this at booking time and its answer is the one that counts — this is
+  // only so the customer sees the right number before committing.
+  const subtotal = totalDays > 0 ? totalDays * car?.pricePerDay : 0;
+  const promoApplies = promoCoversRange(car?.promo, startDate, endDate);
+  const discountAmount = promoApplies ? promoDiscountOn(car.promo, subtotal) : 0;
+  const totalPrice = subtotal - discountAmount;
   const downPayment = Math.ceil(totalPrice * 0.20);
   const amountToPay = paymentType === 'downpayment' ? downPayment : totalPrice;
 
@@ -572,8 +579,14 @@ const CarDetail = () => {
                     <div style={s.priceBreakdown}>
                       <div style={s.breakdownRow}>
                         <span>{totalDays} days × ₱{car.pricePerDay.toLocaleString()}</span>
-                        <span>₱{totalPrice.toLocaleString()}</span>
+                        <span>₱{subtotal.toLocaleString()}</span>
                       </div>
+                      {discountAmount > 0 && (
+                        <div style={{ ...s.breakdownRow, color: isDark ? GOLD_DARK : GOLD, fontWeight: '700' }}>
+                          <span>{car.promo.label} ({promoOffer(car.promo)})</span>
+                          <span>−₱{discountAmount.toLocaleString()}</span>
+                        </div>
+                      )}
                       {paymentType === 'downpayment' && (
                         <div style={s.breakdownRow}>
                           <span>Remaining balance</span>

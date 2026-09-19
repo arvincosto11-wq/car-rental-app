@@ -6,7 +6,17 @@ const bookingSchema = new mongoose.Schema({
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
   totalDays: { type: Number, required: true },
+  // What's actually owed, after any promo discount. Everything else that
+  // talks about money (amountPaid, refunds, the paid-in-full check) reads
+  // this, so it keeps meaning exactly what it always meant.
   totalPrice: { type: Number, required: true },
+  // The promo that was live when this booking was made, copied here rather
+  // than read back off the car. The car's promo can be edited or cleared at
+  // any time; this receipt can't change. All three stay at their defaults
+  // for bookings made without a promo.
+  subtotal: { type: Number, default: 0 },
+  discountAmount: { type: Number, default: 0 },
+  promoLabel: { type: String, default: '' },
   amountPaid: { type: Number, required: true },
   paymentType: { type: String, enum: ['downpayment', 'full'], default: 'downpayment' },
   bookingType: { type: String, enum: ['self-drive', 'with-driver'], default: 'with-driver' },

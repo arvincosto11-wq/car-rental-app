@@ -61,6 +61,20 @@ const carSchema = new mongoose.Schema({
   // vehicle. Empty means no real tracker yet, so GET /cars/gps-fleet
   // falls back to the mock placeholder position instead.
   gpsDeviceId: { type: String, default: '' },
+  // A single limited-time offer on this vehicle, set by admin only (never
+  // by a consignor, even on their own car). Empty startDate means no promo.
+  // The discount comes off the booking TOTAL, and only when the whole
+  // rental sits inside the window — see the promo block in routes/bookings.js.
+  // Nothing here is retroactive: a booking stores the discount it was made
+  // with, so editing or clearing this can't rewrite an existing receipt.
+  promo: {
+    label: { type: String, default: '' },
+    type: { type: String, enum: ['percent', 'amount'], default: 'percent' },
+    value: { type: Number, default: 0 },
+    startDate: { type: Date },
+    endDate: { type: Date },
+    createdAt: { type: Date },
+  },
   availabilityRequest: {
     status: { type: String, enum: ['none', 'pending', 'declined'], default: 'none' },
     // Which direction this request is asking for — a consignor needs admin
