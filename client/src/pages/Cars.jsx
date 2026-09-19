@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import { useNotifications } from '../context/NotificationContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
 import Skeleton from '../components/Skeleton';
@@ -48,6 +49,7 @@ const Cars = () => {
   const [availableOnly, setAvailableOnly] = useState(false);
   const [sortBy, setSortBy] = useState('');
   const { isDark } = useTheme();
+  const { notifications, markReadByLinkPrefix } = useNotifications();
   const navigate = useNavigate();
 
   // Carried over from the homepage search box (if used) so a picked car's
@@ -90,6 +92,14 @@ const Cars = () => {
     fetchCars();
   }, [pickupDate, returnDate]);
 
+  // Promo notifications link to /cars/<id>, so they badge the Vehicles nav
+  // item. Landing here is itself "seeing it" — same reasoning as My Bookings
+  // — so the badge clears now instead of staying lit until the client opens
+  // the bell and clicks each one.
+  useEffect(() => {
+    markReadByLinkPrefix('/cars');
+  }, [notifications]);
+
   const filtered = cars
     .filter((car) => {
       const matchSearch =
@@ -107,6 +117,9 @@ const Cars = () => {
       if (sortBy === 'price-desc') return b.pricePerDay - a.pricePerDay;
       if (sortBy === 'rating-desc') return (b.avgRating || 0) - (a.avgRating || 0);
       if (sortBy === 'name-asc') return `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
+      // Array.sort is stable, so vehicles within each group keep the order
+      // they arrived in rather than being shuffled.
+      if (sortBy === 'promo-first') return (isPromoVisible(b.promo) ? 1 : 0) - (isPromoVisible(a.promo) ? 1 : 0);
       return 0;
     });
 
@@ -545,6 +558,7 @@ const Cars = () => {
                 <option value="price-desc">Price: High to Low</option>
                 <option value="rating-desc">Highest Rated</option>
                 <option value="name-asc">Name: A to Z</option>
+                <option value="promo-first">On Promo First</option>
               </select>
               <ChevronDownIcon style={styles.selectArrow} />
             </div>
@@ -612,7 +626,7 @@ const Cars = () => {
                   {car.isAvailable === false ? 'Not Listed' : 'Bookable'}
                 </span>
                 {isPromoVisible(car.promo) && (
-                  <span style={styles.promoBadge}>
+                  <span className="promo-badge" style={styles.promoBadge}>
                     {promoOffer(car.promo)}
                     <span style={styles.promoBadgeDates}>{promoDateRange(car.promo)}</span>
                   </span>

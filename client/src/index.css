@@ -991,3 +991,55 @@ button.back-btn:not(:disabled):active {
     opacity: 1;
   }
 }
+/* ---- Promo badge (vehicles listing, favorites, carousel, car page) ---- */
+/* A short bob with a sheen sweeping across it, every 5s rather than
+   continuously — six badges moving nonstop in a grid reads as a broken
+   page, not as a deal. The pause is what makes the movement register. */
+@keyframes promo-bob {
+  0%, 78%, 100% { transform: translateY(0); }
+  84%           { transform: translateY(-4px); }
+  90%           { transform: translateY(-1px); }
+  95%           { transform: translateY(0); }
+}
+@keyframes promo-sheen {
+  0%, 76%   { transform: translateX(-130%); }
+  92%, 100% { transform: translateX(130%); }
+}
+.promo-badge {
+  position: relative;
+  overflow: hidden;
+  animation: promo-bob 5s ease-in-out infinite;
+}
+.promo-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.4) 50%, transparent 62%);
+  transform: translateX(-130%);
+  animation: promo-sheen 5s ease-in-out infinite;
+}
+
+/* One-shot burst when a customer's picked dates actually qualify — see
+   PromoConfetti.jsx. Each piece carries its own --dx/--dy/--rot. */
+@keyframes promo-confetti-fly {
+  0%   { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); }
+}
+.promo-confetti-piece {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 7px;
+  height: 10px;
+  border-radius: 2px;
+  pointer-events: none;
+  animation: promo-confetti-fly 1.1s cubic-bezier(0.18, 0.7, 0.4, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promo-badge,
+  .promo-badge::after { animation: none; }
+  .promo-badge::after { opacity: 0; }
+  .promo-confetti-piece { display: none; }
+}

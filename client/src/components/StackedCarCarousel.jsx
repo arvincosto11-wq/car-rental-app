@@ -234,7 +234,7 @@ const StackedCarCarousel = ({ isDark }) => {
                   {car.image && <img src={car.image} alt="" style={s.img} />}
                   {car.category && <span style={s.categoryBadge}>{car.category}</span>}
                   {isPromoVisible(car.promo) && (
-                    <span style={s.promoBadge}>
+                    <span className="promo-badge" style={s.promoBadge}>
                       {promoOffer(car.promo)} · {promoDateRange(car.promo)}
                     </span>
                   )}

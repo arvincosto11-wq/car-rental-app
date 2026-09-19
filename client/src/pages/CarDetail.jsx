@@ -10,6 +10,7 @@ import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import BookingSteps from '../components/BookingSteps';
 import FlowButton from '../components/FlowButton';
 import BackButton from '../components/BackButton';
+import PromoConfetti from '../components/PromoConfetti';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
@@ -22,6 +23,7 @@ const CarDetail = () => {
   const { user } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
+  const [promoCelebrated, setPromoCelebrated] = useState(0);
   const [searchParams] = useSearchParams();
   const { canFavorite, isFavorite, toggleFavorite } = useFavorites();
   const [car, setCar] = useState(null);
@@ -135,6 +137,13 @@ const CarDetail = () => {
   const discountAmount = promoApplies ? promoDiscountOn(car.promo, subtotal) : 0;
   const totalPrice = subtotal - discountAmount;
   const downPayment = Math.ceil(totalPrice * 0.20);
+
+  // Fire the burst on the transition INTO qualifying, not on every render
+  // while it still qualifies — otherwise changing the payment type or
+  // re-rendering for any other reason would set it off again.
+  useEffect(() => {
+    if (discountAmount > 0) setPromoCelebrated(Date.now());
+  }, [discountAmount, car?._id]);
   const amountToPay = paymentType === 'downpayment' ? downPayment : totalPrice;
 
   const overlapsBookedDates = (start, end) => {
@@ -596,7 +605,8 @@ const CarDetail = () => {
                       </button>
                     </div>
 
-                    <div style={s.priceBreakdown}>
+                    <div style={{ ...s.priceBreakdown, position: 'relative' }}>
+                      <PromoConfetti fireKey={promoCelebrated} isDark={isDark} />
                       <div style={s.breakdownRow}>
                         <span>{totalDays} days × ₱{car.pricePerDay.toLocaleString()}</span>
                         <span>₱{subtotal.toLocaleString()}</span>
@@ -749,7 +759,7 @@ const CarDetail = () => {
           {/* Booking Card */}
           <div style={s.bookingCard}>
             {isPromoVisible(car.promo) && (
-              <div style={s.promoBadge}>
+              <div className="promo-badge" style={s.promoBadge}>
                 <span>{car.promo.label} · {promoOffer(car.promo)}</span>
                 <span style={s.promoBadgeDates}>{promoDateRange(car.promo)}</span>
               </div>

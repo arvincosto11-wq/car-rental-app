@@ -121,7 +121,7 @@ const MyFavorites = () => {
                   style={{ position: 'absolute', top: '10px', right: '10px' }}
                 />
                 {isPromoVisible(car.promo) && (
-                  <span style={styles.promoBadge}>
+                  <span className="promo-badge" style={styles.promoBadge}>
                     {promoOffer(car.promo)}
                     <span style={styles.promoBadgeDates}>{promoDateRange(car.promo)}</span>
                   </span>
