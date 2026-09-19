@@ -12,22 +12,12 @@ import usePageTitle from '../../hooks/usePageTitle';
 import useModalA11y from '../../hooks/useModalA11y';
 import ColorPicker from '../../components/ColorPicker';
 import BackButton from '../../components/BackButton';
-import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import BlockDatesPanel, { upcomingBlockCount } from '../../components/BlockDatesPanel';
-import LongRentalPanel from '../../components/LongRentalPanel';
+import DiscountsPanel from '../../components/DiscountsPanel';
 import Pagination from '../../components/Pagination';
 import { paginate } from '../../utils/paginate';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
-import { hasPromo, isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
-
-// Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
-// the wrong day in timezones ahead of UTC, like PH).
-const toDateValue = (d) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
+import { isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
 
 const OTHER = '__other__';
 
@@ -76,11 +66,19 @@ const ManageCars = ({ view = 'active' }) => {
   const [search, setSearch] = useState('');
   const [blockPanelCarId, setBlockPanelCarId] = useState(null);
   const [page, setPage] = useState(1);
-  const [longRentalOpen, setLongRentalOpen] = useState(false);
-  const [promoCar, setPromoCar] = useState(null);
-  const [promoForm, setPromoForm] = useState({ label: '', type: 'percent', value: '', startDate: '', endDate: '' });
-  const [promoSaving, setPromoSaving] = useState(false);
-  const [promoBookedRanges, setPromoBookedRanges] = useState([]);
+  const [discountsOpen, setDiscountsOpen] = useState(false);
+  // Active long-rental rules, for the count on the Discounts button. Promo
+  // counts come straight off the car list; rules live in their own collection.
+  const [ruleCount, setRuleCount] = useState(0);
+  const loadRuleCount = async () => {
+    try {
+      const res = await api.get('/long-rental-discounts');
+      setRuleCount(res.data.length);
+    } catch {
+      setRuleCount(0);
+    }
+  };
+  useEffect(() => { loadRuleCount(); }, []);
 
   const editingCarData = cars.find((c) => c._id === editingCar) || null;
   const closeEditModal = () => setEditingCar(null);
@@ -169,97 +167,6 @@ const ManageCars = ({ view = 'active' }) => {
     }
   };
 
-  const openPromo = async (car) => {
-    setPromoCar(car);
-    setPromoBookedRanges([]);
-    // includePending because those are exactly the bookings the overlap
-    // warning counts — the calendar has to show what the warning reacts to.
-    try {
-      const res = await api.get(`/cars/${car._id}/booked-dates`, { params: { includePending: true } });
-      setPromoBookedRanges(res.data);
-    } catch {
-      setPromoBookedRanges([]);
-    }
-    setPromoForm(hasPromo(car.promo)
-      ? {
-          label: car.promo.label,
-          type: car.promo.type,
-          value: String(car.promo.value),
-          startDate: car.promo.startDate.slice(0, 10),
-          endDate: car.promo.endDate.slice(0, 10),
-        }
-      : { label: '', type: 'percent', value: '', startDate: '', endDate: '' });
-  };
-
-  const handleSelectPromoDay = (date) => {
-    const clicked = toDateValue(date);
-
-    if (!promoForm.startDate || (promoForm.startDate && promoForm.endDate)) {
-      setPromoForm({ ...promoForm, startDate: clicked, endDate: '' });
-      return;
-    }
-    if (clicked === promoForm.startDate) {
-      setPromoForm({ ...promoForm, startDate: '', endDate: '' });
-      return;
-    }
-    if (new Date(clicked) < new Date(promoForm.startDate)) {
-      setPromoForm({ ...promoForm, startDate: clicked });
-      return;
-    }
-    setPromoForm({ ...promoForm, endDate: clicked });
-  };
-
-  // The first save deliberately goes out without confirmOverlap so the server
-  // gets a chance to report clashing bookings (409). Admin sees exactly which
-  // dates are affected, then the same payload goes back confirmed.
-  const savePromo = async (confirmOverlap = false) => {
-    setPromoSaving(true);
-    try {
-      const res = await api.put(`/cars/${promoCar._id}/promo`, { ...promoForm, confirmOverlap });
-      setCars((prev) => prev.map((c) => (c._id === res.data._id ? res.data : c)));
-      setPromoCar(null);
-      toast.success('Promo saved. Anyone who favourited this vehicle has been notified.');
-    } catch (err) {
-      const data = err.response?.data;
-      if (data?.needsConfirmation) {
-        const dates = data.clashes
-          .map((c) => `${new Date(c.startDate).toLocaleDateString()} to ${new Date(c.endDate).toLocaleDateString()}`)
-          .join(', ');
-        const ok = await confirm(
-          `${data.message}
-
-Already booked: ${dates}
-
-Set the promo anyway?`,
-          { confirmLabel: 'Set promo' }
-        );
-        if (ok) return savePromo(true);
-      } else {
-        toast.error(data?.message || 'Failed to save this promo.');
-      }
-    } finally {
-      setPromoSaving(false);
-    }
-  };
-
-  const clearPromo = async () => {
-    const ok = await confirm(
-      'Remove this promo? Bookings already made with it keep their price.',
-      { confirmLabel: 'Remove promo', danger: true }
-    );
-    if (!ok) return;
-    setPromoSaving(true);
-    try {
-      const res = await api.delete(`/cars/${promoCar._id}/promo`);
-      setCars((prev) => prev.map((c) => (c._id === res.data._id ? res.data : c)));
-      setPromoCar(null);
-      toast.success('Promo removed.');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to remove this promo.');
-    } finally {
-      setPromoSaving(false);
-    }
-  };
 
   const handleFeature = async (car) => {
     try {
@@ -508,7 +415,6 @@ Set the promo anyway?`,
     editTitle: { fontSize: '16px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '16px' },
     imageUpload: { position: 'relative', width: '200px', height: '140px', border: `2px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#18191a' : '#fff' },
     imagePlaceholder: { textAlign: 'center', padding: '16px' },
-    imagePreview: { width: '100%', height: '100%', objectFit: 'cover' },
     fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
     photoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '8px', marginTop: '10px' },
     photoThumbWrap: { position: 'relative', width: '100%', height: '70px', borderRadius: '8px', overflow: 'hidden' },
@@ -536,12 +442,6 @@ Set the promo anyway?`,
     }),
     categoryFixed: { padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', background: isDark ? '#18191a' : '#f9fafb', color: isDark ? '#b0b3b8' : '#6b7280' },
     hint: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '4px' },
-    promoBtn: (live) => ({
-      padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
-      border: `1px solid ${live ? (isDark ? 'rgba(232,161,0,0.45)' : 'rgba(184,121,10,0.45)') : (isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb')}`,
-      background: live ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#18191a' : '#f3f4f6'),
-      color: live ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#b0b3b8' : '#374151'),
-    }),
     // Neutral when there's nothing blocked; picks up an edge when there is,
     // so the count reads as information rather than a warning.
     blockDatesBtn: (hasBlocks) => ({
@@ -557,38 +457,6 @@ Set the promo anyway?`,
       background: isDark ? GOLD_TINT_DARK : GOLD_TINT,
       border: `1px solid ${isDark ? 'rgba(232,161,0,0.35)' : 'rgba(184,121,10,0.35)'}`,
       color: isDark ? GOLD_DARK : GOLD,
-    },
-    promoCard: {
-      position: 'relative', width: '100%', maxWidth: '460px',
-      background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '16px', padding: '24px', outline: 'none',
-    },
-    promoSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px' },
-    promoDatesRow: {
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      gap: '10px', marginBottom: '8px',
-    },
-    promoDatesValue: {
-      fontSize: '13px', fontWeight: '600',
-      color: isDark ? '#e4e6eb' : '#1a1a1a',
-    },
-    promoClearDates: {
-      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-      fontSize: '12px', fontWeight: '700', flexShrink: 0,
-      color: isDark ? GOLD_DARK : GOLD,
-    },
-    promoTypeRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' },
-    promoTypeBtn: (active) => ({
-      padding: '10px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
-      border: active ? `2px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#18191a' : '#fff'),
-      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#b0b3b8' : '#374151'),
-    }),
-    promoPreview: {
-      marginTop: '14px', padding: '12px 14px', borderRadius: '10px',
-      background: isDark ? '#18191a' : '#f9fafb',
-      border: `1px dashed ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280',
     },
     searchWrap: { position: 'relative', maxWidth: '420px', marginBottom: '22px' },
     searchIcon: {
@@ -641,6 +509,7 @@ Set the promo anyway?`,
   // Drafts live on their own page, like archived cars, so the main list only
   // shows vehicles that are actually live.
   const draftCount = cars.filter((car) => car.status === 'draft').length;
+  const activePromoCount = cars.filter((car) => isPromoVisible(car.promo)).length;
   const filteredCars = cars.filter((car) => {
     if (isDraftsView ? car.status !== 'draft' : car.status === 'draft') return false;
     const q = search.trim().toLowerCase();
@@ -681,9 +550,13 @@ Set the promo anyway?`,
           </div>
           {!isDraftsView && (
             <div style={styles.headerBtns}>
-              {/* Fleet-wide rule, so it lives up here rather than on a row. */}
-              <button style={styles.archivedLinkBtn} onClick={() => setLongRentalOpen(true)}>
-                <DiscountIcon /> Long-Rental Discounts
+              {/* Every discount in one place — date promos and long-rental
+                  rules — so it lives up here rather than on each row. */}
+              <button style={styles.archivedLinkBtn} onClick={() => setDiscountsOpen(true)}>
+                <DiscountIcon /> Discounts
+                {(activePromoCount + ruleCount) > 0 && (
+                  <span style={styles.draftsCount}>{activePromoCount + ruleCount}</span>
+                )}
               </button>
               {/* The count keeps unfinished drafts from being forgotten now
                   that they're off the main list. */}
@@ -809,14 +682,6 @@ Set the promo anyway?`,
                           title={car.featured ? 'Shown in the homepage carousel' : 'Add to the homepage carousel'}
                         >
                           {car.featured ? '★ Featured' : '☆ Feature'}
-                        </button>
-                        <button
-                          className="mc-btn"
-                          style={styles.promoBtn(isPromoVisible(car.promo))}
-                          onClick={() => openPromo(car)}
-                          title={hasPromo(car.promo) ? 'Edit the promo on this vehicle' : 'Put this vehicle on promo'}
-                        >
-                          {isPromoVisible(car.promo) ? promoOffer(car.promo) : 'Set Promo'}
                         </button>
                         <button
                           className="mc-btn"
@@ -1074,103 +939,17 @@ Set the promo anyway?`,
         ) : null;
       })()}
 
-      {longRentalOpen && (
-        <LongRentalPanel cars={cars} isDark={isDark} onClose={() => setLongRentalOpen(false)} />
+      {discountsOpen && (
+        <DiscountsPanel
+          cars={cars}
+          isDark={isDark}
+          onClose={() => setDiscountsOpen(false)}
+          onCarUpdated={(updated) => setCars((prev) => prev.map((c) => (c._id === updated._id ? updated : c)))}
+          ruleCount={ruleCount}
+          onRulesChanged={loadRuleCount}
+        />
       )}
 
-      {promoCar && (
-        <div style={styles.editModalOverlay} onClick={() => !promoSaving && setPromoCar(null)}>
-          <div style={styles.promoCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="promo-title">
-            <button style={styles.editModalCloseBtn} onClick={() => setPromoCar(null)} aria-label="Close">×</button>
-            <div id="promo-title" style={styles.editTitle}>Promo · {promoCar.brand} {promoCar.model}</div>
-            <p style={styles.promoSub}>
-              The discount comes off the booking total, and only when the whole rental
-              falls inside these dates.
-            </p>
-
-            <div style={styles.field}>
-              <label style={styles.label} htmlFor="promo-label">Promo name</label>
-              <input id="promo-label" style={styles.input} type="text" placeholder="e.g. Holiday Promo" maxLength={40}
-                value={promoForm.label} onChange={(e) => setPromoForm({ ...promoForm, label: e.target.value })} />
-              <div style={styles.hint}>Customers see this on the card and on their receipt.</div>
-            </div>
-
-            <div style={styles.field}>
-              <span style={styles.label}>Discount type</span>
-              <div style={styles.promoTypeRow}>
-                <button style={styles.promoTypeBtn(promoForm.type === 'percent')}
-                  onClick={() => setPromoForm({ ...promoForm, type: 'percent', value: '' })}>Percentage</button>
-                <button style={styles.promoTypeBtn(promoForm.type === 'amount')}
-                  onClick={() => setPromoForm({ ...promoForm, type: 'amount', value: '' })}>Fixed amount</button>
-              </div>
-            </div>
-
-            <div style={styles.field}>
-              <label style={styles.label} htmlFor="promo-value">
-                {promoForm.type === 'percent' ? 'Percentage off' : 'Pesos off'}
-              </label>
-              <input id="promo-value" style={styles.input} type="text" inputMode="decimal"
-                placeholder={promoForm.type === 'percent' ? 'e.g. 10' : 'e.g. 500'}
-                value={promoForm.value}
-                onChange={(e) => setPromoForm({ ...promoForm, value: sanitizeDecimal(e.target.value, 6) })} />
-              <div style={styles.hint}>
-                {promoForm.type === 'percent'
-                  ? 'Up to 50%.'
-                  : `Must be under one day's rate (₱${promoCar.pricePerDay.toLocaleString()}), so no booking can reach zero.`}
-              </div>
-            </div>
-
-            <div style={styles.field}>
-              <span style={styles.label}>Promo dates</span>
-              <div style={styles.promoDatesRow}>
-                <span style={styles.promoDatesValue}>
-                  {promoForm.startDate && promoForm.endDate
-                    ? promoDateRange({ ...promoForm, value: 1 })
-                    : promoForm.startDate
-                      ? 'Now pick the last day'
-                      : 'Pick the first day on the calendar'}
-                </span>
-                {promoForm.startDate && (
-                  <button type="button" style={styles.promoClearDates}
-                    onClick={() => setPromoForm({ ...promoForm, startDate: '', endDate: '' })}>
-                    Clear
-                  </button>
-                )}
-              </div>
-              <AvailabilityCalendar
-                bookedRanges={promoBookedRanges}
-                selectedStart={promoForm.startDate}
-                selectedEnd={promoForm.endDate}
-                onSelectDay={handleSelectPromoDay}
-                isDark={isDark}
-                selectableWhenBooked
-              />
-              <div style={styles.hint}>
-                Red days already have a booking. You can still promo across them — those
-                bookings keep the price they were made at.
-              </div>
-            </div>
-
-            {promoForm.value && promoForm.startDate && promoForm.endDate && (
-              <div style={styles.promoPreview}>
-                Customers will see <strong style={{ color: isDark ? GOLD_DARK : GOLD }}>
-                  {promoForm.label || 'Promo'} · {promoOffer({ ...promoForm, value: Number(promoForm.value) })} · {promoDateRange({ ...promoForm, value: Number(promoForm.value) })}
-                </strong>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <button style={styles.saveBtn} onClick={() => savePromo(false)} disabled={promoSaving}>
-                {promoSaving ? 'Saving...' : hasPromo(promoCar.promo) ? 'Update Promo' : 'Start Promo'}
-              </button>
-              {hasPromo(promoCar.promo) && (
-                <button style={styles.cancelBtn} onClick={clearPromo} disabled={promoSaving}>Remove</button>
-              )}
-              <button style={styles.cancelBtn} onClick={() => setPromoCar(null)} disabled={promoSaving}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
     </AdminLayout>
   );
 };

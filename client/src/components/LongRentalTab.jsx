@@ -1,30 +1,26 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 import { useUIFeedback } from '../context/UIFeedbackContext';
-import useModalA11y from '../hooks/useModalA11y';
 import { invalidateLongRentalRules } from '../hooks/useLongRentalRules';
 import { findInversions, validateLongRentalRule } from '../utils/longRental';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 
-// Admin panel for "book N days or more, get P% off" rules, opened from the
-// Manage Cars header. One rule can cover every vehicle (including ones added
-// later) or a ticked list, which is why this isn't a per-row button like
-// Set Promo.
+// The "Long-Rental" tab of the Discounts panel: "book N days or more, get
+// P% off" rules. One rule can cover every vehicle (including ones added
+// later) or a ticked list. The panel itself (frame, tabs, close) lives in
+// DiscountsPanel.jsx.
 
 const EMPTY_FORM = { minDays: '', percent: '', appliesTo: 'all', cars: [] };
 // Fixed example so the preview reads as money rather than a percentage.
 const EXAMPLE_RATE = 1500;
 
-const LongRentalPanel = ({ cars, isDark, onClose }) => {
+const LongRentalTab = ({ cars, isDark, onRulesChanged }) => {
   const { toast, confirm } = useUIFeedback();
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
-
-  const close = () => { if (!saving) onClose(); };
-  const panelRef = useModalA11y(close);
 
   const load = async () => {
     try {
@@ -43,6 +39,7 @@ const LongRentalPanel = ({ cars, isDark, onClose }) => {
   const changed = async () => {
     invalidateLongRentalRules();
     await load();
+    onRulesChanged?.();
   };
 
   const draft = { ...form, minDays: Number(form.minDays), percent: Number(form.percent), active: true };
@@ -139,22 +136,9 @@ const LongRentalPanel = ({ cars, isDark, onClose }) => {
 
   const gold = isDark ? GOLD_DARK : GOLD;
   const s = {
-    overlay: {
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300,
-      display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto',
-    },
-    card: {
-      position: 'relative', width: '100%', maxWidth: '560px', outline: 'none',
-      background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '16px', padding: '24px',
-    },
-    closeBtn: {
-      position: 'absolute', top: '16px', right: '16px', width: '32px', height: '32px', borderRadius: '50%',
-      border: 'none', background: isDark ? '#18191a' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151',
-      fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    },
-    title: { fontSize: '17px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', paddingRight: '40px' },
-    sub: { fontSize: '12px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#6b7280', margin: '6px 0 18px' },
+    // Top margin dropped from the old standalone panel's 6px: the tab strip
+    // above already provides the spacing.
+    sub: { fontSize: '12px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#6b7280', margin: '0 0 18px' },
     label: {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.06em', textTransform: 'uppercase',
       color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '8px',
@@ -231,12 +215,7 @@ const LongRentalPanel = ({ cars, isDark, onClose }) => {
   const after = before - Math.round(before * (pct / 100));
 
   return (
-    <div style={s.overlay} onClick={close}>
-      <div ref={panelRef} tabIndex={-1} style={s.card} onClick={(e) => e.stopPropagation()}
-        role="dialog" aria-modal="true" aria-labelledby="long-rental-title">
-        <button type="button" className="icon-toggle-btn" style={s.closeBtn} onClick={close} aria-label="Close">×</button>
-
-        <div id="long-rental-title" style={s.title}>Long-Rental Discounts</div>
+    <>
         <p style={s.sub}>
           Customers get these automatically once their trip is long enough — nothing to choose.
           If a trip also qualifies for a date promo, they get whichever takes more off; discounts
@@ -341,11 +320,9 @@ const LongRentalPanel = ({ cars, isDark, onClose }) => {
           {editingId && (
             <button type="button" style={s.secondaryBtn} disabled={saving} onClick={resetForm}>Cancel edit</button>
           )}
-          <button type="button" style={s.secondaryBtn} disabled={saving} onClick={close}>Done</button>
         </div>
-      </div>
-    </div>
+    </>
   );
 };
 
-export default LongRentalPanel;
+export default LongRentalTab;

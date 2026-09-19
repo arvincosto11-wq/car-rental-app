@@ -1162,3 +1162,15 @@ body.dark .mc-btn:not(:disabled):hover {
   .mc-thumb img { transition: none; }
   .mc-card:hover .mc-thumb img { transform: none; }
 }
+
+/* Segmented tabs (e.g. the Discounts panel). The global button lift is
+   sized for standalone CTA buttons; tabs sitting inside one strip would jump
+   out of it. The selected tab's raised look carries the state instead. */
+button.seg-tab:not(:disabled):hover,
+button.seg-tab:not(:disabled):active {
+  filter: none;
+  transform: none;
+}
+button.seg-tab:not(:disabled):hover {
+  color: var(--text) !important;
+}
