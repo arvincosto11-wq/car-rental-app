@@ -56,10 +56,16 @@ export const validateLongRentalRule = ({ minDays, percent, appliesTo, cars }) =>
   return null;
 };
 
-// Two active rules clash when they start at the same trip length and cover
-// at least one vehicle in common — the customer would be offered two "7+
-// days" deals on the same car. Different lengths on the same car are fine:
-// that's how tiers work (7+ days and 30+ days).
+// Two active rules on the same vehicle clash in either of two ways:
+//
+//  'same-length' — both start at the same trip length, so the customer
+//                  would be offered two "7+ days" deals on one car.
+//  'no-gain'     — they start at different lengths, but the longer one
+//                  doesn't give MORE off. Since the best qualifying rule
+//                  wins, the longer one then never applies: 8+ days at 10%
+//                  under an existing 7+ days at 10% changes no price at all.
+//
+// Tiers that step up (7+ days 10%, 30+ days 12%) are fine.
 const sharedVehicles = (a, b) => {
   if (a.appliesTo === 'all' && b.appliesTo === 'all') return 'all';
   if (a.appliesTo === 'all') return (b.cars || []).map(idOf);
@@ -68,29 +74,56 @@ const sharedVehicles = (a, b) => {
   return (a.cars || []).map(idOf).filter((id) => inB.has(id));
 };
 
-// Existing ACTIVE rules that `rule` would clash with. `ignoreId` is the rule
-// being edited, so it isn't compared with itself. Paused rules don't count;
-// resuming one runs this same check.
+const clashKind = (a, b) => {
+  const da = Number(a.minDays);
+  const db = Number(b.minDays);
+  if (da === db) return 'same-length';
+  const [shorter, longer] = da < db ? [a, b] : [b, a];
+  return Number(longer.percent) > Number(shorter.percent) ? null : 'no-gain';
+};
+
+// Existing ACTIVE rules that `rule` would clash with, same-length clashes
+// first. `ignoreId` is the rule being edited, so it isn't compared with
+// itself. Paused rules don't count; resuming one runs this same check.
 export const findRuleConflicts = (rule, rules, ignoreId) =>
   (rules || [])
-    .filter((r) => r.active !== false
-      && String(r._id) !== String(ignoreId ?? '')
-      && Number(r.minDays) === Number(rule.minDays))
-    .map((r) => ({ rule: r, shared: sharedVehicles(rule, r) }))
-    .filter(({ shared }) => shared === 'all' || shared.length > 0);
+    .filter((r) => r.active !== false && String(r._id) !== String(ignoreId ?? ''))
+    .map((r) => ({ rule: r, kind: clashKind(rule, r), shared: sharedVehicles(rule, r) }))
+    .filter(({ kind, shared }) => kind && (shared === 'all' || shared.length > 0))
+    .sort((x, y) => (x.kind === 'same-length' ? -1 : 0) - (y.kind === 'same-length' ? -1 : 0));
 
-// One sentence explaining the first clash, naming the vehicles involved.
-// nameOf turns a car id into "BMW X5".
-export const conflictMessage = (conflicts, nameOf) => {
-  const { rule, shared } = conflicts[0];
-  let who;
-  if (shared === 'all' || rule.appliesTo === 'all') {
-    who = 'All vehicles already have';
-  } else {
-    const names = shared.map(nameOf);
-    const listed = names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(', ');
-    who = `${listed} already ${names.length === 1 ? 'has' : 'have'}`;
+const whoFor = ({ rule, shared }, nameOf) => {
+  if (shared === 'all' || rule.appliesTo === 'all') return { who: 'All vehicles', many: true };
+  const names = shared.map(nameOf);
+  const listed = names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(', ');
+  return { who: listed, many: names.length > 1 };
+};
+
+// One sentence explaining the first clash for a rule about to be saved,
+// naming the vehicles involved. nameOf turns a car id into "BMW X5".
+export const conflictMessage = (conflicts, nameOf, newRule) => {
+  const c = conflicts[0];
+  const { who, many } = whoFor(c, nameOf);
+  const has = many ? 'have' : 'has';
+  const other = c.rule;
+  if (c.kind === 'same-length' || !newRule) {
+    return `${who} already ${has} a ${other.minDays}+ day discount (${other.percent}% off). `
+      + 'Edit that discount instead, or choose a different number of days.';
   }
-  return `${who} a ${rule.minDays}+ day discount (${rule.percent}% off). `
-    + 'Edit that discount instead, or choose a different number of days.';
+  if (Number(newRule.minDays) > Number(other.minDays)) {
+    return `${who} already ${has} ${other.percent}% off from ${other.minDays}+ days, so ${newRule.minDays}+ days `
+      + `at ${newRule.percent}% would never apply. A longer trip needs a bigger discount — more than ${other.percent}%.`;
+  }
+  return `${who} ${has} ${other.percent}% off from ${other.minDays}+ days. ${newRule.minDays}+ days at `
+    + `${newRule.percent}% would override it, so that longer discount would never apply. `
+    + `Keep this one below ${other.percent}%, or change the other one.`;
+};
+
+// Short note for a rule that is already saved and clashes — e.g. one saved
+// before these checks existed.
+export const existingClashNote = (conflicts) => {
+  const c = conflicts[0];
+  return c.kind === 'same-length'
+    ? `Clashes with another ${c.rule.minDays}+ day discount on the same vehicle. Delete or edit one of them.`
+    : `Overlaps the ${c.rule.minDays}+ day discount (${c.rule.percent}% off) on the same vehicle, so one of them never applies. Delete or edit one.`;
 };

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api';
 import { useUIFeedback } from '../context/UIFeedbackContext';
 import { invalidateLongRentalRules } from '../hooks/useLongRentalRules';
-import { findInversions, validateLongRentalRule, findRuleConflicts, conflictMessage } from '../utils/longRental';
+import { findInversions, validateLongRentalRule, findRuleConflicts, conflictMessage, existingClashNote } from '../utils/longRental';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 
 // The "Long-Rental" tab of the Discounts panel: "book N days or more, get
@@ -135,7 +135,7 @@ const LongRentalTab = ({ cars, isDark, onRulesChanged }) => {
   // Same check the server makes. Shown live, and save refuses while it's
   // set, so the admin sees the clash before pressing anything.
   const formConflicts = formValid ? findRuleConflicts(draft, rules, editingId) : [];
-  const clashText = formConflicts.length ? conflictMessage(formConflicts, (id) => carName(id)) : '';
+  const clashText = formConflicts.length ? conflictMessage(formConflicts, (id) => carName(id), draft) : '';
   const scopeText = (rule) => (rule.appliesTo === 'all'
     ? 'All vehicles'
     : `${rule.cars.length} vehicle${rule.cars.length === 1 ? '' : 's'}: ${rule.cars.slice(0, 3).map(carName).join(', ')}${rule.cars.length > 3 ? '…' : ''}`);
@@ -244,11 +244,10 @@ const LongRentalTab = ({ cars, isDark, onRulesChanged }) => {
                   </span>
                   {rule.active === false && <span style={s.pausedTag}>Paused</span>}
                   <span style={s.ruleScope}>{scopeText(rule)}</span>
-                  {rule.active !== false && findRuleConflicts(rule, rules, rule._id).length > 0 && (
-                    <span style={s.clashNote}>
-                      Clashes with another {rule.minDays}+ day discount on the same vehicle. Delete or edit one of them.
-                    </span>
-                  )}
+                  {(() => {
+                    const clashes = rule.active !== false ? findRuleConflicts(rule, rules, rule._id) : [];
+                    return clashes.length ? <span style={s.clashNote}>{existingClashNote(clashes)}</span> : null;
+                  })()}
                 </span>
                 <span style={s.ruleBtns}>
                   <button type="button" className="text-link-btn" style={s.linkBtn(false)} onClick={() => toggleActive(rule)}>
@@ -314,7 +313,7 @@ const LongRentalTab = ({ cars, isDark, onRulesChanged }) => {
 
         {clashText && (
           <div style={s.warn}>
-            <strong>This would give a vehicle two discounts for the same trip length.</strong>
+            <strong>This discount would clash with one you already have.</strong>
             <div>{clashText}</div>
           </div>
         )}

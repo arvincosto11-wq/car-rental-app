@@ -39,7 +39,7 @@ const clashFor = async (rule, ignoreId) => {
   const ids = conflicts[0].shared === 'all' ? [] : conflicts[0].shared;
   const cars = await Car.find({ _id: { $in: ids } }).select('brand model').lean();
   const names = Object.fromEntries(cars.map((c) => [String(c._id), `${c.brand} ${c.model}`]));
-  return conflictMessage(conflicts, (id) => names[id] || 'A vehicle');
+  return conflictMessage(conflicts, (id) => names[id] || 'A vehicle', rule);
 };
 
 const cleanRule = ({ minDays, percent, appliesTo, cars, active }) => ({
