@@ -1,54 +1,65 @@
 import { useEffect, useState } from 'react';
 import { GOLD, GOLD_DARK } from '../theme';
 
-// One-shot burst for the moment a customer's picked dates actually qualify
-// for a promo. Deliberately not used on the listing badges: a burst that
-// repeats, or fires on six cards at once, stops reading as a celebration.
+// Two origins, because the two places this fires have different shapes.
 //
-// Pieces are laid out on a fan rather than at random, so the burst looks the
-// same every time instead of occasionally clumping to one side.
+// 'fan'   — price breakdown: pieces go up and out from the top edge, where
+//           there's open space above.
+// 'burst' — vehicle card: a full circle from the middle of the photo. The
+//           card clips its own corners, so a short radius from the centre
+//           keeps every piece inside the frame instead of being cut off
+//           mid-flight.
 const PIECE_COUNT = 18;
 
-const PIECES = Array.from({ length: PIECE_COUNT }, (_, i) => {
-  // -70deg to +70deg, measured from straight up.
-  const spread = (i / (PIECE_COUNT - 1)) * 140 - 70;
-  const rad = (spread * Math.PI) / 180;
-  const distance = 70 + (i % 4) * 16;
-  return {
-    dx: `${Math.sin(rad) * distance}px`,
-    // Up first, then gravity pulls the tail of the arc back down.
-    dy: `${-Math.cos(rad) * distance + 54}px`,
-    rot: `${(i % 2 ? 1 : -1) * (180 + (i % 5) * 60)}deg`,
-    delay: `${(i % 6) * 22}ms`,
-    shade: i % 3,
-  };
-});
+const build = (mode) =>
+  Array.from({ length: PIECE_COUNT }, (_, i) => {
+    const full = mode === 'burst';
+    // Laid out on an even spread rather than at random, so the burst looks
+    // the same every time instead of occasionally clumping to one side.
+    const deg = full
+      ? (i / PIECE_COUNT) * 360
+      : (i / (PIECE_COUNT - 1)) * 140 - 70;
+    const rad = (deg * Math.PI) / 180;
+    const distance = full ? 52 + (i % 4) * 11 : 70 + (i % 4) * 16;
+    return {
+      dx: `${Math.sin(rad) * distance}px`,
+      // Gravity pulls the tail of the arc back down.
+      dy: `${-Math.cos(rad) * distance + (full ? 22 : 54)}px`,
+      rot: `${(i % 2 ? 1 : -1) * (180 + (i % 5) * 60)}deg`,
+      stagger: (i % 6) * 22,
+      shade: i % 3,
+    };
+  });
 
-const PromoConfetti = ({ fireKey, isDark }) => {
+const PIECES = { fan: build('fan'), burst: build('burst') };
+
+const PromoConfetti = ({ fireKey, isDark, mode = 'fan', delayMs = 0 }) => {
   const [burst, setBurst] = useState(null);
 
   useEffect(() => {
     if (!fireKey) return undefined;
     setBurst(fireKey);
-    // Matches the 1.1s animation plus the longest stagger — the pieces are
-    // removed rather than left sitting invisible over the price breakdown.
-    const t = setTimeout(() => setBurst(null), 1400);
+    // 1.1s animation + the longest stagger + this card's own delay. Pieces
+    // are removed rather than left sitting invisible over the content.
+    const t = setTimeout(() => setBurst(null), 1500 + delayMs);
     return () => clearTimeout(t);
-  }, [fireKey]);
+  }, [fireKey, delayMs]);
 
   if (!burst) return null;
 
   const colors = [isDark ? GOLD_DARK : GOLD, '#ffd479', isDark ? '#e4e6eb' : '#ffffff'];
+  const originTop = mode === 'burst' ? '50%' : '0';
 
   return (
-    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 2 }}>
-      {PIECES.map((p, i) => (
+    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3 }}>
+      {PIECES[mode].map((p, i) => (
         <span
           key={`${burst}-${i}`}
           className="promo-confetti-piece"
           style={{
+            top: originTop,
             background: colors[p.shade],
-            animationDelay: p.delay,
+            animationDelay: `${delayMs + p.stagger}ms`,
             '--dx': p.dx,
             '--dy': p.dy,
             '--rot': p.rot,

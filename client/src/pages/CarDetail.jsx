@@ -11,6 +11,7 @@ import BookingSteps from '../components/BookingSteps';
 import FlowButton from '../components/FlowButton';
 import BackButton from '../components/BackButton';
 import PromoConfetti from '../components/PromoConfetti';
+import PromoBadge from '../components/PromoBadge';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
@@ -313,15 +314,7 @@ const CarDetail = () => {
     licenseBox: { background: isDark ? 'rgba(37,99,235,0.1)' : '#eff6ff', border: `1px solid ${isDark ? '#1e40af' : '#bfdbfe'}`, borderRadius: '8px', padding: '12px', marginBottom: '14px' },
     licenseNote: { fontSize: '12px', color: isDark ? '#93c5fd' : '#1e40af', marginBottom: '10px', marginTop: 0 },
     fieldHint: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px' },
-    promoBadge: {
-      display: 'inline-flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap',
-      padding: '7px 13px', borderRadius: '999px', marginTop: '10px',
-      fontSize: '11px', fontWeight: '800', letterSpacing: '0.05em', textTransform: 'uppercase',
-      background: isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.10)',
-      border: `1px solid ${isDark ? 'rgba(232,161,0,0.35)' : 'rgba(184,121,10,0.35)'}`,
-      color: isDark ? GOLD_DARK : GOLD,
-    },
-    promoBadgeDates: { fontWeight: '600', letterSpacing: '0.03em', opacity: 0.85 },
+    promoBadge: { marginBottom: '10px' },
     promoNudge: {
       marginTop: '10px', fontSize: '12px', fontWeight: '600',
       color: isDark ? GOLD_DARK : GOLD,
@@ -758,12 +751,7 @@ const CarDetail = () => {
 
           {/* Booking Card */}
           <div style={s.bookingCard}>
-            {isPromoVisible(car.promo) && (
-              <div className="promo-badge" style={s.promoBadge}>
-                <span>{car.promo.label} · {promoOffer(car.promo)}</span>
-                <span style={s.promoBadgeDates}>{promoDateRange(car.promo)}</span>
-              </div>
-            )}
+            <PromoBadge promo={car.promo} isDark={isDark} style={s.promoBadge} />
             <div style={s.priceRow}>
               <span style={s.price}>₱{car.pricePerDay.toLocaleString()}</span>
               <span style={s.perDay}>per day</span>

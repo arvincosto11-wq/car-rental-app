@@ -6,10 +6,12 @@ import api from '../api';
 import StarRating from '../components/StarRating';
 import Skeleton from '../components/Skeleton';
 import FavoriteButton from '../components/FavoriteButton';
+import PromoBadge from '../components/PromoBadge';
+import PromoConfetti from '../components/PromoConfetti';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK } from '../theme';
-import { isPromoVisible, promoOffer, promoDateRange } from '../utils/promo';
+import { isPromoVisible } from '../utils/promo';
 
 // Small feature-row icons — same hand-drawn inline-SVG approach used
 // elsewhere on the site.
@@ -100,6 +102,13 @@ const Cars = () => {
     markReadByLinkPrefix('/cars');
   }, [notifications]);
 
+  // Fires once per visit, when the list first lands — not on every filter
+  // change. Cards are staggered below so six of them don't go off at once.
+  const [cardBurst, setCardBurst] = useState(0);
+  useEffect(() => {
+    if (!loading) setCardBurst(Date.now());
+  }, [loading]);
+
   const filtered = cars
     .filter((car) => {
       const matchSearch =
@@ -122,6 +131,8 @@ const Cars = () => {
       if (sortBy === 'promo-first') return (isPromoVisible(b.promo) ? 1 : 0) - (isPromoVisible(a.promo) ? 1 : 0);
       return 0;
     });
+
+  const promoOrder = filtered.filter((c) => isPromoVisible(c.promo)).map((c) => c._id);
 
   const styles = {
     container: {
@@ -264,9 +275,6 @@ const Cars = () => {
     // Dark glass base rather than a pastel fill: these sit on top of a
     // photo, and only the text and border carry the status color.
     availBadge: {
-      position: 'absolute',
-      top: '12px',
-      left: '12px',
       display: 'inline-flex',
       alignItems: 'center',
       gap: '6px',
@@ -280,28 +288,19 @@ const Cars = () => {
       WebkitBackdropFilter: 'blur(10px)',
     },
     availDot: { width: '5px', height: '5px', borderRadius: '50%', background: 'currentColor', flexShrink: 0 },
-    // Sits under the availability badge rather than beside it — the promo is
-    // a second, unrelated fact about the vehicle, not a variant of its status.
-    promoBadge: {
+    // Both badges stack from one anchor instead of carrying their own top
+    // offsets — the status badge then sits correctly whether or not there's
+    // a promo above it, with no magic numbers to keep in sync.
+    badgeStack: {
       position: 'absolute',
-      top: '44px',
+      top: '12px',
       left: '12px',
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '6px',
-      fontSize: '10px',
-      fontWeight: '800',
-      letterSpacing: '0.05em',
-      textTransform: 'uppercase',
-      padding: '5px 11px',
-      borderRadius: '999px',
-      background: 'rgba(0,0,0,0.65)',
-      border: `1px solid ${'rgba(232,161,0,0.45)'}`,
-      color: GOLD_DARK,
-      backdropFilter: 'blur(10px)',
-      WebkitBackdropFilter: 'blur(10px)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      gap: '8px',
+      zIndex: 2,
     },
-    promoBadgeDates: { fontWeight: '600', letterSpacing: '0.03em', opacity: 0.85 },
     priceBadge: {
       position: 'absolute',
       bottom: '12px',
@@ -597,13 +596,18 @@ const Cars = () => {
         </div>
       ) : (
         <>
+        {/* Stagger is by position among PROMO cards, not among all cards —
+            otherwise a single promo card sitting sixth would sit there doing
+            nothing for most of a second. */}
         <p style={styles.resultsCount}>{filtered.length} vehicle{filtered.length === 1 ? '' : 's'} found</p>
         <div className="responsive-grid-3" style={styles.grid}>
           {filtered.map((car) => (
             <div
               key={car._id}
               className="car-card-hover"
-              style={styles.card}
+              style={isPromoVisible(car.promo)
+                ? { ...styles.card, border: `1px solid ${isDark ? 'rgba(232,161,0,0.55)' : 'rgba(184,121,10,0.55)'}`, boxShadow: `0 0 0 1px ${isDark ? 'rgba(232,161,0,0.18)' : 'rgba(184,121,10,0.14)'}` }
+                : styles.card}
               onClick={() => navigate(carDetailUrl(car._id))}
               role="link"
               tabIndex={0}
@@ -616,21 +620,26 @@ const Cars = () => {
                 ) : (
                   <div style={styles.noImg}>No Image</div>
                 )}
-                <span style={{
-                  ...styles.availBadge,
-                  background: 'rgba(0,0,0,0.65)',
-                  color: car.isAvailable === false ? '#fca5a5' : '#86efac',
-                  border: `1px solid ${car.isAvailable === false ? 'rgba(248,113,113,0.4)' : 'rgba(134,239,172,0.4)'}`,
-                }}>
-                  <span style={styles.availDot} />
-                  {car.isAvailable === false ? 'Not Listed' : 'Bookable'}
-                </span>
-                {isPromoVisible(car.promo) && (
-                  <span className="promo-badge" style={styles.promoBadge}>
-                    {promoOffer(car.promo)}
-                    <span style={styles.promoBadgeDates}>{promoDateRange(car.promo)}</span>
+                <PromoConfetti
+                  fireKey={isPromoVisible(car.promo) ? cardBurst : 0}
+                  isDark={isDark}
+                  mode="burst"
+                  delayMs={Math.max(0, promoOrder.indexOf(car._id)) * 160}
+                />
+                <div style={styles.badgeStack}>
+                  {/* Promo leads the stack: the deal is what we want seen
+                      first, the availability status is the supporting fact. */}
+                  <PromoBadge promo={car.promo} isDark={isDark} />
+                  <span style={{
+                    ...styles.availBadge,
+                    background: 'rgba(0,0,0,0.65)',
+                    color: car.isAvailable === false ? '#fca5a5' : '#86efac',
+                    border: `1px solid ${car.isAvailable === false ? 'rgba(248,113,113,0.4)' : 'rgba(134,239,172,0.4)'}`,
+                  }}>
+                    <span style={styles.availDot} />
+                    {car.isAvailable === false ? 'Not Listed' : 'Bookable'}
                   </span>
-                )}
+                </div>
                 <FavoriteButton
                   carId={car._id}
                   canFavorite={canFavorite}

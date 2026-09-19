@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
-import { isPromoVisible, promoOffer, promoDateRange } from '../utils/promo';
+import PromoBadge from './PromoBadge';
 import Skeleton from './Skeleton';
 import api from '../api';
 
@@ -174,14 +174,7 @@ const StackedCarCarousel = ({ isDark }) => {
     },
     // Bottom-left, opposite the category badge — the two never collide and
     // the promo reads against the image rather than competing with the name.
-    promoBadge: {
-      position: 'absolute', bottom: '14px', left: '14px',
-      display: 'inline-flex', alignItems: 'center', gap: '6px',
-      background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(232,161,0,0.45)', color: GOLD_DARK,
-      fontSize: '10.5px', fontWeight: '800', letterSpacing: '0.05em', textTransform: 'uppercase',
-      padding: '5px 12px', borderRadius: '999px',
-      backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
-    },
+    promoBadge: { position: 'absolute', bottom: '14px', left: '14px', zIndex: 2 },
     body: { padding: '20px 22px' },
     headRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '5px' },
     name: { fontSize: '19px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
@@ -233,11 +226,7 @@ const StackedCarCarousel = ({ isDark }) => {
                 <div style={s.imgWrap}>
                   {car.image && <img src={car.image} alt="" style={s.img} />}
                   {car.category && <span style={s.categoryBadge}>{car.category}</span>}
-                  {isPromoVisible(car.promo) && (
-                    <span className="promo-badge" style={s.promoBadge}>
-                      {promoOffer(car.promo)} · {promoDateRange(car.promo)}
-                    </span>
-                  )}
+                  <PromoBadge promo={car.promo} isDark={isDark} style={s.promoBadge} />
                 </div>
                 <div style={s.body}>
                   <div style={s.headRow}>

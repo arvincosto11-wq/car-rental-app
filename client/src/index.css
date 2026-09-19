@@ -1005,10 +1005,14 @@ button.back-btn:not(:disabled):active {
   0%, 76%   { transform: translateX(-130%); }
   92%, 100% { transform: translateX(130%); }
 }
+@keyframes promo-glow {
+  0%, 100% { box-shadow: 0 2px 10px rgba(232,161,0,0.35); }
+  50%      { box-shadow: 0 4px 20px rgba(232,161,0,0.75); }
+}
 .promo-badge {
   position: relative;
   overflow: hidden;
-  animation: promo-bob 5s ease-in-out infinite;
+  animation: promo-bob 5s ease-in-out infinite, promo-glow 2.6s ease-in-out infinite;
 }
 .promo-badge::after {
   content: '';
@@ -1028,7 +1032,8 @@ button.back-btn:not(:disabled):active {
 }
 .promo-confetti-piece {
   position: absolute;
-  top: 0;
+  /* top is set per-burst: the card bursts from its middle, the price
+     breakdown from its top edge. */
   left: 50%;
   width: 7px;
   height: 10px;
@@ -1040,6 +1045,7 @@ button.back-btn:not(:disabled):active {
 @media (prefers-reduced-motion: reduce) {
   .promo-badge,
   .promo-badge::after { animation: none; }
+  .promo-badge { box-shadow: 0 2px 10px rgba(232,161,0,0.35); }
   .promo-badge::after { opacity: 0; }
   .promo-confetti-piece { display: none; }
 }
