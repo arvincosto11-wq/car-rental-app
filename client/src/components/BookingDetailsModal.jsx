@@ -27,6 +27,7 @@ const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance }) => 
     label: { color: isDark ? '#b0b3b8' : '#6b7280', flexShrink: 0 },
     value: { color: isDark ? '#e4e6eb' : '#1a1a1a', textAlign: 'right', wordBreak: 'break-word' },
     mono: { fontFamily: 'monospace', fontSize: '11px' },
+    discount: { color: isDark ? GOLD_DARK : GOLD, fontWeight: '700' },
     collectBtn: {
       display: 'block', width: '100%', marginTop: '10px', padding: '8px 12px', fontSize: '13px', border: 'none', borderRadius: '8px',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '600',
@@ -64,6 +65,19 @@ const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance }) => 
         <div style={s.section}>
           <div style={s.sectionTitle}>Payment</div>
           <Row label="Type" value={booking.paymentType === 'downpayment' ? '20% Downpayment' : 'Full payment'} />
+          {/* Only shown when a promo was actually applied, so an ordinary
+              booking still reads as a single clean total. Values come off
+              the booking itself, never the car's current promo — this has
+              to keep saying what was agreed. */}
+          {booking.discountAmount > 0 && (
+            <>
+              <Row label="Subtotal" value={`₱${booking.subtotal.toLocaleString()}`} />
+              <Row
+                label={booking.promoLabel || 'Promo'}
+                value={<span style={s.discount}>−₱{booking.discountAmount.toLocaleString()}</span>}
+              />
+            </>
+          )}
           <Row label="Total price" value={`₱${booking.totalPrice.toLocaleString()}`} />
           <Row label="Paid so far" value={`₱${booking.amountPaid.toLocaleString()}`} />
           {remaining > 0 && <Row label="Remaining balance" value={`₱${remaining.toLocaleString()}`} />}

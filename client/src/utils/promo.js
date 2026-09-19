@@ -59,3 +59,19 @@ export const promoDiscountOn = (promo, subtotal) => {
   const raw = promo.type === 'amount' ? promo.value : Math.round(subtotal * (promo.value / 100));
   return Math.min(Math.max(raw, 0), subtotal);
 };
+
+// What a vehicle's owner is credited for a booking.
+//
+// A promo is admin's marketing decision, made on a vehicle admin doesn't
+// own, so admin absorbs the cost of it — the consignor is paid on the
+// pre-discount price. Paying them the discounted total would quietly take
+// money out of someone else's pocket to fund a promotion they never agreed
+// to, and they'd have no way to see why their earnings dropped.
+//
+// subtotal is 0 on bookings made before promos existed — a schema default
+// that was never written to those documents — so fall back to totalPrice
+// for those, where the two were the same number anyway.
+export const ownerEarningFor = (booking) => booking.subtotal || booking.totalPrice;
+
+// What admin absorbed on this booking, if anything.
+export const adminCoveredFor = (booking) => booking.discountAmount || 0;

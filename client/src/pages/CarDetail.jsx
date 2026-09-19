@@ -16,7 +16,7 @@ import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
-import { hasPromo, isPromoVisible, promoOffer, promoDateRange, promoCoversRange, promoDiscountOn } from '../utils/promo';
+import { isPromoVisible, promoOffer, promoDateRange, promoCoversRange, promoDiscountOn } from '../utils/promo';
 import api from '../api';
 
 const CarDetail = () => {

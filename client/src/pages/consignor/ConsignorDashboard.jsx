@@ -8,6 +8,8 @@ import { useNotifications } from '../../context/NotificationContext';
 import { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import { splitBlockedDates } from '../../utils/blockedDates';
+import PromoBadge from '../../components/PromoBadge';
+import { ownerEarningFor, adminCoveredFor, isPromoVisible } from '../../utils/promo';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
@@ -189,11 +191,11 @@ const ConsignorDashboard = () => {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const sumEarningsSince = (cutoff) => earnedBookings
     .filter((b) => new Date(b.createdAt) >= cutoff)
-    .reduce((sum, b) => sum + b.totalPrice, 0);
+    .reduce((sum, b) => sum + ownerEarningFor(b), 0);
   const earnings = {
     week: sumEarningsSince(startOfWeek),
     month: sumEarningsSince(startOfMonth),
-    all: earnedBookings.reduce((sum, b) => sum + b.totalPrice, 0),
+    all: earnedBookings.reduce((sum, b) => sum + ownerEarningFor(b), 0),
   };
 
   // Same period window as the toggle above, broken down per vehicle so an
@@ -205,7 +207,7 @@ const ConsignorDashboard = () => {
     const carId = b.car?._id;
     if (!carId) return;
     if (!perCarMap[carId]) perCarMap[carId] = { car: b.car, total: 0, count: 0 };
-    perCarMap[carId].total += b.totalPrice;
+    perCarMap[carId].total += ownerEarningFor(b);
     perCarMap[carId].count += 1;
   });
   const perCarEarnings = Object.values(perCarMap).sort((a, b) => b.total - a.total);
@@ -282,6 +284,17 @@ const ConsignorDashboard = () => {
     blockedList: { display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' },
     blockedItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fcd34d' : '#92400e' },
     blockedItemDeclined: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', color: isDark ? '#fca5a5' : '#991b1b' },
+    // The consignor is paid the full pre-discount amount, so this explains
+    // why the number here is higher than what the customer actually paid.
+    promoCovered: {
+      fontSize: '11px', fontWeight: '700', marginTop: '3px', maxWidth: '190px',
+      color: isDark ? GOLD_DARK : GOLD,
+    },
+    promoSection: { marginTop: '14px' },
+    promoNote: {
+      fontSize: '11px', fontWeight: '600', marginTop: '6px',
+      color: isDark ? '#8a8d91' : '#9ca3af',
+    },
     pastBlocksToggle: {
       display: 'inline-flex',
       alignItems: 'center',
@@ -457,6 +470,16 @@ const ConsignorDashboard = () => {
                       </div>
                     )}
 
+                    {isPromoVisible(c.linkedCar.promo) && (
+                      <div style={s.promoSection}>
+                        <PromoBadge promo={c.linkedCar.promo} isDark={isDark} compact />
+                        <p style={s.promoNote}>
+                          Admin is running this promo. It doesn&apos;t reduce what you earn —
+                          your payout stays at the full price and admin covers the discount.
+                        </p>
+                      </div>
+                    )}
+
                     <div style={s.blockSection}>
                       <div style={s.blockLabel}>Blocked Dates</div>
                       <p style={s.blockHint}>Block off dates this vehicle can't be booked (e.g. maintenance, personal use).</p>
@@ -590,7 +613,14 @@ const ConsignorDashboard = () => {
                     </div>
                   </td>
                   <td style={s.td}>{new Date(b.startDate).toLocaleDateString()} to {new Date(b.endDate).toLocaleDateString()}</td>
-                  <td style={s.td}>₱{b.totalPrice}</td>
+                  <td style={s.td}>
+                    ₱{ownerEarningFor(b).toLocaleString()}
+                    {adminCoveredFor(b) > 0 && (
+                      <div style={s.promoCovered}>
+                        {b.promoLabel || 'Promo'} · ₱{adminCoveredFor(b).toLocaleString()} covered by admin
+                      </div>
+                    )}
+                  </td>
                   <td style={s.td}><span style={s.payBadge}>{formatPayment(b.payment)}</span></td>
                   <td style={s.td}>
                     {b.refundStatus === 'requested' ? (
