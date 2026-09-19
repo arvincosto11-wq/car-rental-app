@@ -80,10 +80,11 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
     monthLabel: { fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px' },
     weekday: { textAlign: 'center', fontSize: '10px', fontWeight: '700', color: isDark ? '#8a8d91' : '#9ca3af', padding: '2px 0' },
-    day: (inMonth, booked, selected, past, clickable) => ({
+    day: (inMonth, booked, selected, past, clickable, onPromo) => ({
       position: 'relative',
       aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '11px', borderRadius: '6px', fontWeight: selected ? '700' : '500',
+      fontSize: '11px', borderRadius: '6px',
+      fontWeight: selected ? '700' : onPromo ? '700' : '500',
       opacity: inMonth ? (past ? 0.35 : 1) : 0.25,
       background: booked ? (isDark ? 'rgba(220,38,38,0.25)' : '#fee2e2') : (isDark ? 'rgba(22,163,74,0.18)' : '#dcfce7'),
       color: booked ? (isDark ? '#fca5a5' : '#991b1b') : (isDark ? '#86efac' : '#166534'),
@@ -95,14 +96,36 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
     legendRow: { display: 'flex', gap: '14px', marginTop: '10px', flexWrap: 'wrap' },
     legendItem: { display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
     legendDot: (bg) => ({ width: '9px', height: '9px', borderRadius: '3px', background: bg, flexShrink: 0 }),
+    // Runs the full width of the cell and sits flush on its bottom edge, so
+    // consecutive promo days read as one gold band under the range rather
+    // than a row of unrelated ticks. The availability fill and the selection
+    // ring are untouched — this is a third channel, not a replacement.
     promoBar: {
-      position: 'absolute', left: '22%', right: '22%', bottom: '3px', height: '2.5px',
-      borderRadius: '2px', background: isDark ? GOLD_DARK : GOLD, pointerEvents: 'none',
+      // Inset by the 2px selection ring rather than bleeding to the edge —
+      // at full bleed the bar cut straight through the bottom of the ring on
+      // any day that was both selected and on promo.
+      position: 'absolute', left: '3px', right: '3px', bottom: '3px', height: '3.5px',
+      borderRadius: '2px',
+      background: isDark
+        ? `linear-gradient(90deg, ${GOLD_DARK}, #ffc44d, ${GOLD_DARK})`
+        : `linear-gradient(90deg, ${GOLD}, #e8a100, ${GOLD})`,
+      boxShadow: `0 0 7px ${isDark ? 'rgba(232,161,0,0.75)' : 'rgba(184,121,10,0.55)'}`,
+      pointerEvents: 'none',
+    },
+    legendBar: {
+      width: '14px', height: '4px', borderRadius: '2px', flexShrink: 0,
+      background: isDark ? GOLD_DARK : GOLD,
+      boxShadow: `0 0 6px ${isDark ? 'rgba(232,161,0,0.7)' : 'rgba(184,121,10,0.5)'}`,
     },
     promoNote: {
-      marginTop: '8px', fontSize: '11px', fontWeight: '700',
+      display: 'flex', alignItems: 'center', gap: '7px',
+      marginTop: '10px', padding: '8px 11px', borderRadius: '9px',
+      fontSize: '11px', fontWeight: '700', lineHeight: 1.35,
+      background: isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.09)',
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.38)' : 'rgba(184,121,10,0.32)'}`,
       color: isDark ? GOLD_DARK : GOLD,
     },
+    promoNoteIcon: { flexShrink: 0 },
   };
 
   return (
@@ -125,7 +148,7 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
             <button
               key={i}
               type="button"
-              style={s.day(inMonth, booked, isSelected(date), past, clickable)}
+              style={s.day(inMonth, booked, isSelected(date), past, clickable, isPromoDay(date))}
               title={date.toLocaleDateString()}
               aria-label={`${date.toLocaleDateString()}${booked ? ', booked' : clickable ? ', available' : ''}`}
               tabIndex={clickable ? 0 : -1}
@@ -145,14 +168,20 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
         )}
         {promoActive && (
           <span style={s.legendItem}>
-            <span style={{ ...s.legendDot('transparent'), height: '3px', borderRadius: '2px', background: isDark ? GOLD_DARK : GOLD, alignSelf: 'flex-end', marginBottom: '2px' }} />
+            <span style={s.legendBar} />
             On promo
           </span>
         )}
       </div>
       {promoActive && (
         <div style={s.promoNote}>
-          {promo.label} · {promo.type === 'amount' ? `₱${Number(promo.value).toLocaleString()} off` : `${promo.value}% off`} — book within the marked dates to save.
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={s.promoNoteIcon} aria-hidden="true">
+            <path d="M12 2l2.2 6.2L20.5 10l-6.3 1.8L12 18l-2.2-6.2L3.5 10l6.3-1.8z" />
+          </svg>
+          <span>
+            {promo.label} · {promo.type === 'amount' ? `₱${Number(promo.value).toLocaleString()} off` : `${promo.value}% off`}
+            {' — book within the gold-marked dates to save.'}
+          </span>
         </div>
       )}
     </div>
