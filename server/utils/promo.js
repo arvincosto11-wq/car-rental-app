@@ -5,6 +5,8 @@
 // dates arrive as YYYY-MM-DD and parse to UTC midnight, so this lines up
 // without a second timezone convention to keep straight.
 
+import { bestLongRentalRule, longRentalDiscountOn, longRentalLabel } from './longRental.js';
+
 const MAX_PERCENT = 50;
 
 const startOfDayUTC = (date) => {
@@ -37,29 +39,39 @@ export const promoHasEnded = (promo, now = new Date()) =>
 
 // The one price calculation. Returns the pre-discount subtotal, what came
 // off, and what's actually owed — all three get stored on the booking so the
-// receipt stays readable after the promo is edited or cleared.
-export const computeBookingPrice = (car, totalDays, start, end) => {
+// receipt stays readable after a promo or rule is edited or cleared.
+//
+// A trip can qualify for a date-window promo AND a long-rental discount at
+// once. They never stack: the customer gets whichever takes more off.
+export const computeBookingPrice = (car, totalDays, start, end, longRentalRules = []) => {
   const subtotal = totalDays * car.pricePerDay;
-  const promo = car.promo;
+  const candidates = [];
 
-  if (!promoCoversRange(promo, start, end)) {
-    return { subtotal, discountAmount: 0, totalPrice: subtotal, promoLabel: '' };
+  const promo = car.promo;
+  if (promoCoversRange(promo, start, end)) {
+    const raw = promo.type === 'amount'
+      ? promo.value
+      : Math.round(subtotal * (promo.value / 100));
+    // Never below zero, however the promo was configured. validatePromo keeps
+    // a fixed amount under one day's rate so this can't normally bite, but a
+    // price cut after the promo was set could still get here.
+    candidates.push({ amount: Math.min(Math.max(raw, 0), subtotal), label: promo.label || '' });
   }
 
-  const raw = promo.type === 'amount'
-    ? promo.value
-    : Math.round(subtotal * (promo.value / 100));
+  const rule = bestLongRentalRule(longRentalRules, car._id, totalDays);
+  if (rule) {
+    candidates.push({ amount: longRentalDiscountOn(rule, subtotal), label: longRentalLabel(rule) });
+  }
 
-  // Never below zero, however the promo was configured. validatePromo keeps
-  // a fixed amount under one day's rate so this can't normally bite, but a
-  // price cut after the promo was set could still get here.
-  const discountAmount = Math.min(Math.max(raw, 0), subtotal);
-
+  const best = candidates.reduce((a, c) => (!a || c.amount > a.amount ? c : a), null);
+  if (!best || best.amount <= 0) {
+    return { subtotal, discountAmount: 0, totalPrice: subtotal, promoLabel: '' };
+  }
   return {
     subtotal,
-    discountAmount,
-    totalPrice: subtotal - discountAmount,
-    promoLabel: promo.label || '',
+    discountAmount: best.amount,
+    totalPrice: subtotal - best.amount,
+    promoLabel: best.label,
   };
 };
 

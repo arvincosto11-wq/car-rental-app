@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import Booking from '../models/Booking.js';
 import Car from '../models/Car.js';
+import LongRentalDiscount from '../models/LongRentalDiscount.js';
 import User from '../models/User.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
@@ -164,8 +165,11 @@ router.post('/', protect, async (req, res) => {
     // claim one it doesn't qualify for. The promo is copied onto the booking
     // rather than read back off the car later — the car's promo can be
     // edited or cleared at any time, this receipt can't change.
+    // Long-rental rules are read fresh at booking time, so an "all vehicles"
+    // rule also covers cars added after it was created.
+    const longRentalRules = await LongRentalDiscount.find({ active: true }).lean();
     const { subtotal, discountAmount, totalPrice: computedTotalPrice, promoLabel } =
-      computeBookingPrice(car, totalDays, start, end);
+      computeBookingPrice(car, totalDays, start, end, longRentalRules);
     const validPaymentType = paymentType === 'full' ? 'full' : 'downpayment';
     const computedAmountPaid = validPaymentType === 'full' ? computedTotalPrice : Math.ceil(computedTotalPrice * 0.20);
 

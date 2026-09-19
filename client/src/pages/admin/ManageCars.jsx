@@ -14,6 +14,7 @@ import ColorPicker from '../../components/ColorPicker';
 import BackButton from '../../components/BackButton';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import BlockDatesPanel, { upcomingBlockCount } from '../../components/BlockDatesPanel';
+import LongRentalPanel from '../../components/LongRentalPanel';
 import Pagination from '../../components/Pagination';
 import { paginate } from '../../utils/paginate';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
@@ -46,6 +47,7 @@ const MotoIcon = () => <LineIcon><circle cx="5.5" cy="16.5" r="3" /><circle cx="
 const PlateIcon = () => <LineIcon><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6.5 10h3M6.5 14h6M15 10.5h3v3h-3z" /></LineIcon>;
 const SearchIcon = () => <LineIcon size={15}><circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="21" y2="21" /></LineIcon>;
 const DraftIcon = () => <LineIcon size={15}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M9 15l5.5-5.5 1.5 1.5L10.5 16.5H9z" /></LineIcon>;
+const DiscountIcon = () => <LineIcon size={15}><line x1="19" y1="5" x2="5" y2="19" /><circle cx="6.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="17.5" r="2.5" /></LineIcon>;
 const ArchiveIcon = () => <LineIcon size={15}><rect x="3" y="4" width="18" height="5" rx="1.5" /><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9" /><line x1="10" y1="13" x2="14" y2="13" /></LineIcon>;
 
 
@@ -74,6 +76,7 @@ const ManageCars = ({ view = 'active' }) => {
   const [search, setSearch] = useState('');
   const [blockPanelCarId, setBlockPanelCarId] = useState(null);
   const [page, setPage] = useState(1);
+  const [longRentalOpen, setLongRentalOpen] = useState(false);
   const [promoCar, setPromoCar] = useState(null);
   const [promoForm, setPromoForm] = useState({ label: '', type: 'percent', value: '', startDate: '', endDate: '' });
   const [promoSaving, setPromoSaving] = useState(false);
@@ -678,6 +681,10 @@ Set the promo anyway?`,
           </div>
           {!isDraftsView && (
             <div style={styles.headerBtns}>
+              {/* Fleet-wide rule, so it lives up here rather than on a row. */}
+              <button style={styles.archivedLinkBtn} onClick={() => setLongRentalOpen(true)}>
+                <DiscountIcon /> Long-Rental Discounts
+              </button>
               {/* The count keeps unfinished drafts from being forgotten now
                   that they're off the main list. */}
               <button style={styles.draftsLinkBtn(draftCount > 0)} onClick={() => navigate('/admin/draft-cars')}>
@@ -1066,6 +1073,10 @@ Set the promo anyway?`,
           />
         ) : null;
       })()}
+
+      {longRentalOpen && (
+        <LongRentalPanel cars={cars} isDark={isDark} onClose={() => setLongRentalOpen(false)} />
+      )}
 
       {promoCar && (
         <div style={styles.editModalOverlay} onClick={() => !promoSaving && setPromoCar(null)}>

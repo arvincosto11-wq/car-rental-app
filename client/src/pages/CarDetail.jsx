@@ -12,6 +12,8 @@ import FlowButton from '../components/FlowButton';
 import BackButton from '../components/BackButton';
 import PromoConfetti from '../components/PromoConfetti';
 import PromoBadge from '../components/PromoBadge';
+import useLongRentalRules from '../hooks/useLongRentalRules';
+import { bestLongRentalRule, longRentalDiscountOn, rulesForCar } from '../utils/longRental';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
@@ -27,6 +29,7 @@ const CarDetail = () => {
   const [promoCelebrated, setPromoCelebrated] = useState(0);
   const [searchParams] = useSearchParams();
   const { canFavorite, isFavorite, toggleFavorite } = useFavorites();
+  const longRentalRules = useLongRentalRules();
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
@@ -135,7 +138,15 @@ const CarDetail = () => {
   // only so the customer sees the right number before committing.
   const subtotal = totalDays > 0 ? totalDays * car?.pricePerDay : 0;
   const promoApplies = promoCoversRange(car?.promo, startDate, endDate);
-  const discountAmount = promoApplies ? promoDiscountOn(car.promo, subtotal) : 0;
+  const promoAmount = promoApplies ? promoDiscountOn(car.promo, subtotal) : 0;
+  // A trip can qualify for the date promo and a long-rental discount at once.
+  // They never stack — the bigger one wins, same rule as computeBookingPrice.
+  const longRentalRule = car ? bestLongRentalRule(longRentalRules, car._id, totalDays) : null;
+  const longRentalAmount = longRentalDiscountOn(longRentalRule, subtotal);
+  const usingLongRental = longRentalAmount > promoAmount;
+  const discountAmount = Math.max(promoAmount, longRentalAmount);
+  // The shortest-trip rule, for the "Book 7+ days, save 10%" line.
+  const firstLongRentalRule = car ? rulesForCar(longRentalRules, car._id)[0] : null;
   const totalPrice = subtotal - discountAmount;
   const downPayment = Math.ceil(totalPrice * 0.20);
 
@@ -315,6 +326,10 @@ const CarDetail = () => {
     licenseNote: { fontSize: '12px', color: isDark ? '#93c5fd' : '#1e40af', marginBottom: '10px', marginTop: 0 },
     fieldHint: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px' },
     promoBadge: { marginBottom: '10px' },
+    longRentalNote: {
+      display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '6px',
+      fontSize: '12px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD,
+    },
     promoNudge: {
       marginTop: '10px', fontSize: '12px', fontWeight: '600',
       color: isDark ? GOLD_DARK : GOLD,
@@ -512,7 +527,7 @@ const CarDetail = () => {
                         isDark={isDark}
                         promo={isPromoVisible(car.promo) ? car.promo : null}
                       />
-                      {isPromoVisible(car.promo) && startDate && endDate && !promoApplies && (
+                      {isPromoVisible(car.promo) && startDate && endDate && !promoApplies && !usingLongRental && (
                         <p style={s.promoNudge}>
                           Pick dates within {promoDateRange(car.promo)} to save {promoOffer(car.promo)}.
                           The whole rental has to fall inside the promo.
@@ -606,7 +621,11 @@ const CarDetail = () => {
                       </div>
                       {discountAmount > 0 && (
                         <div style={{ ...s.breakdownRow, color: isDark ? GOLD_DARK : GOLD, fontWeight: '700' }}>
-                          <span>{car.promo.label} ({promoOffer(car.promo)})</span>
+                          <span>
+                            {usingLongRental
+                              ? `Long-rental discount (${longRentalRule.minDays}+ days, ${longRentalRule.percent}% off)`
+                              : `${car.promo.label} (${promoOffer(car.promo)})`}
+                          </span>
                           <span>−₱{discountAmount.toLocaleString()}</span>
                         </div>
                       )}
@@ -756,6 +775,12 @@ const CarDetail = () => {
               <span style={s.price}>₱{car.pricePerDay.toLocaleString()}</span>
               <span style={s.perDay}>per day</span>
             </div>
+            {firstLongRentalRule && (
+              <div style={s.longRentalNote}>
+                Book {firstLongRentalRule.minDays}+ days, save {firstLongRentalRule.percent}%
+                {rulesForCar(longRentalRules, car._id).length > 1 && ' — more for longer trips'}
+              </div>
+            )}
 
             {car.isAvailable === false && (
               <div style={s.error}>This vehicle isn't currently listed for booking. Check back later or browse other cars.

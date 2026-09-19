@@ -8,6 +8,8 @@ import Skeleton from '../components/Skeleton';
 import FavoriteButton from '../components/FavoriteButton';
 import PromoBadge from '../components/PromoBadge';
 import PromoConfetti from '../components/PromoConfetti';
+import useLongRentalRules from '../hooks/useLongRentalRules';
+import { rulesForCar } from '../utils/longRental';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK } from '../theme';
@@ -52,6 +54,7 @@ const Cars = () => {
   const [sortBy, setSortBy] = useState('');
   const { isDark } = useTheme();
   const { notifications, markReadByLinkPrefix } = useNotifications();
+  const longRentalRules = useLongRentalRules();
   const navigate = useNavigate();
 
   // Carried over from the homepage search box (if used) so a picked car's
@@ -286,6 +289,16 @@ const Cars = () => {
       borderRadius: '999px',
       backdropFilter: 'blur(10px)',
       WebkitBackdropFilter: 'blur(10px)',
+    },
+    // Dark glass like the availability badge — it sits on a photo too — with
+    // gold text, since it's an offer rather than a status.
+    longRentalBadge: {
+      display: 'inline-flex', alignItems: 'center',
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.06em', textTransform: 'uppercase',
+      padding: '5px 11px', borderRadius: '999px',
+      background: 'rgba(0,0,0,0.65)', color: GOLD_DARK,
+      border: '1px solid rgba(232,161,0,0.4)',
+      backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
     },
     availDot: { width: '5px', height: '5px', borderRadius: '50%', background: 'currentColor', flexShrink: 0 },
     // Both badges stack from one anchor instead of carrying their own top
@@ -639,6 +652,14 @@ const Cars = () => {
                     <span style={styles.availDot} />
                     {car.isAvailable === false ? 'Not Listed' : 'Bookable'}
                   </span>
+                  {(() => {
+                    // Shortest-trip rule only — the card is a teaser; the
+                    // full tiers are on the car's own page.
+                    const lr = rulesForCar(longRentalRules, car._id)[0];
+                    return lr ? (
+                      <span style={styles.longRentalBadge}>{lr.minDays}+ days · {lr.percent}% off</span>
+                    ) : null;
+                  })()}
                 </div>
                 <FavoriteButton
                   carId={car._id}
