@@ -55,3 +55,42 @@ export const validateLongRentalRule = ({ minDays, percent, appliesTo, cars }) =>
   if (appliesTo === 'selected' && !(cars || []).length) return 'Tick at least one vehicle, or choose all vehicles.';
   return null;
 };
+
+// Two active rules clash when they start at the same trip length and cover
+// at least one vehicle in common — the customer would be offered two "7+
+// days" deals on the same car. Different lengths on the same car are fine:
+// that's how tiers work (7+ days and 30+ days).
+const sharedVehicles = (a, b) => {
+  if (a.appliesTo === 'all' && b.appliesTo === 'all') return 'all';
+  if (a.appliesTo === 'all') return (b.cars || []).map(idOf);
+  if (b.appliesTo === 'all') return (a.cars || []).map(idOf);
+  const inB = new Set((b.cars || []).map(idOf));
+  return (a.cars || []).map(idOf).filter((id) => inB.has(id));
+};
+
+// Existing ACTIVE rules that `rule` would clash with. `ignoreId` is the rule
+// being edited, so it isn't compared with itself. Paused rules don't count;
+// resuming one runs this same check.
+export const findRuleConflicts = (rule, rules, ignoreId) =>
+  (rules || [])
+    .filter((r) => r.active !== false
+      && String(r._id) !== String(ignoreId ?? '')
+      && Number(r.minDays) === Number(rule.minDays))
+    .map((r) => ({ rule: r, shared: sharedVehicles(rule, r) }))
+    .filter(({ shared }) => shared === 'all' || shared.length > 0);
+
+// One sentence explaining the first clash, naming the vehicles involved.
+// nameOf turns a car id into "BMW X5".
+export const conflictMessage = (conflicts, nameOf) => {
+  const { rule, shared } = conflicts[0];
+  let who;
+  if (shared === 'all' || rule.appliesTo === 'all') {
+    who = 'All vehicles already have';
+  } else {
+    const names = shared.map(nameOf);
+    const listed = names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(', ');
+    who = `${listed} already ${names.length === 1 ? 'has' : 'have'}`;
+  }
+  return `${who} a ${rule.minDays}+ day discount (${rule.percent}% off). `
+    + 'Edit that discount instead, or choose a different number of days.';
+};

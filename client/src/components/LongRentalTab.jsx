@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api';
 import { useUIFeedback } from '../context/UIFeedbackContext';
 import { invalidateLongRentalRules } from '../hooks/useLongRentalRules';
-import { findInversions, validateLongRentalRule } from '../utils/longRental';
+import { findInversions, validateLongRentalRule, findRuleConflicts, conflictMessage } from '../utils/longRental';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 
 // The "Long-Rental" tab of the Discounts panel: "book N days or more, get
@@ -69,6 +69,7 @@ const LongRentalTab = ({ cars, isDark, onRulesChanged }) => {
   const save = async () => {
     const problem = validateLongRentalRule(draft);
     if (problem) { toast.error(problem); return; }
+    if (clashText) { toast.error(clashText); return; }
     // A warning, not a block: some businesses deliberately make the longer
     // trip cheaper ("rent 7, pay for 6"). Admin decides with the numbers
     // in front of them.
@@ -130,6 +131,11 @@ const LongRentalTab = ({ cars, isDark, onRulesChanged }) => {
     const c = cars.find((x) => String(x._id) === String(id));
     return c ? `${c.brand} ${c.model}` : 'Removed vehicle';
   };
+
+  // Same check the server makes. Shown live, and save refuses while it's
+  // set, so the admin sees the clash before pressing anything.
+  const formConflicts = formValid ? findRuleConflicts(draft, rules, editingId) : [];
+  const clashText = formConflicts.length ? conflictMessage(formConflicts, (id) => carName(id)) : '';
   const scopeText = (rule) => (rule.appliesTo === 'all'
     ? 'All vehicles'
     : `${rule.cars.length} vehicle${rule.cars.length === 1 ? '' : 's'}: ${rule.cars.slice(0, 3).map(carName).join(', ')}${rule.cars.length > 3 ? '…' : ''}`);
@@ -192,6 +198,7 @@ const LongRentalTab = ({ cars, isDark, onRulesChanged }) => {
       background: isDark ? '#18191a' : '#f9fafb', border: `1px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       color: isDark ? '#b0b3b8' : '#4b5563',
     },
+    clashNote: { display: 'block', fontSize: '11px', fontWeight: '700', marginTop: '4px', color: isDark ? '#f87171' : '#dc2626' },
     warn: {
       marginTop: '12px', padding: '11px 13px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
       background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
@@ -237,6 +244,11 @@ const LongRentalTab = ({ cars, isDark, onRulesChanged }) => {
                   </span>
                   {rule.active === false && <span style={s.pausedTag}>Paused</span>}
                   <span style={s.ruleScope}>{scopeText(rule)}</span>
+                  {rule.active !== false && findRuleConflicts(rule, rules, rule._id).length > 0 && (
+                    <span style={s.clashNote}>
+                      Clashes with another {rule.minDays}+ day discount on the same vehicle. Delete or edit one of them.
+                    </span>
+                  )}
                 </span>
                 <span style={s.ruleBtns}>
                   <button type="button" className="text-link-btn" style={s.linkBtn(false)} onClick={() => toggleActive(rule)}>
@@ -297,6 +309,13 @@ const LongRentalTab = ({ cars, isDark, onRulesChanged }) => {
           <div style={s.preview}>
             Example on a ₱{EXAMPLE_RATE.toLocaleString()}/day vehicle: {days} days drops from
             ₱{before.toLocaleString()} to <strong style={{ color: gold }}>₱{after.toLocaleString()}</strong>.
+          </div>
+        )}
+
+        {clashText && (
+          <div style={s.warn}>
+            <strong>This would give a vehicle two discounts for the same trip length.</strong>
+            <div>{clashText}</div>
           </div>
         )}
 
