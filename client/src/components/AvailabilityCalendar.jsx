@@ -45,7 +45,7 @@ const buildGrid = (year, month) => {
 // ring), if any. When onSelectDay is given, available/future days become
 // clickable so the client can pick their pickup/return dates directly on
 // the grid instead of separate date inputs.
-const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSelectDay, isDark, promo }) => {
+const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSelectDay, isDark, promo, selectableWhenBooked = false }) => {
   const [cursor, setCursor] = useState(() => { const d = new Date(); d.setDate(1); return d; });
 
   const today = normalize(new Date());
@@ -117,7 +117,10 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
         {grid.map(({ date, inMonth }, i) => {
           const booked = isBooked(date);
           const past = isPast(date);
-          const clickable = !!onSelectDay && inMonth && !past && !booked;
+          // Booked days stay red but become pickable when the caller allows it
+          // (admin choosing promo dates — overlapping bookings warn rather
+          // than block, so the calendar must not block either).
+          const clickable = !!onSelectDay && inMonth && !past && (selectableWhenBooked || !booked);
           return (
             <button
               key={i}

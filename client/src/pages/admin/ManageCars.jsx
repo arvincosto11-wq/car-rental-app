@@ -49,6 +49,7 @@ const ManageCars = () => {
   const [promoCar, setPromoCar] = useState(null);
   const [promoForm, setPromoForm] = useState({ label: '', type: 'percent', value: '', startDate: '', endDate: '' });
   const [promoSaving, setPromoSaving] = useState(false);
+  const [promoBookedRanges, setPromoBookedRanges] = useState([]);
 
   const editingCarData = cars.find((c) => c._id === editingCar) || null;
   const closeEditModal = () => setEditingCar(null);
@@ -109,8 +110,17 @@ const ManageCars = () => {
     }
   };
 
-  const openPromo = (car) => {
+  const openPromo = async (car) => {
     setPromoCar(car);
+    setPromoBookedRanges([]);
+    // includePending because those are exactly the bookings the overlap
+    // warning counts — the calendar has to show what the warning reacts to.
+    try {
+      const res = await api.get(`/cars/${car._id}/booked-dates`, { params: { includePending: true } });
+      setPromoBookedRanges(res.data);
+    } catch {
+      setPromoBookedRanges([]);
+    }
     setPromoForm(hasPromo(car.promo)
       ? {
           label: car.promo.label,
@@ -120,6 +130,24 @@ const ManageCars = () => {
           endDate: car.promo.endDate.slice(0, 10),
         }
       : { label: '', type: 'percent', value: '', startDate: '', endDate: '' });
+  };
+
+  const handleSelectPromoDay = (date) => {
+    const clicked = toDateValue(date);
+
+    if (!promoForm.startDate || (promoForm.startDate && promoForm.endDate)) {
+      setPromoForm({ ...promoForm, startDate: clicked, endDate: '' });
+      return;
+    }
+    if (clicked === promoForm.startDate) {
+      setPromoForm({ ...promoForm, startDate: '', endDate: '' });
+      return;
+    }
+    if (new Date(clicked) < new Date(promoForm.startDate)) {
+      setPromoForm({ ...promoForm, startDate: clicked });
+      return;
+    }
+    setPromoForm({ ...promoForm, endDate: clicked });
   };
 
   // The first save deliberately goes out without confirmOverlap so the server
@@ -488,6 +516,19 @@ Set the promo anyway?`,
       borderRadius: '16px', padding: '24px', outline: 'none',
     },
     promoSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px' },
+    promoDatesRow: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: '10px', marginBottom: '8px',
+    },
+    promoDatesValue: {
+      fontSize: '13px', fontWeight: '600',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    promoClearDates: {
+      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+      fontSize: '12px', fontWeight: '700', flexShrink: 0,
+      color: isDark ? GOLD_DARK : GOLD,
+    },
     promoTypeRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' },
     promoTypeBtn: (active) => ({
       padding: '10px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
@@ -946,16 +987,34 @@ Set the promo anyway?`,
               </div>
             </div>
 
-            <div style={styles.editGrid}>
-              <div style={styles.field}>
-                <label style={styles.label} htmlFor="promo-start">Starts</label>
-                <input id="promo-start" style={styles.input} type="date" value={promoForm.startDate}
-                  onChange={(e) => setPromoForm({ ...promoForm, startDate: e.target.value })} />
+            <div style={styles.field}>
+              <span style={styles.label}>Promo dates</span>
+              <div style={styles.promoDatesRow}>
+                <span style={styles.promoDatesValue}>
+                  {promoForm.startDate && promoForm.endDate
+                    ? promoDateRange({ ...promoForm, value: 1 })
+                    : promoForm.startDate
+                      ? 'Now pick the last day'
+                      : 'Pick the first day on the calendar'}
+                </span>
+                {promoForm.startDate && (
+                  <button type="button" style={styles.promoClearDates}
+                    onClick={() => setPromoForm({ ...promoForm, startDate: '', endDate: '' })}>
+                    Clear
+                  </button>
+                )}
               </div>
-              <div style={styles.field}>
-                <label style={styles.label} htmlFor="promo-end">Ends</label>
-                <input id="promo-end" style={styles.input} type="date" min={promoForm.startDate}
-                  onChange={(e) => setPromoForm({ ...promoForm, endDate: e.target.value })} value={promoForm.endDate} />
+              <AvailabilityCalendar
+                bookedRanges={promoBookedRanges}
+                selectedStart={promoForm.startDate}
+                selectedEnd={promoForm.endDate}
+                onSelectDay={handleSelectPromoDay}
+                isDark={isDark}
+                selectableWhenBooked
+              />
+              <div style={styles.hint}>
+                Red days already have a booking. You can still promo across them — those
+                bookings keep the price they were made at.
               </div>
             </div>
 

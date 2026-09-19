@@ -86,8 +86,16 @@ router.get('/archived', protect, adminOnly, async (req, res) => {
 // blocked it", both just mean the date can't be picked.
 router.get('/:id/booked-dates', async (req, res) => {
   try {
+    // Admin picking promo dates also needs to see PENDING bookings, because
+    // those trigger the overlap warning on PUT /:id/promo — a calendar that
+    // showed a day as free and then warned about it would be lying. Customers
+    // never get this: a pending request doesn't block anyone else's booking.
+    const includePending =
+      req.query.includePending === 'true' && getRequestRole(req) === 'admin';
+    const statuses = includePending ? ['confirmed', 'pending'] : ['confirmed'];
+
     const [bookings, car] = await Promise.all([
-      Booking.find({ car: req.params.id, status: 'confirmed' }).select('startDate endDate'),
+      Booking.find({ car: req.params.id, status: { $in: statuses } }).select('startDate endDate'),
       Car.findById(req.params.id).select('blockedDates'),
     ]);
     const ranges = [
