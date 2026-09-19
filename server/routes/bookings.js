@@ -7,6 +7,7 @@ import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { refundBookingPayment } from '../utils/paymongo.js';
 import { computeBookingPrice } from '../utils/promo.js';
+import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 
 const router = express.Router();
 
@@ -199,6 +200,7 @@ router.post('/', protect, async (req, res) => {
 router.get('/my', protect, async (req, res) => {
   try {
     await autoCompleteExpiredBookings();
+    await remindStalePendingBookings();
     // Plate number is confidential — clients never see it, not even in the
     // raw response, so it can't be read off the network tab either.
     const bookings = await Booking.find({ user: req.user.id })
@@ -214,6 +216,7 @@ router.get('/my', protect, async (req, res) => {
 router.get('/all', protect, adminOnly, async (req, res) => {
   try {
     await autoCompleteExpiredBookings();
+    await remindStalePendingBookings();
     const bookings = await Booking.find()
       .populate('car')
       .populate('user', 'name email avgRating ratingCount')
@@ -229,6 +232,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
 router.get('/owner', protect, consignorOnly, async (req, res) => {
   try {
     await autoCompleteExpiredBookings();
+    await remindStalePendingBookings();
     const cars = await Car.find({ owner: req.user.id }).select('_id');
     const carIds = cars.map((c) => c._id);
     const bookings = await Booking.find({ car: { $in: carIds } })

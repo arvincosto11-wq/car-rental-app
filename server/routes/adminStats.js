@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import Consignment from '../models/Consignment.js';
 import Car from '../models/Car.js';
 import { protect, adminOnly } from '../middleware/auth.js';
+import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 
 const router = express.Router();
 
@@ -18,6 +19,9 @@ const EXPIRY_WINDOW_DAYS = 30;
 
 router.get('/pending-counts', protect, adminOnly, async (req, res) => {
   try {
+    // The admin dashboard polls this, so an open dashboard keeps the
+    // escalation moving even when no client is browsing.
+    await remindStalePendingBookings();
     const expiryCutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
     const [pendingBookings, refundRequests, rescheduleRequests, pendingClients, pendingConsignments, pendingAvailability, pendingBlockedDates, expiringValidIds, expiringLicenses, expiringRegistrations] = await Promise.all([
       Booking.countDocuments({ status: 'pending', payment: 'paid' }),

@@ -21,6 +21,10 @@ const bookingSchema = new mongoose.Schema({
   paymentType: { type: String, enum: ['downpayment', 'full'], default: 'downpayment' },
   bookingType: { type: String, enum: ['self-drive', 'with-driver'], default: 'with-driver' },
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'pending' },
+  // Highest escalation already sent to admin about this booking sitting
+  // unconfirmed — see utils/pendingReminders.js. Stored so each tier fires
+  // once rather than on every request that triggers the sweep.
+  confirmReminderTier: { type: Number, default: 0 },
   refundStatus: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' },
   refundReason: { type: String, default: '' },
   // Locked in at request time based on how far out the pickup date was —
