@@ -98,6 +98,12 @@ const carSchema = new mongoose.Schema({
   blockedDates: [{
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
+    // reasonCode decides what a client is told when this block cancels
+    // their booking; note is private and never leaves the admin/owner side.
+    // `reason` is the old free-text field, kept so ranges saved before this
+    // existed still render (see blockLabelFor in utils/blockReasons.js).
+    reasonCode: { type: String, default: '' },
+    note: { type: String, default: '' },
     reason: { type: String, default: '' },
     status: { type: String, enum: ['approved', 'pending', 'declined'], default: 'approved' },
     requestedBy: { type: String, enum: ['admin', 'consignor'], default: 'admin' },

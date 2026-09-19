@@ -15,6 +15,7 @@ import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
 import { hasPromo, isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
 import { splitBlockedDates } from '../../utils/blockedDates';
+import { BLOCK_REASONS, blockLabelFor } from '../../utils/blockReasons';
 
 // Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
 // the wrong day in timezones ahead of UTC, like PH).
@@ -52,7 +53,7 @@ const ManageCars = () => {
   const [editBrandChoice, setEditBrandChoice] = useState('');
   const [editModelChoice, setEditModelChoice] = useState('');
   const [search, setSearch] = useState('');
-  const [blockForm, setBlockForm] = useState({ startDate: '', endDate: '', reason: '' });
+  const [blockForm, setBlockForm] = useState({ startDate: '', endDate: '', reasonCode: '', note: '' });
   const [blockSubmitting, setBlockSubmitting] = useState(false);
   const [blockPickerOpen, setBlockPickerOpen] = useState(false);
   const [promoCar, setPromoCar] = useState(null);
@@ -226,7 +227,7 @@ Set the promo anyway?`,
 
   const handleEdit = (car) => {
     setEditingCar(car._id);
-    setBlockForm({ startDate: '', endDate: '', reason: '' });
+    setBlockForm({ startDate: '', endDate: '', reasonCode: '', note: '' });
     setBlockPickerOpen(false);
     setEditExistingPhotos(car.photos?.length ? car.photos : (car.image ? [{ url: car.image, fileId: car.imageFileId }] : []));
     setEditNewPhotos([]);
@@ -558,6 +559,7 @@ Set the promo anyway?`,
       fontSize: '13px', fontWeight: '700',
       background: isDark ? '#f87171' : '#dc2626', color: '#fff',
     },
+    blockNote: { fontStyle: 'italic', color: isDark ? '#8a8d91' : '#9ca3af' },
     pastBlocksToggle: {
       display: 'inline-flex',
       alignItems: 'center',
@@ -955,7 +957,8 @@ Set the promo anyway?`,
                                 <div key={b._id} style={isPast ? { ...styles.blockedItem, opacity: 0.55 } : styles.blockedItem}>
                                   <span>
                                     {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
-                                    {b.reason ? ` · ${b.reason}` : ''}
+                                    {blockLabelFor(b) ? ` · ${blockLabelFor(b)}` : ''}
+                                    {b.note ? <span style={styles.blockNote}> · {b.note}</span> : null}
                                     {isPast && <span style={styles.blockedStatusTag}>Ended</span>}
                                     {b.status === 'pending' && <span style={styles.blockedStatusTag}>Pending Approval</span>}
                                     {b.status === 'declined' && <span style={styles.blockedStatusTag}>Declined</span>}
@@ -997,8 +1000,26 @@ Set the promo anyway?`,
                           promo={isPromoVisible(car.promo) ? car.promo : null}
                         />
                       </div>
-                      <input aria-label="Block reason" type="text" style={{ ...styles.input, marginTop: '8px', maxWidth: '340px' }} placeholder="Reason (optional, e.g. Maintenance)"
-                        value={blockForm.reason} onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })} />
+                      <div style={{ marginTop: '8px', maxWidth: '340px' }}>
+                        <select
+                          aria-label="Reason for blocking"
+                          style={{ ...styles.input, marginBottom: '8px' }}
+                          value={blockForm.reasonCode}
+                          onChange={(e) => setBlockForm({ ...blockForm, reasonCode: e.target.value })}
+                        >
+                          <option value="">Reason for blocking…</option>
+                          {Object.entries(BLOCK_REASONS).map(([code, r]) => (
+                            <option key={code} value={code}>{r.label}</option>
+                          ))}
+                        </select>
+                        <input aria-label="Private note" type="text" style={styles.input}
+                          placeholder="Private note (optional) — never shown to clients"
+                          value={blockForm.note} onChange={(e) => setBlockForm({ ...blockForm, note: e.target.value })} />
+                        <div style={styles.hint}>
+                          If these dates have bookings, clients are told the reason above in
+                          neutral wording. The note stays with you.
+                        </div>
+                      </div>
                       <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                         <button type="button" style={styles.blockAddBtn} onClick={() => handleAddBlockedDate(car._id)} disabled={blockSubmitting}>
                           {blockSubmitting ? 'Blocking...' : 'Block These Dates'}

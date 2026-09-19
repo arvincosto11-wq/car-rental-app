@@ -7,6 +7,7 @@ import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { fetchAikaGps } from '../utils/aikaGps.js';
 import { validatePromo } from '../utils/promo.js';
 import { cancelBookingWithRefund, refundAmountFor, isUnderway } from '../utils/cancelBooking.js';
+import { BLOCK_REASON_CODES, clientTextFor, blockLabelFor } from '../utils/blockReasons.js';
 import User from '../models/User.js';
 
 const router = express.Router();
@@ -127,7 +128,7 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
       return res.status(403).json({ message: 'You can only manage blocked dates for your own vehicles.' });
     }
 
-    const { startDate, endDate, reason } = req.body;
+    const { startDate, endDate, reasonCode, note } = req.body;
     const start = new Date(startDate);
     const end = new Date(endDate);
     if (!startDate || !endDate || isNaN(start) || isNaN(end) || end <= start) {
@@ -159,6 +160,15 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
       const underway = affected.filter((b) => isUnderway(b));
       const cancellable = affected.filter((b) => !isUnderway(b));
 
+      // Required only when someone's booking is about to be cancelled. Being
+      // made to justify blocking an empty week would just train admin to
+      // click past it.
+      if (!BLOCK_REASON_CODES.includes(reasonCode)) {
+        return res.status(400).json({
+          message: 'Please choose a reason — these dates have bookings, and the clients need to be told why.',
+        });
+      }
+
       if (!req.body.confirmCancellations) {
         return res.status(409).json({
           needsConfirmation: true,
@@ -185,13 +195,16 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
       for (const booking of cancellable) {
         await cancelBookingWithRefund(booking, {
           reason: 'vehicle_unavailable',
-          note: reason ? `Vehicle unavailable: ${reason}` : 'The vehicle became unavailable for these dates.',
+          // The mapped, client-safe sentence — never the private note.
+          note: `Cancelled because ${clientTextFor(reasonCode)}.`,
         });
       }
     }
 
     car.blockedDates.push({
-      startDate: start, endDate: end, reason: reason || '',
+      startDate: start, endDate: end,
+      reasonCode: BLOCK_REASON_CODES.includes(reasonCode) ? reasonCode : '',
+      note: note || '',
       status: isConsignor ? 'pending' : 'approved',
       requestedBy: isConsignor ? 'consignor' : 'admin',
     });
@@ -266,7 +279,8 @@ router.get('/blocked-date-requests', protect, adminOnly, async (req, res) => {
           owner: car.owner,
           startDate: block.startDate,
           endDate: block.endDate,
-          reason: block.reason,
+          reason: blockLabelFor(block),
+          note: block.note,
         });
       });
     });

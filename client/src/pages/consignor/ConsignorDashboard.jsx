@@ -8,6 +8,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import { splitBlockedDates } from '../../utils/blockedDates';
+import { BLOCK_REASONS, blockLabelFor } from '../../utils/blockReasons';
 import PromoBadge from '../../components/PromoBadge';
 import { ownerEarningFor, adminCoveredFor, isPromoVisible } from '../../utils/promo';
 import useModalA11y from '../../hooks/useModalA11y';
@@ -53,7 +54,7 @@ const ConsignorDashboard = () => {
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestError, setRequestError] = useState('');
   const [earningsPeriod, setEarningsPeriod] = useState('month');
-  const [blockForm, setBlockForm] = useState({ startDate: '', endDate: '', reason: '' });
+  const [blockForm, setBlockForm] = useState({ startDate: '', endDate: '', reasonCode: '', note: '' });
   const [showPastBlocks, setShowPastBlocks] = useState(false);
   const [blockPickerOpen, setBlockPickerOpen] = useState(false);
   const [blockSubmitting, setBlockSubmitting] = useState(false);
@@ -149,7 +150,7 @@ const ConsignorDashboard = () => {
     try {
       const res = await api.post(`/cars/${carId}/blocked-dates`, blockForm);
       setConsignments((prev) => prev.map((c) => c.linkedCar?._id === carId ? { ...c, linkedCar: res.data } : c));
-      setBlockForm({ startDate: '', endDate: '', reason: '' });
+      setBlockForm({ startDate: '', endDate: '', reasonCode: '', note: '' });
       setBlockPickerOpen(false);
       toast.success('Blocked dates submitted for admin approval.');
     } catch (err) {
@@ -295,6 +296,7 @@ const ConsignorDashboard = () => {
       fontSize: '11px', fontWeight: '600', marginTop: '6px',
       color: isDark ? '#8a8d91' : '#9ca3af',
     },
+    blockNote: { fontStyle: 'italic', color: isDark ? '#8a8d91' : '#9ca3af' },
     pastBlocksToggle: {
       display: 'inline-flex',
       alignItems: 'center',
@@ -498,7 +500,8 @@ const ConsignorDashboard = () => {
                                       <div style={isPast ? { ...row, opacity: 0.55 } : row}>
                                         <span>
                                           {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
-                                          {b.reason ? ` · ${b.reason}` : ''}
+                                          {blockLabelFor(b) ? ` · ${blockLabelFor(b)}` : ''}
+                                          {b.note ? <span style={s.blockNote}> · {b.note}</span> : null}
                                           {isPast && <span style={s.blockedStatusTag}>Ended</span>}
                                           {b.status === 'pending' && <span style={s.blockedStatusTag}>Pending Approval</span>}
                                           {b.status === 'declined' && <span style={s.blockedStatusTag}>Declined</span>}
@@ -543,13 +546,24 @@ const ConsignorDashboard = () => {
                               isDark={isDark}
                             />
                           </div>
+                          <select
+                            aria-label="Reason for blocking"
+                            style={s.blockReasonInput}
+                            value={blockForm.reasonCode}
+                            onChange={(e) => setBlockForm({ ...blockForm, reasonCode: e.target.value })}
+                          >
+                            <option value="">Reason for blocking…</option>
+                            {Object.entries(BLOCK_REASONS).map(([code, r]) => (
+                              <option key={code} value={code}>{r.label}</option>
+                            ))}
+                          </select>
                           <input
-                            aria-label="Block reason"
+                            aria-label="Private note"
                             type="text"
                             style={s.blockReasonInput}
-                            placeholder="Reason (optional, e.g. Maintenance)"
-                            value={blockForm.reason}
-                            onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })}
+                            placeholder="Private note (optional) — never shown to clients"
+                            value={blockForm.note}
+                            onChange={(e) => setBlockForm({ ...blockForm, note: e.target.value })}
                           />
                           <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                             <button type="button" style={s.blockAddBtn} onClick={() => handleAddBlockedDate(c.linkedCar._id)} disabled={blockSubmitting}>
