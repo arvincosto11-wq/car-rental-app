@@ -23,7 +23,12 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Core no-unused-vars doesn't count JSX usage, so anything only ever
+      // used as a tag reads as unused. Capitalised names cover components
+      // (<Foo />); `motion` is the one lowercase case, used as <motion.div>.
+      // Without it every animated page was falsely flagged — and "fixing"
+      // those by deleting the import would have crashed the page.
+      'no-unused-vars': ['error', { varsIgnorePattern: '^([A-Z_]|motion$)' }],
     },
   },
 ])

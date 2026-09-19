@@ -404,6 +404,11 @@ const Home = () => {
       color: isDark ? '#b0b3b8' : '#6b7280',
       lineHeight: '1.5',
     },
+    aboutPhoto: {
+      display: 'block', width: '100%', aspectRatio: '2 / 1', objectFit: 'cover',
+      objectPosition: 'center 45%', borderRadius: '20px', marginBottom: '22px',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
     aboutTagline: {
       fontSize: '13px',
       fontWeight: '700',
@@ -603,11 +608,9 @@ const Home = () => {
               <div style={styles.featureTitle}>Affordable Rates</div>
               <div style={styles.featureText}>Transparent pricing with no hidden fees.</div>
             </div>
-            {/* "Flexible Bookings" here means any rental length (a day, a
-                week, a month) at the same daily rate — that already works
-                today. A cheaper per-day rate for longer rentals is a real,
-                separate feature that doesn't exist yet (deliberately on
-                hold — see project_weekly_monthly_discount_on_hold memory). */}
+            {/* "Flexible Bookings": any rental length books normally, and
+                admin can add long-rental discounts (e.g. 7+ days, 10% off)
+                from Manage Cars — see utils/longRental.js. */}
             <div style={styles.featureCard}>
               <div style={styles.featureIcon}>📅</div>
               <div style={styles.featureTitle}>Flexible Bookings</div>
@@ -621,6 +624,14 @@ const Home = () => {
           </div>
 
           <div>
+            {/* A key handover is the one moment every rental shares, so it
+                says what the business does before a word is read. */}
+            <img
+              src="/handling-keys.jpg"
+              alt="Car keys being handed over to a customer"
+              loading="lazy"
+              style={styles.aboutPhoto}
+            />
             <div style={styles.aboutTagline}>ABOUT US</div>
             <h2 style={styles.aboutHeading}>The complete Albay rental experience.</h2>
             <p style={styles.aboutText}>

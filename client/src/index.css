@@ -21,6 +21,11 @@
   --sidebar-bg: #ffffff;
   --gold: #b8790a;
   --on-gold: #17130e;
+  /* Tells the browser which palette its OWN widgets should use — the popup
+     list of a <select>, the calendar of a date input, number spinners,
+     scrollbars. Those are drawn by the browser, not by our CSS, so without
+     this they stayed light even when the site was dark. */
+  color-scheme: light;
 }
 
 body {
@@ -47,6 +52,7 @@ body.dark {
   --sidebar-bg: #18191a;
   --gold: #e8a100;
   --on-gold: #17130e;
+  color-scheme: dark;
 }
 
 #root {
