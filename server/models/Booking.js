@@ -24,6 +24,11 @@ const bookingSchema = new mongoose.Schema({
   // Highest escalation already sent to admin about this booking sitting
   // unconfirmed — see utils/pendingReminders.js. Stored so each tier fires
   // once rather than on every request that triggers the sweep.
+  // Why admin cancelled this, which is also what decided the refund — see
+  // refundAmountFor in utils/cancelBooking.js. Empty on client-cancelled
+  // and on everything cancelled before this existed.
+  cancelReason: { type: String, enum: ['vehicle_unavailable', 'client_requested', 'other', ''], default: '' },
+  cancelNote: { type: String, default: '' },
   confirmReminderTier: { type: Number, default: 0 },
   refundStatus: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' },
   refundReason: { type: String, default: '' },

@@ -19,6 +19,26 @@ import api from '../../api';
 const LOW_RATING_THRESHOLD = 3;
 const PAGE_SIZE = 10;
 
+// Mirrors refundAmountFor in server/utils/cancelBooking.js. The server
+// recomputes it and its answer is what's actually refunded — this only
+// exists so admin sees the figure before committing to it.
+const refundPercentage = (createdAt, now = new Date()) => {
+  const hours = (now.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
+  if (hours <= 12) return 100;
+  if (hours <= 24) return 50;
+  return 0;
+};
+const previewRefund = (booking, reason, custom) => {
+  if (!booking || booking.payment !== 'paid' || !booking.amountPaid) return 0;
+  if (reason === 'vehicle_unavailable') return booking.amountPaid;
+  if (reason === 'client_requested') {
+    return Math.round(booking.amountPaid * (refundPercentage(booking.createdAt) / 100));
+  }
+  const amount = Number(custom);
+  if (!Number.isFinite(amount) || amount < 0) return 0;
+  return Math.min(Math.round(amount), booking.amountPaid);
+};
+
 const ManageBookings = () => {
   usePageTitle('Manage Bookings');
   const { isDark } = useTheme();
@@ -47,9 +67,25 @@ const ManageBookings = () => {
     }
   };
 
+  // Cancelling asks why first — the reason is what decides the refund, so it
+  // can't be inferred after the fact. Everything else goes straight through.
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelForm, setCancelForm] = useState({ reason: 'vehicle_unavailable', amount: '', note: '' });
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+
   const handleStatus = async (id, status) => {
+    if (status === 'cancelled') {
+      const booking = bookings.find((b) => b._id === id);
+      setCancelTarget(booking || { _id: id });
+      setCancelForm({ reason: 'vehicle_unavailable', amount: '', note: '' });
+      return;
+    }
+    return applyStatus(id, { status });
+  };
+
+  const applyStatus = async (id, body) => {
     try {
-      const res = await api.put(`/bookings/${id}`, { status });
+      const res = await api.put(`/bookings/${id}`, body);
       if (res.data.autoRefunded) {
         toast.info(res.data.message);
       }
@@ -58,6 +94,22 @@ const ManageBookings = () => {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Something went wrong updating this booking.');
+    }
+  };
+
+  const submitCancel = async () => {
+    setCancelSubmitting(true);
+    try {
+      await applyStatus(cancelTarget._id, {
+        status: 'cancelled',
+        cancelReason: cancelForm.reason,
+        cancelAmount: cancelForm.amount,
+        cancelNote: cancelForm.note,
+      });
+      setCancelTarget(null);
+      toast.success('Booking cancelled. The client has been notified.');
+    } finally {
+      setCancelSubmitting(false);
     }
   };
 
@@ -241,6 +293,47 @@ const ManageBookings = () => {
     searchInput: {
       flex: '1 1 220px', padding: '9px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px',
       fontSize: '13px', outline: 'none', background: isDark ? '#242526' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
+    },
+    modalOverlay: {
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+    },
+    cancelCard: {
+      width: '100%', maxWidth: '430px', background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '16px',
+      padding: '24px', maxHeight: '88vh', overflowY: 'auto',
+    },
+    cancelTitle: { fontSize: '17px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    cancelSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', margin: '6px 0 16px' },
+    cancelOption: {
+      display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer',
+      padding: '10px 12px', marginBottom: '8px', borderRadius: '10px',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    cancelOptionHint: { display: 'block', fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px' },
+    cancelInput: {
+      width: '100%', padding: '9px 11px', marginTop: '8px', boxSizing: 'border-box',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px',
+      fontSize: '13px', fontFamily: 'inherit', outline: 'none',
+      background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
+    },
+    cancelSummary: {
+      marginTop: '14px', padding: '11px 13px', borderRadius: '10px',
+      background: isDark ? '#18191a' : '#f9fafb',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280',
+    },
+    cancelAmount: { fontSize: '16px', fontWeight: '800', color: isDark ? GOLD_DARK : GOLD },
+    cancelConfirmBtn: {
+      flex: 1, padding: '10px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+      fontSize: '13px', fontWeight: '700',
+      background: isDark ? '#f87171' : '#dc2626', color: '#fff',
+    },
+    cancelBackBtn: {
+      padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      background: isDark ? '#18191a' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151',
     },
     statusTabRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%', marginBottom: '20px' },
     statusTab: (active) => ({
@@ -539,6 +632,69 @@ const ManageBookings = () => {
           onClose={() => setDetailsBookingId(null)}
           onCollectBalance={handleCollectBalance}
         />
+      )}
+      {cancelTarget && (
+        <div style={s.modalOverlay} onClick={() => !cancelSubmitting && setCancelTarget(null)}>
+          <div style={s.cancelCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="cancel-title">
+            <div id="cancel-title" style={s.cancelTitle}>Cancel this booking</div>
+            <p style={s.cancelSub}>
+              Why it&apos;s being cancelled decides what gets refunded, so the client
+              is treated the same way every time.
+            </p>
+
+            <label style={s.cancelOption}>
+              <input type="radio" name="cancel-reason" checked={cancelForm.reason === 'vehicle_unavailable'}
+                onChange={() => setCancelForm({ ...cancelForm, reason: 'vehicle_unavailable' })} />
+              <span>
+                <strong>Vehicle unavailable</strong>
+                <span style={s.cancelOptionHint}>Our fault — always a full refund.</span>
+              </span>
+            </label>
+            <label style={s.cancelOption}>
+              <input type="radio" name="cancel-reason" checked={cancelForm.reason === 'client_requested'}
+                onChange={() => setCancelForm({ ...cancelForm, reason: 'client_requested' })} />
+              <span>
+                <strong>Client requested it</strong>
+                <span style={s.cancelOptionHint}>Uses the normal refund policy, same as the app&apos;s own refund button.</span>
+              </span>
+            </label>
+            <label style={s.cancelOption}>
+              <input type="radio" name="cancel-reason" checked={cancelForm.reason === 'other'}
+                onChange={() => setCancelForm({ ...cancelForm, reason: 'other' })} />
+              <span>
+                <strong>Other</strong>
+                <span style={s.cancelOptionHint}>You set the amount.</span>
+              </span>
+            </label>
+
+            {cancelForm.reason === 'other' && (
+              <input style={{ ...s.cancelInput, marginTop: '4px' }} type="text" inputMode="decimal"
+                placeholder={`Refund amount (up to ₱${(cancelTarget.amountPaid || 0).toLocaleString()})`}
+                value={cancelForm.amount}
+                onChange={(e) => setCancelForm({ ...cancelForm, amount: e.target.value.replace(/[^0-9.]/g, '') })} />
+            )}
+
+            <input style={s.cancelInput} type="text" placeholder="Note for the client (optional)"
+              value={cancelForm.note} onChange={(e) => setCancelForm({ ...cancelForm, note: e.target.value })} />
+
+            <div style={s.cancelSummary}>
+              Refund to client:{' '}
+              <strong style={s.cancelAmount}>
+                ₱{previewRefund(cancelTarget, cancelForm.reason, cancelForm.amount).toLocaleString()}
+              </strong>
+              {cancelTarget.payment !== 'paid' && <span style={s.cancelOptionHint}>This booking was never paid, so nothing is refunded.</span>}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button style={s.cancelConfirmBtn} onClick={submitCancel} disabled={cancelSubmitting}>
+                {cancelSubmitting ? 'Cancelling...' : 'Cancel booking & refund'}
+              </button>
+              <button style={s.cancelBackBtn} onClick={() => setCancelTarget(null)} disabled={cancelSubmitting}>
+                Keep it
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </AdminLayout>
   );

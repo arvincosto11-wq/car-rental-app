@@ -6,6 +6,7 @@ import { protect, adminOnly, consignorOnly, adminOrConsignor } from '../middlewa
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { fetchAikaGps } from '../utils/aikaGps.js';
 import { validatePromo } from '../utils/promo.js';
+import { cancelBookingWithRefund, refundAmountFor, isUnderway } from '../utils/cancelBooking.js';
 import User from '../models/User.js';
 
 const router = express.Router();
@@ -133,12 +134,60 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
       return res.status(400).json({ message: 'Please provide a valid date range.' });
     }
 
-    const conflictingBooking = await Booking.findOne({
-      car: req.params.id, status: 'confirmed',
+    // A vehicle that breaks down has to come off the road even though people
+    // have already booked it. Blocking used to just refuse, which left admin
+    // stuck: unable to block, and with no way to cancel-and-refund either.
+    //
+    // Blocking and refunding are ONE action rather than two. Doing them
+    // separately leaves a window where the dates are free again and someone
+    // books the broken car, and it can be left half-done.
+    const affected = await Booking.find({
+      car: req.params.id,
+      status: { $in: ['confirmed', 'pending'] },
       startDate: { $lt: end }, endDate: { $gt: start },
-    });
-    if (conflictingBooking) {
-      return res.status(400).json({ message: 'This vehicle already has a confirmed booking overlapping these dates.' });
+    }).populate('user', 'name');
+
+    if (affected.length) {
+      // A consignor can't cancel anyone's booking — that would let them move
+      // admin's money. Their request comes to admin instead, as before.
+      if (isConsignor) {
+        return res.status(400).json({ message: 'This vehicle already has a booking overlapping these dates. Please contact admin.' });
+      }
+
+      // The client physically has the car, so cancelling behind their back
+      // would be wrong. Reported, never touched.
+      const underway = affected.filter((b) => isUnderway(b));
+      const cancellable = affected.filter((b) => !isUnderway(b));
+
+      if (!req.body.confirmCancellations) {
+        return res.status(409).json({
+          needsConfirmation: true,
+          message: 'Blocking these dates will cancel and refund the bookings below.',
+          cancellable: cancellable.map((b) => ({
+            id: b._id,
+            client: b.user?.name || 'A client',
+            startDate: b.startDate,
+            endDate: b.endDate,
+            status: b.status,
+            refund: refundAmountFor(b, 'vehicle_unavailable'),
+          })),
+          underway: underway.map((b) => ({
+            id: b._id,
+            client: b.user?.name || 'A client',
+            startDate: b.startDate,
+            endDate: b.endDate,
+          })),
+        });
+      }
+
+      // Always the full amount: the business pulled the vehicle, so this is
+      // never the client's choice to cancel.
+      for (const booking of cancellable) {
+        await cancelBookingWithRefund(booking, {
+          reason: 'vehicle_unavailable',
+          note: reason ? `Vehicle unavailable: ${reason}` : 'The vehicle became unavailable for these dates.',
+        });
+      }
     }
 
     car.blockedDates.push({

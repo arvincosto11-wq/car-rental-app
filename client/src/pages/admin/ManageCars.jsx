@@ -60,6 +60,7 @@ const ManageCars = () => {
   const [promoSaving, setPromoSaving] = useState(false);
   const [promoBookedRanges, setPromoBookedRanges] = useState([]);
   const [showPastBlocks, setShowPastBlocks] = useState(false);
+  const [blockConflicts, setBlockConflicts] = useState(null);
 
   const editingCarData = cars.find((c) => c._id === editingCar) || null;
   const closeEditModal = () => setEditingCar(null);
@@ -382,20 +383,30 @@ Set the promo anyway?`,
     setBlockForm({ ...blockForm, endDate: clicked });
   };
 
-  const handleAddBlockedDate = async (carId) => {
+  // The first attempt deliberately goes out without confirmCancellations so
+  // the server can report which bookings blocking would kill (409). Admin
+  // sees exactly who and how much before any money moves, then the same
+  // request goes back confirmed.
+  const handleAddBlockedDate = async (carId, confirmCancellations = false) => {
     if (!blockForm.startDate || !blockForm.endDate) {
       toast.error('Please pick both a start and end date.');
       return;
     }
     setBlockSubmitting(true);
     try {
-      const res = await api.post(`/cars/${carId}/blocked-dates`, blockForm);
+      const res = await api.post(`/cars/${carId}/blocked-dates`, { ...blockForm, confirmCancellations });
       setCars(cars.map((c) => c._id === carId ? res.data : c));
       setBlockForm({ startDate: '', endDate: '', reason: '' });
       setBlockPickerOpen(false);
-      toast.success('Dates blocked.');
+      setBlockConflicts(null);
+      toast.success(confirmCancellations ? 'Dates blocked. Affected clients have been refunded and notified.' : 'Dates blocked.');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to block those dates.');
+      const data = err.response?.data;
+      if (data?.needsConfirmation) {
+        setBlockConflicts({ carId, ...data });
+      } else {
+        toast.error(data?.message || 'Failed to block those dates.');
+      }
     } finally {
       setBlockSubmitting(false);
     }
@@ -526,6 +537,27 @@ Set the promo anyway?`,
       borderRadius: '16px', padding: '24px', outline: 'none',
     },
     promoSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px' },
+    conflictList: { display: 'flex', flexDirection: 'column', gap: '8px' },
+    conflictRow: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+      padding: '10px 12px', borderRadius: '10px', fontSize: '13px',
+      background: isDark ? '#18191a' : '#f9fafb',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    conflictDates: { display: 'block', fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px' },
+    conflictRefund: { fontWeight: '800', color: isDark ? GOLD_DARK : GOLD, whiteSpace: 'nowrap' },
+    conflictWarn: {
+      marginTop: '12px', padding: '11px 13px', borderRadius: '10px', fontSize: '12px',
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
+      color: isDark ? '#fca5a5' : '#991b1b',
+    },
+    blockConfirmBtn: {
+      flex: 1, padding: '9px 18px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+      fontSize: '13px', fontWeight: '700',
+      background: isDark ? '#f87171' : '#dc2626', color: '#fff',
+    },
     pastBlocksToggle: {
       display: 'inline-flex',
       alignItems: 'center',
@@ -1001,6 +1033,59 @@ Set the promo anyway?`,
           </div>
         );
       })()}
+      {blockConflicts && (
+        <div style={styles.editModalOverlay} onClick={() => !blockSubmitting && setBlockConflicts(null)}>
+          <div style={styles.promoCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="block-conflict-title">
+            <div id="block-conflict-title" style={styles.editTitle}>These dates are already booked</div>
+            <p style={styles.promoSub}>
+              Blocking them will cancel the bookings below and refund each client in
+              full, because the vehicle is being pulled by us rather than by them.
+            </p>
+
+            {blockConflicts.cancellable?.length > 0 && (
+              <div style={styles.conflictList}>
+                {blockConflicts.cancellable.map((b) => (
+                  <div key={b.id} style={styles.conflictRow}>
+                    <span>
+                      <strong>{b.client}</strong>
+                      <span style={styles.conflictDates}>
+                        {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()} · {b.status}
+                      </span>
+                    </span>
+                    <span style={styles.conflictRefund}>₱{b.refund.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {blockConflicts.underway?.length > 0 && (
+              <div style={styles.conflictWarn}>
+                <strong>Not touched — already underway:</strong>
+                {blockConflicts.underway.map((b) => (
+                  <div key={b.id}>
+                    {b.client} · {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                  </div>
+                ))}
+                <div style={{ marginTop: '6px' }}>
+                  This client already has the vehicle, so nothing happens to their booking
+                  automatically. Contact them yourself.
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button style={styles.blockConfirmBtn} disabled={blockSubmitting}
+                onClick={() => handleAddBlockedDate(blockConflicts.carId, true)}>
+                {blockSubmitting ? 'Working...' : 'Block dates & refund'}
+              </button>
+              <button style={styles.cancelBtn} disabled={blockSubmitting} onClick={() => setBlockConflicts(null)}>
+                Back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {promoCar && (
         <div style={styles.editModalOverlay} onClick={() => !promoSaving && setPromoCar(null)}>
           <div style={styles.promoCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="promo-title">

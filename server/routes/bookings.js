@@ -8,6 +8,7 @@ import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { refundBookingPayment } from '../utils/paymongo.js';
 import { computeBookingPrice } from '../utils/promo.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
+import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS } from '../utils/cancelBooking.js';
 
 const router = express.Router();
 
@@ -373,17 +374,25 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       }
     }
 
-    booking.status = status;
-    if (status === 'cancelled' && booking.payment === 'gcash_pending') {
-      // Never actually paid — nothing to refund, and it shouldn't keep
-      // showing as "GCash Pending" once the booking is dead.
-      booking.payment = 'offline';
-    }
-    await booking.save();
-
+    // Cancelling used to just flip the status and notify — no refund record,
+    // no money returned. A client whose booking admin cancelled simply lost
+    // what they'd paid. The reason now decides the refund, and the whole
+    // thing goes through one helper shared with the blocked-dates sweep.
     if (status === 'cancelled' && previousStatus !== 'cancelled') {
-      await notifyUser(booking.user, 'Booking Cancelled', 'Your booking has been cancelled by our team.', '/my-bookings');
+      const { cancelReason, cancelAmount, cancelNote } = req.body;
+      if (!CANCEL_REASONS.includes(cancelReason)) {
+        return res.status(400).json({ message: 'Please say why this booking is being cancelled.' });
+      }
+      await cancelBookingWithRefund(booking, {
+        reason: cancelReason,
+        customAmount: cancelAmount,
+        note: cancelNote || '',
+      });
+      return res.json(booking);
     }
+
+    booking.status = status;
+    await booking.save();
     if (status === 'completed' && previousStatus !== 'completed') {
       await notifyUser(booking.user, 'Vehicle Returned', 'Your vehicle return has been recorded. You can now rate your experience.', '/my-bookings/rate');
     }
@@ -467,13 +476,6 @@ router.put('/:id/no-show', protect, adminOnly, async (req, res) => {
 // cancelling. Computed at request time, not when an admin eventually gets
 // to it, so a slow approval can't quietly shrink what the client was
 // promised.
-function getRefundPercentage(createdAt, now = new Date()) {
-  const hoursSinceBooking = (now.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
-  if (hoursSinceBooking <= 12) return 100;
-  if (hoursSinceBooking <= 24) return 50;
-  return 0;
-}
-
 // Client requests a refund
 router.post('/:id/refund', protect, async (req, res) => {
   try {
