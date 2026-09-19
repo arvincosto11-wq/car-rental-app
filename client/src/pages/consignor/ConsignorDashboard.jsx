@@ -3,24 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
-import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
-import AvailabilityCalendar from '../../components/AvailabilityCalendar';
-import { splitBlockedDates } from '../../utils/blockedDates';
-import { BLOCK_REASONS, blockLabelFor } from '../../utils/blockReasons';
 import PromoBadge from '../../components/PromoBadge';
+import BlockDatesPanel, { upcomingBlockCount } from '../../components/BlockDatesPanel';
 import { ownerEarningFor, adminCoveredFor, isPromoVisible } from '../../utils/promo';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
 
-// Chevron for the "past ranges" chip — rotates via CSS when expanded.
-const ChevronIcon = () => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
 
 
 const formatPayment = (payment) => {
@@ -29,23 +20,14 @@ const formatPayment = (payment) => {
   return 'Unpaid';
 };
 
-// Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
-// the wrong day in timezones ahead of UTC, like PH).
-const toDateValue = (d) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-
 const ConsignorDashboard = () => {
   usePageTitle('My Vehicles');
   const { user } = useAuth();
   const { isDark } = useTheme();
-  const { toast } = useUIFeedback();
   const { notifications, markReadByLinkPrefix } = useNotifications();
   const navigate = useNavigate();
   const [consignments, setConsignments] = useState([]);
+  const [blockPanelCarId, setBlockPanelCarId] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookingsLoading, setBookingsLoading] = useState(true);
@@ -54,10 +36,6 @@ const ConsignorDashboard = () => {
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestError, setRequestError] = useState('');
   const [earningsPeriod, setEarningsPeriod] = useState('month');
-  const [blockForm, setBlockForm] = useState({ startDate: '', endDate: '', reasonCode: '', note: '' });
-  const [showPastBlocks, setShowPastBlocks] = useState(false);
-  const [blockPickerOpen, setBlockPickerOpen] = useState(false);
-  const [blockSubmitting, setBlockSubmitting] = useState(false);
   const requestModalRef = useModalA11y(() => setRequestModalCarId(null), !!requestModalCarId);
 
   useEffect(() => {
@@ -120,52 +98,6 @@ const ConsignorDashboard = () => {
       setRequestError(err.response?.data?.message || 'Something went wrong submitting this request.');
     } finally {
       setRequestSubmitting(false);
-    }
-  };
-
-  const handleSelectBlockDay = (date) => {
-    const clicked = toDateValue(date);
-
-    if (!blockForm.startDate || (blockForm.startDate && blockForm.endDate)) {
-      setBlockForm({ ...blockForm, startDate: clicked, endDate: '' });
-      return;
-    }
-    if (new Date(clicked).getTime() === new Date(blockForm.startDate).getTime()) {
-      setBlockForm({ ...blockForm, startDate: '', endDate: '' });
-      return;
-    }
-    if (new Date(clicked) < new Date(blockForm.startDate)) {
-      setBlockForm({ ...blockForm, startDate: clicked });
-      return;
-    }
-    setBlockForm({ ...blockForm, endDate: clicked });
-  };
-
-  const handleAddBlockedDate = async (carId) => {
-    if (!blockForm.startDate || !blockForm.endDate) {
-      toast.error('Please pick both a start and end date.');
-      return;
-    }
-    setBlockSubmitting(true);
-    try {
-      const res = await api.post(`/cars/${carId}/blocked-dates`, blockForm);
-      setConsignments((prev) => prev.map((c) => c.linkedCar?._id === carId ? { ...c, linkedCar: res.data } : c));
-      setBlockForm({ startDate: '', endDate: '', reasonCode: '', note: '' });
-      setBlockPickerOpen(false);
-      toast.success('Blocked dates submitted for admin approval.');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to block those dates.');
-    } finally {
-      setBlockSubmitting(false);
-    }
-  };
-
-  const handleRemoveBlockedDate = async (carId, blockId) => {
-    try {
-      const res = await api.delete(`/cars/${carId}/blocked-dates/${blockId}`);
-      setConsignments((prev) => prev.map((c) => c.linkedCar?._id === carId ? { ...c, linkedCar: res.data } : c));
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to remove that blocked range.');
     }
   };
 
@@ -282,9 +214,6 @@ const ConsignorDashboard = () => {
     blockSection: { marginTop: '14px', paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
     blockLabel: { fontSize: '12px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#374151', marginBottom: '4px' },
     blockHint: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '8px' },
-    blockedList: { display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' },
-    blockedItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fcd34d' : '#92400e' },
-    blockedItemDeclined: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', color: isDark ? '#fca5a5' : '#991b1b' },
     // The consignor is paid the full pre-discount amount, so this explains
     // why the number here is higher than what the customer actually paid.
     promoCovered: {
@@ -296,31 +225,7 @@ const ConsignorDashboard = () => {
       fontSize: '11px', fontWeight: '600', marginTop: '6px',
       color: isDark ? '#8a8d91' : '#9ca3af',
     },
-    blockNote: { fontStyle: 'italic', color: isDark ? '#8a8d91' : '#9ca3af' },
-    pastBlocksToggle: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '7px',
-      padding: '6px 12px',
-      borderRadius: '999px',
-      // Dashed, because this reveals archived content rather than doing
-      // something — it shouldn't read as solid as the actions beside it.
-      border: `1px dashed ${isDark ? '#4a4b4c' : '#d1d5db'}`,
-      background: 'transparent',
-      fontSize: '11px',
-      fontWeight: '700',
-      letterSpacing: '0.05em',
-      textTransform: 'uppercase',
-      cursor: 'pointer',
-      color: isDark ? '#8a8d91' : '#9ca3af',
-    },
-    pastBlocksRow: { marginTop: '8px' },
-    blockedStatusTag: { fontSize: '10px', fontWeight: '700', padding: '1px 8px', borderRadius: '20px', background: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)', flexShrink: 0, marginLeft: '6px' },
-    blockedRemoveBtn: { background: 'none', border: 'none', color: isDark ? '#fca5a5' : '#dc2626', fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0 },
-    blockReasonInput: { width: '100%', maxWidth: '320px', padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', marginTop: '8px', color: isDark ? '#e4e6eb' : '#1a1a1a', background: isDark ? '#18191a' : '#fff', boxSizing: 'border-box' },
-    blockAddBtn: { padding: '8px 16px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
     blockToggleBtn: { marginTop: '4px', padding: '8px 16px', background: isDark ? '#18191a' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
-    blockCancelBtn: { padding: '8px 16px', background: isDark ? '#18191a' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
     sectionTitle: { fontSize: '20px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginTop: '36px', marginBottom: '4px' },
     sectionSubtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px' },
     table: { width: '100%', borderCollapse: 'collapse', background: isDark ? '#242526' : '#fff', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
@@ -484,105 +389,15 @@ const ConsignorDashboard = () => {
 
                     <div style={s.blockSection}>
                       <div style={s.blockLabel}>Blocked Dates</div>
-                      <p style={s.blockHint}>Block off dates this vehicle can't be booked (e.g. maintenance, personal use).</p>
-                      {(() => {
-                        const { current, past } = splitBlockedDates(c.linkedCar.blockedDates);
-                        const shown = showPastBlocks ? [...current, ...past] : current;
-                        return (
-                          <>
-                            {shown.length > 0 && (
-                              <div style={s.blockedList}>
-                                {shown.map((b) => {
-                                  const isPast = past.includes(b);
-                                  const row = b.status === 'declined' ? s.blockedItemDeclined : s.blockedItem;
-                                  return (
-                                    <div key={b._id}>
-                                      <div style={isPast ? { ...row, opacity: 0.55 } : row}>
-                                        <span>
-                                          {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
-                                          {blockLabelFor(b) ? ` · ${blockLabelFor(b)}` : ''}
-                                          {b.note ? <span style={s.blockNote}> · {b.note}</span> : null}
-                                          {isPast && <span style={s.blockedStatusTag}>Ended</span>}
-                                          {b.status === 'pending' && <span style={s.blockedStatusTag}>Pending Approval</span>}
-                                          {b.status === 'declined' && <span style={s.blockedStatusTag}>Declined</span>}
-                                        </span>
-                                        <button type="button" style={s.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(c.linkedCar._id, b._id)}>Remove</button>
-                                      </div>
-                                      {b.status === 'declined' && b.adminNotes && (
-                                        <div style={s.notesBox}>Reason: {b.adminNotes}</div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            {past.length > 0 && (
-                              <div style={s.pastBlocksRow}>
-                                <button
-                                  type="button"
-                                  className="past-blocks-toggle"
-                                  style={s.pastBlocksToggle}
-                                  aria-expanded={showPastBlocks}
-                                  onClick={() => setShowPastBlocks((v) => !v)}
-                                >
-                                  <ChevronIcon />
-                                  {showPastBlocks
-                                    ? 'Hide past'
-                                    : `${past.length} past range${past.length === 1 ? '' : 's'}`}
-                                </button>
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
-                      {blockPickerOpen === c.linkedCar._id ? (
-                        <>
-                          <div style={{ marginTop: '8px', maxWidth: '320px' }}>
-                            <AvailabilityCalendar
-                              bookedRanges={(c.linkedCar.blockedDates || []).filter((b) => b.status !== 'declined')}
-                              selectedStart={blockForm.startDate}
-                              selectedEnd={blockForm.endDate}
-                              onSelectDay={handleSelectBlockDay}
-                              isDark={isDark}
-                            />
-                          </div>
-                          <select
-                            aria-label="Reason for blocking"
-                            style={s.blockReasonInput}
-                            value={blockForm.reasonCode}
-                            onChange={(e) => setBlockForm({ ...blockForm, reasonCode: e.target.value })}
-                          >
-                            <option value="">Reason for blocking…</option>
-                            {Object.entries(BLOCK_REASONS).map(([code, r]) => (
-                              <option key={code} value={code}>{r.label}</option>
-                            ))}
-                          </select>
-                          <input
-                            aria-label="Private note"
-                            type="text"
-                            style={s.blockReasonInput}
-                            placeholder="Private note (optional) — never shown to clients"
-                            value={blockForm.note}
-                            onChange={(e) => setBlockForm({ ...blockForm, note: e.target.value })}
-                          />
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                            <button type="button" style={s.blockAddBtn} onClick={() => handleAddBlockedDate(c.linkedCar._id)} disabled={blockSubmitting}>
-                              {blockSubmitting ? 'Blocking...' : 'Block These Dates'}
-                            </button>
-                            <button
-                              type="button"
-                              style={s.blockCancelBtn}
-                              onClick={() => { setBlockPickerOpen(false); setBlockForm({ startDate: '', endDate: '', reason: '' }); }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <button type="button" style={s.blockToggleBtn} onClick={() => setBlockPickerOpen(c.linkedCar._id)}>
-                          📅 Add Blocked Dates
-                        </button>
-                      )}
+                      <p style={s.blockHint}>
+                        Block off dates this vehicle can&apos;t be booked (e.g. maintenance, personal use).
+                        Requests take effect once admin approves them.
+                      </p>
+                      <button type="button" style={s.blockToggleBtn} onClick={() => setBlockPanelCarId(c.linkedCar._id)}>
+                        {upcomingBlockCount(c.linkedCar.blockedDates) > 0
+                          ? `Block Dates · ${upcomingBlockCount(c.linkedCar.blockedDates)}`
+                          : 'Block Dates'}
+                      </button>
                     </div>
                   </>
                 )}
@@ -694,6 +509,22 @@ const ConsignorDashboard = () => {
           </div>
         </div>
         );
+      })()}
+
+      {blockPanelCarId && (() => {
+        // Read from the live list, so a new range shows the moment it's saved.
+        const car = consignments.find((c) => c.linkedCar?._id === blockPanelCarId)?.linkedCar;
+        return car ? (
+          <BlockDatesPanel
+            car={car}
+            role="consignor"
+            isDark={isDark}
+            onClose={() => setBlockPanelCarId(null)}
+            onCarUpdated={(updated) => setConsignments((prev) => prev.map((c) => (
+              c.linkedCar?._id === updated._id ? { ...c, linkedCar: updated } : c
+            )))}
+          />
+        ) : null;
       })()}
     </div>
   );

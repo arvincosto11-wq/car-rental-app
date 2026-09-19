@@ -12,10 +12,9 @@ import usePageTitle from '../../hooks/usePageTitle';
 import useModalA11y from '../../hooks/useModalA11y';
 import ColorPicker from '../../components/ColorPicker';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
+import BlockDatesPanel, { upcomingBlockCount } from '../../components/BlockDatesPanel';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
 import { hasPromo, isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
-import { splitBlockedDates } from '../../utils/blockedDates';
-import { BLOCK_REASONS, blockLabelFor, causeFor, vehicleUnavailableMessage } from '../../utils/blockReasons';
 
 // Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
 // the wrong day in timezones ahead of UTC, like PH).
@@ -28,12 +27,6 @@ const toDateValue = (d) => {
 
 const OTHER = '__other__';
 
-// Chevron for the "past ranges" chip — rotates via CSS when expanded.
-const ChevronIcon = () => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
 
 
 const ManageCars = () => {
@@ -53,15 +46,11 @@ const ManageCars = () => {
   const [editBrandChoice, setEditBrandChoice] = useState('');
   const [editModelChoice, setEditModelChoice] = useState('');
   const [search, setSearch] = useState('');
-  const [blockForm, setBlockForm] = useState({ startDate: '', endDate: '', reasonCode: '', note: '' });
-  const [blockSubmitting, setBlockSubmitting] = useState(false);
-  const [blockPickerOpen, setBlockPickerOpen] = useState(false);
+  const [blockPanelCarId, setBlockPanelCarId] = useState(null);
   const [promoCar, setPromoCar] = useState(null);
   const [promoForm, setPromoForm] = useState({ label: '', type: 'percent', value: '', startDate: '', endDate: '' });
   const [promoSaving, setPromoSaving] = useState(false);
   const [promoBookedRanges, setPromoBookedRanges] = useState([]);
-  const [showPastBlocks, setShowPastBlocks] = useState(false);
-  const [blockConflicts, setBlockConflicts] = useState(null);
 
   const editingCarData = cars.find((c) => c._id === editingCar) || null;
   const closeEditModal = () => setEditingCar(null);
@@ -227,8 +216,6 @@ Set the promo anyway?`,
 
   const handleEdit = (car) => {
     setEditingCar(car._id);
-    setBlockForm({ startDate: '', endDate: '', reasonCode: '', note: '' });
-    setBlockPickerOpen(false);
     setEditExistingPhotos(car.photos?.length ? car.photos : (car.image ? [{ url: car.image, fileId: car.imageFileId }] : []));
     setEditNewPhotos([]);
     setEditNewPhotoPreviews([]);
@@ -366,62 +353,6 @@ Set the promo anyway?`,
     }
   };
 
-  const handleSelectBlockDay = (date) => {
-    const clicked = toDateValue(date);
-
-    if (!blockForm.startDate || (blockForm.startDate && blockForm.endDate)) {
-      setBlockForm({ ...blockForm, startDate: clicked, endDate: '' });
-      return;
-    }
-    if (new Date(clicked).getTime() === new Date(blockForm.startDate).getTime()) {
-      setBlockForm({ ...blockForm, startDate: '', endDate: '' });
-      return;
-    }
-    if (new Date(clicked) < new Date(blockForm.startDate)) {
-      setBlockForm({ ...blockForm, startDate: clicked });
-      return;
-    }
-    setBlockForm({ ...blockForm, endDate: clicked });
-  };
-
-  // The first attempt deliberately goes out without confirmCancellations so
-  // the server can report which bookings blocking would kill (409). Admin
-  // sees exactly who and how much before any money moves, then the same
-  // request goes back confirmed.
-  const handleAddBlockedDate = async (carId, confirmCancellations = false) => {
-    if (!blockForm.startDate || !blockForm.endDate) {
-      toast.error('Please pick both a start and end date.');
-      return;
-    }
-    setBlockSubmitting(true);
-    try {
-      const res = await api.post(`/cars/${carId}/blocked-dates`, { ...blockForm, confirmCancellations });
-      setCars(cars.map((c) => c._id === carId ? res.data : c));
-      setBlockForm({ startDate: '', endDate: '', reason: '' });
-      setBlockPickerOpen(false);
-      setBlockConflicts(null);
-      toast.success(confirmCancellations ? 'Dates blocked. Affected clients have been refunded and notified.' : 'Dates blocked.');
-    } catch (err) {
-      const data = err.response?.data;
-      if (data?.needsConfirmation) {
-        setBlockConflicts({ carId, ...data });
-      } else {
-        toast.error(data?.message || 'Failed to block those dates.');
-      }
-    } finally {
-      setBlockSubmitting(false);
-    }
-  };
-
-  const handleRemoveBlockedDate = async (carId, blockId) => {
-    try {
-      const res = await api.delete(`/cars/${carId}/blocked-dates/${blockId}`);
-      setCars(cars.map((c) => c._id === carId ? res.data : c));
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to remove that blocked range.');
-    }
-  };
-
   const styles = {
     main: {},
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
@@ -524,6 +455,14 @@ Set the promo anyway?`,
       background: live ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#18191a' : '#f3f4f6'),
       color: live ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a'),
     }),
+    // Neutral when there's nothing blocked; picks up an edge when there is,
+    // so the count reads as information rather than a warning.
+    blockDatesBtn: (hasBlocks) => ({
+      padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+      border: `1px solid ${hasBlocks ? (isDark ? '#6b7280' : '#9ca3af') : (isDark ? '#3a3b3c' : '#d1d5db')}`,
+      background: isDark ? '#18191a' : '#f3f4f6',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+    }),
     promoRowTag: {
       display: 'inline-flex', alignItems: 'center', gap: '5px',
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
@@ -538,57 +477,6 @@ Set the promo anyway?`,
       borderRadius: '16px', padding: '24px', outline: 'none',
     },
     promoSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px' },
-    conflictList: { display: 'flex', flexDirection: 'column', gap: '8px' },
-    conflictRow: {
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
-      padding: '10px 12px', borderRadius: '10px', fontSize: '13px',
-      background: isDark ? '#18191a' : '#f9fafb',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      color: isDark ? '#e4e6eb' : '#1a1a1a',
-    },
-    conflictDates: { display: 'block', fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px' },
-    conflictRefund: { fontWeight: '800', color: isDark ? GOLD_DARK : GOLD, whiteSpace: 'nowrap' },
-    conflictWarn: {
-      marginTop: '12px', padding: '11px 13px', borderRadius: '10px', fontSize: '12px',
-      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
-      border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
-      color: isDark ? '#fca5a5' : '#991b1b',
-    },
-    clientPreview: {
-      marginTop: '12px', padding: '11px 13px', borderRadius: '10px',
-      fontSize: '12px', lineHeight: 1.5, fontStyle: 'italic',
-      background: isDark ? '#18191a' : '#f9fafb',
-      border: `1px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      color: isDark ? '#b0b3b8' : '#4b5563',
-    },
-    clientPreviewLabel: {
-      fontStyle: 'normal', fontSize: '10px', fontWeight: '700', letterSpacing: '0.06em',
-      textTransform: 'uppercase', marginBottom: '5px', color: isDark ? '#8a8d91' : '#9ca3af',
-    },
-    blockConfirmBtn: {
-      flex: 1, padding: '9px 18px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-      fontSize: '13px', fontWeight: '700',
-      background: isDark ? '#f87171' : '#dc2626', color: '#fff',
-    },
-    blockNote: { fontStyle: 'italic', color: isDark ? '#8a8d91' : '#9ca3af' },
-    pastBlocksToggle: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '7px',
-      padding: '6px 12px',
-      borderRadius: '999px',
-      // Dashed, because this reveals archived content rather than doing
-      // something — it shouldn't read as solid as the actions beside it.
-      border: `1px dashed ${isDark ? '#4a4b4c' : '#d1d5db'}`,
-      background: 'transparent',
-      fontSize: '11px',
-      fontWeight: '700',
-      letterSpacing: '0.05em',
-      textTransform: 'uppercase',
-      cursor: 'pointer',
-      color: isDark ? '#8a8d91' : '#9ca3af',
-    },
-    pastBlocksRow: { marginTop: '8px' },
     promoDatesRow: {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: '10px', marginBottom: '8px',
@@ -614,32 +502,6 @@ Set the promo anyway?`,
       background: isDark ? '#18191a' : '#f9fafb',
       border: `1px dashed ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280',
-    },
-    blockedList: { display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' },
-    blockedItem: {
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
-      padding: '6px 10px', borderRadius: '6px', fontSize: '12px',
-      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fcd34d' : '#92400e',
-    },
-    blockedRemoveBtn: {
-      background: 'none', border: 'none', color: isDark ? '#fca5a5' : '#dc2626',
-      fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0,
-    },
-    blockedStatusTag: { fontSize: '10px', fontWeight: '700', padding: '1px 8px', borderRadius: '20px', background: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)', marginLeft: '6px' },
-    blockAddBtn: {
-      padding: '8px 16px', background: isDark ? GOLD_DARK : GOLD,
-      color: ON_GOLD, border: 'none',
-      borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-    },
-    blockToggleBtn: {
-      marginTop: '8px', padding: '8px 16px', background: isDark ? '#18191a' : '#f3f4f6',
-      color: isDark ? '#e4e6eb' : '#374151', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-    },
-    blockCancelBtn: {
-      padding: '8px 16px', background: isDark ? '#18191a' : '#f3f4f6',
-      color: isDark ? '#e4e6eb' : '#374151', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
     },
     searchInput: {
       width: '100%', maxWidth: '360px', padding: '9px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
@@ -754,6 +616,15 @@ Set the promo anyway?`,
                           title={hasPromo(car.promo) ? 'Edit the promo on this vehicle' : 'Put this vehicle on promo'}
                         >
                           {isPromoVisible(car.promo) ? promoOffer(car.promo) : 'Set Promo'}
+                        </button>
+                        <button
+                          style={styles.blockDatesBtn(upcomingBlockCount(car.blockedDates) > 0)}
+                          onClick={() => setBlockPanelCarId(car._id)}
+                          title="Take this vehicle off the road for a range of dates"
+                        >
+                          {upcomingBlockCount(car.blockedDates) > 0
+                            ? `Block Dates · ${upcomingBlockCount(car.blockedDates)}`
+                            : 'Block Dates'}
                         </button>
                         <button style={styles.archiveBtn} onClick={() => handleArchive(car._id)}>Archive</button>
                       </div>
@@ -953,101 +824,6 @@ Set the promo anyway?`,
                   </div>
                 </div>
                 <div style={styles.field}>
-                  <label style={styles.label}>Blocked Dates</label>
-                  <p style={styles.hint}>Blocks this vehicle from being booked during these ranges (e.g. maintenance). Dates you add here are saved immediately — not part of Save Changes below. Consignor-submitted ranges need a decision on Availability Requests before they take effect.</p>
-                  {(() => {
-                    const { current, past } = splitBlockedDates(car.blockedDates);
-                    const shown = showPastBlocks ? [...current, ...past] : current;
-                    return (
-                      <>
-                        {shown.length > 0 && (
-                          <div style={styles.blockedList}>
-                            {shown.map((b) => {
-                              const isPast = past.includes(b);
-                              return (
-                                <div key={b._id} style={isPast ? { ...styles.blockedItem, opacity: 0.55 } : styles.blockedItem}>
-                                  <span>
-                                    {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
-                                    {blockLabelFor(b) ? ` · ${blockLabelFor(b)}` : ''}
-                                    {b.note ? <span style={styles.blockNote}> · {b.note}</span> : null}
-                                    {isPast && <span style={styles.blockedStatusTag}>Ended</span>}
-                                    {b.status === 'pending' && <span style={styles.blockedStatusTag}>Pending Approval</span>}
-                                    {b.status === 'declined' && <span style={styles.blockedStatusTag}>Declined</span>}
-                                  </span>
-                                  <button type="button" style={styles.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(car._id, b._id)}>Remove</button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                        {past.length > 0 && (
-                          <div style={styles.pastBlocksRow}>
-                            <button
-                              type="button"
-                              className="past-blocks-toggle"
-                              style={styles.pastBlocksToggle}
-                              aria-expanded={showPastBlocks}
-                              onClick={() => setShowPastBlocks((v) => !v)}
-                            >
-                              <ChevronIcon />
-                              {showPastBlocks
-                                ? 'Hide past'
-                                : `${past.length} past range${past.length === 1 ? '' : 's'}`}
-                            </button>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                  {blockPickerOpen === car._id ? (
-                    <>
-                      <div style={{ marginTop: '8px', maxWidth: '340px' }}>
-                        <AvailabilityCalendar
-                          bookedRanges={car.blockedDates || []}
-                          selectedStart={blockForm.startDate}
-                          selectedEnd={blockForm.endDate}
-                          onSelectDay={handleSelectBlockDay}
-                          isDark={isDark}
-                          promo={isPromoVisible(car.promo) ? car.promo : null}
-                        />
-                      </div>
-                      <div style={{ marginTop: '8px', maxWidth: '340px' }}>
-                        <select
-                          aria-label="Reason for blocking"
-                          style={{ ...styles.input, marginBottom: '8px' }}
-                          value={blockForm.reasonCode}
-                          onChange={(e) => setBlockForm({ ...blockForm, reasonCode: e.target.value })}
-                        >
-                          <option value="">Reason for blocking…</option>
-                          {Object.entries(BLOCK_REASONS).map(([code, r]) => (
-                            <option key={code} value={code}>{r.label}</option>
-                          ))}
-                        </select>
-                        <input aria-label="Private note" type="text" style={styles.input}
-                          placeholder="Private note (optional) — never shown to clients"
-                          value={blockForm.note} onChange={(e) => setBlockForm({ ...blockForm, note: e.target.value })} />
-                        <div style={styles.hint}>
-                          If these dates have bookings, you&apos;ll see the exact message each
-                          client receives before anything happens. The note stays with you.
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                        <button type="button" style={styles.blockAddBtn} onClick={() => handleAddBlockedDate(car._id)} disabled={blockSubmitting}>
-                          {blockSubmitting ? 'Blocking...' : 'Block These Dates'}
-                        </button>
-                        <button type="button" style={styles.blockCancelBtn}
-                          onClick={() => { setBlockPickerOpen(false); setBlockForm({ startDate: '', endDate: '', reason: '' }); }}>
-                          Cancel
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <button type="button" style={styles.blockToggleBtn} onClick={() => setBlockPickerOpen(car._id)}>
-                      📅 Add Blocked Dates
-                    </button>
-                  )}
-                </div>
-                <div style={styles.field}>
                   <label style={styles.label} htmlFor="mc-edit-description">Description</label>
                   <textarea id="mc-edit-description" style={styles.textarea} placeholder="e.g. A luxurious SUV..." value={editForm.description}
                     onChange={(e) => setEditForm({...editForm, description: e.target.value})} />
@@ -1065,77 +841,20 @@ Set the promo anyway?`,
           </div>
         );
       })()}
-      {blockConflicts && (
-        <div style={styles.editModalOverlay} onClick={() => !blockSubmitting && setBlockConflicts(null)}>
-          <div style={styles.promoCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="block-conflict-title">
-            <div id="block-conflict-title" style={styles.editTitle}>These dates are already booked</div>
-            <p style={styles.promoSub}>
-              Blocking them will cancel the bookings below and refund each client in
-              full, because the vehicle is being pulled by us rather than by them.
-            </p>
-
-            {blockConflicts.cancellable?.length > 0 && (
-              <div style={styles.conflictList}>
-                {blockConflicts.cancellable.map((b) => (
-                  <div key={b.id} style={styles.conflictRow}>
-                    <span>
-                      <strong>{b.client}</strong>
-                      <span style={styles.conflictDates}>
-                        {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()} · {b.status}
-                      </span>
-                    </span>
-                    <span style={styles.conflictRefund}>₱{b.refund.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {blockConflicts.cancellable?.length > 0 && (() => {
-              // Built by the same function the server uses to write the real
-              // notification, so this preview can't say something different.
-              const sample = blockConflicts.cancellable[0];
-              const car = cars.find((c) => c._id === blockConflicts.carId);
-              return (
-                <div style={styles.clientPreview}>
-                  <div style={styles.clientPreviewLabel}>{sample.client} will be told:</div>
-                  {vehicleUnavailableMessage({
-                    carName: car ? `${car.brand} ${car.model}` : '',
-                    startDate: sample.startDate,
-                    endDate: sample.endDate,
-                    cause: causeFor(blockForm.reasonCode),
-                    amount: sample.refund,
-                  })}
-                </div>
-              );
-            })()}
-
-            {blockConflicts.underway?.length > 0 && (
-              <div style={styles.conflictWarn}>
-                <strong>Not touched — already underway:</strong>
-                {blockConflicts.underway.map((b) => (
-                  <div key={b.id}>
-                    {b.client} · {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
-                  </div>
-                ))}
-                <div style={{ marginTop: '6px' }}>
-                  This client already has the vehicle, so nothing happens to their booking
-                  automatically. Contact them yourself.
-                </div>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <button style={styles.blockConfirmBtn} disabled={blockSubmitting}
-                onClick={() => handleAddBlockedDate(blockConflicts.carId, true)}>
-                {blockSubmitting ? 'Working...' : 'Block dates & refund'}
-              </button>
-              <button style={styles.cancelBtn} disabled={blockSubmitting} onClick={() => setBlockConflicts(null)}>
-                Back
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {blockPanelCarId && (() => {
+        // Read from the live list rather than a snapshot, so the panel shows
+        // the new range the moment it's saved.
+        const car = cars.find((c) => c._id === blockPanelCarId);
+        return car ? (
+          <BlockDatesPanel
+            car={car}
+            role="admin"
+            isDark={isDark}
+            onClose={() => setBlockPanelCarId(null)}
+            onCarUpdated={(updated) => setCars((prev) => prev.map((c) => (c._id === updated._id ? updated : c)))}
+          />
+        ) : null;
+      })()}
 
       {promoCar && (
         <div style={styles.editModalOverlay} onClick={() => !promoSaving && setPromoCar(null)}>
