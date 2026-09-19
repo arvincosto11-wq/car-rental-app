@@ -160,7 +160,7 @@ function App() {
               path="/admin/manage-cars"
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <ManageCars />
+                  <ManageCars key="active" />
                 </ProtectedRoute>
               }
             />
@@ -169,6 +169,16 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <GpsTracking />
+                </ProtectedRoute>
+              }
+            />
+            {/* Same component as Manage Cars in drafts mode, so Edit, Publish
+                and every modal behave identically on both pages. */}
+            <Route
+              path="/admin/draft-cars"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ManageCars key="drafts" view="drafts" />
                 </ProtectedRoute>
               }
             />

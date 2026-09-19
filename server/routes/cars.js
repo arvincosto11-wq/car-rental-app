@@ -716,7 +716,11 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
   try {
     const car = await Car.findById(req.params.id);
     if (!car) return res.status(404).json({ message: 'Car not found' });
-    if (!car.archived) {
+    // A draft was never public, so nobody can have booked or reviewed it —
+    // there's no history for archiving to preserve, and it can go straight
+    // away. Anything that has been live must be archived first. The
+    // bookings check below still applies to both, as a backstop.
+    if (!car.archived && car.status !== 'draft') {
       return res.status(400).json({ message: 'Archive this car first before deleting it permanently.' });
     }
     const hasBookings = await Booking.exists({ car: req.params.id });

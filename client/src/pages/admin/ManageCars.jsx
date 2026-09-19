@@ -11,6 +11,7 @@ import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../../theme
 import usePageTitle from '../../hooks/usePageTitle';
 import useModalA11y from '../../hooks/useModalA11y';
 import ColorPicker from '../../components/ColorPicker';
+import BackButton from '../../components/BackButton';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import BlockDatesPanel, { upcomingBlockCount } from '../../components/BlockDatesPanel';
 import Pagination from '../../components/Pagination';
@@ -44,12 +45,18 @@ const CarIcon = () => <LineIcon><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0
 const MotoIcon = () => <LineIcon><circle cx="5.5" cy="16.5" r="3" /><circle cx="18.5" cy="16.5" r="3" /><path d="M5.5 16.5h5l3-6h3" /><path d="M14 7h3l1.5 9.5" /></LineIcon>;
 const PlateIcon = () => <LineIcon><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6.5 10h3M6.5 14h6M15 10.5h3v3h-3z" /></LineIcon>;
 const SearchIcon = () => <LineIcon size={15}><circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="21" y2="21" /></LineIcon>;
+const DraftIcon = () => <LineIcon size={15}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M9 15l5.5-5.5 1.5 1.5L10.5 16.5H9z" /></LineIcon>;
 const ArchiveIcon = () => <LineIcon size={15}><rect x="3" y="4" width="18" height="5" rx="1.5" /><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9" /><line x1="10" y1="13" x2="14" y2="13" /></LineIcon>;
 
 
 
-const ManageCars = () => {
-  usePageTitle('Manage Cars');
+// view="drafts" renders the Draft Vehicles page (route /admin/draft-cars).
+// It's this same component rather than a copy, so Edit, Publish and every
+// modal behave identically on both pages; only the list, header and the
+// buttons on each card differ.
+const ManageCars = ({ view = 'active' }) => {
+  const isDraftsView = view === 'drafts';
+  usePageTitle(isDraftsView ? 'Draft Vehicles' : 'Manage Cars');
   const { isDark } = useTheme();
   const { toast, confirm } = useUIFeedback();
   const navigate = useNavigate();
@@ -121,6 +128,16 @@ const ManageCars = () => {
   };
 
   const handlePublish = async (car) => {
+    // Drafts are often saved before their photos are ready. Publishing one
+    // without a photo puts a "No Image" card in front of customers, so it's
+    // worth a second look rather than a hard block.
+    if (!car.image) {
+      const ok = await confirm(
+        `${car.brand} ${car.model} has no photo yet. Customers will see a blank "No Image" card. Publish anyway?`,
+        { confirmLabel: 'Publish anyway' }
+      );
+      if (!ok) return;
+    }
     try {
       const res = await api.put(`/cars/${car._id}`, { status: 'published' });
       setCars(cars.map((c) => c._id === car._id ? res.data : c));
@@ -128,6 +145,24 @@ const ManageCars = () => {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Failed to publish this car.');
+    }
+  };
+
+  // Drafts are deleted outright rather than archived: a draft was never
+  // public, so there's no booking or review history to preserve. The
+  // server refuses anyway if a booking somehow exists.
+  const handleDeleteDraft = async (car) => {
+    const ok = await confirm(
+      `Delete the ${car.brand} ${car.model} draft permanently? This can't be undone.`,
+      { confirmLabel: 'Delete draft', danger: true }
+    );
+    if (!ok) return;
+    try {
+      await api.delete(`/cars/${car._id}`);
+      setCars((prev) => prev.filter((c) => c._id !== car._id));
+      toast.success('Draft deleted.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete this draft.');
     }
   };
 
@@ -571,6 +606,27 @@ Set the promo anyway?`,
     listCount: { fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280' },
     listCountStrong: { color: isDark ? '#e4e6eb' : '#1a1a1a', fontWeight: '700' },
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '22px' },
+    headerBtns: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
+    // Picks up a gold edge while there are drafts waiting, so unfinished work
+    // is visible from the main page without crowding it.
+    draftsLinkBtn: (hasDrafts) => ({
+      display: 'inline-flex', alignItems: 'center', gap: '8px',
+      padding: '10px 18px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+      background: isDark ? '#242526' : '#fff',
+      color: hasDrafts ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#374151'),
+      border: `1px solid ${hasDrafts ? (isDark ? 'rgba(232,161,0,0.45)' : 'rgba(184,121,10,0.45)') : (isDark ? '#3a3b3c' : '#d1d5db')}`,
+    }),
+    draftsCount: {
+      minWidth: '20px', height: '20px', padding: '0 6px', borderRadius: '999px',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '11px', fontWeight: '800', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+    },
+    deleteBtn: {
+      padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+      background: 'transparent',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.45)' : 'rgba(220,38,38,0.45)'}`,
+      color: isDark ? '#f87171' : '#dc2626',
+    },
     archivedLinkBtn: {
       display: 'inline-flex', alignItems: 'center', gap: '8px',
       padding: '10px 18px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
@@ -579,7 +635,11 @@ Set the promo anyway?`,
     },
   };
 
+  // Drafts live on their own page, like archived cars, so the main list only
+  // shows vehicles that are actually live.
+  const draftCount = cars.filter((car) => car.status === 'draft').length;
   const filteredCars = cars.filter((car) => {
+    if (isDraftsView ? car.status !== 'draft' : car.status === 'draft') return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return `${car.brand} ${car.model}`.toLowerCase().includes(q);
@@ -604,14 +664,31 @@ Set the promo anyway?`,
             doesn't use a second accent. */}
         <div aria-hidden="true" style={styles.glowOrb} />
 
+        {isDraftsView && (
+          <BackButton text="Back to Manage Cars" onClick={() => navigate('/admin/manage-cars')} />
+        )}
         <div style={styles.headerRow}>
           <div>
-            <h1 style={styles.title}>Manage Cars</h1>
-            <p style={styles.subtitle}>View all listed cars, update or remove them.</p>
+            <h1 style={styles.title}>{isDraftsView ? 'Draft Vehicles' : 'Manage Cars'}</h1>
+            <p style={styles.subtitle}>
+              {isDraftsView
+                ? 'Not visible to customers. Add photos with Edit, then Publish when a listing is ready.'
+                : 'View all listed cars, update or remove them.'}
+            </p>
           </div>
-          <button style={styles.archivedLinkBtn} onClick={() => navigate('/admin/archived-cars')}>
-            <ArchiveIcon /> Archived Cars
-          </button>
+          {!isDraftsView && (
+            <div style={styles.headerBtns}>
+              {/* The count keeps unfinished drafts from being forgotten now
+                  that they're off the main list. */}
+              <button style={styles.draftsLinkBtn(draftCount > 0)} onClick={() => navigate('/admin/draft-cars')}>
+                <DraftIcon /> Drafts
+                {draftCount > 0 && <span style={styles.draftsCount}>{draftCount}</span>}
+              </button>
+              <button style={styles.archivedLinkBtn} onClick={() => navigate('/admin/archived-cars')}>
+                <ArchiveIcon /> Archived Cars
+              </button>
+            </div>
+          )}
         </div>
 
         <div style={styles.searchWrap}>
@@ -627,7 +704,13 @@ Set the promo anyway?`,
         </div>
 
         {loading ? <SkeletonListCard isDark={isDark} count={4} /> : filteredCars.length === 0 ? (
-          <p style={styles.emptyText}>No cars match.</p>
+          <p style={styles.emptyText}>
+            {search.trim()
+              ? 'No cars match.'
+              : isDraftsView
+                ? 'No drafts. Vehicles saved with Save Draft in Add Vehicle appear here.'
+                : 'No published vehicles yet.'}
+          </p>
         ) : (
           <>
             <div style={styles.cardList}>
@@ -693,43 +776,54 @@ Set the promo anyway?`,
                       <div style={styles.carPrice}>₱{car.pricePerDay.toLocaleString()}</div>
                       <div style={styles.carPriceUnit}>/ day</div>
                     </div>
-                    <div style={styles.actions}>
-                      <button className="mc-btn-primary" style={styles.editBtn} onClick={() => handleEdit(car)}>Edit</button>
-                      {car.status === 'draft' ? (
+                    {isDraftsView ? (
+                      // Feature, promo, availability and blocked dates only mean
+                      // anything once a car is live, so a draft shows just the
+                      // three things you can actually do with it.
+                      <div style={styles.actions}>
+                        <button className="mc-btn" style={styles.toggleBtn} onClick={() => handleEdit(car)}>Edit</button>
                         <button className="mc-btn-primary" style={styles.publishBtn} onClick={() => handlePublish(car)}>Publish</button>
-                      ) : (
-                        <button className="mc-btn" style={styles.toggleBtn} onClick={() => handleToggle(car)}>
-                          {car.isAvailable ? 'Hide' : 'Show'}
+                        <button className="mc-btn" style={styles.deleteBtn} onClick={() => handleDeleteDraft(car)}>Delete</button>
+                      </div>
+                    ) : (
+                      <div style={styles.actions}>
+                        <button className="mc-btn-primary" style={styles.editBtn} onClick={() => handleEdit(car)}>Edit</button>
+                        {car.status === 'draft' ? (
+                          <button className="mc-btn-primary" style={styles.publishBtn} onClick={() => handlePublish(car)}>Publish</button>
+                        ) : (
+                          <button className="mc-btn" style={styles.toggleBtn} onClick={() => handleToggle(car)}>
+                            {car.isAvailable ? 'Hide' : 'Show'}
+                          </button>
+                        )}
+                        <button
+                          className="mc-btn"
+                          style={styles.featureBtn(car.featured)}
+                          onClick={() => handleFeature(car)}
+                          title={car.featured ? 'Shown in the homepage carousel' : 'Add to the homepage carousel'}
+                        >
+                          {car.featured ? '★ Featured' : '☆ Feature'}
                         </button>
-                      )}
-                      <button
-                        className="mc-btn"
-                        style={styles.featureBtn(car.featured)}
-                        onClick={() => handleFeature(car)}
-                        title={car.featured ? 'Shown in the homepage carousel' : 'Add to the homepage carousel'}
-                      >
-                        {car.featured ? '★ Featured' : '☆ Feature'}
-                      </button>
-                      <button
-                        className="mc-btn"
-                        style={styles.promoBtn(isPromoVisible(car.promo))}
-                        onClick={() => openPromo(car)}
-                        title={hasPromo(car.promo) ? 'Edit the promo on this vehicle' : 'Put this vehicle on promo'}
-                      >
-                        {isPromoVisible(car.promo) ? promoOffer(car.promo) : 'Set Promo'}
-                      </button>
-                      <button
-                        className="mc-btn"
-                        style={styles.blockDatesBtn(upcomingBlockCount(car.blockedDates) > 0)}
-                        onClick={() => setBlockPanelCarId(car._id)}
-                        title="Take this vehicle off the road for a range of dates"
-                      >
-                        {upcomingBlockCount(car.blockedDates) > 0
-                          ? `Block Dates · ${upcomingBlockCount(car.blockedDates)}`
-                          : 'Block Dates'}
-                      </button>
-                      <button className="mc-btn" style={styles.archiveBtn} onClick={() => handleArchive(car._id)}>Archive</button>
-                    </div>
+                        <button
+                          className="mc-btn"
+                          style={styles.promoBtn(isPromoVisible(car.promo))}
+                          onClick={() => openPromo(car)}
+                          title={hasPromo(car.promo) ? 'Edit the promo on this vehicle' : 'Put this vehicle on promo'}
+                        >
+                          {isPromoVisible(car.promo) ? promoOffer(car.promo) : 'Set Promo'}
+                        </button>
+                        <button
+                          className="mc-btn"
+                          style={styles.blockDatesBtn(upcomingBlockCount(car.blockedDates) > 0)}
+                          onClick={() => setBlockPanelCarId(car._id)}
+                          title="Take this vehicle off the road for a range of dates"
+                        >
+                          {upcomingBlockCount(car.blockedDates) > 0
+                            ? `Block Dates · ${upcomingBlockCount(car.blockedDates)}`
+                            : 'Block Dates'}
+                        </button>
+                        <button className="mc-btn" style={styles.archiveBtn} onClick={() => handleArchive(car._id)}>Archive</button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -738,7 +832,7 @@ Set the promo anyway?`,
             <div style={styles.listFooter}>
               <span style={styles.listCount}>
                 Showing <strong style={styles.listCountStrong}>{firstShown}–{lastShown}</strong> of{' '}
-                <strong style={styles.listCountStrong}>{filteredCars.length}</strong> vehicle{filteredCars.length === 1 ? '' : 's'}
+                <strong style={styles.listCountStrong}>{filteredCars.length}</strong> {isDraftsView ? 'draft' : 'vehicle'}{filteredCars.length === 1 ? '' : 's'}
               </span>
               <Pagination
                 page={currentPage}

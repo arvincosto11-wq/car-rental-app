@@ -131,7 +131,7 @@ const AddCar = () => {
         availableBookingTypes: selectedBookingTypes,
         status,
       });
-      setSuccess(status === 'draft' ? 'Saved as draft — not visible to customers yet.' : 'Vehicle published successfully!');
+      setSuccess(status === 'draft' ? 'Saved as draft — not visible to customers yet. Find it under Manage Cars → Drafts.' : 'Vehicle published successfully!');
       setForm({ brand: '', model: '', year: '', pricePerDay: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '', transmission: '', fuelType: '', seats: '', description: '', plateNumber: '', color: '', mileage: '' });
       setBrandChoice('');
       setModelChoice('');
