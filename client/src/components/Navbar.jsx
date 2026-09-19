@@ -136,8 +136,16 @@ const Navbar = () => {
       left: 0,
       right: 0,
       zIndex: 100,
-      borderBottom: transparent ? 'none' : `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      background: transparent ? 'transparent' : (isDark ? '#18191a' : '#ffffff'),
+      borderBottom: transparent ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)'}`,
+      // Frosted rather than solid, so content dissolves as it scrolls under
+      // the bar instead of disappearing at a hard edge. Light mode needs
+      // noticeably more opacity than dark: at dark's 0.72 a white page
+      // shows straight through and the bar stops reading as a surface.
+      background: transparent
+        ? 'transparent'
+        : (isDark ? 'rgba(24,25,26,0.72)' : 'rgba(255,255,255,0.82)'),
+      backdropFilter: transparent ? 'none' : 'blur(16px) saturate(140%)',
+      WebkitBackdropFilter: transparent ? 'none' : 'blur(16px) saturate(140%)',
       transition: 'background 0.25s ease, border-color 0.25s ease',
     }}>
       <div style={{

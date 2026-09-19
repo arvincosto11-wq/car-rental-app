@@ -32,6 +32,7 @@ const ChevronIcon = () => (
 
 const Home = () => {
   const [testimonials, setTestimonials] = useState([]);
+  const [fleetRating, setFleetRating] = useState(null);
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const [searchCategory, setSearchCategory] = useState('');
@@ -50,6 +51,27 @@ const Home = () => {
       }
     };
     fetchTestimonials();
+  }, []);
+
+  // Real social proof instead of borrowed logos: the fleet-wide rating is
+  // computed from the same avgRating/ratingCount every vehicle already
+  // carries. Weighted by review count, so a car with one 5-star review
+  // can't outweigh one with twenty. Renders nothing until there are
+  // reviews to report — an empty claim is worse than no claim.
+  useEffect(() => {
+    const fetchFleetRating = async () => {
+      try {
+        const res = await api.get('/cars');
+        const rated = res.data.filter((c) => c.ratingCount > 0);
+        const count = rated.reduce((sum, c) => sum + c.ratingCount, 0);
+        if (!count) return;
+        const weighted = rated.reduce((sum, c) => sum + c.avgRating * c.ratingCount, 0);
+        setFleetRating({ average: weighted / count, count });
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchFleetRating();
   }, []);
 
   const handleSearch = () => {
@@ -83,6 +105,23 @@ const Home = () => {
       overflow: 'hidden',
       background: isDark ? '#18191a' : '#f9fafb',
     },
+    // Soft blurred pools of brand colour behind the hero, so the background
+    // reads as lit rather than as a flat fill. They sit before heroGrid in
+    // the DOM and heroGrid is positioned, so content always stacks above
+    // them without needing z-index bookkeeping.
+    //
+    // Far weaker in light mode on purpose: the same alpha that looks
+    // cinematic on #18191a looks like a printing fault on #f9fafb.
+    glowOrb: (placement) => ({
+      position: 'absolute',
+      width: placement.size,
+      height: placement.size,
+      ...placement.at,
+      borderRadius: '50%',
+      background: `radial-gradient(circle, ${isDark ? placement.dark : placement.light} 0%, transparent 70%)`,
+      filter: 'blur(60px)',
+      pointerEvents: 'none',
+    }),
     heroGrid: {
       position: 'relative',
       width: '100%',
@@ -190,6 +229,12 @@ const Home = () => {
     trustItem: {
       fontSize: '11px', fontWeight: '600', letterSpacing: '0.04em', textTransform: 'uppercase',
       color: isDark ? '#8a8d91' : '#9ca3af',
+    },
+    // The only one of these that's a number rather than a claim, so it's
+    // the only one that earns the brand colour.
+    trustRating: {
+      display: 'inline-flex', alignItems: 'center', gap: '5px',
+      fontWeight: '800', color: isDark ? GOLD_DARK : GOLD,
     },
     section: {
       padding: '48px 32px',
@@ -465,6 +510,14 @@ const Home = () => {
       {/* Hero Section — plain theme-aware background (no photo), text and
           search on the left, the featured-cars carousel on the right. */}
       <div style={styles.hero}>
+        <div aria-hidden="true" style={styles.glowOrb({
+          size: '620px', at: { top: '-14%', left: '-8%' },
+          dark: 'rgba(232,161,0,0.20)', light: 'rgba(184,121,10,0.09)',
+        })} />
+        <div aria-hidden="true" style={styles.glowOrb({
+          size: '520px', at: { bottom: '-18%', right: '2%' },
+          dark: 'rgba(232,161,0,0.13)', light: 'rgba(184,121,10,0.06)',
+        })} />
         <div className="responsive-row-2" style={styles.heroGrid}>
           <div style={styles.heroLeft}>
             <h1 className="display-heading" style={styles.heroTitle}>
@@ -516,6 +569,14 @@ const Home = () => {
             </div>
 
             <div style={styles.trustRow}>
+              {fleetRating && (
+                <span style={{ ...styles.trustItem, ...styles.trustRating }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 2.4l2.9 6.1 6.7.9-4.9 4.6 1.2 6.6L12 17.5 6.1 20.6l1.2-6.6L2.4 9.4l6.7-.9z" />
+                  </svg>
+                  {fleetRating.average.toFixed(1)} from {fleetRating.count} review{fleetRating.count === 1 ? '' : 's'}
+                </span>
+              )}
               <span style={styles.trustItem}>ID-Verified Renters</span>
               <span style={styles.trustItem}>No Hidden Fees</span>
               <span style={styles.trustItem}>24/7 Support</span>
