@@ -568,6 +568,17 @@ router.put('/:id/promo', protect, adminOnly, async (req, res) => {
       }
     }
 
+    // Only a genuinely different offer is worth notifying about — fixing a
+    // typo in the label shouldn't ping everyone a second time.
+    const before = car.promo;
+    const sameOffer = !!(
+      before?.startDate &&
+      before.type === type &&
+      Number(before.value) === Number(value) &&
+      new Date(before.startDate).getTime() === windowStart.getTime() &&
+      new Date(before.endDate).getTime() === new Date(endDate).getTime()
+    );
+
     car.promo = {
       label: label.trim(),
       type,
@@ -578,18 +589,18 @@ router.put('/:id/promo', protect, adminOnly, async (req, res) => {
     };
     await car.save();
 
-    // Everyone who favourited this car hears about it. Favourites are an
-    // array of car ids on the user, so this is a single lookup.
-    const label_ = car.promo.label;
-    const offer = type === 'percent' ? `${value}% off` : `₱${Number(value).toLocaleString()} off`;
-    const fans = await User.find({ favorites: car._id }).select('_id');
-    for (const fan of fans) {
-      await notifyUser(
-        fan._id,
-        `${label_}: ${car.brand} ${car.model}`,
-        `${offer} the ${car.brand} ${car.model} — book dates within this promo to save.`,
-        `/cars/${car._id}`
-      );
+    if (!sameOffer) {
+      // Favourites are an array of car ids on the user, so this is one lookup.
+      const offer = type === 'percent' ? `${value}% off` : `₱${Number(value).toLocaleString()} off`;
+      const fans = await User.find({ favorites: car._id }).select('_id');
+      for (const fan of fans) {
+        await notifyUser(
+          fan._id,
+          `${car.promo.label}: ${car.brand} ${car.model}`,
+          `${offer} the ${car.brand} ${car.model} — book dates inside the promo to save.`,
+          `/cars/${car._id}`
+        );
+      }
     }
 
     res.json(car);
