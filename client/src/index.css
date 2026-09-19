@@ -711,15 +711,38 @@ body.dark .btn-solid-gold:hover {
   display: none;
 }
 .admin-side-item {
-  transition: background 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease, color 0.15s ease,
+              transform 0.2s ease;
 }
+/* The icon overshoots slightly before settling (the cubic-bezier past 1),
+   so it pops rather than scaling mechanically. */
+.admin-side-item svg {
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.15s ease;
+}
+/* Glow, a 3px lean toward the pointer, and the icon growing and turning
+   gold. Only the icon scales — scaled text goes blurry mid-animation. */
 .admin-side-item:hover {
   background: rgba(232,161,0,0.08);
   box-shadow: 0 0 0 1px rgba(232,161,0,0.25), 0 0 16px rgba(232,161,0,0.15);
+  transform: translateX(3px);
+}
+.admin-side-item:hover svg {
+  transform: scale(1.2);
+  color: var(--gold);
+}
+/* The item's colour is inline, so brightening it needs !important. The
+   active page is excluded — it's already gold and should stay gold. */
+.admin-side-item:not(.is-active):hover {
+  color: var(--text) !important;
 }
 @media (prefers-reduced-motion: reduce) {
-  .admin-side-item {
+  .admin-side-item,
+  .admin-side-item svg {
     transition: none;
+  }
+  .admin-side-item:hover,
+  .admin-side-item:hover svg {
+    transform: none;
   }
 }
 @media (max-width: 800px) {

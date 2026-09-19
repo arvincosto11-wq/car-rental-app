@@ -138,7 +138,7 @@ const AdminLayout = ({ children, activePage }) => {
                         key={link.to}
                         to={link.to}
                         onClick={() => setSidebarOpen(false)}
-                        className="admin-side-item"
+                        className={`admin-side-item${activePage === link.label ? ' is-active' : ''}`}
                         style={activePage === link.label ? { ...s.sideItem, ...s.sideItemActive } : s.sideItem}
                       >
                         <Icon />
