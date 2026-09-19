@@ -304,6 +304,19 @@ const CarDetail = () => {
     licenseBox: { background: isDark ? 'rgba(37,99,235,0.1)' : '#eff6ff', border: `1px solid ${isDark ? '#1e40af' : '#bfdbfe'}`, borderRadius: '8px', padding: '12px', marginBottom: '14px' },
     licenseNote: { fontSize: '12px', color: isDark ? '#93c5fd' : '#1e40af', marginBottom: '10px', marginTop: 0 },
     fieldHint: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px' },
+    promoBadge: {
+      display: 'inline-flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap',
+      padding: '7px 13px', borderRadius: '999px', marginTop: '10px',
+      fontSize: '11px', fontWeight: '800', letterSpacing: '0.05em', textTransform: 'uppercase',
+      background: isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.10)',
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.35)' : 'rgba(184,121,10,0.35)'}`,
+      color: isDark ? GOLD_DARK : GOLD,
+    },
+    promoBadgeDates: { fontWeight: '600', letterSpacing: '0.03em', opacity: 0.85 },
+    promoNudge: {
+      marginTop: '10px', fontSize: '12px', fontWeight: '600',
+      color: isDark ? GOLD_DARK : GOLD,
+    },
     breakdownRow: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px' },
     breakdownTotal: { display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, paddingTop: '8px', marginTop: '8px' },
     termsRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '14px', fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
@@ -495,7 +508,14 @@ const CarDetail = () => {
                         selectedEnd={endDate}
                         onSelectDay={handleSelectDay}
                         isDark={isDark}
+                        promo={isPromoVisible(car.promo) ? car.promo : null}
                       />
+                      {isPromoVisible(car.promo) && startDate && endDate && !promoApplies && (
+                        <p style={s.promoNudge}>
+                          Pick dates within {promoDateRange(car.promo)} to save {promoOffer(car.promo)}.
+                          The whole rental has to fall inside the promo.
+                        </p>
+                      )}
                     </div>
 
                     <div style={s.stepActions}>
@@ -728,6 +748,12 @@ const CarDetail = () => {
 
           {/* Booking Card */}
           <div style={s.bookingCard}>
+            {isPromoVisible(car.promo) && (
+              <div style={s.promoBadge}>
+                <span>{car.promo.label} · {promoOffer(car.promo)}</span>
+                <span style={s.promoBadgeDates}>{promoDateRange(car.promo)}</span>
+              </div>
+            )}
             <div style={s.priceRow}>
               <span style={s.price}>₱{car.pricePerDay.toLocaleString()}</span>
               <span style={s.perDay}>per day</span>

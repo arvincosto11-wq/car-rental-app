@@ -865,6 +865,7 @@ Set the promo anyway?`,
                           selectedEnd={blockForm.endDate}
                           onSelectDay={handleSelectBlockDay}
                           isDark={isDark}
+                          promo={isPromoVisible(car.promo) ? car.promo : null}
                         />
                       </div>
                       <input aria-label="Block reason" type="text" style={{ ...styles.input, marginTop: '8px', maxWidth: '340px' }} placeholder="Reason (optional, e.g. Maintenance)"

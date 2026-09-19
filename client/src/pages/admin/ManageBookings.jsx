@@ -194,6 +194,10 @@ const ManageBookings = () => {
     clientMeta: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
     carThumb: { width: '44px', height: '32px', background: isDark ? '#3a3b3c' : '#f3f4f6', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 },
     balanceNote: { fontSize: '11px', color: isDark ? GOLD_DARK : GOLD, marginTop: '4px', maxWidth: '160px' },
+    promoNote: {
+      fontSize: '11px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD,
+      marginTop: '4px', maxWidth: '160px',
+    },
     rentalLengthNote: {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase',
       color: isDark ? GOLD_DARK : GOLD, marginTop: '4px',
@@ -397,6 +401,11 @@ const ManageBookings = () => {
                 </td>
                 <td style={s.td}>
                   ₱{booking.totalPrice}
+                  {booking.discountAmount > 0 && (
+                    <div style={s.promoNote}>
+                      {booking.promoLabel || 'Promo'} · −₱{booking.discountAmount.toLocaleString()}
+                    </div>
+                  )}
                   {booking.paymentType === 'downpayment' && booking.amountPaid < booking.totalPrice && (
                     <div style={s.balanceNote}>
                       ₱{booking.amountPaid.toLocaleString()} paid · ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} due at pickup

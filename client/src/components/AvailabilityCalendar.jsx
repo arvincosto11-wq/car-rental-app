@@ -10,6 +10,14 @@ const normalize = (d) => {
   return nd.getTime();
 };
 
+// Grid days are built in local time; promo dates arrive as UTC midnight.
+// Comparing the two as YYYY-MM-DD strings sidesteps the timezone drift that
+// would otherwise light up the wrong day in PH — ISO dates sort correctly as
+// plain text, so >= and <= do the right thing here.
+const ymdLocal = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const ymdUTC = (d) => new Date(d).toISOString().slice(0, 10);
+
 const buildGrid = (year, month) => {
   const firstOfMonth = new Date(year, month, 1);
   const startWeekday = firstOfMonth.getDay();
@@ -37,7 +45,7 @@ const buildGrid = (year, month) => {
 // ring), if any. When onSelectDay is given, available/future days become
 // clickable so the client can pick their pickup/return dates directly on
 // the grid instead of separate date inputs.
-const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSelectDay, isDark }) => {
+const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSelectDay, isDark, promo }) => {
   const [cursor, setCursor] = useState(() => { const d = new Date(); d.setDate(1); return d; });
 
   const today = normalize(new Date());
@@ -54,6 +62,15 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
   };
   const isPast = (date) => normalize(date) < today;
 
+  // A promo day is still an available (or booked) day — the bar sits on top
+  // of the fill rather than replacing it, so the two never fight.
+  const promoActive = !!(promo && promo.startDate && promo.endDate && promo.value > 0);
+  const isPromoDay = (date) => {
+    if (!promoActive) return false;
+    const day = ymdLocal(date);
+    return day >= ymdUTC(promo.startDate) && day <= ymdUTC(promo.endDate);
+  };
+
   const grid = buildGrid(cursor.getFullYear(), cursor.getMonth());
 
   const s = {
@@ -64,6 +81,7 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
     grid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px' },
     weekday: { textAlign: 'center', fontSize: '10px', fontWeight: '700', color: isDark ? '#8a8d91' : '#9ca3af', padding: '2px 0' },
     day: (inMonth, booked, selected, past, clickable) => ({
+      position: 'relative',
       aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: '11px', borderRadius: '6px', fontWeight: selected ? '700' : '500',
       opacity: inMonth ? (past ? 0.35 : 1) : 0.25,
@@ -77,6 +95,14 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
     legendRow: { display: 'flex', gap: '14px', marginTop: '10px', flexWrap: 'wrap' },
     legendItem: { display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
     legendDot: (bg) => ({ width: '9px', height: '9px', borderRadius: '3px', background: bg, flexShrink: 0 }),
+    promoBar: {
+      position: 'absolute', left: '22%', right: '22%', bottom: '3px', height: '2.5px',
+      borderRadius: '2px', background: isDark ? GOLD_DARK : GOLD, pointerEvents: 'none',
+    },
+    promoNote: {
+      marginTop: '8px', fontSize: '11px', fontWeight: '700',
+      color: isDark ? GOLD_DARK : GOLD,
+    },
   };
 
   return (
@@ -103,6 +129,7 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
               onClick={clickable ? () => onSelectDay(date) : undefined}
             >
               {date.getDate()}
+              {isPromoDay(date) && <span style={s.promoBar} />}
             </button>
           );
         })}
@@ -113,7 +140,18 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
         {selectedStart && selectedEnd && (
           <span style={s.legendItem}><span style={{ ...s.legendDot('transparent'), boxShadow: `inset 0 0 0 2px ${isDark ? GOLD_DARK : GOLD}` }} />Your dates</span>
         )}
+        {promoActive && (
+          <span style={s.legendItem}>
+            <span style={{ ...s.legendDot('transparent'), height: '3px', borderRadius: '2px', background: isDark ? GOLD_DARK : GOLD, alignSelf: 'flex-end', marginBottom: '2px' }} />
+            On promo
+          </span>
+        )}
       </div>
+      {promoActive && (
+        <div style={s.promoNote}>
+          {promo.label} · {promo.type === 'amount' ? `₱${Number(promo.value).toLocaleString()} off` : `${promo.value}% off`} — book within the marked dates to save.
+        </div>
+      )}
     </div>
   );
 };

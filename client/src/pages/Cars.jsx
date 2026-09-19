@@ -8,6 +8,7 @@ import FavoriteButton from '../components/FavoriteButton';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK } from '../theme';
+import { isPromoVisible, promoOffer, promoDateRange } from '../utils/promo';
 
 // Small feature-row icons — same hand-drawn inline-SVG approach used
 // elsewhere on the site.
@@ -266,6 +267,28 @@ const Cars = () => {
       WebkitBackdropFilter: 'blur(10px)',
     },
     availDot: { width: '5px', height: '5px', borderRadius: '50%', background: 'currentColor', flexShrink: 0 },
+    // Sits under the availability badge rather than beside it — the promo is
+    // a second, unrelated fact about the vehicle, not a variant of its status.
+    promoBadge: {
+      position: 'absolute',
+      top: '44px',
+      left: '12px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
+      fontSize: '10px',
+      fontWeight: '800',
+      letterSpacing: '0.05em',
+      textTransform: 'uppercase',
+      padding: '5px 11px',
+      borderRadius: '999px',
+      background: 'rgba(0,0,0,0.65)',
+      border: `1px solid ${'rgba(232,161,0,0.45)'}`,
+      color: GOLD_DARK,
+      backdropFilter: 'blur(10px)',
+      WebkitBackdropFilter: 'blur(10px)',
+    },
+    promoBadgeDates: { fontWeight: '600', letterSpacing: '0.03em', opacity: 0.85 },
     priceBadge: {
       position: 'absolute',
       bottom: '12px',
@@ -588,6 +611,12 @@ const Cars = () => {
                   <span style={styles.availDot} />
                   {car.isAvailable === false ? 'Not Listed' : 'Bookable'}
                 </span>
+                {isPromoVisible(car.promo) && (
+                  <span style={styles.promoBadge}>
+                    {promoOffer(car.promo)}
+                    <span style={styles.promoBadgeDates}>{promoDateRange(car.promo)}</span>
+                  </span>
+                )}
                 <FavoriteButton
                   carId={car._id}
                   canFavorite={canFavorite}

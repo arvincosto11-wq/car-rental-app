@@ -667,6 +667,17 @@ const MyBookings = () => {
     priceDetails: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginTop: '38px' },
     priceLabel: { fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af' },
     price: { fontSize: '30px', fontWeight: '900', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    // Reads off the booking's own stored fields, never the car's current
+    // promo — this line has to keep saying what was actually agreed.
+    promoSaved: {
+      display: 'inline-flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap',
+      fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
+      color: isDark ? GOLD_DARK : GOLD, marginTop: '2px',
+    },
+    promoSavedWas: {
+      fontSize: '11px', fontWeight: '500', letterSpacing: '0.02em', textTransform: 'none',
+      color: isDark ? '#8a8d91' : '#9ca3af', textDecoration: 'line-through',
+    },
     // A distinct box — lighter than the card in dark mode (a "raised" panel
     // reads better against a near-black card than a darker recessed one) —
     // rather than a loose pill + text line, so paid/remaining reads as one
@@ -873,6 +884,12 @@ const MyBookings = () => {
                   <span style={styles.priceLabel}>Total Price</span>
                   <div style={styles.priceDetails}>
                     <span style={styles.price}>₱{booking.totalPrice.toLocaleString()}</span>
+                    {booking.discountAmount > 0 && (
+                      <span style={styles.promoSaved}>
+                        <span>{booking.promoLabel || 'Promo'} · saved ₱{booking.discountAmount.toLocaleString()}</span>
+                        <span style={styles.promoSavedWas}>₱{booking.subtotal.toLocaleString()}</span>
+                      </span>
+                    )}
                     {booking.paymentType === 'downpayment' && booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
                       <div style={styles.paymentPanel}>
                         <div style={styles.paidAmount}>₱{booking.amountPaid.toLocaleString()} Paid</div>

@@ -7,6 +7,8 @@ import FavoriteButton from '../components/FavoriteButton';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
 import api from '../api';
+import { GOLD_DARK } from '../theme';
+import { isPromoVisible, promoOffer, promoDateRange } from '../utils/promo';
 
 const MyFavorites = () => {
   usePageTitle('My Favorites');
@@ -51,6 +53,14 @@ const MyFavorites = () => {
     img: { width: '100%', height: '100%', objectFit: 'cover' },
     noImg: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#8a8d91' : '#9ca3af', fontSize: '13px' },
     availBadge: { position: 'absolute', top: '10px', left: '10px', background: '#16a34a', color: '#fff', fontSize: '11px', padding: '3px 10px', borderRadius: '20px' },
+    promoBadge: {
+      position: 'absolute', top: '40px', left: '10px',
+      display: 'inline-flex', alignItems: 'center', gap: '6px',
+      fontSize: '10px', fontWeight: '800', letterSpacing: '0.05em', textTransform: 'uppercase',
+      padding: '4px 10px', borderRadius: '999px',
+      background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(232,161,0,0.45)', color: GOLD_DARK,
+    },
+    promoBadgeDates: { fontWeight: '600', letterSpacing: '0.03em', opacity: 0.85 },
     priceBadge: { position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '12px', padding: '3px 10px', borderRadius: '6px' },
     cardBody: { padding: '14px 16px' },
     carName: { fontSize: '16px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
@@ -110,6 +120,12 @@ const MyFavorites = () => {
                   onToggle={toggleFavorite}
                   style={{ position: 'absolute', top: '10px', right: '10px' }}
                 />
+                {isPromoVisible(car.promo) && (
+                  <span style={styles.promoBadge}>
+                    {promoOffer(car.promo)}
+                    <span style={styles.promoBadgeDates}>{promoDateRange(car.promo)}</span>
+                  </span>
+                )}
                 <span style={styles.priceBadge}>₱{car.pricePerDay} / day</span>
               </div>
               <div style={styles.cardBody}>
