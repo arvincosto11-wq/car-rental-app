@@ -13,6 +13,8 @@ import useModalA11y from '../../hooks/useModalA11y';
 import ColorPicker from '../../components/ColorPicker';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import BlockDatesPanel, { upcomingBlockCount } from '../../components/BlockDatesPanel';
+import Pagination from '../../components/Pagination';
+import { paginate } from '../../utils/paginate';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
 import { hasPromo, isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
 
@@ -26,6 +28,23 @@ const toDateValue = (d) => {
 };
 
 const OTHER = '__other__';
+
+const PAGE_SIZE = 10;
+
+// Spec-row and header icons — hand-drawn inline SVG like the rest of the
+// site, so they read as one family rather than an imported pack.
+const LineIcon = ({ children, size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true">
+    {children}
+  </svg>
+);
+const SeatsIcon = () => <LineIcon><circle cx="9" cy="8" r="3.2" /><path d="M3.5 20v-1.5A4.5 4.5 0 0 1 8 14h2a4.5 4.5 0 0 1 4.5 4.5V20" /><path d="M16 11.2a3 3 0 1 0 0-6" /><path d="M20.5 20v-1.2a4 4 0 0 0-3-3.9" /></LineIcon>;
+const GearIcon = () => <LineIcon><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" /></LineIcon>;
+const CarIcon = () => <LineIcon><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11" /><rect x="3" y="11" width="18" height="6" rx="2" /><circle cx="7.5" cy="17" r="1.3" /><circle cx="16.5" cy="17" r="1.3" /></LineIcon>;
+const MotoIcon = () => <LineIcon><circle cx="5.5" cy="16.5" r="3" /><circle cx="18.5" cy="16.5" r="3" /><path d="M5.5 16.5h5l3-6h3" /><path d="M14 7h3l1.5 9.5" /></LineIcon>;
+const PlateIcon = () => <LineIcon><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6.5 10h3M6.5 14h6M15 10.5h3v3h-3z" /></LineIcon>;
+const SearchIcon = () => <LineIcon size={15}><circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="21" y2="21" /></LineIcon>;
+const ArchiveIcon = () => <LineIcon size={15}><rect x="3" y="4" width="18" height="5" rx="1.5" /><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9" /><line x1="10" y1="13" x2="14" y2="13" /></LineIcon>;
 
 
 
@@ -47,6 +66,7 @@ const ManageCars = () => {
   const [editModelChoice, setEditModelChoice] = useState('');
   const [search, setSearch] = useState('');
   const [blockPanelCarId, setBlockPanelCarId] = useState(null);
+  const [page, setPage] = useState(1);
   const [promoCar, setPromoCar] = useState(null);
   const [promoForm, setPromoForm] = useState({ label: '', type: 'percent', value: '', startDate: '', endDate: '' });
   const [promoSaving, setPromoSaving] = useState(false);
@@ -354,22 +374,52 @@ Set the promo anyway?`,
   };
 
   const styles = {
-    main: {},
-    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
-    subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
-    carCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', marginBottom: '12px', overflow: 'hidden' },
-    carRow: { display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 16px' },
-    carThumbWrap: { width: '64px', height: '48px', borderRadius: '10px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', flexShrink: 0 },
-    carThumbImg: { width: '100%', height: '100%', objectFit: 'cover' },
-    carThumb: { width: '100%', height: '100%', background: isDark ? '#3a3b3c' : '#f3f4f6' },
-    carInfo: { flex: 1, minWidth: 0 },
+    // isolation keeps the glow orb's negative z-index inside this page, so
+    // it sits behind the cards without slipping behind the layout itself.
+    main: { position: 'relative', isolation: 'isolate' },
+    glowOrb: {
+      position: 'absolute', top: '-140px', right: 0, width: '460px', height: '460px',
+      borderRadius: '50%', pointerEvents: 'none', zIndex: -1, filter: 'blur(70px)',
+      background: `radial-gradient(circle, ${isDark ? 'rgba(232,161,0,0.16)' : 'rgba(184,121,10,0.07)'} 0%, transparent 70%)`,
+    },
+    title: { fontSize: '26px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
+    subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    cardList: { display: 'flex', flexDirection: 'column', gap: '16px' },
+    // Photo | details | price-and-actions. The side column is capped so a
+    // long action strip wraps under itself instead of squeezing the details.
+    carCard: {
+      display: 'grid', gridTemplateColumns: '224px minmax(0, 1fr) auto', gap: '28px',
+      alignItems: 'stretch', padding: '24px', borderRadius: '24px',
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    carThumbWrap: {
+      width: '224px', height: '144px', borderRadius: '16px', overflow: 'hidden', alignSelf: 'center',
+      background: isDark ? '#3a3b3c' : '#f3f4f6',
+    },
+    carThumbImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+    carThumbEmpty: {
+      width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: '6px',
+      alignItems: 'center', justifyContent: 'center', fontSize: '11px',
+      color: isDark ? '#8a8d91' : '#9ca3af',
+    },
+    carInfo: { minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '10px', justifyContent: 'center' },
     carNameRow: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
-    carName: { fontSize: '15px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    carSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#9ca3af', marginTop: '3px' },
-    carRatingText: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#9ca3af', marginTop: '4px' },
-    carPriceWrap: { textAlign: 'right', minWidth: '80px' },
-    carPrice: { fontSize: '16px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    carPriceUnit: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '1px' },
+    carName: { fontSize: '18px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    // Two columns of labelled specs replace the old single dot-separated
+    // line, which was hard to scan once it held four values.
+    specGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, max-content)', gap: '8px 28px' },
+    spec: { display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#b0b3b8' : '#4b5563' },
+    specMissing: { fontStyle: 'italic', color: isDark ? '#8a8d91' : '#9ca3af' },
+    ratingRow: { display: 'flex', alignItems: 'center', gap: '6px' },
+    carRatingText: { fontSize: '12px', fontWeight: '600', color: isDark ? '#b0b3b8' : '#6b7280' },
+    carSide: {
+      display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between',
+      gap: '18px', maxWidth: '560px',
+    },
+    carPriceWrap: { textAlign: 'right' },
+    carPrice: { fontSize: '26px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    carPriceUnit: { fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px' },
     available: {
       display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
       padding: '3px 10px', borderRadius: '20px',
@@ -389,16 +439,16 @@ Set the promo anyway?`,
       background: isDark ? 'rgba(148,163,184,0.15)' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#475569',
       border: `1px solid ${isDark ? 'rgba(148,163,184,0.4)' : '#cbd5e1'}`,
     },
-    publishBtn: { padding: '6px 14px', background: isDark ? GOLD_DARK : GOLD, border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', color: ON_GOLD },
-    actions: { display: 'flex', gap: '6px' },
-    editBtn: { padding: '6px 14px', background: isDark ? GOLD_DARK : GOLD, border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', color: ON_GOLD },
-    toggleBtn: { padding: '6px 14px', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    archiveBtn: { padding: '6px 14px', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    publishBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? GOLD_DARK : GOLD, border: 'none', color: ON_GOLD },
+    actions: { display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '8px' },
+    editBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? GOLD_DARK : GOLD, border: 'none', color: ON_GOLD },
+    toggleBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb'}`, color: isDark ? '#b0b3b8' : '#374151' },
+    archiveBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb'}`, color: isDark ? '#b0b3b8' : '#374151' },
     featureBtn: (active) => ({
-      padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-      border: `1px solid ${active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#d1d5db')}`,
+      padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+      border: `1px solid ${active ? (isDark ? 'rgba(232,161,0,0.45)' : 'rgba(184,121,10,0.45)') : (isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb')}`,
       background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#18191a' : '#f3f4f6'),
-      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a'),
+      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#b0b3b8' : '#374151'),
     }),
     editForm: { maxWidth: '960px' },
     editModalOverlay: {
@@ -449,24 +499,23 @@ Set the promo anyway?`,
     categoryFixed: { padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', background: isDark ? '#18191a' : '#f9fafb', color: isDark ? '#b0b3b8' : '#6b7280' },
     hint: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '4px' },
     promoBtn: (live) => ({
-      padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-      display: 'inline-flex', alignItems: 'center', gap: '6px',
-      border: live ? `1px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+      border: `1px solid ${live ? (isDark ? 'rgba(232,161,0,0.45)' : 'rgba(184,121,10,0.45)') : (isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb')}`,
       background: live ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#18191a' : '#f3f4f6'),
-      color: live ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a'),
+      color: live ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#b0b3b8' : '#374151'),
     }),
     // Neutral when there's nothing blocked; picks up an edge when there is,
     // so the count reads as information rather than a warning.
     blockDatesBtn: (hasBlocks) => ({
-      padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-      border: `1px solid ${hasBlocks ? (isDark ? '#6b7280' : '#9ca3af') : (isDark ? '#3a3b3c' : '#d1d5db')}`,
+      padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
       background: isDark ? '#18191a' : '#f3f4f6',
-      color: isDark ? '#e4e6eb' : '#1a1a1a',
+      border: `1px solid ${hasBlocks ? (isDark ? '#6b7280' : '#9ca3af') : (isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb')}`,
+      color: hasBlocks ? (isDark ? '#e4e6eb' : '#1a1a1a') : (isDark ? '#b0b3b8' : '#374151'),
     }),
     promoRowTag: {
       display: 'inline-flex', alignItems: 'center', gap: '5px',
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
-      padding: '3px 9px', borderRadius: '999px', whiteSpace: 'nowrap',
+      padding: '3px 9px', borderRadius: '999px', whiteSpace: 'nowrap', alignSelf: 'flex-start',
       background: isDark ? GOLD_TINT_DARK : GOLD_TINT,
       border: `1px solid ${isDark ? 'rgba(232,161,0,0.35)' : 'rgba(184,121,10,0.35)'}`,
       color: isDark ? GOLD_DARK : GOLD,
@@ -503,16 +552,30 @@ Set the promo anyway?`,
       border: `1px dashed ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280',
     },
+    searchWrap: { position: 'relative', maxWidth: '420px', marginBottom: '22px' },
+    searchIcon: {
+      position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)',
+      display: 'flex', pointerEvents: 'none', color: isDark ? '#8a8d91' : '#9ca3af',
+    },
     searchInput: {
-      width: '100%', maxWidth: '360px', padding: '9px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '18px',
+      width: '100%', height: '44px', padding: '0 14px 0 40px', boxSizing: 'border-box',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '12px',
+      fontSize: '13px', fontFamily: 'inherit', outline: 'none',
       background: isDark ? '#242526' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
     },
-    headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '18px' },
+    emptyText: { color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '13px' },
+    listFooter: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap',
+      marginTop: '22px', paddingTop: '18px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    listCount: { fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280' },
+    listCountStrong: { color: isDark ? '#e4e6eb' : '#1a1a1a', fontWeight: '700' },
+    headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '22px' },
     archivedLinkBtn: {
-      padding: '9px 16px', background: isDark ? '#242526' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600',
-      cursor: 'pointer', whiteSpace: 'nowrap',
+      display: 'inline-flex', alignItems: 'center', gap: '8px',
+      padding: '10px 18px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+      background: isDark ? '#242526' : '#fff', color: isDark ? '#e4e6eb' : '#374151',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
     },
   };
 
@@ -522,117 +585,171 @@ Set the promo anyway?`,
     return `${car.brand} ${car.model}`.toLowerCase().includes(q);
   });
 
+  // Each card is several times taller than the old row now that it carries
+  // a real photo, so a long fleet paginates instead of scrolling forever.
+  const totalPages = Math.max(1, Math.ceil(filteredCars.length / PAGE_SIZE));
+  // Archiving the last car on the last page would otherwise strand you on
+  // an empty page; clamping here rather than in each handler covers every
+  // way the list can shrink.
+  const currentPage = Math.min(page, totalPages);
+  const pageCars = paginate(filteredCars, currentPage, PAGE_SIZE);
+  const firstShown = filteredCars.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+  const lastShown = Math.min(currentPage * PAGE_SIZE, filteredCars.length);
+
   return (
     <AdminLayout activePage="Manage Cars">
       <div style={styles.main}>
-          <div style={styles.headerRow}>
-            <div>
-              <h1 style={styles.title}>Manage Cars</h1>
-              <p style={styles.subtitle}>View all listed cars, update or remove them.</p>
-            </div>
-            <button style={styles.archivedLinkBtn} onClick={() => navigate('/admin/archived-cars')}>
-              🗄️ Archived Cars
-            </button>
+        {/* A single soft pool of brand gold behind the page, so the dark
+            background reads as lit rather than flat. Gold only — the brand
+            doesn't use a second accent. */}
+        <div aria-hidden="true" style={styles.glowOrb} />
+
+        <div style={styles.headerRow}>
+          <div>
+            <h1 style={styles.title}>Manage Cars</h1>
+            <p style={styles.subtitle}>View all listed cars, update or remove them.</p>
           </div>
+          <button style={styles.archivedLinkBtn} onClick={() => navigate('/admin/archived-cars')}>
+            <ArchiveIcon /> Archived Cars
+          </button>
+        </div>
+
+        <div style={styles.searchWrap}>
+          <span style={styles.searchIcon}><SearchIcon /></span>
           <input
             style={styles.searchInput}
             type="text"
             placeholder="Search by brand or model..."
             aria-label="Search cars"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
-          {loading ? <SkeletonListCard isDark={isDark} count={4} /> : filteredCars.length === 0 ? (
-            <p style={{ color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '13px' }}>No cars match.</p>
-          ) : (
-            <div>
-              {filteredCars.map((car) => (
-                <div key={car._id} style={styles.carCard}>
-                    <div className="admin-row-stack" style={styles.carRow}>
-                      <div style={styles.carThumbWrap}>
-                        {car.image ? (
-                          <img src={car.image} alt="" style={styles.carThumbImg} />
-                        ) : (
-                          <div style={styles.carThumb} />
-                        )}
+        </div>
+
+        {loading ? <SkeletonListCard isDark={isDark} count={4} /> : filteredCars.length === 0 ? (
+          <p style={styles.emptyText}>No cars match.</p>
+        ) : (
+          <>
+            <div style={styles.cardList}>
+              {pageCars.map((car) => (
+                <div key={car._id} className="mc-card" style={styles.carCard}>
+                  <div className="mc-thumb" style={styles.carThumbWrap}>
+                    {car.image ? (
+                      <img src={car.image} alt={`${car.brand} ${car.model}`} style={styles.carThumbImg} />
+                    ) : (
+                      <div style={styles.carThumbEmpty}>
+                        {car.category === 'Motorcycle' ? <MotoIcon /> : <CarIcon />}
+                        <span>No photo</span>
                       </div>
-                      <div style={styles.carInfo}>
-                        <div style={styles.carNameRow}>
-                          <span style={styles.carName}>{car.brand} {car.model}</span>
-                          {car.status === 'draft' ? (
-                            <span style={styles.draftFlag}>Draft</span>
-                          ) : (
-                            <span style={car.isAvailable ? styles.available : styles.unavailable}>
-                              {car.isAvailable ? 'Available' : 'Unavailable'}
-                            </span>
-                          )}
-                          {!car.isAvailable && !car.availabilityRequest?.requestedAt && (
-                            <span
-                              style={styles.staleFlag}
-                              title="Hidden without a consignor unavailability request on file — worth double-checking this isn't left over from a past bug rather than a deliberate hide."
-                            >
-                              ⚠ Check
-                            </span>
-                          )}
-                          {isPromoVisible(car.promo) && (
-                            <span style={styles.promoRowTag}>
-                              {car.promo.label} · {promoOffer(car.promo)} · {promoDateRange(car.promo)}
-                            </span>
-                          )}
-                        </div>
-                        <div style={styles.carSub}>{car.seats} · {car.transmission} · {car.category} · {car.plateNumber || 'No plate on file'}</div>
-                        {car.ratingCount > 0 ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
-                            <StarRating value={car.avgRating} size={12} readOnly />
-                            <span style={styles.carRatingText}>{car.avgRating.toFixed(1)} ({car.ratingCount})</span>
-                          </div>
-                        ) : (
-                          <div style={styles.carRatingText}>No reviews yet</div>
-                        )}
-                      </div>
-                      <div style={styles.carPriceWrap}>
-                        <div style={styles.carPrice}>₱{car.pricePerDay.toLocaleString()}</div>
-                        <div style={styles.carPriceUnit}>/day</div>
-                      </div>
-                      <div className="admin-row-actions" style={styles.actions}>
-                        <button style={styles.editBtn} onClick={() => handleEdit(car)}>Edit</button>
-                        {car.status === 'draft' ? (
-                          <button style={styles.publishBtn} onClick={() => handlePublish(car)}>Publish</button>
-                        ) : (
-                          <button style={styles.toggleBtn} onClick={() => handleToggle(car)}>
-                            {car.isAvailable ? 'Hide' : 'Show'}
-                          </button>
-                        )}
-                        <button
-                          style={styles.featureBtn(car.featured)}
-                          onClick={() => handleFeature(car)}
-                          title={car.featured ? 'Shown in the homepage carousel' : 'Add to the homepage carousel'}
+                    )}
+                  </div>
+
+                  <div style={styles.carInfo}>
+                    <div style={styles.carNameRow}>
+                      <span style={styles.carName}>{car.brand} {car.model}</span>
+                      {car.status === 'draft' ? (
+                        <span style={styles.draftFlag}>Draft</span>
+                      ) : (
+                        <span style={car.isAvailable ? styles.available : styles.unavailable}>
+                          {car.isAvailable ? 'Available' : 'Unavailable'}
+                        </span>
+                      )}
+                      {!car.isAvailable && !car.availabilityRequest?.requestedAt && (
+                        <span
+                          style={styles.staleFlag}
+                          title="Hidden without a consignor unavailability request on file — worth double-checking this isn't left over from a past bug rather than a deliberate hide."
                         >
-                          {car.featured ? '★ Featured' : '☆ Feature'}
-                        </button>
-                        <button
-                          style={styles.promoBtn(isPromoVisible(car.promo))}
-                          onClick={() => openPromo(car)}
-                          title={hasPromo(car.promo) ? 'Edit the promo on this vehicle' : 'Put this vehicle on promo'}
-                        >
-                          {isPromoVisible(car.promo) ? promoOffer(car.promo) : 'Set Promo'}
-                        </button>
-                        <button
-                          style={styles.blockDatesBtn(upcomingBlockCount(car.blockedDates) > 0)}
-                          onClick={() => setBlockPanelCarId(car._id)}
-                          title="Take this vehicle off the road for a range of dates"
-                        >
-                          {upcomingBlockCount(car.blockedDates) > 0
-                            ? `Block Dates · ${upcomingBlockCount(car.blockedDates)}`
-                            : 'Block Dates'}
-                        </button>
-                        <button style={styles.archiveBtn} onClick={() => handleArchive(car._id)}>Archive</button>
-                      </div>
+                          ⚠ Check
+                        </span>
+                      )}
                     </div>
+                    {isPromoVisible(car.promo) && (
+                      <span style={styles.promoRowTag}>
+                        {car.promo.label} · {promoOffer(car.promo)} · {promoDateRange(car.promo)}
+                      </span>
+                    )}
+
+                    <div style={styles.specGrid}>
+                      <span style={styles.spec}><SeatsIcon />{car.seats} Seats</span>
+                      <span style={styles.spec}><GearIcon />{car.transmission}</span>
+                      <span style={styles.spec}>{car.category === 'Motorcycle' ? <MotoIcon /> : <CarIcon />}{car.category}</span>
+                      <span style={car.plateNumber ? styles.spec : { ...styles.spec, ...styles.specMissing }}>
+                        <PlateIcon />{car.plateNumber || 'No plate on file'}
+                      </span>
+                    </div>
+
+                    {car.ratingCount > 0 ? (
+                      <div style={styles.ratingRow}>
+                        <StarRating value={car.avgRating} size={13} readOnly />
+                        <span style={styles.carRatingText}>{car.avgRating.toFixed(1)} ({car.ratingCount})</span>
+                      </div>
+                    ) : (
+                      <div style={{ ...styles.ratingRow, ...styles.carRatingText }}>No reviews yet</div>
+                    )}
+                  </div>
+
+                  <div className="mc-side" style={styles.carSide}>
+                    <div style={styles.carPriceWrap}>
+                      <div style={styles.carPrice}>₱{car.pricePerDay.toLocaleString()}</div>
+                      <div style={styles.carPriceUnit}>/ day</div>
+                    </div>
+                    <div style={styles.actions}>
+                      <button className="mc-btn-primary" style={styles.editBtn} onClick={() => handleEdit(car)}>Edit</button>
+                      {car.status === 'draft' ? (
+                        <button className="mc-btn-primary" style={styles.publishBtn} onClick={() => handlePublish(car)}>Publish</button>
+                      ) : (
+                        <button className="mc-btn" style={styles.toggleBtn} onClick={() => handleToggle(car)}>
+                          {car.isAvailable ? 'Hide' : 'Show'}
+                        </button>
+                      )}
+                      <button
+                        className="mc-btn"
+                        style={styles.featureBtn(car.featured)}
+                        onClick={() => handleFeature(car)}
+                        title={car.featured ? 'Shown in the homepage carousel' : 'Add to the homepage carousel'}
+                      >
+                        {car.featured ? '★ Featured' : '☆ Feature'}
+                      </button>
+                      <button
+                        className="mc-btn"
+                        style={styles.promoBtn(isPromoVisible(car.promo))}
+                        onClick={() => openPromo(car)}
+                        title={hasPromo(car.promo) ? 'Edit the promo on this vehicle' : 'Put this vehicle on promo'}
+                      >
+                        {isPromoVisible(car.promo) ? promoOffer(car.promo) : 'Set Promo'}
+                      </button>
+                      <button
+                        className="mc-btn"
+                        style={styles.blockDatesBtn(upcomingBlockCount(car.blockedDates) > 0)}
+                        onClick={() => setBlockPanelCarId(car._id)}
+                        title="Take this vehicle off the road for a range of dates"
+                      >
+                        {upcomingBlockCount(car.blockedDates) > 0
+                          ? `Block Dates · ${upcomingBlockCount(car.blockedDates)}`
+                          : 'Block Dates'}
+                      </button>
+                      <button className="mc-btn" style={styles.archiveBtn} onClick={() => handleArchive(car._id)}>Archive</button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-          )}
+
+            <div style={styles.listFooter}>
+              <span style={styles.listCount}>
+                Showing <strong style={styles.listCountStrong}>{firstShown}–{lastShown}</strong> of{' '}
+                <strong style={styles.listCountStrong}>{filteredCars.length}</strong> vehicle{filteredCars.length === 1 ? '' : 's'}
+              </span>
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                onPageChange={(p) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                isDark={isDark}
+                style={{ marginTop: 0, justifyContent: 'flex-end' }}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {editingCarData && (() => {

@@ -1076,3 +1076,60 @@ button.back-btn:not(:disabled):active {
   .past-blocks-toggle,
   .past-blocks-toggle svg { transition: none; }
 }
+
+/* ---- Manage Cars cards (pages/admin/ManageCars.jsx) ---- */
+.mc-card {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.mc-card:hover {
+  border-color: rgba(232, 161, 0, 0.35) !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16);
+}
+/* The photo drifts forward on hover — slower than the card's edge change,
+   so it reads as depth rather than the whole row jumping. */
+.mc-thumb img {
+  transition: transform 0.5s ease;
+}
+.mc-card:hover .mc-thumb img {
+  transform: scale(1.05);
+}
+/* Edit/Publish glow slightly, marking them as the primary action on a strip
+   of otherwise quiet buttons. */
+.mc-btn-primary {
+  box-shadow: 0 6px 16px rgba(232, 161, 0, 0.22);
+}
+/* Secondary actions sit muted and brighten when pointed at. */
+.mc-btn:not(:disabled):hover {
+  color: #1a1a1a !important;
+  border-color: #9ca3af !important;
+}
+body.dark .mc-btn:not(:disabled):hover {
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+/* On narrower screens the price and actions drop under the details as one
+   full-width row, instead of squeezing the details column to nothing. */
+@media (max-width: 1180px) {
+  .mc-card {
+    grid-template-columns: 180px minmax(0, 1fr) !important;
+  }
+  .mc-card .mc-thumb {
+    width: 180px !important;
+    height: 120px !important;
+  }
+  .mc-card .mc-side {
+    grid-column: 1 / -1;
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: wrap;
+    max-width: none !important;
+  }
+  .mc-card .mc-side > div:first-child {
+    text-align: left !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mc-card,
+  .mc-thumb img { transition: none; }
+  .mc-card:hover .mc-thumb img { transform: none; }
+}

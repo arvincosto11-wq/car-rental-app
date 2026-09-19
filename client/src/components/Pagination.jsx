@@ -27,7 +27,9 @@ const getPageNumbers = (current, total) => {
 // Numbered pagination (jump to any page directly) shared across admin
 // tables and My Bookings — replaces the old plain "Page X of Y" control,
 // same props so every existing usage picks this up automatically.
-const Pagination = ({ page, totalPages, onPageChange, isDark }) => {
+// `style` merges into the outer row, for callers that place it somewhere
+// other than centred under a list (e.g. the right side of a footer).
+const Pagination = ({ page, totalPages, onPageChange, isDark, style }) => {
   if (totalPages <= 1) return null;
 
   const s = {
@@ -51,7 +53,7 @@ const Pagination = ({ page, totalPages, onPageChange, isDark }) => {
   };
 
   return (
-    <div style={s.row} role="navigation" aria-label="Pagination">
+    <div style={{ ...s.row, ...style }} role="navigation" aria-label="Pagination">
       <button
         type="button"
         style={s.arrowBtn(page <= 1)}
