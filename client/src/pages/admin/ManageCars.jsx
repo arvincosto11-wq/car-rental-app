@@ -14,6 +14,7 @@ import ColorPicker from '../../components/ColorPicker';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
 import { hasPromo, isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
+import { splitBlockedDates } from '../../utils/blockedDates';
 
 // Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
 // the wrong day in timezones ahead of UTC, like PH).
@@ -50,6 +51,7 @@ const ManageCars = () => {
   const [promoForm, setPromoForm] = useState({ label: '', type: 'percent', value: '', startDate: '', endDate: '' });
   const [promoSaving, setPromoSaving] = useState(false);
   const [promoBookedRanges, setPromoBookedRanges] = useState([]);
+  const [showPastBlocks, setShowPastBlocks] = useState(false);
 
   const editingCarData = cars.find((c) => c._id === editingCar) || null;
   const closeEditModal = () => setEditingCar(null);
@@ -516,6 +518,11 @@ Set the promo anyway?`,
       borderRadius: '16px', padding: '24px', outline: 'none',
     },
     promoSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px' },
+    pastBlocksToggle: {
+      background: 'none', border: 'none', padding: '6px 0 0', cursor: 'pointer',
+      fontSize: '12px', fontWeight: '700', textDecoration: 'underline',
+      color: isDark ? '#8a8d91' : '#9ca3af',
+    },
     promoDatesRow: {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: '10px', marginBottom: '8px',
@@ -882,21 +889,40 @@ Set the promo anyway?`,
                 <div style={styles.field}>
                   <label style={styles.label}>Blocked Dates</label>
                   <p style={styles.hint}>Blocks this vehicle from being booked during these ranges (e.g. maintenance). Dates you add here are saved immediately — not part of Save Changes below. Consignor-submitted ranges need a decision on Availability Requests before they take effect.</p>
-                  {car.blockedDates?.length > 0 && (
-                    <div style={styles.blockedList}>
-                      {car.blockedDates.map((b) => (
-                        <div key={b._id} style={styles.blockedItem}>
-                          <span>
-                            {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
-                            {b.reason ? ` · ${b.reason}` : ''}
-                            {b.status === 'pending' && <span style={styles.blockedStatusTag}>Pending Approval</span>}
-                            {b.status === 'declined' && <span style={styles.blockedStatusTag}>Declined</span>}
-                          </span>
-                          <button type="button" style={styles.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(car._id, b._id)}>Remove</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {(() => {
+                    const { current, past } = splitBlockedDates(car.blockedDates);
+                    const shown = showPastBlocks ? [...current, ...past] : current;
+                    return (
+                      <>
+                        {shown.length > 0 && (
+                          <div style={styles.blockedList}>
+                            {shown.map((b) => {
+                              const isPast = past.includes(b);
+                              return (
+                                <div key={b._id} style={isPast ? { ...styles.blockedItem, opacity: 0.55 } : styles.blockedItem}>
+                                  <span>
+                                    {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                                    {b.reason ? ` · ${b.reason}` : ''}
+                                    {isPast && <span style={styles.blockedStatusTag}>Ended</span>}
+                                    {b.status === 'pending' && <span style={styles.blockedStatusTag}>Pending Approval</span>}
+                                    {b.status === 'declined' && <span style={styles.blockedStatusTag}>Declined</span>}
+                                  </span>
+                                  <button type="button" style={styles.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(car._id, b._id)}>Remove</button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {past.length > 0 && (
+                          <button type="button" style={styles.pastBlocksToggle} onClick={() => setShowPastBlocks((v) => !v)}>
+                            {showPastBlocks
+                              ? 'Hide past ranges'
+                              : `Show ${past.length} past range${past.length === 1 ? '' : 's'}`}
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                   {blockPickerOpen === car._id ? (
                     <>
                       <div style={{ marginTop: '8px', maxWidth: '340px' }}>

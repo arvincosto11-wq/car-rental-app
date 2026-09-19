@@ -7,6 +7,7 @@ import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
+import { splitBlockedDates } from '../../utils/blockedDates';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
@@ -43,6 +44,7 @@ const ConsignorDashboard = () => {
   const [requestError, setRequestError] = useState('');
   const [earningsPeriod, setEarningsPeriod] = useState('month');
   const [blockForm, setBlockForm] = useState({ startDate: '', endDate: '', reason: '' });
+  const [showPastBlocks, setShowPastBlocks] = useState(false);
   const [blockPickerOpen, setBlockPickerOpen] = useState(false);
   const [blockSubmitting, setBlockSubmitting] = useState(false);
   const requestModalRef = useModalA11y(() => setRequestModalCarId(null), !!requestModalCarId);
@@ -272,6 +274,11 @@ const ConsignorDashboard = () => {
     blockedList: { display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' },
     blockedItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fcd34d' : '#92400e' },
     blockedItemDeclined: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', color: isDark ? '#fca5a5' : '#991b1b' },
+    pastBlocksToggle: {
+      background: 'none', border: 'none', padding: '6px 0 0', cursor: 'pointer',
+      fontSize: '12px', fontWeight: '700', textDecoration: 'underline',
+      color: isDark ? '#8a8d91' : '#9ca3af',
+    },
     blockedStatusTag: { fontSize: '10px', fontWeight: '700', padding: '1px 8px', borderRadius: '20px', background: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)', flexShrink: 0, marginLeft: '6px' },
     blockedRemoveBtn: { background: 'none', border: 'none', color: isDark ? '#fca5a5' : '#dc2626', fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0 },
     blockReasonInput: { width: '100%', maxWidth: '320px', padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', marginTop: '8px', color: isDark ? '#e4e6eb' : '#1a1a1a', background: isDark ? '#18191a' : '#fff', boxSizing: 'border-box' },
@@ -432,26 +439,46 @@ const ConsignorDashboard = () => {
                     <div style={s.blockSection}>
                       <div style={s.blockLabel}>Blocked Dates</div>
                       <p style={s.blockHint}>Block off dates this vehicle can't be booked (e.g. maintenance, personal use).</p>
-                      {c.linkedCar.blockedDates?.length > 0 && (
-                        <div style={s.blockedList}>
-                          {c.linkedCar.blockedDates.map((b) => (
-                            <div key={b._id}>
-                              <div style={b.status === 'declined' ? s.blockedItemDeclined : s.blockedItem}>
-                                <span>
-                                  {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
-                                  {b.reason ? ` · ${b.reason}` : ''}
-                                  {b.status === 'pending' && <span style={s.blockedStatusTag}>Pending Approval</span>}
-                                  {b.status === 'declined' && <span style={s.blockedStatusTag}>Declined</span>}
-                                </span>
-                                <button type="button" style={s.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(c.linkedCar._id, b._id)}>Remove</button>
+                      {(() => {
+                        const { current, past } = splitBlockedDates(c.linkedCar.blockedDates);
+                        const shown = showPastBlocks ? [...current, ...past] : current;
+                        return (
+                          <>
+                            {shown.length > 0 && (
+                              <div style={s.blockedList}>
+                                {shown.map((b) => {
+                                  const isPast = past.includes(b);
+                                  const row = b.status === 'declined' ? s.blockedItemDeclined : s.blockedItem;
+                                  return (
+                                    <div key={b._id}>
+                                      <div style={isPast ? { ...row, opacity: 0.55 } : row}>
+                                        <span>
+                                          {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                                          {b.reason ? ` · ${b.reason}` : ''}
+                                          {isPast && <span style={s.blockedStatusTag}>Ended</span>}
+                                          {b.status === 'pending' && <span style={s.blockedStatusTag}>Pending Approval</span>}
+                                          {b.status === 'declined' && <span style={s.blockedStatusTag}>Declined</span>}
+                                        </span>
+                                        <button type="button" style={s.blockedRemoveBtn} onClick={() => handleRemoveBlockedDate(c.linkedCar._id, b._id)}>Remove</button>
+                                      </div>
+                                      {b.status === 'declined' && b.adminNotes && (
+                                        <div style={s.notesBox}>Reason: {b.adminNotes}</div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
-                              {b.status === 'declined' && b.adminNotes && (
-                                <div style={s.notesBox}>Reason: {b.adminNotes}</div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                            )}
+                            {past.length > 0 && (
+                              <button type="button" style={s.pastBlocksToggle} onClick={() => setShowPastBlocks((v) => !v)}>
+                                {showPastBlocks
+                                  ? 'Hide past ranges'
+                                  : `Show ${past.length} past range${past.length === 1 ? '' : 's'}`}
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
                       {blockPickerOpen === c.linkedCar._id ? (
                         <>
                           <div style={{ marginTop: '8px', maxWidth: '320px' }}>
