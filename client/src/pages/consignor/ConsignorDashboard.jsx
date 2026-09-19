@@ -12,6 +12,14 @@ import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
 
+// Chevron for the "past ranges" chip — rotates via CSS when expanded.
+const ChevronIcon = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
+
 const formatPayment = (payment) => {
   if (payment === 'gcash_pending') return 'GCash pending';
   if (payment === 'paid') return 'Paid';
@@ -275,10 +283,23 @@ const ConsignorDashboard = () => {
     blockedItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fcd34d' : '#92400e' },
     blockedItemDeclined: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2', color: isDark ? '#fca5a5' : '#991b1b' },
     pastBlocksToggle: {
-      background: 'none', border: 'none', padding: '6px 0 0', cursor: 'pointer',
-      fontSize: '12px', fontWeight: '700', textDecoration: 'underline',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '7px',
+      padding: '6px 12px',
+      borderRadius: '999px',
+      // Dashed, because this reveals archived content rather than doing
+      // something — it shouldn't read as solid as the actions beside it.
+      border: `1px dashed ${isDark ? '#4a4b4c' : '#d1d5db'}`,
+      background: 'transparent',
+      fontSize: '11px',
+      fontWeight: '700',
+      letterSpacing: '0.05em',
+      textTransform: 'uppercase',
+      cursor: 'pointer',
       color: isDark ? '#8a8d91' : '#9ca3af',
     },
+    pastBlocksRow: { marginTop: '8px' },
     blockedStatusTag: { fontSize: '10px', fontWeight: '700', padding: '1px 8px', borderRadius: '20px', background: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)', flexShrink: 0, marginLeft: '6px' },
     blockedRemoveBtn: { background: 'none', border: 'none', color: isDark ? '#fca5a5' : '#dc2626', fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: 0, textDecoration: 'underline', flexShrink: 0 },
     blockReasonInput: { width: '100%', maxWidth: '320px', padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '12px', marginTop: '8px', color: isDark ? '#e4e6eb' : '#1a1a1a', background: isDark ? '#18191a' : '#fff', boxSizing: 'border-box' },
@@ -470,11 +491,20 @@ const ConsignorDashboard = () => {
                               </div>
                             )}
                             {past.length > 0 && (
-                              <button type="button" style={s.pastBlocksToggle} onClick={() => setShowPastBlocks((v) => !v)}>
-                                {showPastBlocks
-                                  ? 'Hide past ranges'
-                                  : `Show ${past.length} past range${past.length === 1 ? '' : 's'}`}
-                              </button>
+                              <div style={s.pastBlocksRow}>
+                                <button
+                                  type="button"
+                                  className="past-blocks-toggle"
+                                  style={s.pastBlocksToggle}
+                                  aria-expanded={showPastBlocks}
+                                  onClick={() => setShowPastBlocks((v) => !v)}
+                                >
+                                  <ChevronIcon />
+                                  {showPastBlocks
+                                    ? 'Hide past'
+                                    : `${past.length} past range${past.length === 1 ? '' : 's'}`}
+                                </button>
+                              </div>
                             )}
                           </>
                         );

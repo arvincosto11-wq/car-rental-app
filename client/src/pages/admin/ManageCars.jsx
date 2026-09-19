@@ -27,6 +27,14 @@ const toDateValue = (d) => {
 
 const OTHER = '__other__';
 
+// Chevron for the "past ranges" chip — rotates via CSS when expanded.
+const ChevronIcon = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
+
 const ManageCars = () => {
   usePageTitle('Manage Cars');
   const { isDark } = useTheme();
@@ -519,10 +527,23 @@ Set the promo anyway?`,
     },
     promoSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px' },
     pastBlocksToggle: {
-      background: 'none', border: 'none', padding: '6px 0 0', cursor: 'pointer',
-      fontSize: '12px', fontWeight: '700', textDecoration: 'underline',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '7px',
+      padding: '6px 12px',
+      borderRadius: '999px',
+      // Dashed, because this reveals archived content rather than doing
+      // something — it shouldn't read as solid as the actions beside it.
+      border: `1px dashed ${isDark ? '#4a4b4c' : '#d1d5db'}`,
+      background: 'transparent',
+      fontSize: '11px',
+      fontWeight: '700',
+      letterSpacing: '0.05em',
+      textTransform: 'uppercase',
+      cursor: 'pointer',
       color: isDark ? '#8a8d91' : '#9ca3af',
     },
+    pastBlocksRow: { marginTop: '8px' },
     promoDatesRow: {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: '10px', marginBottom: '8px',
@@ -914,11 +935,20 @@ Set the promo anyway?`,
                           </div>
                         )}
                         {past.length > 0 && (
-                          <button type="button" style={styles.pastBlocksToggle} onClick={() => setShowPastBlocks((v) => !v)}>
-                            {showPastBlocks
-                              ? 'Hide past ranges'
-                              : `Show ${past.length} past range${past.length === 1 ? '' : 's'}`}
-                          </button>
+                          <div style={styles.pastBlocksRow}>
+                            <button
+                              type="button"
+                              className="past-blocks-toggle"
+                              style={styles.pastBlocksToggle}
+                              aria-expanded={showPastBlocks}
+                              onClick={() => setShowPastBlocks((v) => !v)}
+                            >
+                              <ChevronIcon />
+                              {showPastBlocks
+                                ? 'Hide past'
+                                : `${past.length} past range${past.length === 1 ? '' : 's'}`}
+                            </button>
+                          </div>
                         )}
                       </>
                     );

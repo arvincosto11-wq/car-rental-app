@@ -1049,3 +1049,30 @@ button.back-btn:not(:disabled):active {
   .promo-badge::after { opacity: 0; }
   .promo-confetti-piece { display: none; }
 }
+
+/* "Show N past ranges" — a chip for revealing archived content, not a
+   primary action. The global button hover (lift + shadow) is sized for CTA
+   buttons and makes a chip this small look like it's floating away, so it
+   opts out and shifts its edge and text instead. */
+.past-blocks-toggle {
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.past-blocks-toggle:hover,
+.past-blocks-toggle:active {
+  filter: none;
+  transform: none;
+  box-shadow: none;
+  color: var(--gold) !important;
+  border-color: var(--gold) !important;
+  background: rgba(232, 161, 0, 0.08) !important;
+}
+.past-blocks-toggle svg {
+  transition: transform 0.2s ease;
+}
+.past-blocks-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .past-blocks-toggle,
+  .past-blocks-toggle svg { transition: none; }
+}
