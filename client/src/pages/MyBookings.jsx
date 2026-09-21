@@ -7,6 +7,7 @@ import { useNotifications } from '../context/NotificationContext';
 import api from '../api';
 import StarRating from '../components/StarRating';
 import RatingModal from '../components/RatingModal';
+import BookingConfirmationModal from '../components/BookingConfirmationModal';
 import { SkeletonListCard } from '../components/Skeleton';
 import Pagination from '../components/Pagination';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
@@ -104,6 +105,9 @@ const MyBookings = () => {
   const [rescheduleError, setRescheduleError] = useState('');
   const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false);
   const [bookedRangesForReschedule, setBookedRangesForReschedule] = useState([]);
+  // Which booking came back from GCash, and how it went. Replaces the toast
+  // that used to carry this — see BookingConfirmationModal.
+  const [confirmation, setConfirmation] = useState(null);
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -132,31 +136,31 @@ const MyBookings = () => {
   // Landed back here from the PayMongo GCash redirect — check the real
   // payment status right away instead of waiting on the webhook, then drop
   // the query params so a page refresh doesn't re-trigger this.
+  // Asks the server what actually happened, rather than trusting the
+  // redirect: someone can land on ?gcash=success having abandoned the
+  // payment, and the callback can also lag a few seconds behind them.
+  const checkGcashStatus = async (bookingId, redirectSaidCancelled) => {
+    try {
+      const res = await api.get(`/payments/gcash/status/${bookingId}`);
+      const status = res.data.payment === 'paid'
+        ? 'paid'
+        : redirectSaidCancelled ? 'cancelled' : 'checking';
+      const fresh = await api.get('/bookings/my');
+      setBookings(fresh.data);
+      setConfirmation({ bookingId, status });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     if (!user) return;
     const gcashResult = searchParams.get('gcash');
     const bookingId = searchParams.get('bookingId');
     if (!gcashResult || !bookingId) return;
-
-    const checkStatus = async () => {
-      try {
-        const res = await api.get(`/payments/gcash/status/${bookingId}`);
-        if (res.data.payment === 'paid') {
-          toast.success('GCash payment received! Your booking is awaiting admin confirmation.');
-        } else if (gcashResult === 'cancelled') {
-          toast.info('GCash payment cancelled. Your booking is still saved as pending — request a refund below if you no longer want it, or contact us to complete payment.');
-        } else {
-          toast.error("We couldn't confirm the GCash payment yet. Please check back shortly.");
-        }
-        const res2 = await api.get('/bookings/my');
-        setBookings(res2.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setSearchParams({}, { replace: true });
-      }
-    };
-    checkStatus();
+    // Cleared straight away so a refresh doesn't re-run this.
+    setSearchParams({}, { replace: true });
+    checkGcashStatus(bookingId, gcashResult === 'cancelled');
   }, [user, searchParams]);
 
   const getStatusStyle = (status) => {
@@ -989,6 +993,18 @@ const MyBookings = () => {
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} isDark={isDark} />
+
+      {confirmation && (
+        <BookingConfirmationModal
+          booking={bookings.find((b) => b._id === confirmation.bookingId)}
+          status={confirmation.status}
+          isDark={isDark}
+          retrying={retryingPaymentId === confirmation.bookingId}
+          onClose={() => setConfirmation(null)}
+          onCheckAgain={() => checkGcashStatus(confirmation.bookingId, false)}
+          onRetryPayment={() => handleRetryPayment(confirmation.bookingId)}
+        />
+      )}
 
       {refundModalId && activeBooking && (
         <div style={styles.modalOverlay}>
