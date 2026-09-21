@@ -390,12 +390,14 @@ const MyBookings = () => {
     imgWrapCell: { gridColumn: '1', gridRow: '1 / span 2' },
     middleCol: { gridColumn: '2', gridRow: '1', display: 'flex', flexDirection: 'column', minWidth: 0 },
     priceColCell: { gridColumn: '3', gridRow: '1' },
-    actionsCell: { gridColumn: '2', gridRow: '2' },
-    // Column 3 of the row the action buttons sit in, so the savings line
-    // ends up level with them instead of stacked under the total.
-    savedCell: {
-      gridColumn: '3', gridRow: '2',
-      display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+    // Spans columns 2 and 3: buttons on the left, savings line on the right.
+    // Keeping the savings line out of column 3 matters — that column is
+    // auto-sized, so a long line in it widens the price column and squeezes
+    // the trip panel.
+    actionsCell: {
+      gridColumn: '2 / -1', gridRow: '2',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: '16px', flexWrap: 'wrap',
     },
     detailsPanel: {
       background: isDark ? '#2a2b2c' : '#f3f4f6',
@@ -913,18 +915,9 @@ const MyBookings = () => {
                   </div>
                 </div>
 
-                {booking.discountAmount > 0 && (
-                  <div className="grid-cell" style={styles.savedCell}>
-                    <span style={styles.promoSaved}>
-                      <span>{booking.promoLabel || 'Promo'} · saved ₱{booking.discountAmount.toLocaleString()}</span>
-                      <span style={styles.promoSavedWas}>₱{booking.subtotal.toLocaleString()}</span>
-                    </span>
-                  </div>
-                )}
-
+                <div className="grid-cell" style={styles.actionsCell}>
                 {(booking.status === 'pending' || booking.status === 'confirmed') &&
                   (!booking.refundStatus || booking.refundStatus === 'none') && (
-                    <div className="grid-cell" style={styles.actionsCell}>
                       <div style={styles.actionsIndent}>
                         <button className="btn-ghost-rose" style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
                           <ReturnLineIcon /> Request Refund
@@ -935,12 +928,10 @@ const MyBookings = () => {
                           </button>
                         )}
                       </div>
-                    </div>
                 )}
                 {(booking.status === 'pending' || booking.status === 'confirmed') &&
                   booking.payment !== 'paid' &&
                   booking.refundStatus !== 'requested' && (
-                    <div className="grid-cell" style={styles.actionsCell}>
                       <div style={styles.actionsIndent}>
                         <button
                           className="btn-solid-gold"
@@ -951,10 +942,8 @@ const MyBookings = () => {
                           {retryingPaymentId === booking._id ? 'Redirecting...' : 'Retry GCash Payment'}
                         </button>
                       </div>
-                    </div>
                 )}
                 {booking.status === 'completed' && (
-                  <div className="grid-cell" style={styles.actionsCell}>
                     <div style={{ ...styles.actionsIndent, alignItems: 'center' }}>
                       <button className="btn-solid-gold" style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
                         <RepeatIcon /> Book Again
@@ -971,8 +960,14 @@ const MyBookings = () => {
                         </>
                       )}
                     </div>
-                  </div>
                 )}
+                {booking.discountAmount > 0 && (
+                  <span style={styles.promoSaved}>
+                    <span>{booking.promoLabel || 'Promo'} · saved ₱{booking.discountAmount.toLocaleString()}</span>
+                    <span style={styles.promoSavedWas}>₱{booking.subtotal.toLocaleString()}</span>
+                  </span>
+                )}
+                </div>
               </div>
 
               {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved' || booking.refundStatus === 'declined') && (
