@@ -399,11 +399,6 @@ const MyBookings = () => {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: '16px', flexWrap: 'wrap',
     },
-    detailsPanel: {
-      background: isDark ? '#2a2b2c' : '#f3f4f6',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e8eaed'}`,
-      borderRadius: '14px', padding: '14px 16px',
-    },
     // Centred rather than top-aligned: the pickup box is the taller of the
     // two, and level text either side of it reads as one panel.
     detailsRow: {
@@ -873,37 +868,35 @@ const MyBookings = () => {
                     )}
                   </div>
 
-                  <div style={styles.detailsPanel}>
-                    <div className="booking-trip-row" style={styles.detailsRow}>
-                      <div style={styles.info}>
-                        <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
-                          <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                          {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
+                  <div className="booking-trip-row" style={styles.detailsRow}>
+                    <div style={styles.info}>
+                      <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
+                        <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                        {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
+                      </div>
+                      <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
+                        <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                        <span style={styles.carSub}>
+                          {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
+                        </span>
+                      </div>
+                    </div>
+
+                    {(booking.status === 'confirmed' || booking.status === 'pending') && (
+                      <div style={styles.pickupPanel}>
+                        <div style={styles.pickupLine}>
+                          <PinLineIcon /> Pickup: {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                         </div>
-                        <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
-                          <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                          <span style={styles.carSub}>
-                            {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
-                          </span>
+                        <div style={styles.returnLine}>
+                          <ReturnLineIcon /> Return: {new Date(booking.endDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                        </div>
+                        <div style={styles.driverNote}>
+                          {booking.bookingType === 'self-drive'
+                            ? "Bring a valid ID and your driver's license to pick up the vehicle."
+                            : 'Your driver will meet you at the pickup location.'}
                         </div>
                       </div>
-
-                      {(booking.status === 'confirmed' || booking.status === 'pending') && (
-                        <div style={styles.pickupPanel}>
-                          <div style={styles.pickupLine}>
-                            <PinLineIcon /> Pickup: {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                          </div>
-                          <div style={styles.returnLine}>
-                            <ReturnLineIcon /> Return: {new Date(booking.endDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                          </div>
-                          <div style={styles.driverNote}>
-                            {booking.bookingType === 'self-drive'
-                              ? "Bring a valid ID and your driver's license to pick up the vehicle."
-                              : 'Your driver will meet you at the pickup location.'}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
 
