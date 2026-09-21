@@ -49,7 +49,7 @@ export async function createGcashCheckout({ amount, name, description, reference
 //
 // The first payment's size isn't stored anywhere, but it doesn't need to
 // be: it's whatever the total collected is, less the top-ups we do know.
-const paymentSources = (booking) => {
+export const paymentSources = (booking) => {
   const extras = (booking.extraPayments || []).filter((p) => p.paymongoPaymentId && p.amount > 0);
   const extraTotal = extras.reduce((sum, p) => sum + p.amount, 0);
   return [

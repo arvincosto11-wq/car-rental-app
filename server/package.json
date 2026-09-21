@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
+    "test": "node tests/run.mjs",
     "dev": "nodemon index.js"
   },
   "dependencies": {

@@ -25,11 +25,13 @@ export const CANCEL_REASONS = ['vehicle_unavailable', 'client_requested', 'other
 // client_requested deliberately runs the same tiers the in-app refund button
 // applies. Without that, any client past the refund window could get a full
 // refund just by messaging admin instead of using the app.
-export function refundAmountFor(booking, reason, customAmount) {
+// `now` is injectable so the tiers can actually be checked — a rule about
+// money that reads the clock itself can only ever be tested by waiting.
+export function refundAmountFor(booking, reason, customAmount, now = new Date()) {
   if (booking.payment !== 'paid' || booking.amountPaid <= 0) return 0;
   if (reason === 'vehicle_unavailable') return booking.amountPaid;
   if (reason === 'client_requested') {
-    return Math.round(booking.amountPaid * (getRefundPercentage(booking.createdAt) / 100));
+    return Math.round(booking.amountPaid * (getRefundPercentage(booking.createdAt, now) / 100));
   }
   const amount = Number(customAmount);
   if (!Number.isFinite(amount) || amount < 0) return 0;
