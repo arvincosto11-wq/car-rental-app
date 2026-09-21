@@ -433,6 +433,12 @@ const CarDetail = () => {
     bookShell: {
       width: '100%', maxWidth: '900px', maxHeight: '88vh', outline: 'none',
       display: 'grid', gridTemplateColumns: '264px minmax(0, 1fr)',
+      // Without this the single grid row is sized to its content and simply
+      // overflows the shell's max height, which the shell then clips — so
+      // the body had nothing left to scroll inside and anything past the
+      // fold was unreachable. minmax(0, 1fr) lets the row shrink to the
+      // shell instead, which is what hands the overflow to bookBody.
+      gridTemplateRows: 'minmax(0, 1fr)',
       background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '24px', overflow: 'hidden',

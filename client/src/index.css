@@ -1190,6 +1190,10 @@ button.seg-tab:not(:disabled):hover {
 @media (max-width: 760px) {
   .booking-modal-shell {
     grid-template-columns: minmax(0, 1fr) !important;
+    /* Stacked here, so the steps take their own height and the body gets
+       whatever is left — the row has to be able to shrink or the modal
+       can't scroll. */
+    grid-template-rows: auto minmax(0, 1fr) !important;
     max-height: 92vh !important;
   }
   .booking-modal-side {
