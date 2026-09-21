@@ -9,7 +9,7 @@ import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { refundBookingPayment } from '../utils/paymongo.js';
 import { computeBookingPrice } from '../utils/promo.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
-import { openAdjustOffer, acceptAdjustOffer, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
+import { openAdjustOffer, acceptAdjustOffer, acceptCustomDates, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
 import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS } from '../utils/cancelBooking.js';
 import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
@@ -843,7 +843,15 @@ router.put('/:id/adjust', protect, async (req, res) => {
     }
 
     if (decision === 'accept') {
-      const result = await acceptAdjustOffer(booking, Number(optionIndex));
+      const opts = { confirmPrice: req.body.confirmPrice === true };
+      const result = req.body.startDate
+        ? await acceptCustomDates(booking, req.body.startDate, opts)
+        : await acceptAdjustOffer(booking, Number(optionIndex), opts);
+
+      // Not an error — the dates are fine, they just cost more than the
+      // trip this client agreed to, and nobody is moved onto a bigger bill
+      // without being shown the figure first.
+      if (result.needsPriceConfirmation) return res.status(409).json(result);
       if (!result.ok) return res.status(400).json({ message: result.message });
       return res.json(result.booking);
     }

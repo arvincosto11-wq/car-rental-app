@@ -176,21 +176,31 @@ const MyBookings = () => {
     }
   };
 
-  // The client's answer to an offer of alternative dates. Always refetches
+  // The client's answer to an offer of alternative dates. Refetches
   // afterwards, including on failure: "those dates have just been taken" is
   // a real answer, and the card has to show what's actually left.
-  const handleOfferDecision = async (booking, decision, optionIndex) => {
+  //
+  // The one reply that isn't an outcome is a price rise — the dates are
+  // free, they just cost more than what this client agreed to. That comes
+  // back for the panel to put to them, and nothing has changed yet, so the
+  // card is deliberately left exactly as it is.
+  const handleOfferDecision = async (booking, decision, payload = {}) => {
     setOfferBusyId(booking._id);
     try {
-      await api.put(`/bookings/${booking._id}/adjust`, { decision, optionIndex });
+      await api.put(`/bookings/${booking._id}/adjust`, { decision, ...payload });
       toast.success(decision === 'accept'
         ? 'Your booking has been moved to the new dates.'
         : 'Your booking has been cancelled and your refund is on its way.');
-    } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || 'Could not update this booking.');
-    } finally {
       await refreshBookings();
+      return { ok: true };
+    } catch (err) {
+      const data = err.response?.data;
+      if (data?.needsPriceConfirmation) return data;
+      console.error(err);
+      toast.error(data?.message || 'Could not update this booking.');
+      await refreshBookings();
+      return { ok: false };
+    } finally {
       setOfferBusyId('');
     }
   };
@@ -1018,7 +1028,7 @@ const MyBookings = () => {
                   booking={booking}
                   isDark={isDark}
                   busy={offerBusyId === booking._id}
-                  onDecide={(decision, optionIndex) => handleOfferDecision(booking, decision, optionIndex)}
+                  onDecide={(decision, payload) => handleOfferDecision(booking, decision, payload)}
                 />
               )}
 

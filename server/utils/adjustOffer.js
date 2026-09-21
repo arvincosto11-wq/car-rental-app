@@ -7,6 +7,7 @@ import { notifyUser } from './notify.js';
 import { formatTripDates } from './blockReasons.js';
 import { offerDeadline, hasEnoughNotice, offerMessage, MIN_NOTICE_HOURS } from './offerWindow.js';
 import { busySpans, bookingSpan, overlaps } from './availability.js';
+import { instantFrom, phHour } from './phTime.js';
 
 // When a booking can no longer happen on its dates — another reservation was
 // confirmed over it, or the vehicle was pulled off the road — cancelling and
@@ -141,17 +142,38 @@ export async function openAdjustOffer(booking, { reason, cause = '', extra = [] 
   return true;
 }
 
-// The client picked one of the dates we offered. Re-checked against the
-// calendar as it stands right now, because the offer has been sitting there
-// for up to a day and anything could have claimed those dates since.
-export async function acceptAdjustOffer(booking, optionIndex) {
-  const option = booking.adjustOffer?.options?.[optionIndex];
-  if (!option) return { ok: false, message: 'That option is no longer available. Please refresh and try again.' };
-
+// Moves a booking onto dates the client has settled on. Shared by the
+// suggested options and by dates they picked themselves.
+//
+// The price is re-checked here rather than trusted: an alternative can cost
+// more than the trip they agreed to, because a date-window promo may not
+// reach the new dates. Nobody is moved onto a bigger bill without saying so
+// first, so a rise is refused until the client has seen the figure and
+// confirmed it — the same shape as the promo and blocked-date confirmations
+// elsewhere in the app.
+async function applyOption(booking, option, { confirmPrice = false } = {}) {
+  // Availability first, deliberately: there is no point putting a price to
+  // someone for dates we can no longer give them. The offer has been
+  // sitting there for up to a day and anything could have claimed them.
   const { spans } = await busySpans(booking.car, { excludeBookingId: booking._id });
   const wanted = { start: new Date(option.startDate), end: new Date(option.endDate) };
   if (spans.some((b) => overlaps(wanted, b))) {
     return { ok: false, message: 'Those dates have just been taken. Please choose one of the others, or the refund.' };
+  }
+
+  const extra = option.totalPrice - booking.totalPrice;
+  if (extra > 0 && !confirmPrice) {
+    return {
+      ok: false,
+      needsPriceConfirmation: true,
+      extra,
+      newTotal: option.totalPrice,
+      wasTotal: booking.totalPrice,
+      promoLabel: booking.promoLabel || '',
+      startDate: option.startDate,
+      endDate: option.endDate,
+      message: `These dates cost ₱${extra.toLocaleString()} more than your booking.`,
+    };
   }
 
   booking.startDate = option.startDate;
@@ -183,6 +205,36 @@ export async function acceptAdjustOffer(booking, optionIndex) {
     '/my-bookings'
   );
   return { ok: true, booking };
+}
+
+// The client picked one of the dates we offered. Re-checked against the
+// calendar as it stands right now, because the offer has been sitting there
+// for up to a day and anything could have claimed those dates since.
+export async function acceptAdjustOffer(booking, optionIndex, opts) {
+  const option = booking.adjustOffer?.options?.[optionIndex];
+  if (!option) return { ok: false, message: 'That option is no longer available. Please refresh and try again.' };
+  return applyOption(booking, option, opts);
+}
+
+// None of the three suited, so the client chose their own date. The trip
+// keeps its length and its pickup hour — only where it sits moves — so the
+// price is worked out the same way, and the same confirmation is required
+// if a promo doesn't reach that far.
+export async function acceptCustomDates(booking, startYmd, opts) {
+  const car = await Car.findById(booking.car);
+  if (!car) return { ok: false, message: 'That vehicle is no longer available.' };
+
+  const own = bookingSpan(booking);
+  const hour = booking.hasPickupTime ? phHour(booking.startDate) : 0;
+  const start = instantFrom(startYmd, hour);
+  if (isNaN(start.getTime())) return { ok: false, message: 'Please choose a valid date.' };
+  if (start.getTime() < Date.now() + MIN_NOTICE_HOURS * HOUR) {
+    return { ok: false, message: 'Please choose a date a little further ahead — we need time to have the vehicle ready.' };
+  }
+
+  const end = new Date(start.getTime() + (own.end.getTime() - own.start.getTime()));
+  const [option] = await priceOptions(car, booking, [{ startDate: start, endDate: end }]);
+  return applyOption(booking, option, opts);
 }
 
 // The client would rather have their money, or the deadline ran out. Either
