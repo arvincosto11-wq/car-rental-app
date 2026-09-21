@@ -333,7 +333,14 @@ export async function confirmTopUp(booking) {
     return { ok: true, booking };
   }
 
-  const option = topUp.option;
+  // Copied out, not referenced. topUp.option is a live view into the
+  // nested document, so clearing the top-up below empties it — and the
+  // dates would then be written back as nothing, which the schema rejects
+  // with "startDate is required" long after the client has paid.
+  const option = typeof topUp.option?.toObject === 'function'
+    ? topUp.option.toObject()
+    : { ...topUp.option };
+
   booking.extraPayments.push({ paymongoPaymentId: paid.id, amount: topUp.amount, paidAt: new Date() });
   booking.amountPaid += topUp.amount;
   clearTopUp(booking);

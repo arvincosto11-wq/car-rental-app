@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -243,6 +243,30 @@ const MyBookings = () => {
       await refreshBookings();
     })();
   }, [user, searchParams]);
+
+  // A top-up can finish without the client ever landing back here — they
+  // close the GCash tab, or the redirect drops. Anything still marked as
+  // paying gets reconciled on the next visit instead, so money that was
+  // taken can't sit unrecorded against a booking that never moved. The
+  // seen-set stops it retrying in a loop when the answer doesn't change.
+  const topUpChecked = useRef(new Set());
+  useEffect(() => {
+    const paying = bookings.find((b) => b.adjustOffer?.topUp?.checkoutSessionId
+      && !topUpChecked.current.has(b._id));
+    if (!paying) return;
+    topUpChecked.current.add(paying._id);
+    (async () => {
+      try {
+        await api.put(`/bookings/${paying._id}/adjust/top-up/confirm`);
+        toast.success('Payment received — your booking has been moved to the new dates.');
+      } catch (err) {
+        // Quiet on purpose: this is a background tidy-up, and an
+        // unfinished payment is not something to interrupt anyone about.
+        console.error(err);
+      }
+      await refreshBookings();
+    })();
+  }, [bookings]);
 
   const getStatusStyle = (status) => {
     if (status === 'confirmed') return styles.badgeConfirmed;
