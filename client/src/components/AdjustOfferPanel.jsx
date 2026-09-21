@@ -142,6 +142,14 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
     checkTitle: { fontSize: '13px', fontWeight: '800', color: isDark ? '#fca5a5' : '#b91c1c' },
     checkBody: { fontSize: '12px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#4b5563', margin: '6px 0 0' },
     checkRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' },
+    // The second way to settle a difference: as real a choice as paying
+    // now, so it reads as an option rather than a way out.
+    altBtn: {
+      padding: '8px 16px', borderRadius: '8px', cursor: busy ? 'default' : 'pointer',
+      border: `1px solid ${gold}`, background: 'transparent',
+      color: gold, fontSize: '12px', fontWeight: '800', fontFamily: 'inherit',
+      opacity: busy ? 0.6 : 1,
+    },
     backBtn: {
       padding: '8px 14px', borderRadius: '8px', cursor: 'pointer',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, background: 'transparent',
@@ -165,23 +173,34 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
             {' '}Your total goes from <strong>₱{priceCheck.wasTotal.toLocaleString()}</strong> to{' '}
             <strong>₱{priceCheck.newTotal.toLocaleString()}</strong>.
             {priceCheck.payUpfront
-              ? ` You have already paid this booking in full, so there is no balance at pickup for the difference
-                  to join — the ₱${priceCheck.extra.toLocaleString()} is due now by GCash. Your dates only change
-                  once it is paid, so backing out of the payment leaves everything exactly as it is.`
+              ? ` You have already paid this booking in full, so there is no balance at pickup for the
+                  ₱${priceCheck.extra.toLocaleString()} to join. Settle it now by GCash, or bring it with you when
+                  you collect the vehicle — whichever suits you. Paying now only moves your dates once the money
+                  lands, so backing out of GCash leaves everything exactly as it is.`
               : ` The extra ₱${priceCheck.extra.toLocaleString()} is added to what you bring at pickup — nothing
                   more is taken from your GCash now.`}
             {' '}If you would rather not, take the full refund instead.
           </p>
           <div style={s.checkRow}>
             {priceCheck.payUpfront ? (
-              <button
-                type="button"
-                style={s.takeBtn}
-                disabled={busy}
-                onClick={() => decide('topup', priceCheck.payload)}
-              >
-                Pay ₱{priceCheck.extra.toLocaleString()} with GCash
-              </button>
+              <>
+                <button
+                  type="button"
+                  style={s.takeBtn}
+                  disabled={busy}
+                  onClick={() => decide('topup', priceCheck.payload)}
+                >
+                  Pay ₱{priceCheck.extra.toLocaleString()} now with GCash
+                </button>
+                <button
+                  type="button"
+                  style={s.altBtn}
+                  disabled={busy}
+                  onClick={() => decide('accept', { ...priceCheck.payload, payAtPickup: true })}
+                >
+                  I&apos;ll bring it at pickup
+                </button>
+              </>
             ) : (
               <button
                 type="button"

@@ -850,7 +850,10 @@ router.put('/:id/adjust', protect, async (req, res) => {
       const result = await acceptAdjustOffer(
         booking,
         { optionIndex, startDate: req.body.startDate },
-        { confirmPrice: req.body.confirmPrice === true }
+        {
+          confirmPrice: req.body.confirmPrice === true,
+          payAtPickup: req.body.payAtPickup === true,
+        }
       );
 
       // Not an error — the dates are fine, they just cost more than the

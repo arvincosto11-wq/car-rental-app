@@ -162,7 +162,7 @@ export async function openAdjustOffer(booking, { reason, cause = '', extra = [] 
 // first, so a rise is refused until the client has seen the figure and
 // confirmed it — the same shape as the promo and blocked-date confirmations
 // elsewhere in the app.
-async function applyOption(booking, option, { confirmPrice = false, paidUpfront = false } = {}) {
+async function applyOption(booking, option, { confirmPrice = false, paidUpfront = false, payAtPickup = false } = {}) {
   // Availability first, deliberately: there is no point putting a price to
   // someone for dates we can no longer give them. The offer has been
   // sitting there for up to a day and anything could have claimed them.
@@ -175,10 +175,16 @@ async function applyOption(booking, option, { confirmPrice = false, paidUpfront 
   const extra = option.totalPrice - booking.totalPrice;
   if (extra > 0) {
     const payUpfront = settledInFull(booking);
-    // A client who still owes something at pickup just owes a little more.
-    // One who has already settled has no balance for it to join, so the
-    // difference is taken now — through startTopUp, never from here.
-    const answered = payUpfront ? paidUpfront : confirmPrice;
+    // A client who still owes something at pickup just owes a little more,
+    // and confirming the figure is the whole of it.
+    //
+    // One who has already settled has no balance for it to join, so they
+    // are asked how they would rather handle it: pay now by GCash, which
+    // arrives here as paidUpfront once the money has actually landed, or
+    // bring it at pickup, which arrives as payAtPickup and simply opens a
+    // balance on a booking that had none. Either is an explicit answer —
+    // what isn't allowed is moving them silently.
+    const answered = payUpfront ? (paidUpfront || payAtPickup) : confirmPrice;
     if (!answered) {
       return {
         ok: false,
