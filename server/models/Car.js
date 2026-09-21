@@ -108,6 +108,15 @@ const carSchema = new mongoose.Schema({
     // False on every range saved before this existed, which is what they
     // always meant.
     hasTime: { type: Boolean, default: false },
+    // Whether endDate is the last day OFF the road, or the day the vehicle
+    // is back on it. The form has always asked for "the last day" but the
+    // stored date was read as the day it returned, so that day stayed
+    // bookable while the vehicle was still in the workshop.
+    //
+    // Only set on ranges saved from now on. Older ones keep the meaning
+    // they were saved with rather than silently growing a day — two live
+    // ranges would have landed on a day a confirmed booking already uses.
+    endsInclusive: { type: Boolean, default: false },
     // reasonCode decides what a client is told when this block cancels
     // their booking; note is private and never leaves the admin/owner side.
     // `reason` is the old free-text field, kept so ranges saved before this

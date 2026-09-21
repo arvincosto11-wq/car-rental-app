@@ -154,6 +154,10 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
     const hasTime = isClockHour(startHour) && isClockHour(endHour);
     const start = instantFrom(startDate, hasTime ? Number(startHour) : 0);
     const end = instantFrom(endDate, hasTime ? Number(endHour) : 0);
+    // A whole-day range now covers the last day the admin picked, which is
+    // what the form has always asked for. Recorded on the range rather than
+    // baked into the stored date, so older ranges keep their own meaning.
+    const endsInclusive = !hasTime;
     if (!startDate || !endDate || isNaN(start) || isNaN(end) || end <= start) {
       return res.status(400).json({ message: 'Please provide a valid date range.' });
     }
@@ -162,8 +166,9 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
     // the vehicle is already off the road for those days — and leaves a
     // confusing list to clean up. Declined ranges don't count; they never
     // took effect.
+    const wanted = blockedSpan({ startDate: start, endDate: end, hasTime, endsInclusive });
     const clash = (car.blockedDates || []).find((b) => b.status !== 'declined'
-      && overlaps(blockedSpan(b), { start, end }));
+      && overlaps(blockedSpan(b), wanted));
     if (clash) {
       const shown = (d) => formatMoment(d, clash.hasTime, { month: 'short', day: 'numeric', year: 'numeric' });
       return res.status(400).json({
@@ -182,7 +187,7 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
     // Queried a day wide either side and then compared precisely — bookings
     // made before pickup times existed are stored eight hours out, and a
     // tight range query would miss the ones at the edges.
-    const affected = await bookingsOverlapping(req.params.id, { start, end }, ['confirmed', 'pending']);
+    const affected = await bookingsOverlapping(req.params.id, wanted, ['confirmed', 'pending']);
 
     if (affected.length) {
       // A consignor can't cancel anyone's booking — that would let them move
@@ -211,7 +216,7 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
         // counted as taken. Nothing is saved — this is only so the dialog
         // can tell admin what is actually about to happen to each client.
         const offerable = await Promise.all(cancellable.map(async (b) =>
-          (await previewAlternatives(b, { extra: [{ startDate: start, endDate: end }] })).length));
+          (await previewAlternatives(b, { extra: [{ startDate: start, endDate: end, hasTime, endsInclusive }] })).length));
 
         return res.status(409).json({
           needsConfirmation: true,
@@ -253,7 +258,7 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
           reason: 'vehicle_unavailable',
           // The mapped, client-safe phrase — never the private note.
           cause: causeFor(reasonCode),
-          extra: [{ startDate: start, endDate: end }],
+          extra: [{ startDate: start, endDate: end, hasTime, endsInclusive }],
         });
         if (offered) continue;
 
@@ -265,7 +270,7 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
     }
 
     car.blockedDates.push({
-      startDate: start, endDate: end, hasTime,
+      startDate: start, endDate: end, hasTime, endsInclusive,
       reasonCode: BLOCK_REASON_CODES.includes(reasonCode) ? reasonCode : '',
       note: note || '',
       status: isConsignor ? 'pending' : 'approved',

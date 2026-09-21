@@ -23,12 +23,18 @@ export const bookingSpan = (booking) => (booking.hasPickupTime
   ? { start: new Date(booking.startDate), end: new Date(booking.endDate) }
   : dayAlignedSpan(booking.startDate, booking.endDate));
 
-// Same for a blocked range. A whole-day block runs midnight to midnight in
-// Legazpi; the end is the day the vehicle is back, not the last day it's off
-// the road, which is how blocked ranges have always worked here.
-export const blockedSpan = (block) => (block.hasTime
-  ? { start: new Date(block.startDate), end: new Date(block.endDate) }
-  : dayAlignedSpan(block.startDate, block.endDate));
+// Same for a blocked range, which runs midnight to midnight in Legazpi
+// unless admin gave it hours.
+//
+// `endsInclusive` says which day endDate is: the last day off the road, or
+// the day the vehicle is back. Ranges saved before that flag existed mean
+// the latter, so they're left exactly as they were — see the field's own
+// note in models/Car.js for why they aren't migrated.
+export const blockedSpan = (block) => {
+  if (block.hasTime) return { start: new Date(block.startDate), end: new Date(block.endDate) };
+  const span = dayAlignedSpan(block.startDate, block.endDate);
+  return block.endsInclusive ? { start: span.start, end: addDays(span.end, 1) } : span;
+};
 
 // The turnaround is added to BOTH ends of a booking, because either booking
 // in a pair can be the one made second — padding only the earlier one would

@@ -268,6 +268,20 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
   };
 
   const fmt = (d) => new Date(d).toLocaleDateString();
+
+  // Spelled out rather than left to inference. "Sep 22 to Sep 24" reads as
+  // either two days or three depending on who is reading it, and the
+  // difference is a vehicle being booked while it sits in the workshop.
+  const offRoadText = (() => {
+    if (!form.startDate || !form.endDate) return '';
+    if (form.startHour !== '') {
+      return ` · ${formatHour(Number(form.startHour))} to ${formatHour(Number(form.endHour))}`;
+    }
+    const days = Math.round(
+      (new Date(`${form.endDate}T00:00:00Z`) - new Date(`${form.startDate}T00:00:00Z`)) / 86400000
+    ) + 1;
+    return ` · ${days} full day${days === 1 ? '' : 's'} off the road`;
+  })();
   // Matches how the server writes the deadline into the real notification,
   // so the preview and the message a client gets read the same.
   const deadlineFmt = (d) => new Date(d).toLocaleString('en-US', {
@@ -438,10 +452,10 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
             <div style={s.rangeRow}>
               <span style={s.rangeValue}>
                 {form.startDate && form.endDate
-                  ? `${fmt(form.startDate)} → ${fmt(form.endDate)}`
+                  ? `${fmt(form.startDate)} → ${fmt(form.endDate)}${offRoadText}`
                   : form.startDate
-                    ? 'Now pick the last day'
-                    : 'Pick the first day on the calendar'}
+                    ? 'Now pick the last day off the road'
+                    : 'Pick the first day off the road'}
               </span>
               {form.startDate && (
                 <button type="button" className="text-link-btn" style={s.linkBtn}
