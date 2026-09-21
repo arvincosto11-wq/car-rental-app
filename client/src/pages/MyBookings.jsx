@@ -639,12 +639,6 @@ const MyBookings = () => {
       color: isDark ? '#fbbf24' : '#92400e',
       border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
     },
-    badgeRescheduleApproved: {
-      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
-      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5',
-      color: isDark ? '#86efac' : '#065f46',
-      border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
-    },
     badgeRescheduleDeclined: {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
       background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2',
