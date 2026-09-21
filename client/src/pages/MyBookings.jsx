@@ -391,6 +391,12 @@ const MyBookings = () => {
     middleCol: { gridColumn: '2', gridRow: '1', display: 'flex', flexDirection: 'column', minWidth: 0 },
     priceColCell: { gridColumn: '3', gridRow: '1' },
     actionsCell: { gridColumn: '2', gridRow: '2' },
+    // Column 3 of the row the action buttons sit in, so the savings line
+    // ends up level with them instead of stacked under the total.
+    savedCell: {
+      gridColumn: '3', gridRow: '2',
+      display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+    },
     detailsRow: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'flex-start' },
     // Ambient glow color follows the booking's own status — confirmed
     // (upcoming) is the one that actually needs attention, so it gets the
@@ -884,12 +890,6 @@ const MyBookings = () => {
                   <span style={styles.priceLabel}>Total Price</span>
                   <div style={styles.priceDetails}>
                     <span style={styles.price}>₱{booking.totalPrice.toLocaleString()}</span>
-                    {booking.discountAmount > 0 && (
-                      <span style={styles.promoSaved}>
-                        <span>{booking.promoLabel || 'Promo'} · saved ₱{booking.discountAmount.toLocaleString()}</span>
-                        <span style={styles.promoSavedWas}>₱{booking.subtotal.toLocaleString()}</span>
-                      </span>
-                    )}
                     {booking.paymentType === 'downpayment' && booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
                       <div style={styles.paymentPanel}>
                         <div style={styles.paidAmount}>₱{booking.amountPaid.toLocaleString()} Paid</div>
@@ -903,6 +903,15 @@ const MyBookings = () => {
                     </span>
                   </div>
                 </div>
+
+                {booking.discountAmount > 0 && (
+                  <div className="grid-cell" style={styles.savedCell}>
+                    <span style={styles.promoSaved}>
+                      <span>{booking.promoLabel || 'Promo'} · saved ₱{booking.discountAmount.toLocaleString()}</span>
+                      <span style={styles.promoSavedWas}>₱{booking.subtotal.toLocaleString()}</span>
+                    </span>
+                  </div>
+                )}
 
                 {(booking.status === 'pending' || booking.status === 'confirmed') &&
                   (!booking.refundStatus || booking.refundStatus === 'none') && (

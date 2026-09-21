@@ -259,8 +259,11 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
           <>
             <div id="block-dates-title" style={s.title}>These dates are already booked</div>
             <p style={s.sub}>
-              Blocking them will cancel the bookings below and refund each client in full,
-              because the vehicle is being pulled by us rather than by them.
+              {conflicts.cancellable?.length
+                ? 'Blocking them will cancel the bookings below and refund each client in full, '
+                  + 'because the vehicle is being pulled by us rather than by them.'
+                : 'Nothing will be cancelled or refunded here — see below. The dates will just be blocked, '
+                  + 'so nobody new can book them.'}
             </p>
 
             {conflicts.cancellable?.length > 0 && (
@@ -310,7 +313,9 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
 
             <div style={s.actions}>
               <button type="button" style={s.dangerBtn} disabled={busy} onClick={() => submit(true)}>
-                {busy ? 'Working...' : 'Block dates & refund'}
+                {busy
+                  ? 'Working...'
+                  : conflicts.cancellable?.length ? 'Block dates & refund' : 'Block dates anyway'}
               </button>
               <button type="button" style={s.secondaryBtn} disabled={busy} onClick={() => setConflicts(null)}>
                 Back

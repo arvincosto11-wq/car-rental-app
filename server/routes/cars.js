@@ -135,6 +135,20 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
       return res.status(400).json({ message: 'Please provide a valid date range.' });
     }
 
+    // Blocking the same span twice adds a second range that does nothing —
+    // the vehicle is already off the road for those days — and leaves a
+    // confusing list to clean up. Declined ranges don't count; they never
+    // took effect.
+    const clash = (car.blockedDates || []).find((b) => b.status !== 'declined'
+      && new Date(b.startDate) < end && new Date(b.endDate) > start);
+    if (clash) {
+      const fmt = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+      return res.status(400).json({
+        message: `These dates overlap a blocked range already on this vehicle (${fmt(clash.startDate)} to ${fmt(clash.endDate)}). `
+          + 'Remove that one first, or pick different dates.',
+      });
+    }
+
     // A vehicle that breaks down has to come off the road even though people
     // have already booked it. Blocking used to just refuse, which left admin
     // stuck: unable to block, and with no way to cancel-and-refund either.
