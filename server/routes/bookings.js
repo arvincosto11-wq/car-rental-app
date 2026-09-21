@@ -455,9 +455,13 @@ router.put('/:id/collect-balance', protect, adminOnly, async (req, res) => {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
-    if (booking.paymentType !== 'downpayment') {
-      return res.status(400).json({ message: 'This booking was already paid in full.' });
-    }
+    // Deliberately not gated on paymentType. A booking paid in full can
+    // still end up owing something: accepting alternative dates that a
+    // promo doesn't reach raises the total, and the difference falls due at
+    // pickup like any other balance. Refusing it here left admin looking at
+    // a "Mark Balance Received" button that could never work. Whether
+    // anything is actually owed is the next check's job, and it answers it
+    // for every booking the same way.
     if (booking.amountPaid >= booking.totalPrice) {
       return res.status(400).json({ message: 'There is no remaining balance on this booking.' });
     }
