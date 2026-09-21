@@ -406,7 +406,7 @@ const MyBookings = () => {
     },
     // Centred rather than top-aligned: the pickup box is the taller of the
     // two, and level text either side of it reads as one panel.
-    detailsRow: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'center' },
+    detailsRow: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' },
     // Ambient glow color follows the booking's own status — confirmed
     // (upcoming) is the one that actually needs attention, so it gets the
     // most prominent glow; cancelled fades into the background since
@@ -467,7 +467,12 @@ const MyBookings = () => {
       fontSize: '11px',
       color: isDark ? '#8a8d91' : '#9ca3af',
     },
-    info: { flex: '0 1 auto', minWidth: 0 },
+    info: {
+      flex: '0 1 auto', minWidth: 0,
+      background: isDark ? '#38393b' : '#ffffff',
+      border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
+      borderRadius: '12px', padding: '14px 16px',
+    },
     topRow: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px', flexWrap: 'wrap' },
     bookingNum: { fontSize: '19px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.02em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     // Every badge below shares this shape/type treatment — only the color
@@ -585,7 +590,7 @@ const MyBookings = () => {
     // Sits inside detailsRow now, alongside the date/model text, so it
     // naturally starts at the same Y — no marginTop hack needed.
     pickupPanel: {
-      flex: '0 1 300px', minWidth: '200px', maxWidth: '300px', margin: '0 auto',
+      flex: '0 1 340px', minWidth: '200px', maxWidth: '340px',
       fontSize: '12px', lineHeight: '1.5', padding: '14px 16px', borderRadius: '12px',
       background: isDark ? '#38393b' : '#ffffff',
       border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
