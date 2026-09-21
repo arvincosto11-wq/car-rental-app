@@ -1183,3 +1183,29 @@ button.seg-tab:not(:disabled):hover {
     flex-wrap: wrap !important;
   }
 }
+
+/* ---- Booking modal (pages/CarDetail.jsx) ---- */
+/* Sidebar beside the content on desktop; above it on narrow screens, where
+   the steps also collapse to a row and drop their descriptions. */
+@media (max-width: 760px) {
+  .booking-modal-shell {
+    grid-template-columns: minmax(0, 1fr) !important;
+    max-height: 92vh !important;
+  }
+  .booking-modal-side {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border);
+  }
+  .booking-modal-side .booking-steps-list {
+    flex-direction: row !important;
+    justify-content: space-between;
+  }
+  .booking-modal-side .booking-step-item-wrap { flex: 1; }
+  .booking-modal-side .booking-step-row { flex-direction: column !important; gap: 4px !important; }
+  .booking-modal-side .booking-step-connector { display: none !important; }
+  .booking-modal-side .booking-step-desc { display: none !important; }
+  .booking-modal-promo { margin-top: 16px !important; }
+}
+@media (max-width: 560px) {
+  .booking-summary-grid { grid-template-columns: minmax(0, 1fr) !important; }
+}

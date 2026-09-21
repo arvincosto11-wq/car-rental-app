@@ -17,9 +17,37 @@ import { bestLongRentalRule, longRentalDiscountOn, rulesForCar } from '../utils/
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 import { isPromoVisible, promoOffer, promoDateRange, promoCoversRange, promoDiscountOn } from '../utils/promo';
 import api from '../api';
+
+// Booking-modal icons — hand-drawn inline SVG, like the rest of the site.
+const ModalIcon = ({ children, size = 17 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true">
+    {children}
+  </svg>
+);
+const CalendarIcon = () => <ModalIcon><rect x="3" y="4" width="18" height="17" rx="3" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /></ModalIcon>;
+const ClockIcon = () => <ModalIcon><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" /></ModalIcon>;
+const CardIcon = () => <ModalIcon><rect x="2.5" y="6" width="19" height="13" rx="2.5" /><line x1="2.5" y1="10.5" x2="21.5" y2="10.5" /></ModalIcon>;
+const CarIcon = () => <ModalIcon><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11" /><rect x="3" y="11" width="18" height="6" rx="2" /><circle cx="7.5" cy="17" r="1.3" /><circle cx="16.5" cy="17" r="1.3" /></ModalIcon>;
+const InfoIcon = () => <ModalIcon size={14}><circle cx="12" cy="12" r="9" /><line x1="12" y1="8" x2="12" y2="13" /><line x1="12" y1="16.5" x2="12" y2="16.5" /></ModalIcon>;
+const WheelIcon = () => <ModalIcon size={22}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="3.2" /><path d="M12 3v5.8M3.2 13.2l5.6-1M20.8 13.2l-5.6-1" /></ModalIcon>;
+const DriverIcon = () => <ModalIcon size={22}><circle cx="9" cy="8" r="3.2" /><path d="M3.5 20v-1.5A4.5 4.5 0 0 1 8 14h2a4.5 4.5 0 0 1 4.5 4.5V20" /><path d="M16.5 12.5h4M18.5 10.5v4" /></ModalIcon>;
+const SparkIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }} aria-hidden="true">
+    <path d="M12 2l2.2 6.2L20.5 10l-6.3 1.8L12 18l-2.2-6.2L3.5 10l6.3-1.8z" />
+  </svg>
+);
+
+// "1 day", not "1 days".
+const dayWord = (n) => (n === 1 ? 'day' : 'days');
+
+const STEP_HEADINGS = {
+  1: { title: 'Select Dates', sub: 'Tap a pickup date, then a return date.' },
+  2: { title: 'Type & Payment', sub: 'Choose how you drive and how you pay.' },
+  3: { title: 'Final Confirmation', sub: 'Check everything, then pay.' },
+};
 
 const CarDetail = () => {
   const { id } = useParams();
@@ -51,7 +79,11 @@ const CarDetail = () => {
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const BOOKING_STEPS = ['Dates', 'Type & Payment', 'Confirm'];
+  const BOOKING_STEPS = [
+    { label: 'Select Dates', desc: 'Choose your pickup and return dates' },
+    { label: 'Type & Payment', desc: 'Choose how you drive and pay' },
+    { label: 'Confirmation', desc: 'Check everything, then pay' },
+  ];
 
   const termsModalRef = useModalA11y(() => setShowTerms(false), showTerms);
   const refundNoticeModalRef = useModalA11y(() => setShowRefundNotice(false), showRefundNotice);
@@ -263,7 +295,6 @@ const CarDetail = () => {
   const s = {
     page: { minHeight: '100vh', background: isDark ? '#18191a' : '#f9fafb' },
     container: { maxWidth: '1100px', margin: '0 auto', padding: '24px 32px' },
-    backBtn: { background: 'none', border: 'none', color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '14px', cursor: 'pointer', marginBottom: '20px', padding: 0 },
     layout: { gap: '32px' },
     imgWrap: { width: '100%', height: '300px', borderRadius: '12px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', marginBottom: '16px' },
     img: { width: '100%', height: '100%', objectFit: 'cover' },
@@ -306,21 +337,6 @@ const CarDetail = () => {
     priceRow: { display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '16px' },
     price: { fontSize: '28px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     perDay: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    field: { marginBottom: '14px' },
-    label: { display: 'block', fontSize: '13px', color: isDark ? '#b0b3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
-    input: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    paymentOptions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' },
-    paymentBtn: (active) => ({
-      padding: '10px',
-      borderRadius: '8px',
-      border: `2px solid ${active ? (isDark ? GOLD_DARK : GOLD) : isDark ? '#3a3b3c' : '#d1d5db'}`,
-      background: active ? (isDark ? 'rgba(232,161,0,0.15)' : '#faedc7') : 'transparent',
-      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#b0b3b8' : '#6b7280'),
-      cursor: 'pointer',
-      fontSize: '13px',
-      fontWeight: active ? '600' : '400',
-      textAlign: 'center',
-    }),
     priceBreakdown: { background: isDark ? '#18191a' : '#f9fafb', borderRadius: '8px', padding: '12px', marginBottom: '14px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
     licenseBox: { background: isDark ? 'rgba(37,99,235,0.1)' : '#eff6ff', border: `1px solid ${isDark ? '#1e40af' : '#bfdbfe'}`, borderRadius: '8px', padding: '12px', marginBottom: '14px' },
     licenseNote: { fontSize: '12px', color: isDark ? '#93c5fd' : '#1e40af', marginBottom: '10px', marginTop: 0 },
@@ -339,22 +355,145 @@ const CarDetail = () => {
     termsRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '14px', fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
     termsLink: { color: isDark ? GOLD_DARK : GOLD, cursor: 'pointer', textDecoration: 'underline' },
     error: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' },
-    bookBtn: { width: '100%', padding: '12px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
     noCC: { textAlign: 'center', fontSize: '12px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '8px' },
-    stepActions: { display: 'flex', gap: '10px', marginTop: '18px' },
-    nextBtn: { flex: 1, padding: '11px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
-    backStepBtn: { padding: '11px 18px', background: 'none', color: isDark ? '#b0b3b8' : '#6b7280', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' },
-    summaryBar: {
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
-      background: isDark ? '#18191a' : '#f9fafb', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '8px', padding: '10px 12px', marginBottom: '16px', fontSize: '12px', color: isDark ? '#cbd5e1' : '#374151',
+    // ---- booking modal shell: sidebar + content, its own scroll ----
+    bookShell: {
+      width: '100%', maxWidth: '900px', maxHeight: '88vh', outline: 'none',
+      display: 'grid', gridTemplateColumns: '264px minmax(0, 1fr)',
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      borderRadius: '24px', overflow: 'hidden',
+      boxShadow: '0 30px 70px rgba(0,0,0,0.28)',
     },
-    summaryEditBtn: { background: 'none', border: 'none', color: isDark ? GOLD_DARK : GOLD, fontSize: '12px', fontWeight: '700', cursor: 'pointer', padding: 0 },
+    bookSide: {
+      background: isDark ? '#1c1d1e' : '#f6f7f9',
+      borderRight: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      padding: '26px 22px', overflowY: 'auto',
+    },
+    bookSideTitle: { margin: 0, fontSize: '17px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    bookSideCar: { margin: '3px 0 24px', fontSize: '12px', color: isDark ? '#8a8d91' : '#9ca3af' },
+    sidePromo: {
+      marginTop: '26px', padding: '14px', borderRadius: '14px',
+      background: isDark ? GOLD_TINT_DARK : GOLD_TINT,
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.45)' : 'rgba(184,121,10,0.45)'}`,
+    },
+    sidePromoHead: {
+      display: 'flex', alignItems: 'center', gap: '7px',
+      fontSize: '10px', fontWeight: '800', letterSpacing: '0.14em', textTransform: 'uppercase',
+      color: isDark ? GOLD_DARK : GOLD,
+    },
+    sidePromoText: { margin: '6px 0 0', fontSize: '12px', lineHeight: 1.5, color: isDark ? '#b0b3b8' : '#4b5563' },
+    bookMain: { display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 },
+    bookHead: {
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px',
+      padding: '24px 26px 18px', borderBottom: `1px solid ${isDark ? '#303132' : '#eef0f2'}`,
+    },
+    bookHeadTitle: { margin: 0, fontSize: '18px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    bookHeadSub: { margin: '3px 0 0', fontSize: '12.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
+    bookCloseBtn: {
+      width: '32px', height: '32px', flexShrink: 0, borderRadius: '50%', border: 'none', cursor: 'pointer',
+      background: isDark ? '#18191a' : '#f3f4f6', color: isDark ? '#b0b3b8' : '#4b5563', fontSize: '14px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    },
+    // The body scrolls, so the footer's action stays reachable without
+    // scrolling the whole dialog.
+    bookBody: { padding: '22px 26px', overflowY: 'auto', flex: 1, minHeight: 0 },
+    bookFoot: {
+      display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
+      padding: '16px 26px', borderTop: `1px solid ${isDark ? '#303132' : '#eef0f2'}`,
+      background: isDark ? '#18191a' : '#f9fafb',
+    },
+    footKey: { display: 'block', fontSize: '10px', fontWeight: '800', letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af' },
+    footValue: { display: 'block', fontSize: '14px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    footPush: { marginLeft: 'auto', display: 'flex', gap: '10px' },
+    // ---- pieces shared by the steps ----
+    selectedPill: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+      padding: '12px 14px', borderRadius: '14px', marginBottom: '18px',
+      background: isDark ? '#18191a' : '#f9fafb',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    pillLeft: { display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 },
+    pillIcon: {
+      width: '34px', height: '34px', borderRadius: '10px', flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: isDark ? GOLD_TINT_DARK : GOLD_TINT, color: isDark ? GOLD_DARK : GOLD,
+    },
+    pillLabel: { display: 'block', fontSize: '10px', fontWeight: '800', letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af' },
+    pillValue: { display: 'block', fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    pillAction: {
+      background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0,
+      fontSize: '12px', fontWeight: '800', letterSpacing: '0.08em', textTransform: 'uppercase',
+      color: isDark ? GOLD_DARK : GOLD,
+    },
+    sectionLabel: {
+      fontSize: '10px', fontWeight: '800', letterSpacing: '0.16em', textTransform: 'uppercase',
+      color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '10px',
+    },
+    choiceGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' },
+    choiceCard: (active) => ({
+      display: 'grid', justifyItems: 'center', gap: '7px', padding: '16px', borderRadius: '16px',
+      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center',
+      border: `1px solid ${active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#2f3031' : '#fff'),
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+      boxShadow: active ? `0 0 0 1px ${isDark ? GOLD_DARK : GOLD}` : 'none',
+    }),
+    choiceTitle: (active) => ({ fontSize: '13.5px', fontWeight: '700', color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a') }),
+    choiceSub: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
+    choiceAmount: (active) => ({ fontSize: '17px', fontWeight: '800', letterSpacing: '-0.01em', color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a') }),
+    noteRow: {
+      display: 'flex', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap',
+      fontSize: '11.5px', lineHeight: 1.5, color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '12px',
+    },
+    noteStrong: { color: isDark ? '#b0b3b8' : '#4b5563' },
+    licenseLink: {
+      display: 'inline-block', marginTop: '8px', padding: '8px 14px', borderRadius: '10px',
+      textDecoration: 'none', fontSize: '13px', fontWeight: '700',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+    },
+    gcashBadge: {
+      display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '999px',
+      background: isDark ? '#18191a' : '#f3f4f6',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      fontSize: '11px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase',
+      color: isDark ? '#b0b3b8' : '#4b5563',
+    },
+    // GCash's own blue, as a dot rather than their logo — we don't have the
+    // brand asset and it isn't ours to use.
+    gcashDot: { width: '7px', height: '7px', borderRadius: '50%', background: '#0075f6', flexShrink: 0 },
+    summaryGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' },
+    summaryBox: {
+      padding: '14px', borderRadius: '14px',
+      background: isDark ? '#18191a' : '#f9fafb',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    summaryKey: { display: 'block', fontSize: '10px', fontWeight: '800', letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af' },
+    summaryValue: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' },
+    summaryThumb: { width: '42px', height: '32px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 },
+    summaryMain: { display: 'block', fontSize: '13.5px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    summarySub: { display: 'block', fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
+    payPanel: {
+      marginTop: '14px', padding: '16px', borderRadius: '16px', textAlign: 'center',
+      background: isDark ? '#18191a' : '#f9fafb',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    payPanelText: { margin: '10px 0 0', fontSize: '12.5px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#4b5563' },
+    nextBtn: {
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+      padding: '12px 20px', border: 'none', borderRadius: '14px', cursor: 'pointer',
+      fontSize: '13.5px', fontWeight: '800',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+      boxShadow: `0 6px 18px ${isDark ? 'rgba(232,161,0,0.30)' : 'rgba(184,121,10,0.28)'}`,
+    },
+    backStepBtn: {
+      padding: '12px 20px', borderRadius: '14px', cursor: 'pointer', fontSize: '13.5px', fontWeight: '800',
+      background: isDark ? '#2f3031' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+    },
     modal: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
     modalContent: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '500px', width: '90%', maxHeight: '80vh', overflow: 'auto' },
     modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '16px' },
-    modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '16px' },
-    modalCloseBtn: { background: 'none', border: 'none', fontSize: '20px', lineHeight: 1, cursor: 'pointer', color: isDark ? '#b0b3b8' : '#6b7280', padding: '2px' },
     modalText: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#4b5563', lineHeight: '1.8' },
     closeBtn: { marginTop: '16px', padding: '10px 24px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', width: '100%' },
     refundNoticeActions: { display: 'flex', gap: '10px', marginTop: '20px' },
@@ -483,85 +622,128 @@ const CarDetail = () => {
       <AnimatePresence>
       {showBookingModal && !showTerms && !showRefundNotice && (
         <motion.div style={s.modal} {...backdropMotion}>
-          <motion.div style={{ ...s.modalContent, maxWidth: '560px' }} {...modalMotion} ref={bookingModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="booking-modal-title">
-            <div style={s.modalHeader}>
-              <h2 id="booking-modal-title" style={{ ...s.modalTitle, marginBottom: 0 }}>Book {car.brand} {car.model}</h2>
-              <button type="button" className="icon-toggle-btn" aria-label="Close" style={s.modalCloseBtn} onClick={() => setShowBookingModal(false)}>✕</button>
-            </div>
+          <motion.div
+            className="booking-modal-shell"
+            style={s.bookShell}
+            {...modalMotion}
+            ref={bookingModalRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="booking-modal-title"
+          >
+            {/* Sidebar: where you are in the flow, and this vehicle's own
+                discount if it has one. Collapses above the content on
+                narrow screens (see .booking-modal-shell in index.css). */}
+            <aside className="booking-modal-side" style={s.bookSide}>
+              <h2 id="booking-modal-title" style={s.bookSideTitle}>Book Vehicle</h2>
+              <div style={s.bookSideCar}>{car.brand} {car.model} · {car.year}</div>
 
-            {error && <div style={s.error}>{error}</div>}
-
-            <div className="booking-steps-shell">
               <BookingSteps steps={BOOKING_STEPS} currentStep={step} onStepClick={goToStep} isDark={isDark} />
 
-              <div>
-                {step > 1 && startDate && endDate && (
-                  <div style={s.summaryBar}>
-                    <span>📅 {new Date(startDate).toLocaleDateString()} → {new Date(endDate).toLocaleDateString()} ({totalDays} day{totalDays === 1 ? '' : 's'})</span>
-                    <button type="button" style={s.summaryEditBtn} onClick={() => goToStep(1)}>Edit</button>
+              {(firstLongRentalRule || isPromoVisible(car.promo)) && (
+                <div className="booking-modal-promo" style={s.sidePromo}>
+                  <div style={s.sidePromoHead}>
+                    <SparkIcon /> {firstLongRentalRule ? 'Long-rental discount' : car.promo.label}
                   </div>
-                )}
+                  <p style={s.sidePromoText}>
+                    {firstLongRentalRule
+                      ? <>Book <strong>{firstLongRentalRule.minDays}+ days</strong> on this vehicle and save <strong>{firstLongRentalRule.percent}%</strong> automatically.</>
+                      : <>Save <strong>{promoOffer(car.promo)}</strong> on trips inside <strong>{promoDateRange(car.promo)}</strong>.</>}
+                  </p>
+                </div>
+              )}
+            </aside>
+
+            <section style={s.bookMain}>
+              <div style={s.bookHead}>
+                <div style={{ minWidth: 0 }}>
+                  <h3 style={s.bookHeadTitle}>{STEP_HEADINGS[step].title}</h3>
+                  <p style={s.bookHeadSub}>{STEP_HEADINGS[step].sub}</p>
+                </div>
+                <button type="button" className="icon-toggle-btn" aria-label="Close" style={s.bookCloseBtn} onClick={() => setShowBookingModal(false)}>✕</button>
+              </div>
+
+              <div style={s.bookBody}>
+                {error && <div style={s.error}>{error}</div>}
 
                 <AnimatePresence mode="wait">
                 {step === 1 && (
                   <motion.div key="step1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
-                    <div style={s.summaryBar}>
-                      <span>
-                        {startDate && endDate
-                          ? `📅 ${new Date(startDate).toLocaleDateString()} → ${new Date(endDate).toLocaleDateString()} (${totalDays} day${totalDays === 1 ? '' : 's'})`
-                          : startDate
-                          ? `📅 ${new Date(startDate).toLocaleDateString()} → pick your return date`
-                          : 'Tap a date below to select pickup, then another for return'}
-                      </span>
-                      {(startDate || endDate) && (
-                        <button type="button" style={s.summaryEditBtn} onClick={() => { setStartDate(''); setEndDate(''); }}>Clear</button>
-                      )}
-                    </div>
+                    {(startDate || endDate) && (
+                      <div style={s.selectedPill}>
+                        <span style={s.pillLeft}>
+                          <span style={s.pillIcon}><CalendarIcon /></span>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={s.pillLabel}>Selected dates</span>
+                            <span style={s.pillValue}>
+                              {startDate && endDate
+                                ? `${new Date(startDate).toLocaleDateString()} → ${new Date(endDate).toLocaleDateString()} · ${totalDays} ${dayWord(totalDays)}`
+                                : `${new Date(startDate).toLocaleDateString()} → pick your return date`}
+                            </span>
+                          </span>
+                        </span>
+                        <button type="button" style={s.pillAction} onClick={() => { setStartDate(''); setEndDate(''); }}>Clear</button>
+                      </div>
+                    )}
 
-                    <div style={{ marginBottom: '16px' }}>
-                      <AvailabilityCalendar
-                        bookedRanges={bookedRanges}
-                        selectedStart={startDate}
-                        selectedEnd={endDate}
-                        onSelectDay={handleSelectDay}
-                        isDark={isDark}
-                        promo={isPromoVisible(car.promo) ? car.promo : null}
-                      />
-                      {isPromoVisible(car.promo) && startDate && endDate && !promoApplies && !usingLongRental && (
-                        <p style={s.promoNudge}>
-                          Pick dates within {promoDateRange(car.promo)} to save {promoOffer(car.promo)}.
-                          The whole rental has to fall inside the promo.
-                        </p>
-                      )}
-                    </div>
-
-                    <div style={s.stepActions}>
-                      <button style={s.nextBtn} onClick={goToDatesNext} disabled={car.isAvailable === false}>
-                        Continue
-                      </button>
-                    </div>
+                    <AvailabilityCalendar
+                      bookedRanges={bookedRanges}
+                      selectedStart={startDate}
+                      selectedEnd={endDate}
+                      onSelectDay={handleSelectDay}
+                      isDark={isDark}
+                      promo={isPromoVisible(car.promo) ? car.promo : null}
+                    />
+                    {isPromoVisible(car.promo) && startDate && endDate && !promoApplies && !usingLongRental && (
+                      <p style={s.promoNudge}>
+                        Pick dates within {promoDateRange(car.promo)} to save {promoOffer(car.promo)}.
+                        The whole rental has to fall inside the promo.
+                      </p>
+                    )}
                   </motion.div>
                 )}
 
                 {step === 2 && (
                   <motion.div key="step2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
-                    <label style={s.label} id="cd-booking-type-label">Booking Type</label>
+                    <div style={s.selectedPill}>
+                      <span style={s.pillLeft}>
+                        <span style={s.pillIcon}><CalendarIcon /></span>
+                        <span style={{ minWidth: 0 }}>
+                          <span style={s.pillLabel}>Selected dates</span>
+                          <span style={s.pillValue}>
+                            {new Date(startDate).toLocaleDateString()} → {new Date(endDate).toLocaleDateString()} · {totalDays} {dayWord(totalDays)}
+                          </span>
+                        </span>
+                      </span>
+                      <button type="button" style={s.pillAction} onClick={() => goToStep(1)}>Edit</button>
+                    </div>
+
+                    <div style={s.sectionLabel} id="cd-booking-type-label">Booking type</div>
                     {supportedBookingTypes.length > 1 ? (
-                      <div role="group" aria-labelledby="cd-booking-type-label" style={s.paymentOptions}>
+                      <div role="group" aria-labelledby="cd-booking-type-label" style={s.choiceGrid}>
                         {supportedBookingTypes.includes('with-driver') && (
                           <button
-                            style={s.paymentBtn(bookingType === 'with-driver')}
+                            type="button"
+                            aria-pressed={bookingType === 'with-driver'}
+                            style={s.choiceCard(bookingType === 'with-driver')}
                             onClick={() => setBookingType('with-driver')}
                           >
-                            With Driver
+                            <WheelIcon />
+                            <span style={s.choiceTitle(bookingType === 'with-driver')}>With Driver</span>
+                            <span style={s.choiceSub}>We provide the driver</span>
                           </button>
                         )}
                         {supportedBookingTypes.includes('self-drive') && (
                           <button
-                            style={s.paymentBtn(bookingType === 'self-drive')}
+                            type="button"
+                            aria-pressed={bookingType === 'self-drive'}
+                            style={s.choiceCard(bookingType === 'self-drive')}
                             onClick={() => setBookingType('self-drive')}
                           >
-                            Self Drive
+                            <DriverIcon />
+                            <span style={s.choiceTitle(bookingType === 'self-drive')}>Self Drive</span>
+                            <span style={s.choiceSub}>You drive it yourself</span>
                           </button>
                         )}
                       </div>
@@ -572,9 +754,13 @@ const CarDetail = () => {
                     )}
 
                     {supportedBookingTypes.includes('self-drive') && (
-                      <p style={s.fieldHint}>
-                        📋 Self-drive bookings require a valid ID and driver's license, verified by our team beforehand — manage these in your{' '}
-                        <Link to="/profile" style={{ color: isDark ? GOLD_DARK : GOLD }}>Profile</Link>.
+                      <p style={s.noteRow}>
+                        <InfoIcon />
+                        <span>
+                          Self drive needs a <strong style={s.noteStrong}>valid ID and driver&apos;s licence</strong>, verified by our
+                          team beforehand — manage these in your{' '}
+                          <Link to="/profile" style={{ color: isDark ? GOLD_DARK : GOLD, fontWeight: '700' }}>Profile</Link>.
+                        </span>
                       </p>
                     )}
 
@@ -585,38 +771,38 @@ const CarDetail = () => {
                             ? "Self-drive isn't available yet — please add your driver's license and upload a photo of a valid ID in your Profile, then wait for our team to verify it."
                             : "Your ID is uploaded and pending verification by our team. You'll be able to book self-drive once it's approved."}
                         </p>
-                        <Link to="/profile" style={{ ...s.paymentBtn(true), display: 'inline-block', textDecoration: 'none' }}>
-                          Go to Profile
-                        </Link>
+                        <Link to="/profile" style={s.licenseLink}>Go to Profile</Link>
                       </div>
                     )}
 
-                    <label style={s.label} id="cd-payment-option-label">Payment Option</label>
-                    <div role="group" aria-labelledby="cd-payment-option-label" style={s.paymentOptions}>
+                    <div style={{ ...s.sectionLabel, marginTop: '20px' }} id="cd-payment-option-label">Payment option</div>
+                    <div role="group" aria-labelledby="cd-payment-option-label" style={s.choiceGrid}>
                       <button
-                        style={s.paymentBtn(paymentType === 'downpayment')}
+                        type="button"
+                        aria-pressed={paymentType === 'downpayment'}
+                        style={s.choiceCard(paymentType === 'downpayment')}
                         onClick={() => setPaymentType('downpayment')}
                       >
-                        20% Down
-                        <div style={{ fontSize: '12px', marginTop: '2px' }}>
-                          ₱{downPayment.toLocaleString()}
-                        </div>
+                        <span style={s.choiceSub}>20% Downpayment</span>
+                        <span style={s.choiceAmount(paymentType === 'downpayment')}>₱{downPayment.toLocaleString()}</span>
+                        <span style={s.choiceSub}>Balance on pickup</span>
                       </button>
                       <button
-                        style={s.paymentBtn(paymentType === 'full')}
+                        type="button"
+                        aria-pressed={paymentType === 'full'}
+                        style={s.choiceCard(paymentType === 'full')}
                         onClick={() => setPaymentType('full')}
                       >
-                        Full Payment
-                        <div style={{ fontSize: '12px', marginTop: '2px' }}>
-                          ₱{totalPrice.toLocaleString()}
-                        </div>
+                        <span style={s.choiceSub}>Full payment</span>
+                        <span style={s.choiceAmount(paymentType === 'full')}>₱{totalPrice.toLocaleString()}</span>
+                        <span style={s.choiceSub}>Nothing due at pickup</span>
                       </button>
                     </div>
 
                     <div style={{ ...s.priceBreakdown, position: 'relative' }}>
                       <PromoConfetti fireKey={promoCelebrated} isDark={isDark} />
                       <div style={s.breakdownRow}>
-                        <span>{totalDays} days × ₱{car.pricePerDay.toLocaleString()}</span>
+                        <span>{totalDays} {dayWord(totalDays)} × ₱{car.pricePerDay.toLocaleString()}</span>
                         <span>₱{subtotal.toLocaleString()}</span>
                       </div>
                       {discountAmount > 0 && (
@@ -641,51 +827,139 @@ const CarDetail = () => {
                       </div>
                     </div>
 
-                    <p style={s.fieldHint}>💳 Paid via GCash (through PayMongo) — you'll be redirected to complete it after confirming.</p>
-
-                    <div style={s.stepActions}>
-                      <button style={s.backStepBtn} onClick={() => goToStep(1)}>Back</button>
-                      <button style={s.nextBtn} onClick={goToConfirmNext}>Continue</button>
-                    </div>
+                    <p style={s.noteRow}>
+                      <span style={s.gcashBadge}><span style={s.gcashDot} /> GCash via PayMongo</span>
+                      <span>You&apos;ll be redirected to complete the payment after confirming.</span>
+                    </p>
                   </motion.div>
                 )}
 
                 {step === 3 && (
                   <motion.div key="step3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
-                    <div style={s.termsRow}>
-                      <input
-                        id="cd-agree-terms"
-                        type="checkbox"
-                        checked={agreedToTerms}
-                        onChange={(e) => setAgreedToTerms(e.target.checked)}
-                        style={{ marginTop: '2px', flexShrink: 0 }}
-                      />
-                      <span>
-                        <label htmlFor="cd-agree-terms">I agree to the</label>{' '}
-                        <button type="button" style={{ ...s.termsLink, background: 'none', border: 'none', padding: 0, font: 'inherit' }} onClick={() => setShowTerms(true)}>
-                          Terms and Conditions
-                        </button>
-                      </span>
+                    <div className="booking-summary-grid" style={s.summaryGrid}>
+                      <div style={s.summaryBox}>
+                        <span style={s.summaryKey}>Vehicle</span>
+                        <span style={s.summaryValue}>
+                          {car.image
+                            ? <img src={car.image} alt="" style={s.summaryThumb} />
+                            : <span style={s.pillIcon}><CarIcon /></span>}
+                          <span style={{ minWidth: 0 }}>
+                            <span style={s.summaryMain}>{car.brand} {car.model}</span>
+                            <span style={s.summarySub}>{car.year} · {car.category}</span>
+                          </span>
+                        </span>
+                      </div>
+                      <div style={s.summaryBox}>
+                        <span style={s.summaryKey}>Duration</span>
+                        <span style={s.summaryValue}>
+                          <span style={s.pillIcon}><ClockIcon /></span>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={s.summaryMain}>{totalDays} {dayWord(totalDays)}</span>
+                            <span style={s.summarySub}>
+                              {new Date(startDate).toLocaleDateString()} → {new Date(endDate).toLocaleDateString()}
+                            </span>
+                          </span>
+                        </span>
+                      </div>
+                      <div style={s.summaryBox}>
+                        <span style={s.summaryKey}>Booking type</span>
+                        <span style={s.summaryValue}>
+                          <span style={s.pillIcon}>{bookingType === 'self-drive' ? <DriverIcon /> : <WheelIcon />}</span>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={s.summaryMain}>{bookingType === 'self-drive' ? 'Self Drive' : 'With Driver'}</span>
+                            <span style={s.summarySub}>{bookingType === 'self-drive' ? 'You drive it yourself' : 'We provide the driver'}</span>
+                          </span>
+                        </span>
+                      </div>
+                      <div style={s.summaryBox}>
+                        <span style={s.summaryKey}>Payment</span>
+                        <span style={s.summaryValue}>
+                          <span style={s.pillIcon}><CardIcon /></span>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={s.summaryMain}>{paymentType === 'downpayment' ? '20% Downpayment' : 'Full payment'}</span>
+                            <span style={s.summarySub}>
+                              {paymentType === 'downpayment'
+                                ? `₱${amountToPay.toLocaleString()} now · ₱${(totalPrice - downPayment).toLocaleString()} on pickup`
+                                : 'Nothing due at pickup'}
+                            </span>
+                          </span>
+                        </span>
+                      </div>
                     </div>
 
-                    <div style={s.stepActions}>
-                      <button style={s.backStepBtn} onClick={() => goToStep(2)} disabled={booking}>Back</button>
+                    <div style={s.payPanel}>
+                      <span style={s.gcashBadge}><span style={s.gcashDot} /> GCash via PayMongo</span>
+                      <p style={s.payPanelText}>
+                        You&apos;ll be redirected to PayMongo to pay{' '}
+                        <strong style={{ color: isDark ? GOLD_DARK : GOLD }}>₱{amountToPay.toLocaleString()}</strong> with GCash.
+                        Payment is handled by PayMongo — your GCash details never reach us.
+                      </p>
+                      <div style={s.termsRow}>
+                        <input
+                          id="cd-agree-terms"
+                          type="checkbox"
+                          checked={agreedToTerms}
+                          onChange={(e) => setAgreedToTerms(e.target.checked)}
+                          style={{ marginTop: '2px', flexShrink: 0 }}
+                        />
+                        <span>
+                          <label htmlFor="cd-agree-terms">I agree to the</label>{' '}
+                          <button type="button" style={{ ...s.termsLink, background: 'none', border: 'none', padding: 0, font: 'inherit' }} onClick={() => setShowTerms(true)}>
+                            Terms and Conditions
+                          </button>
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                </AnimatePresence>
+              </div>
+
+              <div style={s.bookFoot}>
+                {step === 1 && (
+                  <>
+                    <span>
+                      <span style={s.footKey}>Duration</span>
+                      <span style={s.footValue}>{totalDays > 0 ? `${totalDays} ${dayWord(totalDays)}` : '—'}</span>
+                    </span>
+                    <span style={{ marginLeft: '18px' }}>
+                      <span style={s.footKey}>Estimated price</span>
+                      <span style={{ ...s.footValue, color: isDark ? GOLD_DARK : GOLD }}>
+                        {totalDays > 0 ? `₱${totalPrice.toLocaleString()}` : '—'}
+                      </span>
+                    </span>
+                    <span style={s.footPush}>
+                      <button style={s.nextBtn} onClick={goToDatesNext} disabled={car.isAvailable === false}>
+                        Continue →
+                      </button>
+                    </span>
+                  </>
+                )}
+                {step === 2 && (
+                  <>
+                    <button style={s.backStepBtn} onClick={() => goToStep(1)}>Back</button>
+                    <span style={s.footPush}>
+                      <button style={s.nextBtn} onClick={goToConfirmNext}>Continue →</button>
+                    </span>
+                  </>
+                )}
+                {step === 3 && (
+                  <>
+                    <button style={s.backStepBtn} onClick={() => goToStep(2)} disabled={booking}>Back</button>
+                    <span style={s.footPush}>
                       <button
                         style={s.nextBtn}
                         onClick={openRefundNotice}
                         disabled={booking || !agreedToTerms || car.isAvailable === false}
                       >
+                        <CardIcon />
                         {booking ? 'Redirecting to GCash...' : `Continue to GCash — Pay ₱${amountToPay.toLocaleString()}`}
                       </button>
-                    </div>
-                    <p style={s.noCC}>
-                      You'll be redirected to PayMongo to complete payment via GCash.
-                    </p>
-                  </motion.div>
+                    </span>
+                  </>
                 )}
-                </AnimatePresence>
               </div>
-            </div>
+            </section>
           </motion.div>
         </motion.div>
       )}
