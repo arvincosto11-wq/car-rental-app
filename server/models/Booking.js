@@ -44,6 +44,34 @@ const bookingSchema = new mongoose.Schema({
     adminNotes: { type: String, default: '' },
     requestedAt: { type: Date },
   },
+  // A booking that can't go ahead on its original dates — because another
+  // reservation was confirmed over it, or because the vehicle was pulled —
+  // is NOT cancelled outright any more. The client is offered the nearest
+  // dates we can actually honour, against a full refund, and gets until
+  // `deadline` to pick one. Silence refunds them (see utils/adjustOffer.js).
+  //
+  // Each option carries its own price because a date-window promo may not
+  // reach the new dates. The trip length never changes, so the long-rental
+  // discount can't move and there's never a balance to settle beyond the
+  // one the client already brings at pickup.
+  adjustOffer: {
+    status: { type: String, enum: ['none', 'open', 'accepted', 'declined', 'expired'], default: 'none' },
+    reason: { type: String, enum: ['booking_conflict', 'vehicle_unavailable', ''], default: '' },
+    // The client-safe phrase that follows "unavailable due to" — never the
+    // admin's private note. Empty for a booking_conflict offer.
+    cause: { type: String, default: '' },
+    options: [{
+      startDate: { type: Date },
+      endDate: { type: Date },
+      subtotal: { type: Number, default: 0 },
+      discountAmount: { type: Number, default: 0 },
+      totalPrice: { type: Number, default: 0 },
+      promoLabel: { type: String, default: '' },
+    }],
+    deadline: { type: Date },
+    offeredAt: { type: Date },
+    resolvedAt: { type: Date },
+  },
   // 'offline' = pay in person (cash/GCash, unverified), 'paid' = settled
   // (either the existing "paid in full" assumption, or a verified online
   // GCash payment), 'gcash_pending' = checkout session created, awaiting

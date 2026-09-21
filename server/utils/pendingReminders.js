@@ -54,7 +54,9 @@ export async function remindStalePendingBookings() {
     // payment: 'paid' matches how the admin sidebar already counts these —
     // an unpaid request isn't actionable, so nagging about it would train
     // admin to ignore the notification that matters.
-    const stale = await Booking.find({ status: 'pending', payment: 'paid' })
+    // A booking waiting on the CLIENT to choose new dates or a refund isn't
+    // admin's to confirm, so nagging about it would be noise.
+    const stale = await Booking.find({ status: 'pending', payment: 'paid', 'adjustOffer.status': { $ne: 'open' } })
       .populate('car', 'brand model')
       .populate('user', 'name');
 

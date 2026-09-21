@@ -15,6 +15,7 @@ import { useUIFeedback } from '../../context/UIFeedbackContext';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
+import { bookingAwaitingDecision, timeLeftLabel } from '../../utils/offerWindow';
 
 const LOW_RATING_THRESHOLD = 3;
 const PAGE_SIZE = 10;
@@ -73,6 +74,23 @@ const ManageBookings = () => {
   const [cancelForm, setCancelForm] = useState({ reason: 'vehicle_unavailable', amount: '', note: '' });
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
+  // Other paid requests for the same vehicle whose dates overlap this one.
+  // Nothing stops two clients requesting the same days — only a CONFIRMED
+  // booking blocks anybody — so confirming one of them decides the race, and
+  // admin should see that before it happens rather than after. Unpaid
+  // requests are left out: they have no money at stake and this page never
+  // shows them anyway.
+  const competitorsFor = (booking) => bookings.filter((b) =>
+    b._id !== booking._id
+    && b.status === 'pending'
+    && b.payment === 'paid'
+    && String(b.car?._id || b.car) === String(booking.car?._id || booking.car)
+    && !bookingAwaitingDecision(b)
+    && new Date(b.startDate) < new Date(booking.endDate)
+    && new Date(b.endDate) > new Date(booking.startDate));
+
+  const tripDates = (b) => `${new Date(b.startDate).toLocaleDateString()} – ${new Date(b.endDate).toLocaleDateString()}`;
+
   const handleStatus = async (id, status) => {
     if (status === 'cancelled') {
       const booking = bookings.find((b) => b._id === id);
@@ -80,6 +98,24 @@ const ManageBookings = () => {
       setCancelForm({ reason: 'vehicle_unavailable', amount: '', note: '' });
       return;
     }
+
+    if (status === 'confirmed') {
+      const booking = bookings.find((b) => b._id === id);
+      const rivals = booking ? competitorsFor(booking) : [];
+      if (rivals.length) {
+        const list = rivals
+          .map((b) => `• ${b.user?.name || 'A client'} — ${tripDates(b)} (₱${(b.amountPaid || 0).toLocaleString()} paid)`)
+          .join('\n');
+        const ok = await confirm(
+          `${rivals.length} other paid request${rivals.length === 1 ? '' : 's'} cover these dates:\n\n${list}\n\n`
+          + 'Confirming this booking takes the vehicle off them. Each will be offered the nearest dates we can still do, '
+          + 'or refunded in full if there is nothing to offer.',
+          { confirmLabel: 'Yes, confirm this one', cancelLabel: 'Not yet' }
+        );
+        if (!ok) return;
+      }
+    }
+
     return applyStatus(id, { status });
   };
 
@@ -298,6 +334,23 @@ const ManageBookings = () => {
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
     },
+    competingNote: {
+      fontSize: '10px', fontWeight: '700', lineHeight: 1.45, marginTop: '5px', maxWidth: '200px',
+      color: isDark ? GOLD_DARK : '#92400e',
+    },
+    awaitingBox: {
+      display: 'inline-flex', flexDirection: 'column', gap: '3px', maxWidth: '200px',
+      padding: '7px 10px', borderRadius: '8px',
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.45)' : '#fcd34d'}`,
+      background: isDark ? 'rgba(232,161,0,0.12)' : '#fffbeb',
+    },
+    awaitingTitle: { fontSize: '11px', fontWeight: '800', color: isDark ? GOLD_DARK : '#92400e' },
+    awaitingSub: { fontSize: '10px', lineHeight: 1.4, color: isDark ? '#b0b3b8' : '#6b7280' },
+    awaitingCancelBtn: {
+      alignSelf: 'flex-start', marginTop: '2px', padding: '3px 8px', borderRadius: '6px', cursor: 'pointer',
+      border: `1px solid ${isDark ? '#f87171' : '#dc2626'}`, background: 'transparent',
+      color: isDark ? '#f87171' : '#dc2626', fontSize: '10px', fontWeight: '700',
+    },
     cancelCard: {
       width: '100%', maxWidth: '430px', background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '16px',
@@ -363,6 +416,23 @@ const ManageBookings = () => {
       background: isDark ? '#3a3b3c' : '#e5e7eb', color: isDark ? '#e4e6eb' : '#374151',
       fontSize: '11px', fontWeight: '700', borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
     },
+  };
+
+  // Says plainly that this request is in a race, and who got there first —
+  // so treating people in the order they asked is the easy default rather
+  // than something admin has to work out by reading dates.
+  const renderCompetingNote = (booking) => {
+    const rivals = competitorsFor(booking);
+    if (!rivals.length) return null;
+    const earliest = [booking, ...rivals]
+      .reduce((a, b) => (new Date(a.createdAt) <= new Date(b.createdAt) ? a : b));
+    const thisOneAskedFirst = earliest._id === booking._id;
+    return (
+      <div style={s.competingNote}>
+        {rivals.length + 1} clients want these dates ·{' '}
+        {thisOneAskedFirst ? 'this one asked first' : `${earliest.user?.name || 'another client'} asked first`}
+      </div>
+    );
   };
 
   return (
@@ -520,7 +590,7 @@ const ManageBookings = () => {
                       </div>
                     </div>
                   )}
-                  {booking.rescheduleRequest?.status === 'pending' && (
+                  {booking.rescheduleRequest?.status === 'pending' && !bookingAwaitingDecision(booking) && (
                     <div>
                       <div style={{ fontSize: '12px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '2px' }}>
                         Reschedule request
@@ -534,7 +604,8 @@ const ManageBookings = () => {
                       </div>
                     </div>
                   )}
-                  {booking.refundStatus !== 'requested' && booking.rescheduleRequest?.status !== 'pending' && (
+                  {booking.refundStatus !== 'requested'
+                    && (booking.rescheduleRequest?.status !== 'pending' || bookingAwaitingDecision(booking)) && (
                     <span style={{ color: isDark ? '#8a8d91' : '#9ca3af', fontSize: '12px' }}>—</span>
                   )}
                 </td>
@@ -544,6 +615,25 @@ const ManageBookings = () => {
                       <span style={{ fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic' }}>
                         Resolve refund request first
                       </span>
+                    </div>
+                  ) : bookingAwaitingDecision(booking) ? (
+                    <div style={s.awaitingBox}>
+                      <span style={s.awaitingTitle}>Waiting on the client</span>
+                      <span style={s.awaitingSub}>
+                        {booking.adjustOffer.reason === 'booking_conflict'
+                          ? 'Lost these dates to a confirmed booking.'
+                          : 'These dates were blocked on the vehicle.'}
+                        {' '}Offered other dates or a full refund — {timeLeftLabel(booking.adjustOffer.deadline).toLowerCase()}.
+                        It refunds itself if they don&apos;t answer.
+                      </span>
+                      <button
+                        type="button"
+                        style={s.awaitingCancelBtn}
+                        onClick={() => handleStatus(booking._id, 'cancelled')}
+                        title="Settle it now instead of waiting for the deadline."
+                      >
+                        Cancel &amp; refund now
+                      </button>
                     </div>
                   ) : booking.status === 'confirmed' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -600,6 +690,7 @@ const ManageBookings = () => {
                           Awaiting GCash payment
                         </div>
                       )}
+                      {renderCompetingNote(booking)}
                     </div>
                   )}
                 </td>

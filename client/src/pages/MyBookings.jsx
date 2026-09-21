@@ -11,7 +11,9 @@ import BookingConfirmationModal from '../components/BookingConfirmationModal';
 import { SkeletonListCard } from '../components/Skeleton';
 import Pagination from '../components/Pagination';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
+import AdjustOfferPanel from '../components/AdjustOfferPanel';
 import { paginate } from '../utils/paginate';
+import { bookingAwaitingDecision } from '../utils/offerWindow';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
@@ -108,6 +110,7 @@ const MyBookings = () => {
   // Which booking came back from GCash, and how it went. Replaces the toast
   // that used to carry this — see BookingConfirmationModal.
   const [confirmation, setConfirmation] = useState(null);
+  const [offerBusyId, setOfferBusyId] = useState('');
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -162,6 +165,34 @@ const MyBookings = () => {
     setSearchParams({}, { replace: true });
     checkGcashStatus(bookingId, gcashResult === 'cancelled');
   }, [user, searchParams]);
+
+  const refreshBookings = async () => {
+    try {
+      const res = await api.get('/bookings/my');
+      setBookings(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // The client's answer to an offer of alternative dates. Always refetches
+  // afterwards, including on failure: "those dates have just been taken" is
+  // a real answer, and the card has to show what's actually left.
+  const handleOfferDecision = async (booking, decision, optionIndex) => {
+    setOfferBusyId(booking._id);
+    try {
+      await api.put(`/bookings/${booking._id}/adjust`, { decision, optionIndex });
+      toast.success(decision === 'accept'
+        ? 'Your booking has been moved to the new dates.'
+        : 'Your booking has been cancelled and your refund is on its way.');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Could not update this booking.');
+    } finally {
+      await refreshBookings();
+      setOfferBusyId('');
+    }
+  };
 
   const getStatusStyle = (status) => {
     if (status === 'confirmed') return styles.badgeConfirmed;
@@ -637,6 +668,12 @@ const MyBookings = () => {
       borderRadius: '999px',
       cursor: 'pointer',
     },
+    badgeActionNeeded: {
+      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? 'rgba(232,161,0,0.18)' : '#fef3c7',
+      color: isDark ? GOLD_DARK : '#92400e',
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.45)' : '#fcd34d'}`,
+    },
     badgeReschedulePending: {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
       background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7',
@@ -864,6 +901,9 @@ const MyBookings = () => {
                     {booking.payment === 'gcash_pending' && booking.status !== 'cancelled' && (
                       <span style={styles.badgeRefundRequested}>GCash Pending</span>
                     )}
+                    {bookingAwaitingDecision(booking) && (
+                      <span style={styles.badgeActionNeeded}>Action Needed</span>
+                    )}
                   </div>
 
                   <div className="booking-trip-row" style={styles.detailsRow}>
@@ -902,7 +942,7 @@ const MyBookings = () => {
                   <span style={styles.priceLabel}>Total Price</span>
                   <div style={styles.priceDetails}>
                     <span style={styles.price}>₱{booking.totalPrice.toLocaleString()}</span>
-                    {booking.paymentType === 'downpayment' && booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
+                    {booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
                       <div style={styles.paymentPanel}>
                         <div style={styles.paidAmount}>₱{booking.amountPaid.toLocaleString()} Paid</div>
                         <div style={styles.balanceDue}>
@@ -918,6 +958,7 @@ const MyBookings = () => {
 
                 <div className="grid-cell" style={styles.actionsCell}>
                 {(booking.status === 'pending' || booking.status === 'confirmed') &&
+                  !bookingAwaitingDecision(booking) &&
                   (!booking.refundStatus || booking.refundStatus === 'none') && (
                       <div style={styles.actionsIndent}>
                         <button className="btn-ghost-rose" style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
@@ -970,6 +1011,15 @@ const MyBookings = () => {
                 )}
                 </div>
               </div>
+
+              {bookingAwaitingDecision(booking) && (
+                <AdjustOfferPanel
+                  booking={booking}
+                  isDark={isDark}
+                  busy={offerBusyId === booking._id}
+                  onDecide={(decision, optionIndex) => handleOfferDecision(booking, decision, optionIndex)}
+                />
+              )}
 
               {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved' || booking.refundStatus === 'declined') && (
                 <div style={styles.refundNoteBox(booking.refundStatus)}>

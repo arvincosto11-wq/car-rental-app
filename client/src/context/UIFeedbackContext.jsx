@@ -102,6 +102,9 @@ export const UIFeedbackProvider = ({ children }) => {
     },
     confirmMessage: {
       fontSize: '14px',
+      // Lets a caller lay out a list of affected items over several lines
+      // rather than cramming everything into one sentence.
+      whiteSpace: 'pre-line',
       color: isDark ? '#e4e6eb' : '#1a1a1a',
       marginBottom: '20px',
       lineHeight: '1.5',

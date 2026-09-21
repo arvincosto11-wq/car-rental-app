@@ -5,6 +5,7 @@ import Consignment from '../models/Consignment.js';
 import Car from '../models/Car.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
+import { expireAdjustOffers } from '../utils/adjustOffer.js';
 
 const router = express.Router();
 
@@ -22,9 +23,13 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
     // The admin dashboard polls this, so an open dashboard keeps the
     // escalation moving even when no client is browsing.
     await remindStalePendingBookings();
+    // An unanswered offer of alternative dates has to refund itself on time
+    // even if no client happens to load a page — the dashboard poll is the
+    // one thing that runs reliably.
+    await expireAdjustOffers();
     const expiryCutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
     const [pendingBookings, refundRequests, rescheduleRequests, pendingClients, pendingConsignments, pendingAvailability, pendingBlockedDates, expiringValidIds, expiringLicenses, expiringRegistrations] = await Promise.all([
-      Booking.countDocuments({ status: 'pending', payment: 'paid' }),
+      Booking.countDocuments({ status: 'pending', payment: 'paid', 'adjustOffer.status': { $ne: 'open' } }),
       Booking.countDocuments({ refundStatus: 'requested' }),
       Booking.countDocuments({ 'rescheduleRequest.status': 'pending' }),
       // Scoped to role: 'user' — Manage Clients only ever lists and can

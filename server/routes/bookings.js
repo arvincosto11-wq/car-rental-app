@@ -9,6 +9,7 @@ import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { refundBookingPayment } from '../utils/paymongo.js';
 import { computeBookingPrice } from '../utils/promo.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
+import { openAdjustOffer, acceptAdjustOffer, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
 import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS } from '../utils/cancelBooking.js';
 
 const router = express.Router();
@@ -206,6 +207,7 @@ router.get('/my', protect, async (req, res) => {
   try {
     await autoCompleteExpiredBookings();
     await remindStalePendingBookings();
+    await expireAdjustOffers();
     // Plate number is confidential — clients never see it, not even in the
     // raw response, so it can't be read off the network tab either.
     const bookings = await Booking.find({ user: req.user.id })
@@ -222,6 +224,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
   try {
     await autoCompleteExpiredBookings();
     await remindStalePendingBookings();
+    await expireAdjustOffers();
     const bookings = await Booking.find()
       .populate('car')
       .populate('user', 'name email avgRating ratingCount')
@@ -238,6 +241,7 @@ router.get('/owner', protect, consignorOnly, async (req, res) => {
   try {
     await autoCompleteExpiredBookings();
     await remindStalePendingBookings();
+    await expireAdjustOffers();
     const cars = await Car.find({ owner: req.user.id }).select('_id');
     const carIds = cars.map((c) => c._id);
     const bookings = await Booking.find({ car: { $in: carIds } })
@@ -274,6 +278,11 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     if (status === 'confirmed' && previousStatus !== 'confirmed') {
       if (booking.payment !== 'paid') {
         return res.status(400).json({ message: 'This booking cannot be confirmed until the GCash payment is completed.' });
+      }
+      // The client is mid-decision between new dates and a refund, so these
+      // dates aren't theirs to be confirmed on any more.
+      if (booking.adjustOffer?.status === 'open') {
+        return res.status(400).json({ message: 'This client is choosing between new dates and a refund. You can confirm it once they have answered.' });
       }
 
       const car = await Car.findById(booking.car);
@@ -338,6 +347,14 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         startDate: { $lt: booking.endDate }, endDate: { $gt: booking.startDate },
       });
       for (const pending of overlappingPending) {
+        // Losing the race no longer means being cancelled outright. Each
+        // client is offered the nearest dates we can actually honour,
+        // against a full refund, and has until the offer's deadline to
+        // choose — see utils/adjustOffer.js. Falling through to the old
+        // cancel-and-refund below only happens when there is genuinely
+        // nothing to offer: too close to pickup, or nothing free nearby.
+        if (await openAdjustOffer(pending, { reason: 'booking_conflict' })) continue;
+
         pending.status = 'cancelled';
         pending.refundStatus = 'approved';
         pending.refundReason = 'Automatically refunded: another booking for overlapping dates was confirmed first.';
@@ -575,6 +592,11 @@ router.post('/:id/reschedule', protect, async (req, res) => {
     if (booking.rescheduleRequest?.status === 'pending') {
       return res.status(400).json({ message: 'You already have a pending reschedule request for this booking.' });
     }
+    // These dates aren't available any more — that's the whole reason the
+    // offer is open — so a reschedule request against them means nothing.
+    if (booking.adjustOffer?.status === 'open') {
+      return res.status(400).json({ message: 'Please choose new dates or a refund on this booking first.' });
+    }
 
     const start = new Date(newStartDate);
     const end = new Date(newEndDate);
@@ -624,6 +646,11 @@ router.put('/:id/reschedule', protect, adminOnly, async (req, res) => {
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     if (booking.rescheduleRequest?.status !== 'pending') {
       return res.status(400).json({ message: 'No pending reschedule request for this booking.' });
+    }
+    // The client is already being asked to pick new dates for this booking.
+    // Approving an older reschedule request now would move them twice.
+    if (booking.adjustOffer?.status === 'open') {
+      return res.status(400).json({ message: 'This client is choosing new dates or a refund. Wait until they have answered.' });
     }
 
     if (decision === 'approved') {
@@ -756,6 +783,48 @@ router.post('/:id/rate-client', protect, adminOnly, async (req, res) => {
     await recomputeClientRating(booking.user);
 
     res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// The client answers an offer of alternative dates: take one, or take the
+// refund. Deliberately the client's own call — the whole point of the offer
+// is that admin doesn't decide this for them. An offer past its deadline is
+// refused here rather than honoured late, since the expiry sweep may not
+// have reached it yet and both paths must agree.
+router.put('/:id/adjust', protect, async (req, res) => {
+  try {
+    const { decision, optionIndex } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    // Deliberately not bookingAwaitingDecision here: that folds the deadline
+    // in, and a client who arrives seconds late deserves to be told what
+    // actually happened rather than "nothing to decide".
+    const live = booking.status === 'pending' || booking.status === 'confirmed';
+    if (!live || booking.adjustOffer?.status !== 'open') {
+      return res.status(400).json({ message: 'There is nothing to decide on this booking.' });
+    }
+    if (new Date(booking.adjustOffer.deadline) <= new Date()) {
+      await expireAdjustOffers();
+      return res.status(400).json({ message: 'The deadline for this booking has passed, so it has been refunded in full.' });
+    }
+
+    if (decision === 'refund') {
+      const amount = await declineAdjustOffer(booking);
+      return res.json({ ...booking.toObject(), refunded: amount });
+    }
+
+    if (decision === 'accept') {
+      const result = await acceptAdjustOffer(booking, Number(optionIndex));
+      if (!result.ok) return res.status(400).json({ message: result.message });
+      return res.json(result.booking);
+    }
+
+    return res.status(400).json({ message: 'Choose either new dates or a refund.' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

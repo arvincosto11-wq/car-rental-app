@@ -87,7 +87,10 @@ function clientWording(booking, reason, amount, carName, cause, clientNote) {
 //           Always the client-safe phrase, never admin's private note.
 // clientNote — optional text admin wrote FOR the client, from the cancel
 //           dialog. Distinct from any private note.
-export async function cancelBookingWithRefund(booking, { reason, customAmount, cause = 'unforeseen circumstances', clientNote = '' }) {
+// extra   — one more sentence appended to the client's message, for callers
+//           that need to explain how the cancellation came about (e.g. an
+//           unanswered offer of alternative dates).
+export async function cancelBookingWithRefund(booking, { reason, customAmount, cause = 'unforeseen circumstances', clientNote = '', extra = '' }) {
   const amount = refundAmountFor(booking, reason, customAmount);
 
   const carDoc = booking.car?.brand ? booking.car : await Car.findById(booking.car).select('brand model');
@@ -95,6 +98,13 @@ export async function cancelBookingWithRefund(booking, { reason, customAmount, c
   const { message, short } = clientWording(booking, reason, amount, carName, cause, clientNote);
 
   booking.status = 'cancelled';
+  // This cancellation settles any open "new dates or a refund" offer, so it
+  // can't be left open for the expiry sweep to act on a second time. Already
+  // marked declined/expired when the offer itself is what led here.
+  if (booking.adjustOffer?.status === 'open') {
+    booking.adjustOffer.status = 'declined';
+    booking.adjustOffer.resolvedAt = new Date();
+  }
   booking.cancelReason = reason;
   booking.cancelNote = clientNote;
   // Never actually paid — nothing to refund, and it shouldn't keep showing
@@ -122,7 +132,7 @@ export async function cancelBookingWithRefund(booking, { reason, customAmount, c
   await notifyUser(
     booking.user,
     reason === 'vehicle_unavailable' ? 'Booking Cancelled: Vehicle Unavailable' : 'Booking Cancelled',
-    message,
+    extra ? `${message} ${extra}` : message,
     '/my-bookings'
   );
 

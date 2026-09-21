@@ -8,6 +8,7 @@ import { fetchAikaGps } from '../utils/aikaGps.js';
 import { validatePromo } from '../utils/promo.js';
 import { cancelBookingWithRefund, refundAmountFor, isUnderway } from '../utils/cancelBooking.js';
 import { BLOCK_REASON_CODES, causeFor, blockLabelFor } from '../utils/blockReasons.js';
+import { openAdjustOffer, previewAlternatives } from '../utils/adjustOffer.js';
 import User from '../models/User.js';
 
 const router = express.Router();
@@ -184,16 +185,28 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
       }
 
       if (!req.body.confirmCancellations) {
+        // Whether each client can be offered other dates rather than simply
+        // refunded, worked out with the range about to be blocked already
+        // counted as taken. Nothing is saved — this is only so the dialog
+        // can tell admin what is actually about to happen to each client.
+        const offerable = await Promise.all(cancellable.map(async (b) =>
+          (await previewAlternatives(b, { extra: [{ startDate: start, endDate: end }] })).length));
+
         return res.status(409).json({
           needsConfirmation: true,
-          message: 'Blocking these dates will cancel and refund the bookings below.',
-          cancellable: cancellable.map((b) => ({
+          message: 'Blocking these dates affects the bookings below.',
+          cancellable: cancellable.map((b, i) => ({
             id: b._id,
             client: b.user?.name || 'A client',
             startDate: b.startDate,
             endDate: b.endDate,
+            totalDays: b.totalDays,
             status: b.status,
             refund: refundAmountFor(b, 'vehicle_unavailable'),
+            // How many alternative dates this client can be offered. Zero
+            // means nothing free nearby, or too close to pickup — those are
+            // cancelled and refunded outright, as before.
+            offerCount: offerable[i],
           })),
           underway: underway.map((b) => ({
             id: b._id,
@@ -204,12 +217,27 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
         });
       }
 
-      // Always the full amount: the business pulled the vehicle, so this is
+      // Pulling the vehicle doesn't have to mean cancelling the trip. Each
+      // client is offered the nearest dates we can still honour, against a
+      // full refund, and has until the offer's deadline to choose — see
+      // utils/adjustOffer.js. The range being blocked is passed in because
+      // it isn't saved on the car yet, and dates inside it are obviously no
+      // use as alternatives.
+      //
+      // When there's nothing to offer it falls back to cancelling with the
+      // full amount refunded: the business pulled the vehicle, so this is
       // never the client's choice to cancel.
       for (const booking of cancellable) {
-        await cancelBookingWithRefund(booking, {
+        const offered = await openAdjustOffer(booking, {
           reason: 'vehicle_unavailable',
           // The mapped, client-safe phrase — never the private note.
+          cause: causeFor(reasonCode),
+          extra: [{ startDate: start, endDate: end }],
+        });
+        if (offered) continue;
+
+        await cancelBookingWithRefund(booking, {
+          reason: 'vehicle_unavailable',
           cause: causeFor(reasonCode),
         });
       }

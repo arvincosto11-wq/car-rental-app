@@ -7,6 +7,7 @@ import { splitBlockedDates } from '../utils/blockedDates';
 import { BLOCK_REASONS, blockLabelFor, causeFor, vehicleUnavailableMessage } from '../utils/blockReasons';
 import { isPromoVisible } from '../utils/promo';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { offerMessage, offerDeadline } from '../utils/offerWindow';
 
 // Everything to do with taking one vehicle off the road, in its own panel.
 // It used to live inside Edit Vehicle, which mixed two kinds of saving in one
@@ -119,7 +120,7 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
         !isAdmin
           ? 'Request sent. It takes effect once admin approves it.'
           : confirmCancellations
-            ? 'Dates blocked. Affected clients have been refunded and notified.'
+            ? 'Dates blocked. Affected clients have been notified and asked to choose new dates or a refund.'
             : 'Dates blocked.'
       );
     } catch (err) {
@@ -241,6 +242,11 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
   };
 
   const fmt = (d) => new Date(d).toLocaleDateString();
+  // Matches how the server writes the deadline into the real notification,
+  // so the preview and the message a client gets read the same.
+  const deadlineFmt = (d) => new Date(d).toLocaleString('en-US', {
+    timeZone: 'Asia/Manila', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
 
   return (
     <div style={s.overlay} onClick={close}>
@@ -259,11 +265,17 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
           <>
             <div id="block-dates-title" style={s.title}>These dates are already booked</div>
             <p style={s.sub}>
-              {conflicts.cancellable?.length
-                ? 'Blocking them will cancel the bookings below and refund each client in full, '
-                  + 'because the vehicle is being pulled by us rather than by them.'
-                : 'Nothing will be cancelled or refunded here — see below. The dates will just be blocked, '
-                  + 'so nobody new can book them.'}
+              {!conflicts.cancellable?.length
+                ? 'Nothing will be cancelled or refunded here — see below. The dates will just be blocked, '
+                  + 'so nobody new can book them.'
+                : conflicts.cancellable.every((b) => b.offerCount > 0)
+                  ? 'Each client below keeps the choice: the nearest dates we can still do, or a full refund. '
+                    + 'Anyone who doesn’t answer in time is refunded automatically.'
+                  : conflicts.cancellable.some((b) => b.offerCount > 0)
+                    ? 'Clients with other dates available are offered them, against a full refund. '
+                      + 'The rest are cancelled and refunded in full, because the vehicle is being pulled by us.'
+                    : 'Blocking them will cancel the bookings below and refund each client in full, '
+                      + 'because the vehicle is being pulled by us rather than by them.'}
             </p>
 
             {conflicts.cancellable?.length > 0 && (
@@ -272,7 +284,12 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
                   <div key={b.id} style={s.item}>
                     <span>
                       <strong>{b.client}</strong>
-                      <span style={s.itemSub}>{fmt(b.startDate)} → {fmt(b.endDate)} · {b.status}</span>
+                      <span style={s.itemSub}>
+                        {fmt(b.startDate)} → {fmt(b.endDate)} · {b.status} ·{' '}
+                        {b.offerCount > 0
+                          ? `offered ${b.offerCount} other date${b.offerCount === 1 ? '' : 's'}`
+                          : 'cancelled and refunded'}
+                      </span>
                     </span>
                     <span style={s.conflictRefund}>₱{b.refund.toLocaleString()}</span>
                   </div>
@@ -287,13 +304,22 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
               return (
                 <div style={s.preview}>
                   <div style={s.previewLabel}>{sample.client} will be told:</div>
-                  {vehicleUnavailableMessage({
-                    carName,
-                    startDate: sample.startDate,
-                    endDate: sample.endDate,
-                    cause: causeFor(form.reasonCode),
-                    amount: sample.refund,
-                  })}
+                  {sample.offerCount > 0
+                    ? offerMessage({
+                      reason: 'vehicle_unavailable',
+                      cause: causeFor(form.reasonCode),
+                      carName,
+                      totalDays: sample.totalDays,
+                      optionCount: sample.offerCount,
+                      deadlineText: deadlineFmt(offerDeadline(sample.startDate)),
+                    })
+                    : vehicleUnavailableMessage({
+                      carName,
+                      startDate: sample.startDate,
+                      endDate: sample.endDate,
+                      cause: causeFor(form.reasonCode),
+                      amount: sample.refund,
+                    })}
                 </div>
               );
             })()}
@@ -315,7 +341,11 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
               <button type="button" style={s.dangerBtn} disabled={busy} onClick={() => submit(true)}>
                 {busy
                   ? 'Working...'
-                  : conflicts.cancellable?.length ? 'Block dates & refund' : 'Block dates anyway'}
+                  : !conflicts.cancellable?.length
+                    ? 'Block dates anyway'
+                    : conflicts.cancellable.some((b) => b.offerCount > 0)
+                      ? 'Block dates & notify clients'
+                      : 'Block dates & refund'}
               </button>
               <button type="button" style={s.secondaryBtn} disabled={busy} onClick={() => setConflicts(null)}>
                 Back
