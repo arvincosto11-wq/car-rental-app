@@ -687,7 +687,9 @@ const MyBookings = () => {
     promoSaved: {
       display: 'inline-flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap',
       fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
-      color: isDark ? GOLD_DARK : GOLD, marginTop: '2px',
+      color: isDark ? GOLD_DARK : GOLD,
+      // Stays on the right even on a card that has no action buttons.
+      marginLeft: 'auto',
     },
     promoSavedWas: {
       fontSize: '11px', fontWeight: '500', letterSpacing: '0.02em', textTransform: 'none',
