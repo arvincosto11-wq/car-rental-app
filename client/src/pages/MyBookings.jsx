@@ -406,7 +406,10 @@ const MyBookings = () => {
     },
     // Centred rather than top-aligned: the pickup box is the taller of the
     // two, and level text either side of it reads as one panel.
-    detailsRow: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' },
+    detailsRow: {
+      display: 'flex', gap: '18px', flexWrap: 'nowrap', alignItems: 'center',
+      justifyContent: 'space-between',
+    },
     // Ambient glow color follows the booking's own status — confirmed
     // (upcoming) is the one that actually needs attention, so it gets the
     // most prominent glow; cancelled fades into the background since
@@ -468,7 +471,7 @@ const MyBookings = () => {
       color: isDark ? '#8a8d91' : '#9ca3af',
     },
     info: {
-      flex: '0 1 auto', minWidth: 0,
+      flex: '1 1 auto', minWidth: 0, overflowWrap: 'anywhere',
       background: isDark ? '#38393b' : '#ffffff',
       border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
       borderRadius: '12px', padding: '14px 16px',
@@ -590,13 +593,13 @@ const MyBookings = () => {
     // Sits inside detailsRow now, alongside the date/model text, so it
     // naturally starts at the same Y — no marginTop hack needed.
     pickupPanel: {
-      flex: '0 1 340px', minWidth: '200px', maxWidth: '340px',
+      flex: '1 1 260px', minWidth: 0, maxWidth: '340px',
       fontSize: '12px', lineHeight: '1.5', padding: '14px 16px', borderRadius: '12px',
       background: isDark ? '#38393b' : '#ffffff',
       border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
     },
-    pickupLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#86efac' : '#166534', fontWeight: '700' },
-    returnLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#b0b3b8' : '#6b7280', fontWeight: '700', marginTop: '6px' },
+    pickupLine: { display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', color: isDark ? '#86efac' : '#166534', fontWeight: '700' },
+    returnLine: { display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', color: isDark ? '#b0b3b8' : '#6b7280', fontWeight: '700', marginTop: '6px' },
     driverNote: { marginTop: '8px', fontStyle: 'italic', fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
     // actionsIndent sits in topSection's own grid now (see actionsCell),
     // so it's exactly as wide as the details row above it — no separate
@@ -871,7 +874,7 @@ const MyBookings = () => {
                   </div>
 
                   <div style={styles.detailsPanel}>
-                    <div style={styles.detailsRow}>
+                    <div className="booking-trip-row" style={styles.detailsRow}>
                       <div style={styles.info}>
                         <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
                           <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />

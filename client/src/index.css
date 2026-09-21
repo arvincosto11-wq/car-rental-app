@@ -1174,3 +1174,12 @@ button.seg-tab:not(:disabled):active {
 button.seg-tab:not(:disabled):hover {
   color: var(--text) !important;
 }
+
+/* The two boxes inside a booking card's trip panel stay side by side and
+   shrink to share the row; below this width there isn't room for both, so
+   they stack instead. */
+@media (max-width: 900px) {
+  .booking-trip-row {
+    flex-wrap: wrap !important;
+  }
+}
