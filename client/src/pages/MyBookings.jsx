@@ -185,6 +185,25 @@ const MyBookings = () => {
   // back for the panel to put to them, and nothing has changed yet, so the
   // card is deliberately left exactly as it is.
   const handleOfferDecision = async (booking, decision, payload = {}) => {
+    // Paying the difference is the one answer that leaves the site. The
+    // dates stay exactly as they are until the money lands, so backing out
+    // on PayMongo's page costs this client nothing.
+    if (decision === 'topup') {
+      setOfferBusyId(booking._id);
+      try {
+        const res = await api.post(`/bookings/${booking._id}/adjust/top-up`, payload);
+        window.location.href = res.data.checkoutUrl;
+        return { ok: true };
+      } catch (err) {
+        console.error(err);
+        toast.error(err.response?.data?.message || 'Could not start that payment.');
+        await refreshBookings();
+        return { ok: false };
+      } finally {
+        setOfferBusyId('');
+      }
+    }
+
     setOfferBusyId(booking._id);
     try {
       await api.put(`/bookings/${booking._id}/adjust`, { decision, ...payload });
@@ -204,6 +223,26 @@ const MyBookings = () => {
       setOfferBusyId('');
     }
   };
+
+  // Back from paying the difference on a booking being moved. Asks the
+  // server what actually happened rather than trusting the redirect, the
+  // same as the booking payment itself.
+  useEffect(() => {
+    if (!user) return;
+    const topupResult = searchParams.get('topup');
+    const topupBookingId = searchParams.get('bookingId');
+    if (!topupResult || !topupBookingId) return;
+    setSearchParams({}, { replace: true });
+    (async () => {
+      try {
+        await api.put(`/bookings/${topupBookingId}/adjust/top-up/confirm`);
+        toast.success('Payment received — your booking has been moved to the new dates.');
+      } catch (err) {
+        toast.info(err.response?.data?.message || 'That payment was not completed, so your booking is unchanged.');
+      }
+      await refreshBookings();
+    })();
+  }, [user, searchParams]);
 
   const getStatusStyle = (status) => {
     if (status === 'confirmed') return styles.badgeConfirmed;

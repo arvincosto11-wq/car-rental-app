@@ -9,7 +9,7 @@ import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { refundBookingPayment } from '../utils/paymongo.js';
 import { computeBookingPrice } from '../utils/promo.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
-import { openAdjustOffer, acceptAdjustOffer, acceptCustomDates, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
+import { openAdjustOffer, acceptAdjustOffer, startTopUp, confirmTopUp, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
 import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS } from '../utils/cancelBooking.js';
 import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
@@ -847,20 +847,69 @@ router.put('/:id/adjust', protect, async (req, res) => {
     }
 
     if (decision === 'accept') {
-      const opts = { confirmPrice: req.body.confirmPrice === true };
-      const result = req.body.startDate
-        ? await acceptCustomDates(booking, req.body.startDate, opts)
-        : await acceptAdjustOffer(booking, Number(optionIndex), opts);
+      const result = await acceptAdjustOffer(
+        booking,
+        { optionIndex, startDate: req.body.startDate },
+        { confirmPrice: req.body.confirmPrice === true }
+      );
 
       // Not an error — the dates are fine, they just cost more than the
       // trip this client agreed to, and nobody is moved onto a bigger bill
-      // without being shown the figure first.
+      // without being shown the figure first. `payUpfront` on the reply
+      // says whether that difference joins their pickup balance or has to
+      // be paid now, through the top-up route below.
       if (result.needsPriceConfirmation) return res.status(409).json(result);
       if (!result.ok) return res.status(400).json({ message: result.message });
       return res.json(result.booking);
     }
 
     return res.status(400).json({ message: 'Choose either new dates or a refund.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// A client who has already settled this booking in full, moving to dates
+// that cost more. The difference is collected before anything changes —
+// returns a PayMongo checkout URL, and the dates stay put until the money
+// lands, so abandoning the payment costs them nothing.
+router.post('/:id/adjust/top-up', protect, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    const live = booking.status === 'pending' || booking.status === 'confirmed';
+    if (!live || booking.adjustOffer?.status !== 'open') {
+      return res.status(400).json({ message: 'There is nothing to decide on this booking.' });
+    }
+    if (new Date(booking.adjustOffer.deadline) <= new Date()) {
+      await expireAdjustOffers();
+      return res.status(400).json({ message: 'The deadline for this booking has passed, so it has been refunded in full.' });
+    }
+
+    const result = await startTopUp(booking, { optionIndex: req.body.optionIndex, startDate: req.body.startDate });
+    if (!result.ok) return res.status(400).json({ message: result.message });
+    return res.json({ checkoutUrl: result.checkoutUrl });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Back from that payment. PayMongo is asked what really happened rather
+// than the redirect being trusted, the same as the booking payment itself.
+router.put('/:id/adjust/top-up/confirm', protect, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    const result = await confirmTopUp(booking);
+    if (!result.ok) return res.status(400).json({ message: result.message });
+    return res.json(result.booking);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

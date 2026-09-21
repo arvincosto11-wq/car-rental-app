@@ -3,7 +3,8 @@ import Car from '../models/Car.js';
 import LongRentalDiscount from '../models/LongRentalDiscount.js';
 import { computeBookingPrice } from './promo.js';
 import { cancelBookingWithRefund } from './cancelBooking.js';
-import { notifyUser } from './notify.js';
+import { createGcashCheckout, paymongoFetch } from './paymongo.js';
+import { notifyUser, notifyAdmins } from './notify.js';
 import { formatTripDates } from './blockReasons.js';
 import { offerDeadline, hasEnoughNotice, offerMessage, MIN_NOTICE_HOURS } from './offerWindow.js';
 import { busySpans, bookingSpan, overlaps } from './availability.js';
@@ -33,6 +34,16 @@ const HOUR = 1000 * 60 * 60;
 // the same trip any more and a refund is the honest answer.
 const MAX_SHIFT_DAYS = 21;
 const MAX_OPTIONS = 3;
+// How long a started top-up payment holds off the expiry sweep. Long enough
+// to finish paying on GCash, short enough that an abandoned one still
+// refunds itself rather than sitting on a client's money indefinitely.
+const TOP_UP_GRACE_MINUTES = 30;
+
+const CLIENT_URL = process.env.CLIENT_URL || 'https://rent-a-ride-albay.vercel.app';
+
+// Nothing is owed at pickup on this booking, so a price rise has no balance
+// to join and has to be collected before the dates move.
+const settledInFull = (booking) => booking.payment === 'paid' && booking.amountPaid >= booking.totalPrice;
 
 const when = (d) => new Date(d).toLocaleString('en-US', {
   timeZone: 'Asia/Manila', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
@@ -151,7 +162,7 @@ export async function openAdjustOffer(booking, { reason, cause = '', extra = [] 
 // first, so a rise is refused until the client has seen the figure and
 // confirmed it — the same shape as the promo and blocked-date confirmations
 // elsewhere in the app.
-async function applyOption(booking, option, { confirmPrice = false } = {}) {
+async function applyOption(booking, option, { confirmPrice = false, paidUpfront = false } = {}) {
   // Availability first, deliberately: there is no point putting a price to
   // someone for dates we can no longer give them. The offer has been
   // sitting there for up to a day and anything could have claimed them.
@@ -162,18 +173,26 @@ async function applyOption(booking, option, { confirmPrice = false } = {}) {
   }
 
   const extra = option.totalPrice - booking.totalPrice;
-  if (extra > 0 && !confirmPrice) {
-    return {
-      ok: false,
-      needsPriceConfirmation: true,
-      extra,
-      newTotal: option.totalPrice,
-      wasTotal: booking.totalPrice,
-      promoLabel: booking.promoLabel || '',
-      startDate: option.startDate,
-      endDate: option.endDate,
-      message: `These dates cost ₱${extra.toLocaleString()} more than your booking.`,
-    };
+  if (extra > 0) {
+    const payUpfront = settledInFull(booking);
+    // A client who still owes something at pickup just owes a little more.
+    // One who has already settled has no balance for it to join, so the
+    // difference is taken now — through startTopUp, never from here.
+    const answered = payUpfront ? paidUpfront : confirmPrice;
+    if (!answered) {
+      return {
+        ok: false,
+        needsPriceConfirmation: true,
+        payUpfront,
+        extra,
+        newTotal: option.totalPrice,
+        wasTotal: booking.totalPrice,
+        promoLabel: booking.promoLabel || '',
+        startDate: option.startDate,
+        endDate: option.endDate,
+        message: `These dates cost ₱${extra.toLocaleString()} more than your booking.`,
+      };
+    }
   }
 
   booking.startDate = option.startDate;
@@ -207,34 +226,126 @@ async function applyOption(booking, option, { confirmPrice = false } = {}) {
   return { ok: true, booking };
 }
 
-// The client picked one of the dates we offered. Re-checked against the
-// calendar as it stands right now, because the offer has been sitting there
-// for up to a day and anything could have claimed those dates since.
-export async function acceptAdjustOffer(booking, optionIndex, opts) {
-  const option = booking.adjustOffer?.options?.[optionIndex];
-  if (!option) return { ok: false, message: 'That option is no longer available. Please refresh and try again.' };
-  return applyOption(booking, option, opts);
-}
+// Clearing a nested object by assigning undefined doesn't reliably stick in
+// Mongoose, and a stale checkout id here would keep the expiry sweep off a
+// booking that is no longer paying for anything. Blanked field by field.
+const clearTopUp = (booking) => {
+  booking.adjustOffer.topUp = {
+    checkoutSessionId: '', amount: 0, startedAt: null, option: {},
+  };
+};
 
-// None of the three suited, so the client chose their own date. The trip
-// keeps its length and its pickup hour — only where it sits moves — so the
-// price is worked out the same way, and the same confirmation is required
-// if a promo doesn't reach that far.
-export async function acceptCustomDates(booking, startYmd, opts) {
+// Which dates the client has settled on: one of the three we suggested, or
+// a day they picked themselves. A date of their own keeps the trip's length
+// and its pickup hour — only where it sits moves — so it's priced by the
+// same function and gets the same treatment from there on.
+async function resolveOption(booking, { optionIndex, startDate }) {
+  if (!startDate) {
+    const option = booking.adjustOffer?.options?.[Number(optionIndex)];
+    if (!option) return { error: 'That option is no longer available. Please refresh and try again.' };
+    return { option };
+  }
+
   const car = await Car.findById(booking.car);
-  if (!car) return { ok: false, message: 'That vehicle is no longer available.' };
+  if (!car) return { error: 'That vehicle is no longer available.' };
 
   const own = bookingSpan(booking);
   const hour = booking.hasPickupTime ? phHour(booking.startDate) : 0;
-  const start = instantFrom(startYmd, hour);
-  if (isNaN(start.getTime())) return { ok: false, message: 'Please choose a valid date.' };
+  const start = instantFrom(startDate, hour);
+  if (isNaN(start.getTime())) return { error: 'Please choose a valid date.' };
   if (start.getTime() < Date.now() + MIN_NOTICE_HOURS * HOUR) {
-    return { ok: false, message: 'Please choose a date a little further ahead — we need time to have the vehicle ready.' };
+    return { error: 'Please choose a date a little further ahead — we need time to have the vehicle ready.' };
   }
 
   const end = new Date(start.getTime() + (own.end.getTime() - own.start.getTime()));
   const [option] = await priceOptions(car, booking, [{ startDate: start, endDate: end }]);
+  return { option };
+}
+
+// The client picked their dates. Re-checked against the calendar as it
+// stands right now, because the offer has been sitting there for up to a
+// day and anything could have claimed those dates since.
+export async function acceptAdjustOffer(booking, choice, opts) {
+  const { option, error } = await resolveOption(booking, choice);
+  if (error) return { ok: false, message: error };
   return applyOption(booking, option, opts);
+}
+
+// The client had already settled this booking in full, and the dates they
+// want cost more. There is no pickup balance for the difference to join, so
+// it is collected first: this hands back a GCash checkout and parks the
+// chosen dates on the booking. They do not move until confirmTopUp sees the
+// payment land, so backing out of GCash changes nothing.
+export async function startTopUp(booking, choice) {
+  const { option, error } = await resolveOption(booking, choice);
+  if (error) return { ok: false, message: error };
+
+  const { spans } = await busySpans(booking.car, { excludeBookingId: booking._id });
+  if (spans.some((b) => overlaps({ start: new Date(option.startDate), end: new Date(option.endDate) }, b))) {
+    return { ok: false, message: 'Those dates have just been taken. Please choose one of the others, or the refund.' };
+  }
+
+  const extra = option.totalPrice - booking.totalPrice;
+  if (extra <= 0) return { ok: false, message: 'There is nothing extra to pay on those dates.' };
+
+  const car = await Car.findById(booking.car).select('brand model');
+  const { id, checkoutUrl } = await createGcashCheckout({
+    amount: extra,
+    name: `${car ? `${car.brand} ${car.model}` : 'Vehicle'} \u2014 new dates`,
+    description: `Booking ${booking._id} date change`,
+    reference: `${booking._id}-topup-${Date.now()}`,
+    metadata: { bookingId: booking._id.toString(), kind: 'adjust-top-up' },
+    successUrl: `${CLIENT_URL}/my-bookings?topup=success&bookingId=${booking._id}`,
+    cancelUrl: `${CLIENT_URL}/my-bookings?topup=cancelled&bookingId=${booking._id}`,
+  });
+
+  booking.adjustOffer.topUp = { checkoutSessionId: id, amount: extra, startedAt: new Date(), option };
+  await booking.save();
+  return { ok: true, checkoutUrl };
+}
+
+// Back from GCash. PayMongo is asked what actually happened rather than the
+// redirect being trusted — someone can land on the success URL having
+// abandoned the payment.
+export async function confirmTopUp(booking) {
+  const topUp = booking.adjustOffer?.topUp;
+  if (!topUp?.checkoutSessionId) return { ok: false, message: 'There is no payment waiting on this booking.' };
+
+  const session = await paymongoFetch(`/checkout_sessions/${topUp.checkoutSessionId}`);
+  const paid = (session.data.attributes.payments || []).find((p) => p.attributes?.status === 'paid');
+
+  if (!paid) {
+    // Backed out, or it expired. Cleared so they can choose again — nothing
+    // about the booking has changed.
+    clearTopUp(booking);
+    await booking.save();
+    return { ok: false, message: 'That payment was not completed, so your booking is unchanged. You can choose again.' };
+  }
+
+  // Already recorded — they came back to the page a second time.
+  if ((booking.extraPayments || []).some((p) => p.paymongoPaymentId === paid.id)) {
+    return { ok: true, booking };
+  }
+
+  const option = topUp.option;
+  booking.extraPayments.push({ paymongoPaymentId: paid.id, amount: topUp.amount, paidAt: new Date() });
+  booking.amountPaid += topUp.amount;
+  clearTopUp(booking);
+
+  const result = await applyOption(booking, option, { paidUpfront: true });
+  if (!result.ok) {
+    // Their money is in and the dates are not. The payment stays recorded,
+    // so taking the refund now returns it along with the rest — but admin
+    // needs to know a client is sitting in this state.
+    await booking.save();
+    await notifyAdmins(
+      'Top-up taken but dates unavailable',
+      `A client paid \u20b1${topUp.amount.toLocaleString()} to move a booking and the dates went before it landed. `
+        + 'Their offer is still open, and the amount comes back with any refund they take.',
+      '/admin/manage-bookings'
+    );
+  }
+  return result;
 }
 
 // The client would rather have their money, or the deadline ran out. Either
@@ -268,6 +379,11 @@ export async function expireAdjustOffers() {
       'adjustOffer.deadline': { $lte: new Date() },
     });
     for (const booking of due) {
+      // Someone mid-payment for new dates is not ignoring us. Refunding them
+      // while GCash is open would take the booking out from under a client
+      // who is in the middle of keeping it.
+      const startedAt = booking.adjustOffer?.topUp?.startedAt;
+      if (startedAt && Date.now() - new Date(startedAt).getTime() < TOP_UP_GRACE_MINUTES * 60 * 1000) continue;
       await settleWithRefund(booking, { silent: true });
     }
   } catch (err) {

@@ -163,19 +163,35 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
               : 'The discount on your booking doesn’t reach '}
             {formatMoment(priceCheck.startDate, booking.hasPickupTime)} → {formatMoment(priceCheck.endDate, booking.hasPickupTime)}.
             {' '}Your total goes from <strong>₱{priceCheck.wasTotal.toLocaleString()}</strong> to{' '}
-            <strong>₱{priceCheck.newTotal.toLocaleString()}</strong>. The extra ₱{priceCheck.extra.toLocaleString()} is
-            added to what you bring at pickup — nothing more is taken from your GCash now.
+            <strong>₱{priceCheck.newTotal.toLocaleString()}</strong>.
+            {priceCheck.payUpfront
+              ? ` You have already paid this booking in full, so there is no balance at pickup for the difference
+                  to join — the ₱${priceCheck.extra.toLocaleString()} is due now by GCash. Your dates only change
+                  once it is paid, so backing out of the payment leaves everything exactly as it is.`
+              : ` The extra ₱${priceCheck.extra.toLocaleString()} is added to what you bring at pickup — nothing
+                  more is taken from your GCash now.`}
             {' '}If you would rather not, take the full refund instead.
           </p>
           <div style={s.checkRow}>
-            <button
-              type="button"
-              style={s.takeBtn}
-              disabled={busy}
-              onClick={() => decide('accept', { ...priceCheck.payload, confirmPrice: true })}
-            >
-              Yes, keep my booking
-            </button>
+            {priceCheck.payUpfront ? (
+              <button
+                type="button"
+                style={s.takeBtn}
+                disabled={busy}
+                onClick={() => decide('topup', priceCheck.payload)}
+              >
+                Pay ₱{priceCheck.extra.toLocaleString()} with GCash
+              </button>
+            ) : (
+              <button
+                type="button"
+                style={s.takeBtn}
+                disabled={busy}
+                onClick={() => decide('accept', { ...priceCheck.payload, confirmPrice: true })}
+              >
+                Yes, keep my booking
+              </button>
+            )}
             <button type="button" style={s.refundBtn} disabled={busy} onClick={() => decide('refund')}>
               No — refund {refundable > 0 ? `₱${refundable.toLocaleString()}` : 'me'}
             </button>

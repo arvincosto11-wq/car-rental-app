@@ -77,6 +77,23 @@ const bookingSchema = new mongoose.Schema({
     deadline: { type: Date },
     offeredAt: { type: Date },
     resolvedAt: { type: Date },
+    // A GCash payment in flight for the difference, when the client had
+    // already settled this booking in full and the dates they chose cost
+    // more. The dates don't move until it lands — see startTopUp and
+    // confirmTopUp in utils/adjustOffer.js.
+    topUp: {
+      checkoutSessionId: { type: String, default: '' },
+      amount: { type: Number, default: 0 },
+      startedAt: { type: Date },
+      option: {
+        startDate: { type: Date },
+        endDate: { type: Date },
+        subtotal: { type: Number, default: 0 },
+        discountAmount: { type: Number, default: 0 },
+        totalPrice: { type: Number, default: 0 },
+        promoLabel: { type: String, default: '' },
+      },
+    },
   },
   // 'offline' = pay in person (cash/GCash, unverified), 'paid' = settled
   // (either the existing "paid in full" assumption, or a verified online
@@ -89,6 +106,15 @@ const bookingSchema = new mongoose.Schema({
   // PayMongo dashboard or contacting their support, since GCash's own
   // internal reference isn't exposed to merchants.
   paymongoPaymentId: { type: String, default: '' },
+  // Further GCash payments taken on this booking after the first — at the
+  // moment only the difference when a client moves to dates a promo
+  // doesn't reach. A refund can't be taken from a payment that never held
+  // the money, so refundBookingPayment works through these in turn.
+  extraPayments: [{
+    paymongoPaymentId: { type: String, default: '' },
+    amount: { type: Number, default: 0 },
+    paidAt: { type: Date },
+  }],
   // Set once a refund is actually issued through PayMongo (not just marked
   // approved in our own status) — see refundBookingPayment in
   // utils/paymongo.js. Status is whatever PayMongo returns immediately
