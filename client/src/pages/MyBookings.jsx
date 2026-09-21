@@ -397,7 +397,14 @@ const MyBookings = () => {
       gridColumn: '3', gridRow: '2',
       display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
     },
-    detailsRow: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'flex-start' },
+    detailsPanel: {
+      background: isDark ? '#2a2b2c' : '#f3f4f6',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e8eaed'}`,
+      borderRadius: '14px', padding: '14px 16px',
+    },
+    // Centred rather than top-aligned: the pickup box is the taller of the
+    // two, and level text either side of it reads as one panel.
+    detailsRow: { display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'center' },
     // Ambient glow color follows the booking's own status — confirmed
     // (upcoming) is the one that actually needs attention, so it gets the
     // most prominent glow; cancelled fades into the background since
@@ -578,7 +585,7 @@ const MyBookings = () => {
     pickupPanel: {
       flex: '0 1 300px', minWidth: '200px', maxWidth: '300px', margin: '0 auto',
       fontSize: '12px', lineHeight: '1.5', padding: '14px 16px', borderRadius: '12px',
-      background: isDark ? '#303132' : '#f8fafc',
+      background: isDark ? '#38393b' : '#ffffff',
       border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
     },
     pickupLine: { display: 'flex', alignItems: 'center', gap: '6px', color: isDark ? '#86efac' : '#166534', fontWeight: '700' },
@@ -854,35 +861,37 @@ const MyBookings = () => {
                     )}
                   </div>
 
-                  <div style={styles.detailsRow}>
-                    <div style={styles.info}>
-                      <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
-                        <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                        {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
+                  <div style={styles.detailsPanel}>
+                    <div style={styles.detailsRow}>
+                      <div style={styles.info}>
+                        <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
+                          <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                          {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
+                        </div>
+                        <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
+                          <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                          <span style={styles.carSub}>
+                            {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
+                          </span>
+                        </div>
                       </div>
-                      <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
-                        <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                        <span style={styles.carSub}>
-                          {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
-                        </span>
-                      </div>
-                    </div>
 
-                    {(booking.status === 'confirmed' || booking.status === 'pending') && (
-                      <div style={styles.pickupPanel}>
-                        <div style={styles.pickupLine}>
-                          <PinLineIcon /> Pickup: {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                      {(booking.status === 'confirmed' || booking.status === 'pending') && (
+                        <div style={styles.pickupPanel}>
+                          <div style={styles.pickupLine}>
+                            <PinLineIcon /> Pickup: {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                          </div>
+                          <div style={styles.returnLine}>
+                            <ReturnLineIcon /> Return: {new Date(booking.endDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                          </div>
+                          <div style={styles.driverNote}>
+                            {booking.bookingType === 'self-drive'
+                              ? "Bring a valid ID and your driver's license to pick up the vehicle."
+                              : 'Your driver will meet you at the pickup location.'}
+                          </div>
                         </div>
-                        <div style={styles.returnLine}>
-                          <ReturnLineIcon /> Return: {new Date(booking.endDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                        </div>
-                        <div style={styles.driverNote}>
-                          {booking.bookingType === 'self-drive'
-                            ? "Bring a valid ID and your driver's license to pick up the vehicle."
-                            : 'Your driver will meet you at the pickup location.'}
-                        </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
 
