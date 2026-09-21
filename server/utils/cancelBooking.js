@@ -2,6 +2,7 @@ import Car from '../models/Car.js';
 import { refundBookingPayment } from './paymongo.js';
 import { notifyUser, notifyAdmins } from './notify.js';
 import { vehicleUnavailableMessage, formatTripDates } from './blockReasons.js';
+import { bookingSpan } from './availability.js';
 
 // Tiered on how long ago the booking was MADE, not on the pickup date.
 // Lives here rather than in routes/bookings.js so the admin cancel path and
@@ -38,8 +39,13 @@ export function refundAmountFor(booking, reason, customAmount) {
 // A booking whose rental has already started. Deliberately left alone by the
 // blocked-dates sweep: the client physically has the car, so cancelling and
 // refunding behind their back would be wrong. Surfaced to admin instead.
-export const isUnderway = (booking, now = new Date()) =>
-  new Date(booking.startDate) <= now && new Date(booking.endDate) >= now;
+export const isUnderway = (booking, now = new Date()) => {
+  // Through bookingSpan so a booking made before pickup times existed is
+  // judged on the calendar days it meant, not on the UTC midnights it was
+  // stored at — which are eight hours adrift of them.
+  const span = bookingSpan(booking);
+  return span.start <= now && span.end >= now;
+};
 
 // The full message the client receives, and the short line shown beside
 // the refund on their bookings page. Kept apart because a full apology

@@ -14,6 +14,7 @@ import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import AdjustOfferPanel from '../components/AdjustOfferPanel';
 import { paginate } from '../utils/paginate';
 import { bookingAwaitingDecision } from '../utils/offerWindow';
+import { formatMoment, formatHour, phHour } from '../utils/phTime';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
@@ -923,10 +924,10 @@ const MyBookings = () => {
                     {(booking.status === 'confirmed' || booking.status === 'pending') && (
                       <div style={styles.pickupPanel}>
                         <div style={styles.pickupLine}>
-                          <PinLineIcon /> Pickup: {new Date(booking.startDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                          <PinLineIcon /> Pickup: {formatMoment(booking.startDate, booking.hasPickupTime)}
                         </div>
                         <div style={styles.returnLine}>
-                          <ReturnLineIcon /> Return: {new Date(booking.endDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                          <ReturnLineIcon /> Return: {formatMoment(booking.endDate, booking.hasPickupTime)}
                         </div>
                         <div style={styles.driverNote}>
                           {booking.bookingType === 'self-drive'
@@ -1107,6 +1108,7 @@ const MyBookings = () => {
               Move this {rescheduleBooking.totalDays}-day trip to different dates. No fee — but it needs admin approval,
               and the new dates must total the same {rescheduleBooking.totalDays} day{rescheduleBooking.totalDays === 1 ? '' : 's'}.
               Tap a start date below — the return date is set for you automatically.
+              {rescheduleBooking.hasPickupTime && ` Your ${formatHour(phHour(rescheduleBooking.startDate))} pickup time stays as it is.`}
             </p>
 
             {rescheduleError && <div style={styles.errorBox}>{rescheduleError}</div>}

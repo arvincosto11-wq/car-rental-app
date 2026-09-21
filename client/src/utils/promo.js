@@ -28,10 +28,20 @@ export const isPromoVisible = (promo, now = new Date()) =>
 export const isPromoRunning = (promo, now = new Date()) =>
   hasPromo(promo) && now >= startOfDayUTC(promo.startDate) && now <= endOfDayUTC(promo.endDate);
 
+// Both sides are really calendar DATES, so they're compared as calendar
+// dates. ISO day strings sort correctly as plain text, so >= and <= do the
+// right thing — and the two are anchored differently, so each is read its
+// own way: a promo date sits at UTC midnight and means a plain day, while a
+// rental is a real moment in Legazpi, where 7:00 AM is 11:00 PM the day
+// BEFORE in UTC. Comparing the raw instants threw a client off the first day
+// of every promo they booked on. Same rule as the server.
+const promoDay = (d) => new Date(d).toISOString().slice(0, 10);
+const rentalDay = (d) => new Date(new Date(d).getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
 // The whole rental has to sit inside the window — same rule as the server.
 export const promoCoversRange = (promo, start, end) => {
   if (!hasPromo(promo) || !start || !end) return false;
-  return new Date(start) >= startOfDayUTC(promo.startDate) && new Date(end) <= endOfDayUTC(promo.endDate);
+  return rentalDay(start) >= promoDay(promo.startDate) && rentalDay(end) <= promoDay(promo.endDate);
 };
 
 export const promoOffer = (promo) => {

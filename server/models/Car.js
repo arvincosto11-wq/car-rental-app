@@ -29,6 +29,11 @@ const carSchema = new mongoose.Schema({
   // falls back to the single `image` for those.
   photos: [{ url: String, fileId: String }],
   isAvailable: { type: Boolean, default: true },
+  // Hours needed between one client returning this vehicle and the next
+  // collecting it. Blank means the standard two (see turnaroundHoursFor in
+  // utils/phTime.js) — only set on vehicles that genuinely need longer,
+  // like a van.
+  turnaroundHours: { type: Number, default: null },
   // Lets admin double-check a listing before it's visible to customers.
   // Defaults to 'published' so every car created before this field existed
   // behaves exactly as it did (see the $ne: 'draft' checks in routes/cars.js
@@ -98,6 +103,11 @@ const carSchema = new mongoose.Schema({
   blockedDates: [{
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
+    // A block covers whole days unless admin gave it times — "in for aircon
+    // service 8:00 AM to 12:00 PM, back on the road in the afternoon".
+    // False on every range saved before this existed, which is what they
+    // always meant.
+    hasTime: { type: Boolean, default: false },
     // reasonCode decides what a client is told when this block cancels
     // their booking; note is private and never leaves the admin/owner side.
     // `reason` is the old free-text field, kept so ranges saved before this

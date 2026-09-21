@@ -14,6 +14,7 @@ import PromoConfetti from '../components/PromoConfetti';
 import PromoBadge from '../components/PromoBadge';
 import useLongRentalRules from '../hooks/useLongRentalRules';
 import { bestLongRentalRule, longRentalDiscountOn, rulesForCar } from '../utils/longRental';
+import { instantFrom, phDayStart, pickupHours, formatHour, formatPhDate, SHORT_NOTICE_HOURS } from '../utils/phTime';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
@@ -44,7 +45,7 @@ const SparkIcon = () => (
 const dayWord = (n) => (n === 1 ? 'day' : 'days');
 
 const STEP_HEADINGS = {
-  1: { title: 'Select Dates', sub: 'Tap a pickup date, then a return date.' },
+  1: { title: 'Select Dates', sub: 'Tap a pickup date, then a return date, then choose your pickup time.' },
   2: { title: 'Type & Payment', sub: 'Choose how you drive and how you pay.' },
   3: { title: 'Final Confirmation', sub: 'Check everything, then pay.' },
 };
@@ -68,6 +69,19 @@ const CarDetail = () => {
   // Pre-filled from the homepage/Cars search box, if the visitor came from there.
   const [startDate, setStartDate] = useState(searchParams.get('pickup') || '');
   const [endDate, setEndDate] = useState(searchParams.get('return') || '');
+  // The hour the client asked for. The hour actually used is derived from
+  // it below, so a choice that stops being available when the dates move —
+  // or when someone else books — corrects itself instead of going stale.
+  const [preferredHour, setPreferredHour] = useState(null);
+  // Which pickup hours are still in the future depends on the clock, and
+  // reading the clock while rendering makes the output depend on exactly
+  // when the render happened. Held in state and ticked once a minute so a
+  // slot that passes while someone is deciding drops away on its own.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
   usePageTitle(car ? `${car.brand} ${car.model}` : 'Vehicle');
   const [paymentType, setPaymentType] = useState('downpayment');
   const [bookingType, setBookingType] = useState('with-driver');
@@ -190,11 +204,46 @@ const CarDetail = () => {
   }, [discountAmount, car?._id]);
   const amountToPay = paymentType === 'downpayment' ? downPayment : totalPrice;
 
-  const overlapsBookedDates = (start, end) => {
-    const s = new Date(start).getTime();
-    const e = new Date(end).getTime();
-    return bookedRanges.some((r) => s < new Date(r.endDate).getTime() && e > new Date(r.startDate).getTime());
-  };
+  // What the vehicle is really unavailable for. The server sends each
+  // booking's span with its turnaround already added, so the hours offered
+  // here are the hours it will actually accept.
+  const busySpans = bookedRanges.map((r) => (r.busyStart && r.busyEnd
+    ? { start: new Date(r.busyStart).getTime(), end: new Date(r.busyEnd).getTime() }
+    : { start: phDayStart(r.startDate).getTime(), end: phDayStart(r.endDate).getTime() }));
+
+  // Every hour this whole trip could run from. Checked across the entire
+  // range, not just the moment of pickup — a 9:00 AM start is no use if the
+  // vehicle is due out again before the client is meant to bring it back.
+  const hoursFor = (start, end) => (start && end
+    ? pickupHours().filter((h) => {
+      const from = instantFrom(start, h).getTime();
+      const to = instantFrom(end, h).getTime();
+      return !busySpans.some((b) => from < b.end && to > b.start);
+    })
+    : []);
+
+  // A range with no workable hour at all is a range that can't be booked.
+  const overlapsBookedDates = (start, end) => hoursFor(start, end).length === 0;
+
+  // Hours already gone today drop off the list — you can't collect a vehicle
+  // at 7:00 AM when it's nine in the morning.
+  const availableHours = hoursFor(startDate, endDate)
+    .filter((h) => instantFrom(startDate, h).getTime() > now);
+
+  // The hour the booking will actually use: what they asked for while it
+  // still works, otherwise the earliest one that does.
+  const pickupHour = availableHours.includes(preferredHour)
+    ? preferredHour
+    : (availableHours.length ? availableHours[0] : null);
+
+  // Booking a pickup that is nearly upon us isn't refused — every booking
+  // needs confirming anyway — but saying so beats a surprise later.
+  // Appended wherever the range is shown, so the hour follows the dates
+  // around the whole flow instead of appearing only at the last step.
+  const atTime = pickupHour === null ? '' : ` at ${formatHour(pickupHour)}`;
+
+  const shortNotice = pickupHour !== null && startDate
+    && instantFrom(startDate, pickupHour).getTime() - now < SHORT_NOTICE_HOURS * 60 * 60 * 1000;
 
   // Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
   // the wrong day in timezones ahead of UTC, like PH).
@@ -244,6 +293,9 @@ const CarDetail = () => {
     if (overlapsBookedDates(startDate, endDate)) {
       return setError('This vehicle is already booked for some of your selected dates. Check the calendar above and pick different dates.');
     }
+    if (pickupHour === null) {
+      return setError('Please choose a pickup time.');
+    }
     setError('');
     setStep(2);
   };
@@ -276,6 +328,7 @@ const CarDetail = () => {
         carId: id,
         startDate,
         endDate,
+        pickupHour,
         paymentType,
         amountPaid: amountToPay,
         totalPrice,
@@ -348,6 +401,26 @@ const CarDetail = () => {
     },
     promoNudge: {
       marginTop: '10px', fontSize: '12px', fontWeight: '600',
+      color: isDark ? GOLD_DARK : GOLD,
+    },
+    timeBlock: { marginTop: '18px' },
+    timeRow: { display: 'flex', flexWrap: 'wrap', gap: '7px' },
+    timeChip: (active, open) => ({
+      padding: '8px 13px', borderRadius: '999px',
+      border: `1px solid ${active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      background: active ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
+      color: active ? ON_GOLD : (isDark ? '#e4e6eb' : '#1a1a1a'),
+      fontSize: '12.5px', fontWeight: active ? '800' : '600', fontFamily: 'inherit',
+      cursor: open ? 'pointer' : 'not-allowed',
+      opacity: open ? 1 : 0.32,
+      textDecoration: open ? 'none' : 'line-through',
+    }),
+    timeNote: { marginTop: '10px', fontSize: '11.5px', lineHeight: 1.5, color: isDark ? '#8a8d91' : '#9ca3af' },
+    timeWarn: {
+      marginTop: '10px', padding: '9px 12px', borderRadius: '9px',
+      fontSize: '11.5px', lineHeight: 1.45, fontWeight: '600',
+      background: isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.09)',
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.38)' : 'rgba(184,121,10,0.32)'}`,
       color: isDark ? GOLD_DARK : GOLD,
     },
     breakdownRow: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px' },
@@ -678,7 +751,7 @@ const CarDetail = () => {
                             <span style={s.pillLabel}>Selected dates</span>
                             <span style={s.pillValue}>
                               {startDate && endDate
-                                ? `${new Date(startDate).toLocaleDateString()} → ${new Date(endDate).toLocaleDateString()} · ${totalDays} ${dayWord(totalDays)}`
+                                ? `${new Date(startDate).toLocaleDateString()} → ${new Date(endDate).toLocaleDateString()}${atTime} · ${totalDays} ${dayWord(totalDays)}`
                                 : `${new Date(startDate).toLocaleDateString()} → pick your return date`}
                             </span>
                           </span>
@@ -695,6 +768,51 @@ const CarDetail = () => {
                       isDark={isDark}
                       promo={isPromoVisible(car.promo) ? car.promo : null}
                     />
+                    {startDate && endDate && (
+                      <div style={s.timeBlock}>
+                        <div style={s.sectionLabel} id="cd-pickup-time-label">Pickup time</div>
+                        {availableHours.length === 0 ? (
+                          <p style={s.timeNote}>
+                            There is no pickup time left that fits these dates. Please choose a different range.
+                          </p>
+                        ) : (
+                          <>
+                            <div role="group" aria-labelledby="cd-pickup-time-label" style={s.timeRow}>
+                              {pickupHours().map((h) => {
+                                const open = availableHours.includes(h);
+                                return (
+                                  <button
+                                    key={h}
+                                    type="button"
+                                    aria-pressed={pickupHour === h}
+                                    disabled={!open}
+                                    style={s.timeChip(pickupHour === h, open)}
+                                    title={open ? undefined : 'Not available for these dates — the vehicle is out, or being returned and checked.'}
+                                    onClick={() => setPreferredHour(h)}
+                                  >
+                                    {formatHour(h)}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {pickupHour !== null && (
+                              <p style={s.timeNote}>
+                                You bring it back at the same time:{' '}
+                                <strong style={{ color: isDark ? '#e4e6eb' : '#1a1a1a' }}>
+                                  {formatHour(pickupHour)} on {formatPhDate(instantFrom(endDate, pickupHour))}
+                                </strong>.
+                              </p>
+                            )}
+                            {shortNotice && (
+                              <p style={s.timeWarn}>
+                                This pickup is very soon — we may not be able to confirm it in time.
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+
                     {isPromoVisible(car.promo) && startDate && endDate && !promoApplies && !usingLongRental && (
                       <p style={s.promoNudge}>
                         Pick dates within {promoDateRange(car.promo)} to save {promoOffer(car.promo)}.
@@ -712,7 +830,7 @@ const CarDetail = () => {
                         <span style={{ minWidth: 0 }}>
                           <span style={s.pillLabel}>Selected dates</span>
                           <span style={s.pillValue}>
-                            {new Date(startDate).toLocaleDateString()} → {new Date(endDate).toLocaleDateString()} · {totalDays} {dayWord(totalDays)}
+                            {new Date(startDate).toLocaleDateString()} → {new Date(endDate).toLocaleDateString()}{atTime} · {totalDays} {dayWord(totalDays)}
                           </span>
                         </span>
                       </span>
@@ -857,6 +975,7 @@ const CarDetail = () => {
                             <span style={s.summaryMain}>{totalDays} {dayWord(totalDays)}</span>
                             <span style={s.summarySub}>
                               {new Date(startDate).toLocaleDateString()} → {new Date(endDate).toLocaleDateString()}
+                              {pickupHour !== null && `, ${formatHour(pickupHour)} both ends`}
                             </span>
                           </span>
                         </span>

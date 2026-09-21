@@ -11,6 +11,8 @@ import { computeBookingPrice } from '../utils/promo.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { openAdjustOffer, acceptAdjustOffer, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
 import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS } from '../utils/cancelBooking.js';
+import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js';
+import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
 
 const router = express.Router();
 
@@ -30,8 +32,10 @@ async function recomputeCarRating(carId) {
 // having to remember to click "Mark as Returned". Early returns still go
 // through the manual admin action.
 async function autoCompleteExpiredBookings() {
-  const startOfToday = new Date();
-  startOfToday.setUTCHours(0, 0, 0, 0);
+  // Measured against the start of today in Legazpi, not in UTC — with real
+  // return times a UTC boundary would complete a morning return eight hours
+  // after the client handed the keys back, on the same day.
+  const startOfToday = phDayStart(new Date());
 
   const expired = await Booking.find({ status: 'confirmed', endDate: { $lt: startOfToday } });
   for (const booking of expired) {
@@ -53,29 +57,22 @@ async function recomputeClientRating(userId) {
 }
 
 // Date-range overlap check: does `car` already have a booking in one of
-// `statuses` whose dates overlap [start, end)? Only CONFIRMED bookings are
-// treated as a hard block for other clients — a pending request never blocks
-// anyone else's request for the same dates, it just risks losing the race
-// when one of the pending requests gets confirmed (see the auto-refund
-// logic below, which is the actual arbiter).
-async function findOverlappingBooking(carId, start, end, statuses, excludeId) {
-  const query = {
-    car: carId,
-    status: { $in: statuses },
-    startDate: { $lt: end },
-    endDate: { $gt: start },
-  };
-  if (excludeId) query._id = { $ne: excludeId };
-  return Booking.findOne(query);
-}
-
-// Blocked ranges (maintenance, owner keeping the car for personal use, etc.)
-// are a hard block same as a confirmed booking's dates — just not derived
-// from an actual reservation. Only 'approved' ranges count — a consignor's
-// pending request has no effect until an admin signs off on it.
-async function findBlockedRange(carId, start, end) {
-  const car = await Car.findById(carId).select('blockedDates');
-  return (car?.blockedDates || []).find((b) => b.status === 'approved' && new Date(b.startDate) < end && new Date(b.endDate) > start);
+// Is this vehicle free for [start, end)? Returns whatever is in the way, or
+// null, with `kind` saying whether it's another booking or a blocked range —
+// the two mean different things to a client.
+//
+// Only CONFIRMED bookings are treated as a hard block for other clients: a
+// pending request never blocks anyone else's, it just risks losing the race
+// when one of them gets confirmed (see the offer-or-refund logic below,
+// which is the actual arbiter). Blocked ranges count only once approved — a
+// consignor's request has no effect until an admin signs off.
+//
+// The real work lives in utils/availability.js, which also adds each
+// booking's turnaround and repairs the eight-hour drift on anything saved
+// before pickup times existed.
+async function findConflict(carId, start, end, statuses = ['confirmed'], excludeBookingId) {
+  const { spans } = await busySpans(carId, { statuses, excludeBookingId });
+  return firstConflict({ start: new Date(start), end: new Date(end) }, spans);
 }
 
 // Create booking
@@ -101,8 +98,29 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({ message: `This vehicle does not offer ${requestedType === 'self-drive' ? 'self-drive' : 'with-driver'} bookings.` });
     }
 
-    const requestedStart = new Date(startDate);
-    const requestedEnd = new Date(endDate);
+    // A pickup hour makes these real moments in Legazpi rather than the old
+    // date-only form. It's optional so a browser still running the previous
+    // build keeps working exactly as it did — those bookings simply carry no
+    // time, and hasPickupTime records which kind this is.
+    const pickupHour = Number(req.body.pickupHour);
+    const hasPickupTime = isTradingHour(pickupHour);
+    if (req.body.pickupHour !== undefined && req.body.pickupHour !== null && !hasPickupTime) {
+      return res.status(400).json({ message: 'Please choose a pickup time between 7:00 AM and 8:00 PM.' });
+    }
+
+    const requestedStart = hasPickupTime ? instantFrom(startDate, pickupHour) : new Date(startDate);
+    const requestedEnd = hasPickupTime ? instantFrom(endDate, pickupHour) : new Date(endDate);
+    // What the vehicle is actually occupied for. A date-only booking means
+    // whole calendar days in Legazpi, not UTC midnights.
+    const requestedSpan = hasPickupTime
+      ? { start: requestedStart, end: requestedEnd }
+      : dayAlignedSpan(requestedStart, requestedEnd);
+
+    // Only enforced on bookings that carry a time — a date-only one has no
+    // hour to compare, and "today" has always been bookable.
+    if (hasPickupTime && requestedStart <= new Date()) {
+      return res.status(400).json({ message: 'That pickup time has already passed. Please choose another.' });
+    }
 
     // Don't let the same client double-submit for dates they've already
     // requested/booked on this car.
@@ -118,14 +136,13 @@ router.post('/', protect, async (req, res) => {
     // pending requests from other clients don't, so multiple people can
     // request the same dates and the first one an admin confirms wins (the
     // others get auto-refunded, see PUT /:id below).
-    const confirmedOverlap = await findOverlappingBooking(carId, requestedStart, requestedEnd, ['confirmed']);
-    if (confirmedOverlap) {
-      return res.status(400).json({ message: 'This vehicle is already booked for some of the selected dates. Please choose different dates.' });
-    }
-
-    const blockedRange = await findBlockedRange(carId, requestedStart, requestedEnd);
-    if (blockedRange) {
-      return res.status(400).json({ message: 'This vehicle is not available during the selected dates. Please choose different dates.' });
+    const conflict = await findConflict(carId, requestedSpan.start, requestedSpan.end);
+    if (conflict) {
+      return res.status(400).json({
+        message: conflict.kind === 'block'
+          ? 'This vehicle is not available during the selected dates. Please choose different dates.'
+          : 'This vehicle is already booked around the selected dates and times. Please choose another slot.',
+      });
     }
 
     // A verified, unexpired ID is required for EVERY booking type — identity
@@ -156,7 +173,9 @@ router.post('/', protect, async (req, res) => {
 
     const start = requestedStart;
     const end = requestedEnd;
-    const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    // Unchanged by the hour: the return is always the same time as the
+    // pickup, so a day is always exactly a day.
+    const totalDays = daysBetween(start, end);
 
     // Price and amount due are computed server-side from the car's real
     // price, never trusted from the client — otherwise a tampered request
@@ -179,6 +198,7 @@ router.post('/', protect, async (req, res) => {
       car: carId,
       startDate: start,
       endDate: end,
+      hasPickupTime,
       totalDays,
       totalPrice: computedTotalPrice,
       subtotal,
@@ -291,12 +311,12 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       // Re-check for a conflicting CONFIRMED booking right before committing —
       // this is the actual guard against double-booking now that availability
       // is per-date-range instead of one blanket flag on the car.
-      const conflict = await findOverlappingBooking(booking.car, booking.startDate, booking.endDate, ['confirmed'], booking._id);
-      // Also re-check admin-blocked dates — the admin may have blocked this
-      // range after the client's request came in.
-      const blockedRange = !conflict ? await findBlockedRange(booking.car, booking.startDate, booking.endDate) : null;
+      // Catches an admin-blocked range as well as another reservation — the
+      // admin may have blocked this range after the client's request came in.
+      const conflict = await findConflict(booking.car, bookingSpan(booking).start, bookingSpan(booking).end, ['confirmed'], booking._id);
+      const blockedRange = conflict?.kind === 'block';
 
-      if (conflict || blockedRange) {
+      if (conflict) {
         // Another booking already claimed overlapping dates, or the admin
         // blocked them. Don't allow this one to be confirmed too — send it
         // straight to an approved refund instead. This is the platform's
@@ -369,8 +389,9 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         await pending.save();
       }
 
-      const pickupStr = new Date(booking.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const returnStr = new Date(booking.endDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const longDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const pickupStr = formatMoment(booking.startDate, booking.hasPickupTime, longDate);
+      const returnStr = formatMoment(booking.endDate, booking.hasPickupTime, longDate);
       const pickupReminder = booking.bookingType === 'self-drive'
         ? "Bring a valid ID and your driver's license to pick up the vehicle."
         : 'Your driver will meet you at the pickup location.';
@@ -598,15 +619,20 @@ router.post('/:id/reschedule', protect, async (req, res) => {
       return res.status(400).json({ message: 'Please choose new dates or a refund on this booking first.' });
     }
 
-    const start = new Date(newStartDate);
-    const end = new Date(newEndDate);
+    // A reschedule moves the dates and keeps the booking's own pickup time.
+    // Letting both change at once would mean re-pricing and a second round
+    // of availability checks for no real gain — and the client can always
+    // cancel and rebook if the hour is what they need to change.
+    const keptHour = booking.hasPickupTime ? phHour(booking.startDate) : null;
+    const start = keptHour === null ? new Date(newStartDate) : instantFrom(newStartDate, keptHour);
+    const end = keptHour === null ? new Date(newEndDate) : instantFrom(newEndDate, keptHour);
     if (!newStartDate || !newEndDate || isNaN(start) || isNaN(end) || start >= end) {
       return res.status(400).json({ message: 'Please provide a valid date range.' });
     }
     if (start < new Date()) {
       return res.status(400).json({ message: 'The new pickup date must be in the future.' });
     }
-    const newDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    const newDays = daysBetween(start, end);
     if (newDays !== booking.totalDays) {
       return res.status(400).json({ message: `Reschedule must keep the same trip length (${booking.totalDays} day${booking.totalDays === 1 ? '' : 's'}). Cancel and rebook instead if you need a different duration.` });
     }
@@ -614,14 +640,13 @@ router.post('/:id/reschedule', protect, async (req, res) => {
       return res.status(400).json({ message: 'Those are already this booking\'s current dates.' });
     }
 
-    const conflict = await findOverlappingBooking(booking.car, start, end, ['confirmed'], booking._id);
+    const conflict = await findConflict(booking.car, start, end, ['confirmed'], booking._id);
     if (conflict) {
-      return res.status(400).json({ message: 'This vehicle is already booked for some of those dates. Please choose a different range.' });
-    }
-
-    const blockedRange = await findBlockedRange(booking.car, start, end);
-    if (blockedRange) {
-      return res.status(400).json({ message: 'This vehicle is not available during those dates. Please choose a different range.' });
+      return res.status(400).json({
+        message: conflict.kind === 'block'
+          ? 'This vehicle is not available during those dates. Please choose a different range.'
+          : 'This vehicle is already booked around those dates and times. Please choose a different range.',
+      });
     }
 
     booking.rescheduleRequest = {
@@ -657,11 +682,10 @@ router.put('/:id/reschedule', protect, adminOnly, async (req, res) => {
       // Re-check right before committing — dates could have been claimed by
       // another confirmed booking (or blocked by admin) since the client's
       // original request.
-      const conflict = await findOverlappingBooking(booking.car, booking.rescheduleRequest.newStartDate, booking.rescheduleRequest.newEndDate, ['confirmed'], booking._id);
-      const blockedRange = !conflict ? await findBlockedRange(booking.car, booking.rescheduleRequest.newStartDate, booking.rescheduleRequest.newEndDate) : null;
-      if (conflict || blockedRange) {
+      const conflict = await findConflict(booking.car, booking.rescheduleRequest.newStartDate, booking.rescheduleRequest.newEndDate, ['confirmed'], booking._id);
+      if (conflict) {
         booking.rescheduleRequest.status = 'declined';
-        booking.rescheduleRequest.adminNotes = blockedRange
+        booking.rescheduleRequest.adminNotes = conflict.kind === 'block'
           ? 'Automatically declined: those dates are blocked.'
           : 'Automatically declined: those dates were booked by someone else in the meantime.';
         await booking.save();

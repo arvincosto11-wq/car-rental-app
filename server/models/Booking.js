@@ -6,6 +6,12 @@ const bookingSchema = new mongoose.Schema({
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
   totalDays: { type: Number, required: true },
+  // Whether startDate/endDate carry a real pickup time, or are the old
+  // date-only form. Every booking made before pickup times existed sits at
+  // UTC midnight and means a whole calendar day, so it must not be shown as
+  // a "12:00 AM pickup" — see utils/phTime.js. The return is always the
+  // same hour as the pickup, so one flag covers both ends.
+  hasPickupTime: { type: Boolean, default: false },
   // What's actually owed, after any promo discount. Everything else that
   // talks about money (amountPaid, refunds, the paid-in-full check) reads
   // this, so it keeps meaning exactly what it always meant.

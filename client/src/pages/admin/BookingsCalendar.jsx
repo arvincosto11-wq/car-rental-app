@@ -8,6 +8,7 @@ import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import api from '../../api';
+import { formatMoment } from '../../utils/phTime';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_LABELS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -203,7 +204,7 @@ const BookingsCalendar = () => {
                   <span style={s.bookingCar}>{b.car?.brand} {b.car?.model}</span>
                   <span style={s.statusBadge(STATUS_COLORS[b.status] || '#9ca3af')}>{b.status}</span>
                 </div>
-                <div style={s.bookingMeta}>{b.user?.name} · {new Date(b.startDate).toLocaleDateString()} to {new Date(b.endDate).toLocaleDateString()} · ₱{b.totalPrice?.toLocaleString()}</div>
+                <div style={s.bookingMeta}>{b.user?.name} · {formatMoment(b.startDate, b.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })} to {formatMoment(b.endDate, b.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })} · ₱{b.totalPrice?.toLocaleString()}</div>
               </div>
             ))}
             <button style={s.closeBtn} onClick={() => setSelectedDay(null)}>Close</button>

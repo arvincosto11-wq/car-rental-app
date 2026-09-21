@@ -9,6 +9,8 @@ import { validatePromo } from '../utils/promo.js';
 import { cancelBookingWithRefund, refundAmountFor, isUnderway } from '../utils/cancelBooking.js';
 import { BLOCK_REASON_CODES, causeFor, blockLabelFor } from '../utils/blockReasons.js';
 import { openAdjustOffer, previewAlternatives } from '../utils/adjustOffer.js';
+import { bookingSpan, blockedSpan, padded, bookingsOverlapping, overlaps } from '../utils/availability.js';
+import { instantFrom, isClockHour, formatMoment, turnaroundHoursFor } from '../utils/phTime.js';
 import User from '../models/User.js';
 
 const router = express.Router();
@@ -98,14 +100,28 @@ router.get('/:id/booked-dates', async (req, res) => {
     const statuses = includePending ? ['confirmed', 'pending'] : ['confirmed'];
 
     const [bookings, car] = await Promise.all([
-      Booking.find({ car: req.params.id, status: { $in: statuses } }).select('startDate endDate'),
-      Car.findById(req.params.id).select('blockedDates'),
+      Booking.find({ car: req.params.id, status: { $in: statuses } }).select('startDate endDate hasPickupTime'),
+      Car.findById(req.params.id).select('blockedDates turnaroundHours'),
     ]);
+
+    // Each range carries BOTH forms. startDate/endDate are the raw stored
+    // dates, which is all the admin date pickers ever needed. busyStart and
+    // busyEnd are the real moments the vehicle can't be had — a booking's
+    // own span plus the turnaround either side of it — so the client
+    // calendar can grey out part of a changeover day instead of losing the
+    // whole of it, and agrees with what the server will actually accept.
+    const hours = turnaroundHoursFor(car);
     const ranges = [
-      ...bookings.map((b) => ({ startDate: b.startDate, endDate: b.endDate })),
+      ...bookings.map((b) => {
+        const busy = padded(bookingSpan(b), hours);
+        return { startDate: b.startDate, endDate: b.endDate, busyStart: busy.start, busyEnd: busy.end, kind: 'booking' };
+      }),
       ...(car?.blockedDates || [])
         .filter((b) => b.status === 'approved')
-        .map((b) => ({ startDate: b.startDate, endDate: b.endDate })),
+        .map((b) => {
+          const busy = blockedSpan(b);
+          return { startDate: b.startDate, endDate: b.endDate, busyStart: busy.start, busyEnd: busy.end, kind: 'block' };
+        }),
     ];
     res.json(ranges);
   } catch (err) {
@@ -129,9 +145,15 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
       return res.status(403).json({ message: 'You can only manage blocked dates for your own vehicles.' });
     }
 
-    const { startDate, endDate, reasonCode, note } = req.body;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const { startDate, endDate, startHour, endHour, reasonCode, note } = req.body;
+    // A block covers whole days unless admin gave it hours — "in for aircon
+    // service 8:00 AM to 12:00 PM, back on the road in the afternoon".
+    // Whole days run midnight to midnight in Legazpi, which is what they
+    // always meant; storing them at UTC midnight put them eight hours out,
+    // and that gap is exactly where a 7:00 AM pickup would slip through.
+    const hasTime = isClockHour(startHour) && isClockHour(endHour);
+    const start = instantFrom(startDate, hasTime ? Number(startHour) : 0);
+    const end = instantFrom(endDate, hasTime ? Number(endHour) : 0);
     if (!startDate || !endDate || isNaN(start) || isNaN(end) || end <= start) {
       return res.status(400).json({ message: 'Please provide a valid date range.' });
     }
@@ -141,11 +163,11 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
     // confusing list to clean up. Declined ranges don't count; they never
     // took effect.
     const clash = (car.blockedDates || []).find((b) => b.status !== 'declined'
-      && new Date(b.startDate) < end && new Date(b.endDate) > start);
+      && overlaps(blockedSpan(b), { start, end }));
     if (clash) {
-      const fmt = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+      const shown = (d) => formatMoment(d, clash.hasTime, { month: 'short', day: 'numeric', year: 'numeric' });
       return res.status(400).json({
-        message: `These dates overlap a blocked range already on this vehicle (${fmt(clash.startDate)} to ${fmt(clash.endDate)}). `
+        message: `These dates overlap a blocked range already on this vehicle (${shown(clash.startDate)} to ${shown(clash.endDate)}). `
           + 'Remove that one first, or pick different dates.',
       });
     }
@@ -157,11 +179,10 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
     // Blocking and refunding are ONE action rather than two. Doing them
     // separately leaves a window where the dates are free again and someone
     // books the broken car, and it can be left half-done.
-    const affected = await Booking.find({
-      car: req.params.id,
-      status: { $in: ['confirmed', 'pending'] },
-      startDate: { $lt: end }, endDate: { $gt: start },
-    }).populate('user', 'name');
+    // Queried a day wide either side and then compared precisely — bookings
+    // made before pickup times existed are stored eight hours out, and a
+    // tight range query would miss the ones at the edges.
+    const affected = await bookingsOverlapping(req.params.id, { start, end }, ['confirmed', 'pending']);
 
     if (affected.length) {
       // A consignor can't cancel anyone's booking — that would let them move
@@ -244,7 +265,7 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
     }
 
     car.blockedDates.push({
-      startDate: start, endDate: end,
+      startDate: start, endDate: end, hasTime,
       reasonCode: BLOCK_REASON_CODES.includes(reasonCode) ? reasonCode : '',
       note: note || '',
       status: isConsignor ? 'pending' : 'approved',
@@ -275,10 +296,7 @@ router.put('/:id/blocked-dates/:blockId/decision', protect, adminOnly, async (re
     }
 
     if (decision === 'approved') {
-      const conflictingBooking = await Booking.findOne({
-        car: car._id, status: 'confirmed',
-        startDate: { $lt: block.endDate }, endDate: { $gt: block.startDate },
-      });
+      const [conflictingBooking] = await bookingsOverlapping(car._id, blockedSpan(block), ['confirmed']);
       if (conflictingBooking) {
         return res.status(400).json({ message: 'This vehicle now has a confirmed booking overlapping these dates — decline instead.' });
       }
@@ -601,6 +619,22 @@ router.post('/', protect, adminOnly, async (req, res) => {
 // Update car (admin only)
 router.put('/:id', protect, adminOnly, async (req, res) => {
   try {
+    // An absurd turnaround would quietly take the vehicle off the market
+    // around every booking, so it's bounded here rather than trusted from
+    // the form. Blank clears it back to the standard two hours.
+    if ('turnaroundHours' in req.body) {
+      const raw = req.body.turnaroundHours;
+      if (raw === '' || raw === null || raw === undefined) {
+        req.body.turnaroundHours = null;
+      } else {
+        const hours = Number(raw);
+        if (!Number.isInteger(hours) || hours < 0 || hours > 48) {
+          return res.status(400).json({ message: 'Turnaround must be a whole number of hours from 0 to 48, or left blank for the standard 2.' });
+        }
+        req.body.turnaroundHours = hours;
+      }
+    }
+
     const car = await Car.findByIdAndUpdate(
       req.params.id,
       req.body,

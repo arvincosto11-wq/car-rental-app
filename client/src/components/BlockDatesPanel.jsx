@@ -8,6 +8,7 @@ import { BLOCK_REASONS, blockLabelFor, causeFor, vehicleUnavailableMessage } fro
 import { isPromoVisible } from '../utils/promo';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import { offerMessage, offerDeadline } from '../utils/offerWindow';
+import { formatHour, formatMoment } from '../utils/phTime';
 
 // Everything to do with taking one vehicle off the road, in its own panel.
 // It used to live inside Edit Vehicle, which mixed two kinds of saving in one
@@ -32,7 +33,11 @@ const toDateValue = (d) => {
   return `${y}-${m}-${day}`;
 };
 
-const EMPTY_FORM = { startDate: '', endDate: '', reasonCode: '', note: '' };
+// startHour/endHour are only sent when the admin ticks "part of the day" —
+// blank means whole days, which is what a block has always meant and what a
+// workshop visit usually is.
+const EMPTY_FORM = { startDate: '', endDate: '', startHour: '', endHour: '', reasonCode: '', note: '' };
+const CLOCK_HOURS = Array.from({ length: 24 }, (_, h) => h);
 
 const ChevronIcon = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -90,6 +95,13 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
       return;
     }
     if (clicked === form.startDate) {
+      // Tapping the same day twice normally clears the range — but a block
+      // with hours on it is usually a single day ("in the workshop Oct 1,
+      // 8:00 AM to 12:00 PM"), so there it completes the range instead.
+      if (form.startHour !== '' && !form.endDate) {
+        setForm({ ...form, endDate: clicked });
+        return;
+      }
       setForm({ ...form, startDate: '', endDate: '' });
       return;
     }
@@ -107,6 +119,10 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
   const submit = async (confirmCancellations = false) => {
     if (!form.startDate || !form.endDate) {
       toast.error('Pick the first and last day on the calendar.');
+      return;
+    }
+    if (form.startHour !== '' && form.startDate === form.endDate && Number(form.endHour) <= Number(form.startHour)) {
+      toast.error('The end time has to be later than the start time on a single day.');
       return;
     }
     setSubmitting(true);
@@ -207,6 +223,16 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
       background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
     },
     hint: { fontSize: '11px', lineHeight: 1.5, color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '6px' },
+    partDayToggle: {
+      display: 'flex', alignItems: 'flex-start', gap: '9px', cursor: 'pointer',
+      margin: '12px 0 4px', fontSize: '12.5px', fontWeight: '600',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    partDayHint: {
+      display: 'block', fontSize: '11px', fontWeight: '400', lineHeight: 1.45,
+      color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px',
+    },
+    hourRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '8px 0 10px' },
     actions: { display: 'flex', gap: '8px', marginTop: '18px' },
     primaryBtn: {
       flex: 1, padding: '10px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
@@ -371,7 +397,7 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
                   return (
                     <div key={b._id} style={isPast ? { ...s.item, opacity: 0.55 } : s.item}>
                       <span>
-                        {fmt(b.startDate)} → {fmt(b.endDate)}
+                        {formatMoment(b.startDate, b.hasTime, { month: 'numeric', day: 'numeric', year: 'numeric' })} → {formatMoment(b.endDate, b.hasTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
                         {isPast && <span style={s.tag}>Ended</span>}
                         {b.status === 'pending' && <span style={s.tag}>Pending Approval</span>}
                         {b.status === 'declined' && <span style={s.tag}>Declined</span>}
@@ -436,6 +462,46 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
               // stay unpickable for them.
               selectableWhenBooked={isAdmin}
             />
+
+            <label style={s.partDayToggle}>
+              <input
+                type="checkbox"
+                checked={form.startHour !== ''}
+                onChange={(e) => setForm({
+                  ...form,
+                  startHour: e.target.checked ? 8 : '',
+                  endHour: e.target.checked ? 12 : '',
+                })}
+              />
+              <span>
+                Only part of the day
+                <span style={s.partDayHint}>
+                  For a vehicle that goes in for a few hours and is back the same day.
+                  Leave this off and the whole day is blocked.
+                </span>
+              </span>
+            </label>
+
+            {form.startHour !== '' && (
+              <div style={s.hourRow}>
+                <select
+                  aria-label="Blocked from"
+                  style={{ ...s.input, margin: 0 }}
+                  value={form.startHour}
+                  onChange={(e) => setForm({ ...form, startHour: Number(e.target.value) })}
+                >
+                  {CLOCK_HOURS.map((h) => <option key={h} value={h}>From {formatHour(h)}</option>)}
+                </select>
+                <select
+                  aria-label="Blocked until"
+                  style={{ ...s.input, margin: 0 }}
+                  value={form.endHour}
+                  onChange={(e) => setForm({ ...form, endHour: Number(e.target.value) })}
+                >
+                  {CLOCK_HOURS.map((h) => <option key={h} value={h}>Until {formatHour(h)}</option>)}
+                </select>
+              </div>
+            )}
 
             <select
               aria-label="Reason for blocking"

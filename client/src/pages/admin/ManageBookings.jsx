@@ -16,6 +16,7 @@ import usePageTitle from '../../hooks/usePageTitle';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
 import { bookingAwaitingDecision, timeLeftLabel } from '../../utils/offerWindow';
+import { formatMoment } from '../../utils/phTime';
 
 const LOW_RATING_THRESHOLD = 3;
 const PAGE_SIZE = 10;
@@ -89,7 +90,7 @@ const ManageBookings = () => {
     && new Date(b.startDate) < new Date(booking.endDate)
     && new Date(b.endDate) > new Date(booking.startDate));
 
-  const tripDates = (b) => `${new Date(b.startDate).toLocaleDateString()} – ${new Date(b.endDate).toLocaleDateString()}`;
+  const tripDates = (b) => `${formatMoment(b.startDate, b.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })} – ${formatMoment(b.endDate, b.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}`;
 
   const handleStatus = async (id, status) => {
     if (status === 'cancelled') {
@@ -555,7 +556,7 @@ const ManageBookings = () => {
                   </div>
                 </td>
                 <td style={s.td}>
-                  {new Date(booking.startDate).toLocaleDateString()} to {new Date(booking.endDate).toLocaleDateString()}
+                  {formatMoment(booking.startDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })} to {formatMoment(booking.endDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
                   {booking.totalDays && (
                     <div style={s.rentalLengthNote}>
                       {booking.totalDays} DAY{booking.totalDays === 1 ? '' : 'S'} RENTAL
@@ -657,7 +658,7 @@ const ManageBookings = () => {
                         </>
                       ) : (
                         <span style={{ fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', fontStyle: 'italic' }}>
-                          Pickup {new Date(booking.startDate).toLocaleDateString()}
+                          Pickup {formatMoment(booking.startDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
                         </span>
                       )}
                     </div>

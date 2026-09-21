@@ -1,5 +1,6 @@
 import useModalA11y from '../hooks/useModalA11y';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
+import { phHour, formatHour } from '../utils/phTime';
 
 // Shown when a customer comes back from GCash. It replaced a toast, which
 // vanished after a few seconds — right when someone has just sent real money
@@ -29,6 +30,9 @@ const AlertIcon = () => (
 const peso = (n) => `₱${Number(n || 0).toLocaleString()}`;
 const dayWord = (n) => (n === 1 ? 'day' : 'days');
 const longDate = (d) => new Date(d).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+// Bookings made before pickup times existed carry no hour, and must not be
+// dressed up as a "12:00 AM" pickup they never had.
+const moment = (d, hasTime) => (hasTime ? `${longDate(d)}, ${formatHour(phHour(d))}` : longDate(d));
 
 const BookingConfirmationModal = ({ booking, status, isDark, onClose, onCheckAgain, onRetryPayment, retrying }) => {
   const modalRef = useModalA11y(onClose);
@@ -189,8 +193,8 @@ const BookingConfirmationModal = ({ booking, status, isDark, onClose, onCheckAga
 
           <div style={s.rule} />
 
-          <div style={s.line}><span>Pickup</span><span style={s.num}>{longDate(booking.startDate)}</span></div>
-          <div style={s.line}><span>Return</span><span style={s.num}>{longDate(booking.endDate)}</span></div>
+          <div style={s.line}><span>Pickup</span><span style={s.num}>{moment(booking.startDate, booking.hasPickupTime)}</span></div>
+          <div style={s.line}><span>Return</span><span style={s.num}>{moment(booking.endDate, booking.hasPickupTime)}</span></div>
           <div style={{ ...s.line, color: isDark ? '#e4e6eb' : '#1a1a1a', fontWeight: '800' }}>
             <span>Duration</span><span style={s.num}>{booking.totalDays} {dayWord(booking.totalDays)}</span>
           </div>

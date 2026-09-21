@@ -6,6 +6,7 @@ import { cancelBookingWithRefund } from './cancelBooking.js';
 import { notifyUser } from './notify.js';
 import { formatTripDates } from './blockReasons.js';
 import { offerDeadline, hasEnoughNotice, offerMessage, MIN_NOTICE_HOURS } from './offerWindow.js';
+import { busySpans, bookingSpan, overlaps } from './availability.js';
 
 // When a booking can no longer happen on its dates — another reservation was
 // confirmed over it, or the vehicle was pulled off the road — cancelling and
@@ -36,45 +37,29 @@ const when = (d) => new Date(d).toLocaleString('en-US', {
   timeZone: 'Asia/Manila', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
 });
 
-// Everything that already owns this vehicle's calendar. `extra` covers a
-// range that is about to be saved but isn't yet — the blocked range being
-// created, or the booking being confirmed this very request — so we can't
-// offer dates that are already spoken for by the thing causing the offer.
-async function busyRanges(carId, { excludeBookingId, extra = [] } = {}) {
-  const query = { car: carId, status: 'confirmed' };
-  if (excludeBookingId) query._id = { $ne: excludeBookingId };
-  const [bookings, car] = await Promise.all([
-    Booking.find(query).select('startDate endDate').lean(),
-    Car.findById(carId).select('blockedDates').lean(),
-  ]);
-  const span = (r) => ({
-    start: new Date(r.startDate).getTime(),
-    end: new Date(r.endDate).getTime(),
-  });
-  return [
-    ...bookings.map(span),
-    ...(car?.blockedDates || []).filter((b) => b.status === 'approved').map(span),
-    ...extra.map(span),
-  ];
-}
-
 // The nearest free ranges of exactly the same length, closest to the
 // original pickup first. Later dates are tried before earlier ones at the
 // same distance: pushing a trip back is almost always easier for a client
 // than pulling it forward, which may already be impossible for them.
+//
+// Shifting by whole days keeps the client's own pickup hour, so an offered
+// slot is always a time they could actually be served at. `busy` already
+// carries each booking's turnaround, so nothing offered lands in the gap a
+// vehicle needs between customers.
 export function nearbyRanges(booking, busy, now) {
-  const length = new Date(booking.endDate).getTime() - new Date(booking.startDate).getTime();
-  const origin = new Date(booking.startDate).getTime();
+  const own = bookingSpan(booking);
+  const length = own.end.getTime() - own.start.getTime();
+  const origin = own.start.getTime();
   const earliest = now.getTime() + MIN_NOTICE_HOURS * HOUR;
-  const isFree = (s, e) => !busy.some((r) => s < r.end && e > r.start);
 
   const found = [];
   for (let days = 1; days <= MAX_SHIFT_DAYS; days++) {
     for (const direction of [1, -1]) {
-      const start = origin + direction * days * DAY;
-      const end = start + length;
-      if (start < earliest || !isFree(start, end)) continue;
-      found.push({ startDate: new Date(start), endDate: new Date(end) });
+      const startDate = new Date(origin + direction * days * DAY);
+      const endDate = new Date(startDate.getTime() + length);
+      if (startDate.getTime() < earliest) continue;
+      if (busy.some((b) => overlaps({ start: startDate, end: endDate }, b))) continue;
+      found.push({ startDate, endDate });
       if (found.length >= MAX_OPTIONS) return found;
     }
   }
@@ -113,8 +98,8 @@ async function priceOptions(car, booking, ranges) {
 // offered other dates and which can only be refunded.
 export async function previewAlternatives(booking, { extra = [], now = new Date() } = {}) {
   if (!hasEnoughNotice(booking.startDate, now)) return [];
-  const busy = await busyRanges(booking.car, { excludeBookingId: booking._id, extra });
-  return nearbyRanges(booking, busy, now);
+  const { spans } = await busySpans(booking.car, { excludeBookingId: booking._id, extraBlocks: extra });
+  return nearbyRanges(booking, spans, now);
 }
 
 // Puts the choice to the client. Returns false when there's nothing to offer
@@ -163,10 +148,9 @@ export async function acceptAdjustOffer(booking, optionIndex) {
   const option = booking.adjustOffer?.options?.[optionIndex];
   if (!option) return { ok: false, message: 'That option is no longer available. Please refresh and try again.' };
 
-  const busy = await busyRanges(booking.car, { excludeBookingId: booking._id });
-  const start = new Date(option.startDate).getTime();
-  const end = new Date(option.endDate).getTime();
-  if (busy.some((r) => start < r.end && end > r.start)) {
+  const { spans } = await busySpans(booking.car, { excludeBookingId: booking._id });
+  const wanted = { start: new Date(option.startDate), end: new Date(option.endDate) };
+  if (spans.some((b) => overlaps(wanted, b))) {
     return { ok: false, message: 'Those dates have just been taken. Please choose one of the others, or the refund.' };
   }
 

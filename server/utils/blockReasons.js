@@ -28,10 +28,13 @@ export const causeFor = (code) => BLOCK_REASONS[code]?.cause || 'unforeseen circ
 export const blockLabelFor = (block) =>
   BLOCK_REASONS[block?.reasonCode]?.label || block?.reason || '';
 
-// Dates are stored as UTC midnight, so they're formatted in UTC — formatting
-// in local time would shift them a day in some timezones.
+// Always read in Legazpi time. A booking collected at 7:00 AM is stored as
+// 11:00 PM the previous day in UTC, so formatting these in UTC would name
+// the wrong day back to the client in a cancellation message. Bookings from
+// before pickup times existed sit at UTC midnight, which is still the same
+// day in Legazpi, so they read correctly either way.
 const fmt = (d) => new Date(d).toLocaleDateString('en-US', {
-  month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+  month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila',
 });
 
 export const formatTripDates = (startDate, endDate) => `${fmt(startDate)} to ${fmt(endDate)}`;

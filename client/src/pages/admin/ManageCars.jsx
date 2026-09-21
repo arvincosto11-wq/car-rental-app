@@ -202,6 +202,9 @@ const ManageCars = ({ view = 'active' }) => {
       image: car.image,
       imageFileId: car.imageFileId,
       availableBookingTypes: car.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver'],
+      // Blank means the standard two hours. Only filled in for vehicles that
+      // genuinely need longer between customers, like a van.
+      turnaroundHours: car.turnaroundHours ?? '',
     });
 
     // Try to match the car's existing brand/model against the curated lists so
@@ -296,6 +299,9 @@ const ManageCars = ({ view = 'active' }) => {
     setUpdating(true);
     try {
       let updatedForm = { ...editForm };
+      // An empty box has to go back as null, not as 0 — zero is a real
+      // setting meaning "no gap needed", and '' would be stored as one.
+      updatedForm.turnaroundHours = editForm.turnaroundHours === '' ? null : Number(editForm.turnaroundHours);
 
       const uploadedNew = [];
       for (const file of editNewPhotos) {
@@ -428,6 +434,7 @@ const ManageCars = ({ view = 'active' }) => {
     field: { marginBottom: '8px' },
     label: { display: 'block', fontSize: '12px', color: isDark ? '#b0b3b8' : '#374151', marginBottom: '4px', fontWeight: '500' },
     input: { width: '100%', padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', color: isDark ? '#e4e6eb' : '#111827', background: isDark ? '#18191a' : '#fff' },
+    fieldHint: { display: 'block', fontSize: '11px', lineHeight: 1.45, color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '4px' },
     textarea: { width: '100%', padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '60px', resize: 'vertical', color: isDark ? '#e4e6eb' : '#111827', background: isDark ? '#18191a' : '#fff' },
     saveBtn: { padding: '8px 20px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
     cancelBtn: { padding: '8px 20px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
@@ -824,6 +831,15 @@ const ManageCars = ({ view = 'active' }) => {
                     <label style={styles.label} htmlFor="mc-edit-price">Daily Price (₱)</label>
                     <input id="mc-edit-price" style={styles.input} type="text" inputMode="decimal" placeholder="e.g. 150" value={editForm.pricePerDay}
                       onChange={(e) => setEditForm({...editForm, pricePerDay: sanitizeDecimal(e.target.value, 8)})} />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-turnaround">Turnaround (hours)</label>
+                    <input id="mc-edit-turnaround" style={styles.input} type="text" inputMode="numeric" placeholder="Leave blank for the standard 2"
+                      value={editForm.turnaroundHours}
+                      onChange={(e) => setEditForm({ ...editForm, turnaroundHours: sanitizeDigits(e.target.value, 2) })} />
+                    <span style={styles.fieldHint}>
+                      How long this vehicle needs between one client returning it and the next collecting it.
+                    </span>
                   </div>
                   <div style={styles.field}>
                     <label style={styles.label} htmlFor="mc-edit-category">Category</label>

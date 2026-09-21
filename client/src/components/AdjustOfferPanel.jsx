@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { timeLeftLabel, offerReasonText } from '../utils/offerWindow';
+import { formatMoment } from '../utils/phTime';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 
 // Shown on a booking whose dates can no longer be honoured, in place of
@@ -8,14 +9,8 @@ import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 // them when the deadline passes, which is why the countdown is on the panel
 // rather than buried in the notification that brought them here.
 
-// Dates are stored at UTC midnight, so they're formatted in UTC — formatting
-// in local time would shift them a day in some timezones.
-const fmt = (d) => new Date(d).toLocaleDateString('en-US', {
-  weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
-});
-
 const deadlineFmt = (d) => new Date(d).toLocaleString('en-US', {
-  weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  timeZone: 'Asia/Manila', weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
 });
 
 const ClockIcon = ({ color }) => (
@@ -111,7 +106,9 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
             return (
               <div key={`${option.startDate}-${i}`} style={s.option}>
                 <div>
-                  <div style={s.optionDates}>{fmt(option.startDate)} → {fmt(option.endDate)}</div>
+                  <div style={s.optionDates}>
+                    {formatMoment(option.startDate, booking.hasPickupTime)} → {formatMoment(option.endDate, booking.hasPickupTime)}
+                  </div>
                   <div style={costsMore ? s.optionPriceUp : s.optionPrice}>
                     {costsMore
                       ? `₱${option.totalPrice.toLocaleString()} — ₱${(option.totalPrice - booking.totalPrice).toLocaleString()} more, as ${booking.promoLabel || 'your promo'} doesn't cover these dates`

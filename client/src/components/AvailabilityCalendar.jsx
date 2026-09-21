@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { GOLD, GOLD_DARK } from '../theme';
+import { instantFrom, phDayStart, phYmd, pickupHours, formatHour, CLOSE_HOUR } from '../utils/phTime';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTH_LABELS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -50,9 +51,37 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
 
   const today = normalize(new Date());
 
-  const isBooked = (date) => {
-    const t = normalize(date);
-    return bookedRanges.some((r) => t >= normalize(r.startDate) && t <= normalize(r.endDate));
+  // What a range really occupies. `busyStart`/`busyEnd` come from the server
+  // with each booking's turnaround already added; ranges that arrive without
+  // them (the admin promo and blocked-date pickers) are whole calendar days
+  // in Legazpi, snapped the same way the server snaps them.
+  const spanOf = (r) => (r.busyStart && r.busyEnd
+    ? { start: new Date(r.busyStart).getTime(), end: new Date(r.busyEnd).getTime() }
+    : { start: phDayStart(r.startDate).getTime(), end: phDayStart(r.endDate).getTime() });
+
+  const spans = bookedRanges.map(spanOf);
+  const takenAt = (instant) => spans.some((sp) => instant >= sp.start && instant < sp.end);
+
+  // A day is no longer simply free or booked. A vehicle coming back at
+  // 7:00 AM is free again from 9:00 AM, and losing that whole day is real
+  // money — so every hour the client could actually choose is tested, and
+  // the day reports which of them are still open.
+  const dayInfo = (date) => {
+    const ymd = phYmd(date);
+    const free = pickupHours().filter((h) => !takenAt(instantFrom(ymd, h).getTime()));
+    if (!free.length) return { state: 'busy', free };
+    if (free.length === pickupHours().length) return { state: 'free', free };
+    const from = free[0];
+    const until = free[free.length - 1];
+    return {
+      state: 'part',
+      free,
+      // "From" when the free hours run to closing (the usual changeover
+      // day), "until" when the vehicle goes out partway through instead.
+      label: until === CLOSE_HOUR
+        ? `available ${formatHour(from)} onwards`
+        : `available until ${formatHour(until)}`,
+    };
   };
   const isSelected = (date) => {
     const t = normalize(date);
@@ -76,6 +105,18 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
 
   const grid = buildGrid(cursor.getFullYear(), cursor.getMonth());
 
+  const partDays = grid.filter((c) => c.inMonth && !isPast(c.date) && dayInfo(c.date).state === 'part');
+  const hasPartDay = partDays.length > 0;
+  // Spells out the hours for the day the client has actually picked; falls
+  // back to naming the split days in view, so the diagonal is never the only
+  // explanation of itself.
+  const pickedPart = selectedStart && partDays.find((c) => normalize(c.date) === normalize(selectedStart));
+  const partNote = pickedPart
+    ? `${pickedPart.date.toLocaleDateString()} — ${dayInfo(pickedPart.date).label}.`
+    : hasPartDay
+      ? `${partDays.length === 1 ? 'One day is' : `${partDays.length} days are`} only part-free this month — the split days. Tap one to see its hours.`
+      : '';
+
   const s = {
     wrap: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', padding: '14px' },
     navRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' },
@@ -83,7 +124,7 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
     monthLabel: { fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px' },
     weekday: { textAlign: 'center', fontSize: '10px', fontWeight: '700', color: isDark ? '#8a8d91' : '#9ca3af', padding: '2px 0' },
-    day: (inMonth, booked, selected, past, clickable, onPromo) => ({
+    day: (inMonth, booked, selected, past, clickable, onPromo, part) => ({
       position: 'relative',
       aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: '11px', borderRadius: '6px',
@@ -93,14 +134,21 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
       // — you can book this — so nothing is lost by swapping one for the
       // other. Red always wins: a booked day stays red and gets the gold bar
       // instead, since losing "you can't have this" would be a real loss.
+      // A part-booked day is split down the diagonal: taken above the line,
+      // free below it. Deliberately the same two colours rather than a
+      // fourth one — it reads as "partly", and nothing new has to be learnt.
       background: booked
         ? (isDark ? 'rgba(220,38,38,0.25)' : '#fee2e2')
-        : onPromo
-          ? (isDark ? 'rgba(232,161,0,0.26)' : '#fdf0cf')
-          : (isDark ? 'rgba(22,163,74,0.18)' : '#dcfce7'),
+        : part
+          ? (isDark
+            ? 'linear-gradient(135deg, rgba(220,38,38,0.25) 0 48%, rgba(22,163,74,0.18) 52% 100%)'
+            : 'linear-gradient(135deg, #fee2e2 0 48%, #dcfce7 52% 100%)')
+          : onPromo
+            ? (isDark ? 'rgba(232,161,0,0.26)' : '#fdf0cf')
+            : (isDark ? 'rgba(22,163,74,0.18)' : '#dcfce7'),
       color: booked
         ? (isDark ? '#fca5a5' : '#991b1b')
-        : onPromo
+        : onPromo && !part
           ? (isDark ? '#ffcf63' : '#8a5a06')
           : (isDark ? '#86efac' : '#166534'),
       // Tints, not full saturation, so the gold selection ring still reads
@@ -134,6 +182,20 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
       width: '8px', height: '8px', opacity: 0.9, pointerEvents: 'none',
       color: isDark ? '#ffcf63' : '#b8790a',
     },
+    legendPart: {
+      width: '9px', height: '9px', borderRadius: '3px', flexShrink: 0,
+      background: isDark
+        ? 'linear-gradient(135deg, rgba(220,38,38,0.45) 0 48%, rgba(22,163,74,0.4) 52% 100%)'
+        : 'linear-gradient(135deg, #fecaca 0 48%, #bbf7d0 52% 100%)',
+    },
+    partNote: {
+      display: 'flex', alignItems: 'center', gap: '7px',
+      marginTop: '10px', padding: '8px 11px', borderRadius: '9px',
+      fontSize: '11px', fontWeight: '700', lineHeight: 1.35,
+      background: isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.09)',
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.38)' : 'rgba(184,121,10,0.32)'}`,
+      color: isDark ? GOLD_DARK : GOLD,
+    },
     legendBar: {
       width: '9px', height: '9px', borderRadius: '3px', flexShrink: 0,
       background: isDark ? 'rgba(232,161,0,0.45)' : '#fdf0cf',
@@ -160,22 +222,28 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
       <div style={s.grid}>
         {WEEKDAY_LABELS.map((wd, i) => <div key={i} style={s.weekday}>{wd}</div>)}
         {grid.map(({ date, inMonth }, i) => {
-          const booked = isBooked(date);
+          const info = dayInfo(date);
+          const booked = info.state === 'busy';
+          const part = info.state === 'part';
           const past = isPast(date);
           const promoDay = isPromoDay(date);
           // Booked days stay red but become pickable when the caller allows it
           // (admin choosing promo dates — overlapping bookings warn rather
           // than block, so the calendar must not block either).
           const clickable = !!onSelectDay && inMonth && !past && (selectableWhenBooked || !booked);
+          // Never colour alone: the hours are in the tooltip and the label
+          // a screen reader reads out, and spelled out under the grid for
+          // whichever day is picked.
+          const partText = part ? ` — ${info.label}` : '';
           return (
             <button
               key={i}
               type="button"
-              style={s.day(inMonth, booked, isSelected(date), past, clickable, promoDay)}
-              title={`${date.toLocaleDateString()}${promoDay ? ` — ${promoSummary}` : ''}`}
+              style={s.day(inMonth, booked, isSelected(date), past, clickable, promoDay, part)}
+              title={`${date.toLocaleDateString()}${partText}${promoDay ? ` — ${promoSummary}` : ''}`}
               aria-label={
                 `${date.toLocaleDateString()}` +
-                `${booked ? ', booked' : clickable ? ', available' : ''}` +
+                `${booked ? ', booked' : part ? `, ${info.label}` : clickable ? ', available' : ''}` +
                 `${promoDay ? `, on promo, ${promoSummary}` : ''}`
               }
               tabIndex={clickable ? 0 : -1}
@@ -197,6 +265,7 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
       <div style={s.legendRow}>
         <span style={s.legendItem}><span style={s.legendDot(isDark ? 'rgba(22,163,74,0.4)' : '#dcfce7')} />Available</span>
         <span style={s.legendItem}><span style={s.legendDot(isDark ? 'rgba(220,38,38,0.4)' : '#fee2e2')} />Booked</span>
+        {hasPartDay && <span style={s.legendItem}><span style={s.legendPart} />Part of the day</span>}
         {selectedStart && selectedEnd && (
           <span style={s.legendItem}><span style={{ ...s.legendDot('transparent'), boxShadow: `inset 0 0 0 2px ${isDark ? GOLD_DARK : GOLD}` }} />Your dates</span>
         )}
@@ -207,6 +276,14 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
           </span>
         )}
       </div>
+      {partNote && (
+        <div style={s.partNote}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={s.promoNoteIcon}>
+            <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
+          </svg>
+          <span>{partNote}</span>
+        </div>
+      )}
       {promoActive && (
         <div style={s.promoNote}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={s.promoNoteIcon} aria-hidden="true">

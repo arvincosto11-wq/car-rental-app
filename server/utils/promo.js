@@ -25,17 +25,31 @@ const endOfDayUTC = (date) => {
 // them undefined, which is how every vehicle starts out.
 export const hasPromo = (promo) => !!(promo && promo.startDate && promo.endDate && promo.value > 0);
 
+// Both sides of the comparison are really calendar DATES, so they're
+// compared as calendar dates rather than as instants — ISO day strings sort
+// correctly as plain text, so >= and <= do the right thing.
+//
+// The two are anchored differently and have to be read differently. A
+// promo's dates come from a date picker and sit at UTC midnight, meaning a
+// plain day. A rental is a real moment in Legazpi — and 7:00 AM there is
+// 11:00 PM the day BEFORE in UTC, so comparing the raw instants would have
+// thrown a client off the first day of every promo they booked on.
+const promoDay = (d) => new Date(d).toISOString().slice(0, 10);
+const rentalDay = (d) => new Date(new Date(d).getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
 // Whether a rental qualifies. The WHOLE rental has to sit inside the window:
 // starting inside it but returning after it ends does not qualify, which is
 // what stops a six-day promo discounting a month-long rental.
 export const promoCoversRange = (promo, start, end) => {
   if (!hasPromo(promo)) return false;
-  return start >= startOfDayUTC(promo.startDate) && end <= endOfDayUTC(promo.endDate);
+  return rentalDay(start) >= promoDay(promo.startDate) && rentalDay(end) <= promoDay(promo.endDate);
 };
 
 // Has the promo's window already passed? Used to stop showing a dead badge.
+// Measured in Legazpi days, so a promo through the 25th is over when the
+// 25th is over there — not eight hours into the 26th.
 export const promoHasEnded = (promo, now = new Date()) =>
-  hasPromo(promo) && now > endOfDayUTC(promo.endDate);
+  hasPromo(promo) && rentalDay(now) > promoDay(promo.endDate);
 
 // The one price calculation. Returns the pre-discount subtotal, what came
 // off, and what's actually owed — all three get stored on the booking so the
