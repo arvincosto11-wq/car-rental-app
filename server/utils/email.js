@@ -55,6 +55,14 @@ const gmailConfigured = () => !!(process.env.GMAIL_USER && process.env.GMAIL_APP
 async function sendViaGmail(email, code, purpose) {
   const transport = nodemailer.createTransport({
     service: 'gmail',
+    // Without these a bad credential or a blocked port doesn't fail — it
+    // hangs, and the person waiting watches a button say "Sending..."
+    // forever with nothing to act on. Ten seconds is far longer than a
+    // working send needs and short enough to fall through to the backup
+    // while someone is still looking at the screen.
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
     auth: {
       user: process.env.GMAIL_USER,
       // Google shows the app password in four blocks of four; the spaces are
@@ -64,12 +72,16 @@ async function sendViaGmail(email, code, purpose) {
     },
   });
 
-  await transport.sendMail({
+  // Released either way — a transport left open holds the request open with
+  // it, which is the other way this ends up hanging.
+  const closeAfter = (promise) => promise.finally(() => transport.close());
+
+  await closeAfter(transport.sendMail({
     from: `Rent-a-Ride Albay <${process.env.GMAIL_USER}>`,
     to: email,
     subject: subjectFor(code),
     html: bodyFor(code, purpose),
-  });
+  }));
 }
 
 async function sendViaResend(email, code, purpose) {
