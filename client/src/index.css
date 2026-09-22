@@ -677,16 +677,22 @@ body.dark .btn-solid-gold:hover {
    for the stacked layout) into a horizontal line running between this
    step's circle and the next one's. left: 50% alone would start the line
    at the circle's own center — cutting straight across the number — so
-   it's pushed out by the circle's radius (14px, half of the 28px circle)
-   on both ends, leaving it spanning only the gap between the two circles,
-   never their footprint, regardless of z-index/fill. */
+   it's pushed out on both ends, leaving it spanning only the gap between
+   two circles and never their footprint.
+
+   How far out is not just the radius. The circles are 30px (radius 15),
+   and the step you are ON carries a 4px ring outside that, so it really
+   occupies 19. Clearing 15 left the line running into the ring on the
+   current step, which read as the line being drawn through it. 20 clears
+   the ring with a pixel to spare, and applying it to every connector
+   keeps the gaps even as the current step moves along the row. */
 .wizard-steps-shell .booking-step-connector {
   display: block;
   position: absolute;
-  top: 14px;
-  left: calc(50% + 14px);
+  top: 15px;
+  left: calc(50% + 20px);
   transform: translateY(-50%);
-  width: calc(100% - 28px) !important;
+  width: calc(100% - 40px) !important;
   height: 4px !important;
   margin-left: 0 !important;
   border-radius: 2px;
