@@ -666,11 +666,14 @@ body.dark .btn-solid-gold:hover {
 .wizard-steps-shell .booking-step-row {
   flex-direction: column;
   /* The circle has a fixed 30px width, so it never stretches and lands at
-     the column's start — hard left. The label underneath is centred. That
-     left every circle sitting off to one side of its own label, and off
-     the line that is drawn from the middle of the step. Centring the
-     column puts all three on the same axis. */
-  align-items: center;
+     the column's start — hard left. The label underneath is centred, and
+     the line is drawn from the middle of the step. Three things, three
+     positions, and the line ending up inside the next circle.
+
+     !important because the component sets align-items: flex-start as an
+     inline style, which a plain rule here cannot beat. Without it this
+     silently does nothing and the circles stay where they were. */
+  align-items: center !important;
   gap: 6px;
   position: relative;
   z-index: 1;
