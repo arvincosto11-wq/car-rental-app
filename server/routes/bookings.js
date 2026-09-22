@@ -627,11 +627,20 @@ router.post('/:id/reschedule', protect, async (req, res) => {
       return res.status(400).json({ message: 'Please choose new dates or a refund on this booking first.' });
     }
 
-    // A reschedule moves the dates and keeps the booking's own pickup time.
-    // Letting both change at once would mean re-pricing and a second round
-    // of availability checks for no real gain — and the client can always
-    // cancel and rebook if the hour is what they need to change.
-    const keptHour = booking.hasPickupTime ? phHour(booking.startDate) : null;
+    // A reschedule moves the dates and may move the hour with them. The
+    // trip keeps its LENGTH, which is what holds the price still — the
+    // hour costs nothing to change and refusing to change it turned
+    // clients away from days where only their old hour was taken.
+    //
+    // A booking made before pickup times existed stays a whole-day
+    // booking rather than growing an hour it was never made with.
+    const wantedHour = Number(req.body.pickupHour);
+    if (booking.hasPickupTime && req.body.pickupHour !== undefined && req.body.pickupHour !== null && !isTradingHour(wantedHour)) {
+      return res.status(400).json({ message: 'Please choose a pickup time between 7:00 AM and 8:00 PM.' });
+    }
+    const keptHour = booking.hasPickupTime
+      ? (isTradingHour(wantedHour) ? wantedHour : phHour(booking.startDate))
+      : null;
     const start = keptHour === null ? new Date(newStartDate) : instantFrom(newStartDate, keptHour);
     const end = keptHour === null ? new Date(newEndDate) : instantFrom(newEndDate, keptHour);
     if (!newStartDate || !newEndDate || isNaN(start) || isNaN(end) || start >= end) {

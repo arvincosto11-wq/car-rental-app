@@ -14,7 +14,7 @@ import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import AdjustOfferPanel from '../components/AdjustOfferPanel';
 import { paginate } from '../utils/paginate';
 import { bookingAwaitingDecision } from '../utils/offerWindow';
-import { formatMoment, formatHour, phHour } from '../utils/phTime';
+import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays } from '../utils/phTime';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
@@ -108,6 +108,14 @@ const MyBookings = () => {
   const [rescheduleError, setRescheduleError] = useState('');
   const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false);
   const [bookedRangesForReschedule, setBookedRangesForReschedule] = useState([]);
+  // The hour they asked for on the new dates. The one actually used is
+  // worked out below, so a choice that stops working when the day changes
+  // corrects itself rather than going stale.
+  const [reschedulePreferredHour, setReschedulePreferredHour] = useState(null);
+  // Captured when the modal opens rather than read while rendering, which
+  // would make the output depend on exactly when the render happened. The
+  // modal is never open long enough for the difference to matter.
+  const [rescheduleOpenedAt, setRescheduleOpenedAt] = useState(0);
   // Which booking came back from GCash, and how it went. Replaces the toast
   // that used to carry this — see BookingConfirmationModal.
   const [confirmation, setConfirmation] = useState(null);
@@ -340,6 +348,8 @@ const MyBookings = () => {
 
   const openRescheduleModal = (booking) => {
     setRescheduleModalId(booking._id);
+    setReschedulePreferredHour(null);
+    setRescheduleOpenedAt(Date.now());
     setNewStartDate('');
     setNewEndDate('');
     setRescheduleError('');
@@ -356,6 +366,7 @@ const MyBookings = () => {
 
   const handleSelectRescheduleDay = (date) => {
     setRescheduleError('');
+    setReschedulePreferredHour(null);
     const start = toDateValue(date);
     const end = new Date(date);
     end.setDate(end.getDate() + rescheduleBooking.totalDays);
@@ -375,7 +386,9 @@ const MyBookings = () => {
     setRescheduleSubmitting(true);
     setRescheduleError('');
     try {
-      const res = await api.post(`/bookings/${rescheduleModalId}/reschedule`, { newStartDate, newEndDate });
+      const res = await api.post(`/bookings/${rescheduleModalId}/reschedule`, {
+        newStartDate, newEndDate, pickupHour: rescheduleHour,
+      });
       setBookings(bookings.map((b) => (b._id === rescheduleModalId ? { ...b, rescheduleRequest: res.data.rescheduleRequest } : b)));
       closeRescheduleModal();
     } catch (err) {
@@ -387,6 +400,32 @@ const MyBookings = () => {
 
   const rescheduleBooking = bookings.find((b) => b._id === rescheduleModalId);
   const rescheduleModalRef = useModalA11y(closeRescheduleModal, !!(rescheduleModalId && rescheduleBooking));
+
+  // What the vehicle is really unavailable for. The server sends each
+  // booking's span with its turnaround already added, so the hours offered
+  // here are the hours it will actually accept.
+  const rescheduleBusy = bookedRangesForReschedule.map((r) => (r.busyStart && r.busyEnd
+    ? { start: new Date(r.busyStart).getTime(), end: new Date(r.busyEnd).getTime() }
+    : { start: phDayStart(r.startDate).getTime(), end: phDayStart(r.endDate).getTime() }));
+
+  // Every hour the trip could run from if it started on the chosen day.
+  // Checked across the whole range, not just the moment of pickup.
+  const rescheduleHours = newStartDate && rescheduleBooking?.hasPickupTime
+    ? pickupHours().filter((h) => {
+      const from = instantFrom(newStartDate, h).getTime();
+      const to = addDays(instantFrom(newStartDate, h), rescheduleBooking.totalDays).getTime();
+      if (from <= rescheduleOpenedAt) return false;
+      return !rescheduleBusy.some((b) => from < b.end && to > b.start);
+    })
+    : [];
+
+  // What they asked for while it still works, otherwise the earliest that
+  // does. Null on a booking with no pickup time, which keeps its old form.
+  const rescheduleHour = rescheduleBooking?.hasPickupTime
+    ? (rescheduleHours.includes(reschedulePreferredHour)
+      ? reschedulePreferredHour
+      : (rescheduleHours.length ? rescheduleHours[0] : null))
+    : null;
 
   const activeBooking = bookings.find((b) => b._id === refundModalId);
   const refundPercentage = activeBooking ? getRefundPercentage(activeBooking.createdAt) : 0;
@@ -741,6 +780,26 @@ const MyBookings = () => {
       border: 'none',
       borderRadius: '999px',
       cursor: 'pointer',
+    },
+    rescheduleTimeBlock: { marginTop: '14px' },
+    rescheduleTimeLabel: {
+      display: 'block', fontSize: '10px', fontWeight: '800', letterSpacing: '0.14em',
+      textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '8px',
+    },
+    rescheduleTimeRow: { display: 'flex', flexWrap: 'wrap', gap: '6px' },
+    rescheduleTimeChip: (active, open) => ({
+      padding: '6px 11px', borderRadius: '999px',
+      border: `1px solid ${active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      background: active ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
+      color: active ? ON_GOLD : (isDark ? '#e4e6eb' : '#1a1a1a'),
+      fontSize: '11.5px', fontWeight: active ? '800' : '600', fontFamily: 'inherit',
+      cursor: open ? 'pointer' : 'not-allowed',
+      opacity: open ? 1 : 0.32,
+      textDecoration: open ? 'none' : 'line-through',
+    }),
+    rescheduleNoHours: {
+      fontSize: '11.5px', lineHeight: 1.5, margin: 0,
+      color: isDark ? '#fca5a5' : '#b91c1c',
     },
     badgeActionNeeded: {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
@@ -1181,7 +1240,7 @@ const MyBookings = () => {
               Move this {rescheduleBooking.totalDays}-day trip to different dates. No fee — but it needs admin approval,
               and the new dates must total the same {rescheduleBooking.totalDays} day{rescheduleBooking.totalDays === 1 ? '' : 's'}.
               Tap a start date below — the return date is set for you automatically.
-              {rescheduleBooking.hasPickupTime && ` Your ${formatHour(phHour(rescheduleBooking.startDate))} pickup time stays as it is.`}
+              {rescheduleBooking.hasPickupTime && ' You can change the pickup time too.'}
             </p>
 
             {rescheduleError && <div style={styles.errorBox}>{rescheduleError}</div>}
@@ -1196,9 +1255,40 @@ const MyBookings = () => {
               />
             </div>
 
+            {newStartDate && rescheduleBooking.hasPickupTime && (
+              <div style={styles.rescheduleTimeBlock}>
+                <span style={styles.rescheduleTimeLabel}>Pickup time on that day</span>
+                {rescheduleHours.length === 0 ? (
+                  <p style={styles.rescheduleNoHours}>
+                    There is no pickup time left on that day. Try another one.
+                  </p>
+                ) : (
+                  <div style={styles.rescheduleTimeRow} role="group" aria-label="Pickup time">
+                    {pickupHours().map((h) => {
+                      const open = rescheduleHours.includes(h);
+                      return (
+                        <button
+                          key={h}
+                          type="button"
+                          aria-pressed={rescheduleHour === h}
+                          disabled={!open}
+                          style={styles.rescheduleTimeChip(rescheduleHour === h, open)}
+                          title={open ? undefined : 'Not available that day — the vehicle is out, or being returned and checked.'}
+                          onClick={() => setReschedulePreferredHour(h)}
+                        >
+                          {formatHour(h)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {newStartDate && newEndDate && (
               <p style={styles.rescheduleSelectedNote}>
                 Selected: {new Date(newStartDate).toLocaleDateString()} → {new Date(newEndDate).toLocaleDateString()}
+                {rescheduleHour !== null && `, ${formatHour(rescheduleHour)} both ends`}
               </p>
             )}
 
@@ -1206,7 +1296,12 @@ const MyBookings = () => {
               <button style={styles.modalCancelBtn} onClick={closeRescheduleModal} disabled={rescheduleSubmitting}>
                 Cancel
               </button>
-              <button style={styles.modalSubmitBtn} onClick={handleSubmitReschedule} disabled={rescheduleSubmitting || !newStartDate}>
+              <button
+                style={styles.modalSubmitBtn}
+                onClick={handleSubmitReschedule}
+                disabled={rescheduleSubmitting || !newStartDate
+                  || (rescheduleBooking.hasPickupTime && rescheduleHour === null)}
+              >
                 {rescheduleSubmitting ? 'Submitting...' : 'Submit Request'}
               </button>
             </div>
