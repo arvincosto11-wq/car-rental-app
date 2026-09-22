@@ -137,11 +137,14 @@ export async function cancelBookingWithRefund(booking, { reason, customAmount, c
 
   await booking.save();
 
+  // In writing, because it is money and because the trip they planned is
+  // not happening.
   await notifyUser(
     booking.user,
     reason === 'vehicle_unavailable' ? 'Booking Cancelled: Vehicle Unavailable' : 'Booking Cancelled',
     extra ? `${message} ${extra}` : message,
-    '/my-bookings'
+    '/my-bookings',
+    { email: true }
   );
 
   return amount;

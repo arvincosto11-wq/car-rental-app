@@ -343,7 +343,8 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         const clientMessage = blockedRange
           ? 'Your booking request could not be confirmed because the vehicle is blocked for those dates. It has been cancelled and automatically approved for a refund.'
           : 'Your booking request could not be confirmed because the vehicle was already booked for those dates. It has been cancelled and automatically approved for a refund.';
-        await notifyUser(booking.user, 'Booking Cancelled & Refunded', clientMessage, '/my-bookings');
+        // Money moving the other way, on a booking they thought they had.
+        await notifyUser(booking.user, 'Booking Cancelled & Refunded', clientMessage, '/my-bookings', { email: true });
 
         return res.json({
           ...booking.toObject(),
@@ -395,11 +396,14 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       const pickupReminder = booking.bookingType === 'self-drive'
         ? "Bring a valid ID and your driver's license to pick up the vehicle."
         : 'Your driver will meet you at the pickup location.';
+      // Emailed as well as shown in the bell: the client has been waiting
+      // on this answer, and it carries the pickup time they need.
       await notifyUser(
         booking.user,
         'Booking Confirmed',
         `Your ${car.brand} ${car.model} booking is confirmed. Pickup: ${pickupStr}. Return: ${returnStr}. ${pickupReminder}`,
-        '/my-bookings'
+        '/my-bookings',
+        { email: true }
       );
       if (car.owner) {
         await notifyUser(car.owner, 'Vehicle Booked', `Your vehicle ${car.brand} ${car.model} has a new confirmed booking.`, '/consignor');

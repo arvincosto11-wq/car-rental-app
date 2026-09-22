@@ -148,7 +148,11 @@ export async function openAdjustOffer(booking, { reason, cause = '', extra = [] 
       optionCount: options.length,
       deadlineText: when(deadline),
     }),
-    '/my-bookings'
+    '/my-bookings',
+    // The one that most needs to leave the site. It expires, and a client
+    // who doesn't see it in time is refunded and loses the trip — relying
+    // on them opening the page inside a day is optimistic.
+    { email: true }
   );
   return true;
 }

@@ -1,27 +1,146 @@
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 
-// Sending the verification codes this system runs on.
+// Getting mail out of this system.
 //
-// Two routes, tried in that order:
+// Three routes, tried in order, each used only if it has been configured.
+// Which one is live is decided entirely by what is set on the server, so a
+// business can change provider without a line of code being touched:
 //
-//   1. The business's own Gmail, through an app password. Gmail already
-//      knows that mailbox is real, so it will deliver to ANYONE — which is
-//      the only thing that matters here, because a customer signing up with
-//      their own address has to receive their code.
+//   1. Brevo, over the web. A single sender address is verified — no domain
+//      needed — and after that it delivers to ANYONE. That is the whole
+//      point: a customer signing up with their own address has to receive
+//      their code.
 //
-//   2. Resend's shared sandbox sender, kept as a fallback. Without a
-//      verified domain it delivers to exactly one inbox — the one that owns
-//      the Resend account — and turns every other recipient away. That is
-//      Resend's rule for unverified senders, not a limit of this system,
-//      and it is why route 1 exists.
+//   2. Gmail, over the mail protocol. Present because it works on most
+//      hosts, but NOT on Render, which blocks outbound mail connections
+//      entirely. Leave it unconfigured there.
 //
-// A business that later buys a domain verifies it with a provider and sends
-// from bookings@their-domain instead. That is a settings change; nothing
-// here has to be touched for it.
+//   3. Resend's shared sandbox sender, as a fallback. Without a verified
+//      domain it reaches exactly one inbox — the one that owns the Resend
+//      account — and turns every other recipient away. That is the
+//      provider's rule for unverified senders, not a limit of this system.
+//
+// When the business buys a domain, they verify it with a provider and send
+// from bookings@their-domain. That is a settings change; nothing here needs
+// rewriting for it.
 
-// Resend's shared sender, usable without owning a domain.
 const RESEND_FROM = 'Rent-a-Ride Albay <onboarding@resend.dev>';
+const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
+
+// The address Brevo sends as. It has to be one verified in that account, or
+// Brevo refuses the send.
+const senderEmail = () => process.env.BREVO_SENDER_EMAIL || 'testrentaridealbay@gmail.com';
+const senderName = () => process.env.BREVO_SENDER_NAME || 'Rent-a-Ride Albay';
+
+const brevoConfigured = () => !!process.env.BREVO_API_KEY;
+// An app password, not the account's real one: issued for a single
+// application and revocable on its own, so it never gives away the mailbox.
+const gmailConfigured = () => !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+
+async function sendViaBrevo({ to, subject, html }) {
+  const res = await fetch(BREVO_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'api-key': process.env.BREVO_API_KEY,
+      'content-type': 'application/json',
+      accept: 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: senderName(), email: senderEmail() },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+    // Without this a stalled connection holds the whole request open, and
+    // whoever is waiting watches a button spin with nothing to act on.
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status} ${detail.slice(0, 300)}`);
+  }
+}
+
+async function sendViaGmail({ to, subject, html }) {
+  const transport = nodemailer.createTransport({
+    service: 'gmail',
+    // A bad credential or a blocked port doesn't fail on its own — it
+    // hangs. Ten seconds is far longer than a working send needs.
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+    auth: {
+      user: process.env.GMAIL_USER,
+      // Google shows the app password in four blocks of four; the spaces
+      // are for reading it, not part of it, and leaving them in is the most
+      // common reason a correct password is rejected.
+      pass: String(process.env.GMAIL_APP_PASSWORD).replace(/\s+/g, ''),
+    },
+  });
+
+  try {
+    await transport.sendMail({ from: `${senderName()} <${process.env.GMAIL_USER}>`, to, subject, html });
+  } finally {
+    // A transport left open holds the request open with it.
+    transport.close();
+  }
+}
+
+async function sendViaResend({ to, subject, html }) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  // The SDK reports a rejected send by RETURNING an error rather than
+  // throwing one. Ignoring that made a refusal look exactly like a success:
+  // the account was told the code had been sent, the code was stored
+  // against an address it never reached, and nothing said why.
+  const { error } = await resend.emails.send({ from: RESEND_FROM, to, subject, html });
+  if (error) throw new Error(`${error.name}: ${error.message}`);
+}
+
+// Every route in preference order, skipping the ones with no credentials.
+const routes = () => [
+  brevoConfigured() && { name: 'Brevo', send: sendViaBrevo },
+  gmailConfigured() && { name: 'Gmail', send: sendViaGmail },
+  process.env.RESEND_API_KEY && { name: 'Resend', send: sendViaResend },
+].filter(Boolean);
+
+// One send, through whichever route answers first. Throws only once every
+// configured route has refused, and logs each refusal in the provider's own
+// words — the reason a message didn't arrive belongs somewhere findable.
+export async function sendEmail({ to, subject, html }) {
+  const available = routes();
+  // Nothing set up at all is a different problem from a send that failed,
+  // and blaming the address for it would send someone hunting a typo that
+  // was never there. This is the normal state when running locally.
+  if (!available.length) {
+    throw new Error('Email is not set up on this server, so nothing could be sent.');
+  }
+
+  const refusals = [];
+  for (const route of available) {
+    try {
+      await route.send({ to, subject, html });
+      return;
+    } catch (err) {
+      refusals.push(`${route.name}: ${err.message}`);
+    }
+  }
+
+  console.error(`Email to ${to} failed. ${refusals.join(' | ')}`);
+  throw new Error('We could not send an email to that address. Please check it and try again.');
+}
+
+// ---- what the messages look like ----
+
+const shell = (inner) => `
+  <div style="font-family: sans-serif; max-width: 460px; margin: 0 auto; color: #1a1a1a;">
+    ${inner}
+    <p style="color: #9ca3af; font-size: 11px; border-top: 1px solid #e5e7eb; padding-top: 14px; margin-top: 26px;">
+      Rent-a-Ride Albay · Legazpi City
+    </p>
+  </div>
+`;
 
 const PURPOSE_COPY = {
   register: { heading: 'Verify your email', body: 'Enter this code to finish creating your Rent-a-Ride Albay account:' },
@@ -32,104 +151,38 @@ const PURPOSE_COPY = {
   'change-email': { heading: 'Confirm your new email address', body: 'Enter this code to start using this address for your Rent-a-Ride Albay account:' },
 };
 
-const subjectFor = (code) => `${code} is your Rent-a-Ride Albay code`;
-
-const bodyFor = (code, purpose) => {
-  const copy = PURPOSE_COPY[purpose] || PURPOSE_COPY.register;
-  return `
-      <div style="font-family: sans-serif; max-width: 420px; margin: 0 auto;">
-        <h2 style="color: #1a1a1a;">${copy.heading}</h2>
-        <p style="color: #4b5563; font-size: 14px;">${copy.body}</p>
-        <div style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #b8790a; margin: 20px 0;">${code}</div>
-        <p style="color: #9ca3af; font-size: 12px;">This code expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
-      </div>
-    `;
-};
-
-// An app password, not the account's real one. Google issues it for a single
-// application and it can be revoked on its own, so it never gives away the
-// mailbox itself. It belongs in the server's settings and nowhere else —
-// never in the code, never in the repository.
-const gmailConfigured = () => !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
-
-async function sendViaGmail(email, code, purpose) {
-  const transport = nodemailer.createTransport({
-    service: 'gmail',
-    // Without these a bad credential or a blocked port doesn't fail — it
-    // hangs, and the person waiting watches a button say "Sending..."
-    // forever with nothing to act on. Ten seconds is far longer than a
-    // working send needs and short enough to fall through to the backup
-    // while someone is still looking at the screen.
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-    auth: {
-      user: process.env.GMAIL_USER,
-      // Google shows the app password in four blocks of four; the spaces are
-      // for reading it, not part of it, and leaving them in is the most
-      // common reason a correct password is rejected.
-      pass: String(process.env.GMAIL_APP_PASSWORD).replace(/\s+/g, ''),
-    },
-  });
-
-  // Released either way — a transport left open holds the request open with
-  // it, which is the other way this ends up hanging.
-  const closeAfter = (promise) => promise.finally(() => transport.close());
-
-  await closeAfter(transport.sendMail({
-    from: `Rent-a-Ride Albay <${process.env.GMAIL_USER}>`,
-    to: email,
-    subject: subjectFor(code),
-    html: bodyFor(code, purpose),
-  }));
-}
-
-async function sendViaResend(email, code, purpose) {
-  if (!process.env.RESEND_API_KEY) throw new Error('No Resend API key is configured.');
-
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  // The SDK reports a rejected send by RETURNING an error rather than
-  // throwing one. Ignoring that made a refusal look exactly like a success:
-  // the account was told "code sent", the code was stored against an
-  // address it never reached, and nothing anywhere said why.
-  const { error } = await resend.emails.send({
-    from: RESEND_FROM,
-    to: email,
-    subject: subjectFor(code),
-    html: bodyFor(code, purpose),
-  });
-  if (error) throw new Error(`${error.name}: ${error.message}`);
-}
-
 export async function sendVerificationCodeEmail(email, code, purpose = 'register') {
-  // Nothing set up at all is a different problem from a send that failed,
-  // and blaming the address for it would send someone hunting a typo that
-  // isn't there. This is the normal state when running the project locally.
-  if (!gmailConfigured() && !process.env.RESEND_API_KEY) {
-    throw new Error('Email is not set up on this server, so no code could be sent.');
-  }
+  const copy = PURPOSE_COPY[purpose] || PURPOSE_COPY.register;
+  await sendEmail({
+    to: email,
+    subject: `${code} is your Rent-a-Ride Albay code`,
+    html: shell(`
+      <h2 style="color: #1a1a1a;">${copy.heading}</h2>
+      <p style="color: #4b5563; font-size: 14px;">${copy.body}</p>
+      <div style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #b8790a; margin: 20px 0;">${code}</div>
+      <p style="color: #9ca3af; font-size: 12px;">This code expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
+    `),
+  });
+}
 
-  const attempts = [];
-
-  if (gmailConfigured()) {
-    try {
-      await sendViaGmail(email, code, purpose);
-      return;
-    } catch (err) {
-      // Not fatal on its own. An app password dies if the account's real
-      // password changes or two-step verification is switched off, and a
-      // client waiting on a code shouldn't be the one who finds that out.
-      attempts.push(`Gmail: ${err.message}`);
-    }
-  }
-
-  try {
-    await sendViaResend(email, code, purpose);
-    return;
-  } catch (err) {
-    attempts.push(`Resend: ${err.message}`);
-  }
-
-  console.error(`Verification email to ${email} failed. ${attempts.join(' | ')}`);
-  throw new Error('We could not send the code to that address. Please check it and try again.');
+// The email that goes with a notification worth knowing about away from the
+// site. Deliberately the same title and wording that appears in the client's
+// notification bell — two versions of one event, worded differently, is how
+// somebody ends up unsure which is true.
+export async function sendNotificationEmail({ to, title, message, link }) {
+  const url = `${process.env.CLIENT_URL || 'https://rent-a-ride-albay.vercel.app'}${link || '/my-bookings'}`;
+  await sendEmail({
+    to,
+    subject: title,
+    html: shell(`
+      <h2 style="color: #1a1a1a; font-size: 19px;">${title}</h2>
+      <p style="color: #4b5563; font-size: 14px; line-height: 1.6;">${message}</p>
+      <a href="${url}" style="display: inline-block; margin-top: 18px; padding: 11px 22px; background: #b8790a; color: #17130e; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px;">
+        View my bookings
+      </a>
+      <p style="color: #9ca3af; font-size: 12px; margin-top: 20px;">
+        You're receiving this because you have a booking with Rent-a-Ride Albay.
+      </p>
+    `),
+  });
 }

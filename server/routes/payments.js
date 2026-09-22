@@ -77,7 +77,8 @@ async function reconcileBookingPayment(bookingId) {
     // merchants through the API.
     booking.paymongoPaymentId = paidPayment.id;
     await booking.save();
-    await notifyUser(booking.user._id, 'Payment Received', 'Your GCash payment was received. Your booking is still awaiting admin confirmation.', '/my-bookings');
+    // A receipt for money that has left their account.
+    await notifyUser(booking.user._id, 'Payment Received', 'Your GCash payment was received. Your booking is still awaiting admin confirmation.', '/my-bookings', { email: true });
     // Only notify admin once there's actually a paid booking to act on —
     // Manage Bookings doesn't show unpaid ones, so pinging admin any
     // earlier would point them at something they can't find.
