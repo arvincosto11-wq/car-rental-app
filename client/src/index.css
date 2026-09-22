@@ -688,17 +688,18 @@ body.dark .btn-solid-gold:hover {
 
    How far out is not just the radius. The circles are 30px (radius 15),
    and the step you are ON carries a 4px ring outside that, so it really
-   occupies 19. Clearing 15 left the line running into the ring on the
-   current step, which read as the line being drawn through it. 20 clears
-   the ring with a pixel to spare, and applying it to every connector
-   keeps the gaps even as the current step moves along the row. */
+   occupies 19. Clearing only the radius left the line running into that
+   ring. 26 leaves seven clear pixels beyond the ring and eleven beyond a
+   plain circle — a gap you can see rather than one that merely exists,
+   which is the whole point of it. Applied to every connector so the gaps
+   stay even as the ring moves along the row. */
 .wizard-steps-shell .booking-step-connector {
   display: block;
   position: absolute;
   top: 15px;
-  left: calc(50% + 20px);
+  left: calc(50% + 26px);
   transform: translateY(-50%);
-  width: calc(100% - 40px) !important;
+  width: calc(100% - 52px) !important;
   height: 4px !important;
   margin-left: 0 !important;
   border-radius: 2px;
