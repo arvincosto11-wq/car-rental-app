@@ -88,7 +88,7 @@ const MyBookings = () => {
   usePageTitle('My Bookings');
   const { user } = useAuth();
   const { isDark } = useTheme();
-  const { toast } = useUIFeedback();
+  const { toast, confirm } = useUIFeedback();
   const { notifications, markReadByLinkPrefix } = useNotifications();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -120,6 +120,7 @@ const MyBookings = () => {
   // that used to carry this — see BookingConfirmationModal.
   const [confirmation, setConfirmation] = useState(null);
   const [offerBusyId, setOfferBusyId] = useState('');
+  const [withdrawingId, setWithdrawingId] = useState('');
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -174,6 +175,36 @@ const MyBookings = () => {
     setSearchParams({}, { replace: true });
     checkGcashStatus(bookingId, gcashResult === 'cancelled');
   }, [user, searchParams]);
+
+  // Withdrawing a request the client made themselves. The refund one is
+  // confirmed first, because the amount was locked in when they asked and
+  // is recalculated from scratch if they ask again — so withdrawing can
+  // genuinely cost them money, and finding that out afterwards would feel
+  // like a trap.
+  const withdrawRequest = async (booking, kind) => {
+    if (kind === 'refund') {
+      const ok = await confirm(
+        `You'll keep this booking and the ₱${(booking.refundAmount || 0).toLocaleString()} refund request is cancelled. `
+        + 'If you ask for a refund again later, the amount is worked out from scratch and may be lower.',
+        { confirmLabel: 'Yes, keep my booking', cancelLabel: 'Leave the request' }
+      );
+      if (!ok) return;
+    }
+
+    setWithdrawingId(booking._id);
+    try {
+      await api.delete(`/bookings/${booking._id}/${kind}`);
+      toast.success(kind === 'refund'
+        ? 'Refund request withdrawn. Your booking stands.'
+        : 'Reschedule request withdrawn. Your original dates stand.');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Could not withdraw that request.');
+    } finally {
+      await refreshBookings();
+      setWithdrawingId('');
+    }
+  };
 
   const refreshBookings = async () => {
     try {
@@ -1103,6 +1134,31 @@ const MyBookings = () => {
                           </button>
                         )}
                       </div>
+                )}
+                {(booking.refundStatus === 'requested' || booking.rescheduleRequest?.status === 'pending')
+                  && booking.status !== 'cancelled' && (
+                    <div style={styles.actionsIndent}>
+                      {booking.refundStatus === 'requested' && (
+                        <button
+                          className="btn-ghost-amber"
+                          style={styles.rescheduleBtn}
+                          disabled={withdrawingId === booking._id}
+                          onClick={() => withdrawRequest(booking, 'refund')}
+                        >
+                          <ReturnLineIcon /> Cancel refund request
+                        </button>
+                      )}
+                      {booking.rescheduleRequest?.status === 'pending' && (
+                        <button
+                          className="btn-ghost-amber"
+                          style={styles.rescheduleBtn}
+                          disabled={withdrawingId === booking._id}
+                          onClick={() => withdrawRequest(booking, 'reschedule')}
+                        >
+                          <CalendarPlusIcon /> Cancel reschedule request
+                        </button>
+                      )}
+                    </div>
                 )}
                 {(booking.status === 'pending' || booking.status === 'confirmed') &&
                   booking.payment !== 'paid' &&

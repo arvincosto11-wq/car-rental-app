@@ -556,6 +556,63 @@ router.post('/:id/refund', protect, async (req, res) => {
   }
 });
 
+// A client changing their mind about a request they made themselves.
+//
+// Cleared rather than marked declined. A decline is the business turning
+// somebody down, and leaving that on a booking the client withdrew would
+// misrepresent what happened — to them, and to whoever reads it later.
+//
+// Only while it is still theirs to withdraw: re-checked here, so a client
+// and an admin acting in the same moment can't both win.
+router.delete('/:id/refund', protect, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    if (booking.refundStatus !== 'requested') {
+      return res.status(400).json({ message: 'This refund request has already been dealt with.' });
+    }
+
+    booking.refundStatus = 'none';
+    booking.refundReason = '';
+    // Cleared deliberately. It was locked in at the moment they asked,
+    // priced on how long ago they booked — holding onto it would promise
+    // an amount that may no longer be what the policy gives them.
+    booking.refundAmount = 0;
+    await booking.save();
+
+    await notifyAdmins('Refund Request Withdrawn', 'A client has withdrawn their refund request.', '/admin/manage-bookings');
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// The same for a reschedule. Nothing is locked in here, so withdrawing one
+// costs the client nothing.
+router.delete('/:id/reschedule', protect, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    if (booking.rescheduleRequest?.status !== 'pending') {
+      return res.status(400).json({ message: 'This reschedule request has already been dealt with.' });
+    }
+
+    booking.rescheduleRequest = { status: 'none', reason: '', adminNotes: '' };
+    await booking.save();
+
+    await notifyAdmins('Reschedule Request Withdrawn', 'A client has withdrawn their reschedule request.', '/admin/manage-bookings');
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Admin approves or declines a refund request
 router.put('/:id/refund', protect, adminOnly, async (req, res) => {
   try {
