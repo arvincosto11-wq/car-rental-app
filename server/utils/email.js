@@ -1,9 +1,27 @@
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-// Resend's shared sandbox sender — works without owning/verifying a custom
-// domain, which this project doesn't have. Fine for a capstone; a real
-// business would verify its own domain instead.
-const FROM = 'Rent-a-Ride Albay <onboarding@resend.dev>';
+// Sending the verification codes this system runs on.
+//
+// Two routes, tried in that order:
+//
+//   1. The business's own Gmail, through an app password. Gmail already
+//      knows that mailbox is real, so it will deliver to ANYONE — which is
+//      the only thing that matters here, because a customer signing up with
+//      their own address has to receive their code.
+//
+//   2. Resend's shared sandbox sender, kept as a fallback. Without a
+//      verified domain it delivers to exactly one inbox — the one that owns
+//      the Resend account — and turns every other recipient away. That is
+//      Resend's rule for unverified senders, not a limit of this system,
+//      and it is why route 1 exists.
+//
+// A business that later buys a domain verifies it with a provider and sends
+// from bookings@their-domain instead. That is a settings change; nothing
+// here has to be touched for it.
+
+// Resend's shared sender, usable without owning a domain.
+const RESEND_FROM = 'Rent-a-Ride Albay <onboarding@resend.dev>';
 
 const PURPOSE_COPY = {
   register: { heading: 'Verify your email', body: 'Enter this code to finish creating your Rent-a-Ride Albay account:' },
@@ -14,44 +32,92 @@ const PURPOSE_COPY = {
   'change-email': { heading: 'Confirm your new email address', body: 'Enter this code to start using this address for your Rent-a-Ride Albay account:' },
 };
 
-export async function sendVerificationCodeEmail(email, code, purpose = 'register') {
-  // Built lazily, not at module load — the Resend SDK throws synchronously
-  // if the key is missing, and this file is imported at server startup, so
-  // building it eagerly would crash the entire app over one missing env
-  // var instead of just failing this one request.
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error('Email is not configured on the server, so no code could be sent.');
-  }
+const subjectFor = (code) => `${code} is your Rent-a-Ride Albay code`;
 
-  const resend = new Resend(process.env.RESEND_API_KEY);
+const bodyFor = (code, purpose) => {
   const copy = PURPOSE_COPY[purpose] || PURPOSE_COPY.register;
-  const { error } = await resend.emails.send({
-    from: FROM,
-    to: email,
-    subject: `${code} is your Rent-a-Ride Albay code`,
-    html: `
+  return `
       <div style="font-family: sans-serif; max-width: 420px; margin: 0 auto;">
         <h2 style="color: #1a1a1a;">${copy.heading}</h2>
         <p style="color: #4b5563; font-size: 14px;">${copy.body}</p>
         <div style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #b8790a; margin: 20px 0;">${code}</div>
         <p style="color: #9ca3af; font-size: 12px;">This code expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
       </div>
-    `,
+    `;
+};
+
+// An app password, not the account's real one. Google issues it for a single
+// application and it can be revoked on its own, so it never gives away the
+// mailbox itself. It belongs in the server's settings and nowhere else —
+// never in the code, never in the repository.
+const gmailConfigured = () => !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+
+async function sendViaGmail(email, code, purpose) {
+  const transport = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_USER,
+      // Google shows the app password in four blocks of four; the spaces are
+      // for reading it, not part of it, and leaving them in is the most
+      // common reason a correct password is rejected.
+      pass: String(process.env.GMAIL_APP_PASSWORD).replace(/\s+/g, ''),
+    },
   });
 
-  // The SDK reports a rejected send by RETURNING an error, not by throwing.
-  // Ignoring it meant a refusal looked exactly like a success: the account
-  // was told "code sent", the code was stored against an address it never
-  // reached, and there was nothing anywhere to say why.
-  //
-  // The most common refusal is the sandbox sender above: without a verified
-  // domain the provider only delivers to the address that owns the sending
-  // account, and every other recipient is turned away.
-  if (error) {
-    console.error('Verification email refused:', error.name, error.message);
-    throw new Error(
-      'We could not send the code to that address. If this system is still using the '
-      + 'sandbox email sender, it can only deliver to the inbox that owns the email account.'
-    );
+  await transport.sendMail({
+    from: `Rent-a-Ride Albay <${process.env.GMAIL_USER}>`,
+    to: email,
+    subject: subjectFor(code),
+    html: bodyFor(code, purpose),
+  });
+}
+
+async function sendViaResend(email, code, purpose) {
+  if (!process.env.RESEND_API_KEY) throw new Error('No Resend API key is configured.');
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  // The SDK reports a rejected send by RETURNING an error rather than
+  // throwing one. Ignoring that made a refusal look exactly like a success:
+  // the account was told "code sent", the code was stored against an
+  // address it never reached, and nothing anywhere said why.
+  const { error } = await resend.emails.send({
+    from: RESEND_FROM,
+    to: email,
+    subject: subjectFor(code),
+    html: bodyFor(code, purpose),
+  });
+  if (error) throw new Error(`${error.name}: ${error.message}`);
+}
+
+export async function sendVerificationCodeEmail(email, code, purpose = 'register') {
+  // Nothing set up at all is a different problem from a send that failed,
+  // and blaming the address for it would send someone hunting a typo that
+  // isn't there. This is the normal state when running the project locally.
+  if (!gmailConfigured() && !process.env.RESEND_API_KEY) {
+    throw new Error('Email is not set up on this server, so no code could be sent.');
   }
+
+  const attempts = [];
+
+  if (gmailConfigured()) {
+    try {
+      await sendViaGmail(email, code, purpose);
+      return;
+    } catch (err) {
+      // Not fatal on its own. An app password dies if the account's real
+      // password changes or two-step verification is switched off, and a
+      // client waiting on a code shouldn't be the one who finds that out.
+      attempts.push(`Gmail: ${err.message}`);
+    }
+  }
+
+  try {
+    await sendViaResend(email, code, purpose);
+    return;
+  } catch (err) {
+    attempts.push(`Resend: ${err.message}`);
+  }
+
+  console.error(`Verification email to ${email} failed. ${attempts.join(' | ')}`);
+  throw new Error('We could not send the code to that address. Please check it and try again.');
 }
