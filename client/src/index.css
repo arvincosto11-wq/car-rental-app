@@ -507,7 +507,7 @@ select:disabled {
   .booking-steps-shell { grid-template-columns: 1fr; }
   .booking-steps-list { flex-direction: row !important; justify-content: space-between; margin-bottom: 8px; }
   .booking-step-item-wrap { flex: 1; }
-  .booking-step-row { flex-direction: column !important; gap: 4px !important; }
+  .booking-step-row { flex-direction: column !important; align-items: center !important; gap: 4px !important; }
   .booking-step-label { font-size: 10px !important; text-align: center; }
   .booking-step-connector { display: none !important; }
 }
@@ -665,6 +665,12 @@ body.dark .btn-solid-gold:hover {
 }
 .wizard-steps-shell .booking-step-row {
   flex-direction: column;
+  /* The circle has a fixed 30px width, so it never stretches and lands at
+     the column's start — hard left. The label underneath is centred. That
+     left every circle sitting off to one side of its own label, and off
+     the line that is drawn from the middle of the step. Centring the
+     column puts all three on the same axis. */
+  align-items: center;
   gap: 6px;
   position: relative;
   z-index: 1;
@@ -1215,7 +1221,7 @@ button.seg-tab:not(:disabled):hover {
     justify-content: space-between;
   }
   .booking-modal-side .booking-step-item-wrap { flex: 1; }
-  .booking-modal-side .booking-step-row { flex-direction: column !important; gap: 4px !important; }
+  .booking-modal-side .booking-step-row { flex-direction: column !important; align-items: center !important; gap: 4px !important; }
   .booking-modal-side .booking-step-connector { display: none !important; }
   .booking-modal-side .booking-step-desc { display: none !important; }
   .booking-modal-promo { margin-top: 16px !important; }
