@@ -8,7 +8,7 @@ import { notifyUser, notifyAdmins } from './notify.js';
 import { formatTripDates } from './blockReasons.js';
 import { offerDeadline, hasEnoughNotice, offerMessage, MIN_NOTICE_HOURS } from './offerWindow.js';
 import { busySpans, bookingSpan, overlaps } from './availability.js';
-import { instantFrom, phHour } from './phTime.js';
+import { instantFrom, phHour, isTradingHour } from './phTime.js';
 
 // When a booking can no longer happen on its dates — another reservation was
 // confirmed over it, or the vehicle was pulled off the road — cancelling and
@@ -249,7 +249,7 @@ const clearTopUp = (booking) => {
 // a day they picked themselves. A date of their own keeps the trip's length
 // and its pickup hour — only where it sits moves — so it's priced by the
 // same function and gets the same treatment from there on.
-async function resolveOption(booking, { optionIndex, startDate }) {
+async function resolveOption(booking, { optionIndex, startDate, pickupHour }) {
   if (!startDate) {
     const option = booking.adjustOffer?.options?.[Number(optionIndex)];
     if (!option) return { error: 'That option is no longer available. Please refresh and try again.' };
@@ -260,7 +260,21 @@ async function resolveOption(booking, { optionIndex, startDate }) {
   if (!car) return { error: 'That vehicle is no longer available.' };
 
   const own = bookingSpan(booking);
-  const hour = booking.hasPickupTime ? phHour(booking.startDate) : 0;
+  // Their own hour unless they picked another one. That fallback is what
+  // this used to do always — and it meant a client could be told their
+  // dates were taken when the truth was that only their old hour was,
+  // with the rest of that day sitting free.
+  //
+  // Only offered on a booking that has a pickup time at all. One made
+  // before times existed stays a whole-day booking rather than quietly
+  // growing an hour it was never made with.
+  const chosen = Number(pickupHour);
+  const hour = booking.hasPickupTime
+    ? (isTradingHour(chosen) ? chosen : phHour(booking.startDate))
+    : 0;
+  if (booking.hasPickupTime && pickupHour !== undefined && pickupHour !== null && !isTradingHour(chosen)) {
+    return { error: 'Please choose a pickup time between 7:00 AM and 8:00 PM.' };
+  }
   const start = instantFrom(startDate, hour);
   if (isNaN(start.getTime())) return { error: 'Please choose a valid date.' };
   if (start.getTime() < Date.now() + MIN_NOTICE_HOURS * HOUR) {

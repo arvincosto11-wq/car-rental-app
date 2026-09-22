@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 import AvailabilityCalendar from './AvailabilityCalendar';
-import { timeLeftLabel, offerReasonText } from '../utils/offerWindow';
-import { formatMoment, phHour, phYmd, instantFrom, addDays } from '../utils/phTime';
+import { timeLeftLabel, offerReasonText, MIN_NOTICE_HOURS } from '../utils/offerWindow';
+import { formatMoment, phHour, phYmd, instantFrom, addDays, phDayStart, pickupHours, formatHour } from '../utils/phTime';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 
 // Shown on a booking whose dates can no longer be honoured, in place of
@@ -38,6 +38,10 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
   const [picking, setPicking] = useState(false);
   const [ranges, setRanges] = useState([]);
   const [customStart, setCustomStart] = useState('');
+  // The hour they asked for. The one actually used is worked out below, so
+  // a choice that stops being available when the day changes corrects
+  // itself instead of going stale.
+  const [preferredHour, setPreferredHour] = useState(null);
   // A price rise the client has been shown and not yet answered.
   const [priceCheck, setPriceCheck] = useState(null);
 
@@ -58,8 +62,36 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
 
   // The trip keeps its length and its hour, so choosing a pickup day is all
   // it takes — the return follows from it.
-  const hour = booking.hasPickupTime ? phHour(booking.startDate) : 0;
-  const customEnd = customStart
+  const ownHour = booking.hasPickupTime ? phHour(booking.startDate) : 0;
+
+  // What the vehicle is really unavailable for. The server sends each
+  // booking's span with its turnaround already added, so the hours offered
+  // here are the hours it will actually accept.
+  const busySpans = ranges.map((r) => (r.busyStart && r.busyEnd
+    ? { start: new Date(r.busyStart).getTime(), end: new Date(r.busyEnd).getTime() }
+    : { start: phDayStart(r.startDate).getTime(), end: phDayStart(r.endDate).getTime() }));
+
+  // Every hour this trip could run from if it started on `ymd`. Checked
+  // across the whole range, not just the moment of pickup — and it is only
+  // because this exists that a client is no longer turned away from a day
+  // where their old hour is taken but the rest of it is free.
+  const hoursFor = (ymd) => (ymd && booking.hasPickupTime
+    ? pickupHours().filter((h) => {
+      const from = instantFrom(ymd, h).getTime();
+      const to = addDays(instantFrom(ymd, h), booking.totalDays).getTime();
+      if (from < Date.now() + MIN_NOTICE_HOURS * 60 * 60 * 1000) return false;
+      return !busySpans.some((b) => from < b.end && to > b.start);
+    })
+    : []);
+
+  const availableHours = hoursFor(customStart);
+  // What they asked for while it still works, otherwise the earliest that
+  // does. Falls back to their original hour on a booking with no time.
+  const hour = booking.hasPickupTime
+    ? (availableHours.includes(preferredHour) ? preferredHour : (availableHours.length ? availableHours[0] : null))
+    : ownHour;
+
+  const customEnd = customStart && hour !== null
     ? phYmd(addDays(instantFrom(customStart, hour), booking.totalDays))
     : '';
 
@@ -122,6 +154,18 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
       flexWrap: 'wrap', marginTop: '10px',
     },
     pickDates: { fontSize: '12.5px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    timeRow: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' },
+    timeChip: (active, open) => ({
+      padding: '6px 11px', borderRadius: '999px',
+      border: `1px solid ${active ? gold : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      background: active ? gold : 'transparent',
+      color: active ? ON_GOLD : (isDark ? '#e4e6eb' : '#1a1a1a'),
+      fontSize: '11.5px', fontWeight: active ? '800' : '600', fontFamily: 'inherit',
+      cursor: open ? 'pointer' : 'not-allowed',
+      opacity: open ? 1 : 0.32,
+      textDecoration: open ? 'none' : 'line-through',
+    }),
+    noHours: { fontSize: '11.5px', lineHeight: 1.5, color: isDark ? '#fca5a5' : '#b91c1c', marginTop: '6px' },
     refundRow: {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
       flexWrap: 'wrap', marginTop: '12px',
@@ -295,18 +339,48 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
             }}
             isDark={isDark}
           />
+          {customStart && booking.hasPickupTime && (
+            <>
+              <span style={s.listLabel}>Pickup time on that day</span>
+              {availableHours.length === 0 ? (
+                <p style={s.noHours}>
+                  There is no pickup time left on that day. Try another one.
+                </p>
+              ) : (
+                <div style={s.timeRow} role="group" aria-label="Pickup time">
+                  {pickupHours().map((h) => {
+                    const open = availableHours.includes(h);
+                    return (
+                      <button
+                        key={h}
+                        type="button"
+                        aria-pressed={hour === h}
+                        disabled={!open}
+                        style={s.timeChip(hour === h, open)}
+                        title={open ? undefined : 'Not available that day — the vehicle is out, or being returned and checked.'}
+                        onClick={() => setPreferredHour(h)}
+                      >
+                        {formatHour(h)}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
           <div style={s.pickSummary}>
             <span style={s.pickDates}>
-              {customStart
+              {customStart && hour !== null
                 ? `${formatMoment(instantFrom(customStart, hour), booking.hasPickupTime)} → ${formatMoment(instantFrom(customEnd, hour), booking.hasPickupTime)}`
                 : 'Tap a day on the calendar above.'}
             </span>
             <span style={{ display: 'flex', gap: '8px' }}>
               <button
                 type="button"
-                style={{ ...s.takeBtn, opacity: busy || !customStart ? 0.6 : 1 }}
-                disabled={busy || !customStart}
-                onClick={() => decide('accept', { startDate: customStart })}
+                style={{ ...s.takeBtn, opacity: busy || !customStart || hour === null ? 0.6 : 1 }}
+                disabled={busy || !customStart || hour === null}
+                onClick={() => decide('accept', { startDate: customStart, pickupHour: hour })}
               >
                 Take these dates
               </button>
@@ -314,7 +388,7 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
                 type="button"
                 style={s.backBtn}
                 disabled={busy}
-                onClick={() => { setPicking(false); setCustomStart(''); }}
+                onClick={() => { setPicking(false); setCustomStart(''); setPreferredHour(null); }}
               >
                 Cancel
               </button>

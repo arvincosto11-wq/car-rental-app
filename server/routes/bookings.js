@@ -853,7 +853,7 @@ router.put('/:id/adjust', protect, async (req, res) => {
     if (decision === 'accept') {
       const result = await acceptAdjustOffer(
         booking,
-        { optionIndex, startDate: req.body.startDate },
+        { optionIndex, startDate: req.body.startDate, pickupHour: req.body.pickupHour },
         {
           confirmPrice: req.body.confirmPrice === true,
           payAtPickup: req.body.payAtPickup === true,
@@ -896,7 +896,11 @@ router.post('/:id/adjust/top-up', protect, async (req, res) => {
       return res.status(400).json({ message: 'The deadline for this booking has passed, so it has been refunded in full.' });
     }
 
-    const result = await startTopUp(booking, { optionIndex: req.body.optionIndex, startDate: req.body.startDate });
+    const result = await startTopUp(booking, {
+      optionIndex: req.body.optionIndex,
+      startDate: req.body.startDate,
+      pickupHour: req.body.pickupHour,
+    });
     if (!result.ok) return res.status(400).json({ message: result.message });
     return res.json({ checkoutUrl: result.checkoutUrl });
   } catch (err) {
