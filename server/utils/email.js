@@ -19,9 +19,13 @@ export async function sendVerificationCodeEmail(email, code, purpose = 'register
   // if the key is missing, and this file is imported at server startup, so
   // building it eagerly would crash the entire app over one missing env
   // var instead of just failing this one request.
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email is not configured on the server, so no code could be sent.');
+  }
+
   const resend = new Resend(process.env.RESEND_API_KEY);
   const copy = PURPOSE_COPY[purpose] || PURPOSE_COPY.register;
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: FROM,
     to: email,
     subject: `${code} is your Rent-a-Ride Albay code`,
@@ -34,4 +38,20 @@ export async function sendVerificationCodeEmail(email, code, purpose = 'register
       </div>
     `,
   });
+
+  // The SDK reports a rejected send by RETURNING an error, not by throwing.
+  // Ignoring it meant a refusal looked exactly like a success: the account
+  // was told "code sent", the code was stored against an address it never
+  // reached, and there was nothing anywhere to say why.
+  //
+  // The most common refusal is the sandbox sender above: without a verified
+  // domain the provider only delivers to the address that owns the sending
+  // account, and every other recipient is turned away.
+  if (error) {
+    console.error('Verification email refused:', error.name, error.message);
+    throw new Error(
+      'We could not send the code to that address. If this system is still using the '
+      + 'sandbox email sender, it can only deliver to the inbox that owns the email account.'
+    );
+  }
 }
