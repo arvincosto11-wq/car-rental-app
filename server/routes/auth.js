@@ -239,6 +239,86 @@ router.put('/change-password', protect, async (req, res) => {
   }
 });
 
+// Changing the address an account signs in with.
+//
+// The code goes to the NEW address, not the current one. That is the whole
+// point: the only thing worth proving is that whoever asked can actually
+// receive mail at the address they are moving to. Sending it to the old one
+// would prove nothing and, on an account whose address was never real,
+// could not be delivered at all — which is exactly the state this exists to
+// get out of.
+//
+// The current password is still required, so someone who walks up to an
+// unlocked screen cannot quietly take the account over.
+router.post('/change-email/send-code', protect, verificationLimiter, async (req, res) => {
+  try {
+    const { currentPassword, newEmail } = req.body;
+    const email = String(newEmail || '').trim().toLowerCase();
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (email === user.email.toLowerCase()) {
+      return res.status(400).json({ message: 'That is already your email address.' });
+    }
+
+    const match = await bcrypt.compare(currentPassword || '', user.password);
+    if (!match) return res.status(400).json({ message: 'Current password is incorrect.' });
+
+    const taken = await User.findOne({ email });
+    if (taken) return res.status(400).json({ message: 'Another account already uses that email address.' });
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    await EmailVerification.findOneAndUpdate(
+      { email },
+      { email, code, attempts: 0, verified: false, expiresAt: new Date(Date.now() + VERIFICATION_CODE_TTL_MS) },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    await sendVerificationCodeEmail(email, code, 'change-email');
+    res.json({ message: 'Verification code sent to the new address.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Everything is re-checked here rather than trusted from the step before:
+// the password, that the code for this exact address was confirmed and is
+// still in date, and that nobody else has claimed the address in between.
+router.put('/change-email', protect, async (req, res) => {
+  try {
+    const { currentPassword, newEmail } = req.body;
+    const email = String(newEmail || '').trim().toLowerCase();
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const match = await bcrypt.compare(currentPassword || '', user.password);
+    if (!match) return res.status(400).json({ message: 'Current password is incorrect.' });
+
+    const verification = await EmailVerification.findOne({ email });
+    if (!verification?.verified || verification.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'Please verify the new address before switching to it.' });
+    }
+
+    const taken = await User.findOne({ email });
+    if (taken) return res.status(400).json({ message: 'Another account already uses that email address.' });
+
+    user.email = email;
+    await user.save();
+    await EmailVerification.deleteOne({ email });
+    res.json({ message: 'Email updated successfully.', email });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Send a 6-digit code to the given email, to be confirmed via
 // POST /verify-email-code before registration is allowed to proceed.
 router.post('/send-verification-code', verificationLimiter, async (req, res) => {

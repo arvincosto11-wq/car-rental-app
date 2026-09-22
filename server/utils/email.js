@@ -9,6 +9,9 @@ const PURPOSE_COPY = {
   register: { heading: 'Verify your email', body: 'Enter this code to finish creating your Rent-a-Ride Albay account:' },
   'change-password': { heading: 'Confirm your password change', body: 'Enter this code to confirm changing your password:' },
   'reset-password': { heading: 'Reset your password', body: 'Enter this code to reset your Rent-a-Ride Albay password:' },
+  // Sent to the NEW address, never the old one — the point of the code is
+  // to prove whoever asked can actually receive mail there.
+  'change-email': { heading: 'Confirm your new email address', body: 'Enter this code to start using this address for your Rent-a-Ride Albay account:' },
 };
 
 export async function sendVerificationCodeEmail(email, code, purpose = 'register') {

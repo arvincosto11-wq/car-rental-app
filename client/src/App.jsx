@@ -39,6 +39,7 @@ const RateClients = lazy(() => import('./pages/admin/RateClients'));
 const ManageReviews = lazy(() => import('./pages/admin/ManageReviews'));
 const GpsTracking = lazy(() => import('./pages/admin/GpsTracking'));
 const ExpiringDocuments = lazy(() => import('./pages/admin/ExpiringDocuments'));
+const AdminAccount = lazy(() => import('./pages/admin/AdminAccount'));
 const ConsignorDashboard = lazy(() => import('./pages/consignor/ConsignorDashboard'));
 const AddVehicle = lazy(() => import('./pages/consignor/AddVehicle'));
 const ConsignorGpsTracking = lazy(() => import('./pages/consignor/GpsTracking'));
@@ -251,6 +252,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <ExpiringDocuments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/account"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminAccount />
                 </ProtectedRoute>
               }
             />
