@@ -286,6 +286,12 @@ const Register = () => {
       display: 'flex',
       width: '100%',
       maxWidth: '1000px',
+      // The four steps hold wildly different amounts of form, and without a
+      // floor the card collapsed to a letterbox on the last one — which
+      // also cropped the video beside it to an unflattering slice. A floor
+      // keeps the card one shape the whole way through, so moving between
+      // steps changes the content rather than the furniture.
+      minHeight: '560px',
       borderRadius: '20px',
       overflow: 'hidden',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
@@ -310,6 +316,13 @@ const Register = () => {
       minWidth: 0,
       padding: '40px',
       background: isDark ? '#242526' : '#fff',
+      // Centred so a short step sits in the middle of the taller card
+      // rather than clinging to the top with a field of empty space under
+      // it. Safe on the tall steps too: the card grows past its floor to
+      // fit them, so there is never anything to centre out of view.
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
     },
     title: {
       fontSize: '24px',

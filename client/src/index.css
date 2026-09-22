@@ -644,6 +644,10 @@ body.dark .btn-solid-gold:hover {
 @media (max-width: 760px) {
   .login-map-panel { display: none !important; }
   .login-card { max-width: 460px !important; }
+  /* The floor exists to keep the card's proportions steady beside the
+     video panel. With the panel gone there is nothing to hold a shape
+     against, and on a short phone it would only add empty space. */
+  .login-card { min-height: 0 !important; }
 }
 
 /* Register's step indicator — same BookingSteps component/markup as Car
