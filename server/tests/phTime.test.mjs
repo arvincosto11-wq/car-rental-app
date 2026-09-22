@@ -53,6 +53,23 @@ export default function run() {
   check('8:00 PM to 8:00 PM, next day', daysBetween(instantFrom('2026-09-22', 20), instantFrom('2026-09-23', 20)), 1);
   check('a legacy midnight-to-midnight week', daysBetween(new Date('2026-09-22T00:00:00Z'), new Date('2026-09-29T00:00:00Z')), 7);
 
+  group('changing the hour never changes the trip length');
+  // This is what makes the pickup time safe to move on a reschedule or when
+  // a bumped client picks their own dates. The price is held still by the
+  // LENGTH, so if any hour could produce a different day count, moving the
+  // time would quietly reprice the booking.
+  let lengthHeld = true;
+  for (const h of pickupHours()) {
+    for (const nights of [1, 3, 7, 30]) {
+      const from = instantFrom('2026-09-22', h);
+      const to = instantFrom(phYmd(new Date(from.getTime() + nights * 24 * 60 * 60 * 1000)), h);
+      if (daysBetween(from, to) !== nights) lengthHeld = false;
+    }
+  }
+  check('every hour, over 1, 3, 7 and 30 days', lengthHeld, true);
+  check('7:00 AM start, 3 days', daysBetween(instantFrom('2026-09-22', 7), instantFrom('2026-09-25', 7)), 3);
+  check('the same trip started at 8:00 PM', daysBetween(instantFrom('2026-09-22', 20), instantFrom('2026-09-25', 20)), 3);
+
   group('the hours a client may choose');
   check('earliest', pickupHours()[0], 7);
   check('latest', pickupHours()[pickupHours().length - 1], 20);
