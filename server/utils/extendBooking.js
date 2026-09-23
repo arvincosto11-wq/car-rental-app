@@ -39,8 +39,13 @@ const MAX_LOOKAHEAD_DAYS = 120;
 
 const CLIENT_URL = process.env.CLIENT_URL || 'https://rent-a-ride-albay.vercel.app';
 
-export const hasCollectedVehicle = (booking, now = new Date()) =>
-  bookingSpan(booking).start <= now;
+// Whether the client actually has the vehicle. This used to read the clock
+// — start <= now — which meant a client an hour late for a 7:00 AM pickup
+// was already "collected", and extending then priced their trip as if it
+// were underway instead of repricing it whole with any long-rental discount
+// they had grown into. It cost them money for being late. Now it is a fact
+// somebody recorded, not a guess.
+export const hasCollectedVehicle = (booking) => !!booking.collectedAt;
 
 // The last moment this booking could run to before it would tread on
 // something else. Other bookings already carry their turnaround in the spans
@@ -100,7 +105,7 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
     return { error: 'The vehicle is not free that far ahead. Please choose an earlier date.' };
   }
 
-  const collected = hasCollectedVehicle(booking, now);
+  const collected = hasCollectedVehicle(booking);
   const wasTotal = booking.totalPrice;
   const wasSubtotal = booking.subtotal || booking.totalPrice;
 

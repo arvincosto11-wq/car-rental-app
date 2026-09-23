@@ -27,6 +27,13 @@ const bookingSchema = new mongoose.Schema({
   paymentType: { type: String, enum: ['downpayment', 'full'], default: 'downpayment' },
   bookingType: { type: String, enum: ['self-drive', 'with-driver'], default: 'with-driver' },
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'pending' },
+  // When the keys actually changed hands, recorded by admin at the counter.
+  // Before this existed the system inferred it from the clock — "the pickup
+  // hour has passed, so they must have it" — which is wrong for anybody
+  // running late and wrong for anybody who never turned up at all. Null
+  // means not collected yet, not "unknown": utils/backfillCollected.js
+  // filled it in for everything that predates the field.
+  collectedAt: { type: Date, default: null },
   // Highest escalation already sent to admin about this booking sitting
   // unconfirmed — see utils/pendingReminders.js. Stored so each tier fires
   // once rather than on every request that triggers the sweep.

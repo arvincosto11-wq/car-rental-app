@@ -12,6 +12,7 @@ import notificationRoutes from './routes/notifications.js';
 import paymentsRoutes, { handlePaymongoWebhook } from './routes/payments.js';
 import adminStatsRoutes from './routes/adminStats.js';
 import longRentalRoutes from './routes/longRental.js';
+import backfillCollected from './utils/backfillCollected.js';
 
 dotenv.config();
 
@@ -58,8 +59,9 @@ mongoose.connect(process.env.MONGO_URI, {
   serverSelectionTimeoutMS: 10000,
   family: 4
 })
-  .then(() => {
+  .then(async () => {
     console.log('✅ MongoDB connected');
+    await backfillCollected();
     app.listen(process.env.PORT, () => {
       console.log(`🚀 Server running on port ${process.env.PORT}`);
     });

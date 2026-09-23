@@ -22,6 +22,11 @@ const router = express.Router();
 // this is the one that actually decides.
 const NO_SHOW_WINDOW_HOURS = 24;
 
+// How far ahead of the pickup time a handover can be recorded. Clients turn
+// up early and the counter shouldn't have to wait for the clock to catch up
+// before it can hand over the keys.
+const EARLY_COLLECT_HOURS = 2;
+
 async function recomputeCarRating(carId) {
   const [result] = await Booking.aggregate([
     { $match: { car: new mongoose.Types.ObjectId(carId), 'carRating.overall': { $exists: true }, 'carRating.hidden': { $ne: true } } },
@@ -46,6 +51,10 @@ async function autoCompleteExpiredBookings() {
   const expired = await Booking.find({ status: 'confirmed', endDate: { $lt: startOfToday } });
   for (const booking of expired) {
     booking.status = 'completed';
+    // A trip that ran to its return date was collected, whether or not the
+    // counter pressed the button. Stamped with the pickup time, since that
+    // is when it happened.
+    if (!booking.collectedAt) booking.collectedAt = booking.startDate;
     await booking.save();
     await notifyUser(booking.user, 'Vehicle Returned', 'Your vehicle return has been recorded. You can now rate your experience.', '/my-bookings/rate');
   }
@@ -424,6 +433,10 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       if (new Date() < new Date(booking.startDate)) {
         return res.status(400).json({ message: 'This booking cannot be marked as returned before its pickup date.' });
       }
+      // Returning a vehicle says it was collected, whether or not anybody
+      // pressed the button at the counter. Backdated to the pickup time
+      // rather than stamped now, because now is when it came back.
+      if (!booking.collectedAt) booking.collectedAt = booking.startDate;
     }
 
     // Cancelling used to just flip the status and notify — no refund record,
@@ -487,6 +500,38 @@ router.put('/:id/collect-balance', protect, adminOnly, async (req, res) => {
   }
 });
 
+// Admin records that the vehicle has actually been handed over. This is the
+// moment the counter checks the documents the terms ask for, so the two
+// belong together — the dialog on the client lists them.
+//
+// Worth having as its own record rather than inferred from the clock: it is
+// what separates a client running late from a client who never came, and
+// those two have opposite consequences. One extends at before-pickup
+// pricing; the other forfeits everything.
+router.put('/:id/collect', protect, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ message: 'Only a confirmed booking can be marked as picked up.' });
+    }
+    if (booking.collectedAt) {
+      return res.status(400).json({ message: 'This booking is already marked as picked up.' });
+    }
+    const earliest = new Date(new Date(booking.startDate).getTime() - EARLY_COLLECT_HOURS * 60 * 60 * 1000);
+    if (new Date() < earliest) {
+      return res.status(400).json({ message: `This booking can only be marked as picked up within ${EARLY_COLLECT_HOURS} hours of its pickup time.` });
+    }
+
+    booking.collectedAt = new Date();
+    await booking.save();
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Admin marks a confirmed booking as a no-show once its pickup date has
 // passed — cancels it (freeing the car for other bookings, same as any
 // other cancelled booking) and forfeits whatever the client already paid
@@ -506,9 +551,14 @@ router.put('/:id/no-show', protect, adminOnly, async (req, res) => {
       return res.status(400).json({ message: "This booking can't be marked as a no-show before its pickup date." });
     }
     // A no-show means the vehicle was never collected, and it forfeits
-    // everything the client paid. Extending a booking is proof they did
-    // collect it, so this must not be reachable afterwards — it is one
-    // misclick from taking somebody's money for a trip they are on.
+    // everything the client paid. Somebody stood at the counter and recorded
+    // the handover, so this is settled — it is one misclick from taking the
+    // money of a client who is out on the road right now.
+    if (booking.collectedAt) {
+      return res.status(400).json({ message: 'This booking was marked as picked up, so the vehicle was collected. Cancel it instead if something has gone wrong.' });
+    }
+    // Extending is the same proof by another route, and covers anything
+    // extended before handovers were recorded at all.
     if (booking.extensions?.length) {
       return res.status(400).json({ message: 'This booking was extended, so the vehicle was collected. Cancel it instead if something has gone wrong.' });
     }

@@ -23,6 +23,9 @@ const LOW_RATING_THRESHOLD = 3;
 // the same rule on the server, which is the one that actually decides —
 // this only keeps the button from being offered when it would be refused.
 const NO_SHOW_WINDOW_HOURS = 24;
+// How early a handover can be recorded, mirroring the server. Clients turn
+// up before their hour and the counter shouldn't have to wait for the clock.
+const EARLY_COLLECT_HOURS = 2;
 const PAGE_SIZE = 10;
 
 // Mirrors refundAmountFor in server/utils/cancelBooking.js. The server
@@ -204,6 +207,31 @@ const ManageBookings = () => {
     await handleStatus(booking._id, 'completed');
   };
 
+  const handleMarkPickedUp = async (booking) => {
+    // The documents live in this dialog because this is the one moment
+    // anybody is in a position to check them. Listing them in the terms and
+    // then never asking again is how a requirement quietly stops existing.
+    const docs = [
+      '\u2022 Two valid IDs, names matching the booking',
+      '\u2022 Proof of billing address in their name',
+      booking.bookingType === 'self-drive' ? '\u2022 Driver\u2019s licence, not expired' : null,
+    ].filter(Boolean).join('\n');
+    const ok = await confirm(
+      `Confirm you have checked, in person:\n\n${docs}\n\nThis records that ${booking.user?.name || 'the client'} `
+      + 'has the vehicle, and takes away the No-Show option for this booking.',
+      { confirmLabel: 'Yes, keys handed over', cancelLabel: 'Not yet' }
+    );
+    if (!ok) return;
+    try {
+      await api.put(`/bookings/${booking._id}/collect`);
+      await fetchBookings();
+      toast.success('Recorded as picked up.');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Something went wrong recording this pickup.');
+    }
+  };
+
   const handleMarkNoShow = async (booking) => {
     const ok = await confirm(
       `Mark this booking as a no-show? This cancels it and forfeits the ₱${booking.amountPaid.toLocaleString()} already paid — this can't be undone.`,
@@ -339,6 +367,8 @@ const ManageBookings = () => {
     // badge, e.g. dotStyle('#16a34a') for the confirmed badge's dot.
     statusDot: (color) => ({ width: '6px', height: '6px', borderRadius: '50%', background: color, flexShrink: 0 }),
     returnBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '500' },
+    pickedUpBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '700' },
+    pickedUpNote: { fontSize: '11px', fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
     noShowBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     acceptBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     declineBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
@@ -675,8 +705,16 @@ const ManageBookings = () => {
                   ) : booking.status === 'confirmed' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={s.confirmed}><span style={s.statusDot(isDark ? '#86efac' : '#065f46')} />Confirmed</span>
-                      {new Date() >= new Date(booking.startDate) ? (
+                      {/* One sequence, in the order it happens at the
+                          counter: waiting, then handed over, then back. Until
+                          the keys are recorded as handed over there is
+                          nothing to return — and after they are, there is no
+                          longer any question of a no-show. */}
+                      {booking.collectedAt ? (
                         <>
+                          <span style={s.pickedUpNote}>
+                            Picked up {formatMoment(booking.collectedAt, true, { month: 'numeric', day: 'numeric' })}
+                          </span>
                           <button
                             style={s.returnBtn}
                             onClick={() => handleMarkReturned(booking)}
@@ -684,11 +722,20 @@ const ManageBookings = () => {
                           >
                             Mark as Returned
                           </button>
-                          {/* A no-show means the vehicle was never collected,
-                              and it forfeits everything paid. An extension is
-                              proof it WAS collected, and three days into a
-                              trip it is not a no-show whatever else it is. */}
-                          {!booking.extensions?.length
+                        </>
+                      ) : new Date() >= new Date(new Date(booking.startDate).getTime() - EARLY_COLLECT_HOURS * 60 * 60 * 1000) ? (
+                        <>
+                          <button
+                            style={s.pickedUpBtn}
+                            onClick={() => handleMarkPickedUp(booking)}
+                            title="Record that the documents were checked and the keys handed over."
+                          >
+                            Picked Up
+                          </button>
+                          {/* Three days into a trip it is not a no-show,
+                              whatever else it might be. */}
+                          {new Date() >= new Date(booking.startDate)
+                            && !booking.extensions?.length
                             && new Date() <= new Date(new Date(booking.startDate).getTime() + NO_SHOW_WINDOW_HOURS * 60 * 60 * 1000) && (
                             <button
                               style={s.noShowBtn}
