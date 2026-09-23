@@ -431,13 +431,12 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     // what they'd paid. The reason now decides the refund, and the whole
     // thing goes through one helper shared with the blocked-dates sweep.
     if (status === 'cancelled' && previousStatus !== 'cancelled') {
-      const { cancelReason, cancelAmount, cancelNote } = req.body;
+      const { cancelReason, cancelNote } = req.body;
       if (!CANCEL_REASONS.includes(cancelReason)) {
         return res.status(400).json({ message: 'Please say why this booking is being cancelled.' });
       }
       await cancelBookingWithRefund(booking, {
         reason: cancelReason,
-        customAmount: cancelAmount,
         clientNote: cancelNote || '',
       });
       return res.json(booking);

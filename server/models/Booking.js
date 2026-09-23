@@ -33,7 +33,11 @@ const bookingSchema = new mongoose.Schema({
   // Why admin cancelled this, which is also what decided the refund — see
   // refundAmountFor in utils/cancelBooking.js. Empty on client-cancelled
   // and on everything cancelled before this existed.
-  cancelReason: { type: String, enum: ['vehicle_unavailable', 'client_requested', 'other', ''], default: '' },
+  // 'other' is no longer a choice anyone can make — it let an admin type
+  // any amount, which made the cancel dialog's promise that the reason
+  // decides the refund untrue. Kept in the enum so bookings already
+  // cancelled that way still load.
+  cancelReason: { type: String, enum: ['vehicle_unavailable', 'client_requested', 'terms_not_met', 'other', ''], default: '' },
   cancelNote: { type: String, default: '' },
   confirmReminderTier: { type: Number, default: 0 },
   refundStatus: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' },

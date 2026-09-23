@@ -15,6 +15,10 @@ const FAQS = [
     a: 'You can request a refund on any pending or confirmed booking from My Bookings, up until the vehicle is picked up. The amount depends on how long ago you booked, not your pickup date: cancel within 12 hours of booking for a full refund, within 12–24 hours for 50%, or after 24 hours for no refund. An admin needs to approve the request before it\'s finalized.',
   },
   {
+    q: 'Can Rent-A-Ride Albay cancel my booking?',
+    a: 'Only for a reason set out in the Terms and Conditions. If the vehicle becomes unavailable on our side, you get everything you paid back in full. If the booking conditions are not met — no valid driver\'s licence for a self-drive booking, an ID that isn\'t yours, or you are not in a fit state to drive — we may cancel: half of what you paid is refunded if we cancel in advance, and nothing is refunded if you are turned away on the pickup date itself, because the vehicle can no longer be rented to anyone else that day. Either way you are told the reason.',
+  },
+  {
     q: 'Can I change my booking dates without cancelling?',
     a: 'Yes — request a reschedule from My Bookings. It has to keep the same trip length (e.g. a 3-day booking moves to a different 3-day window) and needs admin approval, but there\'s no penalty fee like a cancellation has.',
   },

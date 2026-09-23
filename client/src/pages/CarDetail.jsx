@@ -647,7 +647,7 @@ const CarDetail = () => {
               <p>The vehicle must be returned with the same fuel level it had at pickup. If it is returned with less fuel, the difference will be charged to the renter.</p>
               <br/>
               <p><strong>6. Damage Policy</strong></p>
-              <p>The renter is liable for any damage to the vehicle during the rental period. Urban Wheels Car Rental reserves the right to charge for repairs.</p>
+              <p>The renter is liable for any damage to the vehicle during the rental period. Rent-A-Ride Albay reserves the right to charge for repairs.</p>
               <br/>
               <p><strong>7. Payment</strong></p>
               <p>Your downpayment or full payment is collected online via GCash (through PayMongo) at the time of booking. If you chose the 20% downpayment option, the remaining balance must be settled in cash or GCash upon vehicle pickup.</p>
@@ -657,6 +657,9 @@ const CarDetail = () => {
               <br/>
               <p><strong>9. Rescheduling</strong></p>
               <p>Instead of cancelling, you may request to move a pending or confirmed booking to different dates at no extra fee, as long as the new dates keep the same trip length and are approved by an admin. See My Bookings to request a reschedule.</p>
+              <br/>
+              <p><strong>10. If These Terms Are Not Met</strong></p>
+              <p>These terms go both ways. If you cannot meet them — no valid driver's licence for a self-drive booking, an ID that isn't yours, or you are not in a fit state to drive — we may cancel your booking. If we cancel in advance, half of what you paid is refunded. If you are turned away at pickup, there is no refund, because the vehicle can no longer be rented to anyone else that day.</p>
             </div>
             <button style={s.closeBtn} onClick={() => setShowTerms(false)}>
               I Understand — Close

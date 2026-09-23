@@ -27,26 +27,41 @@ export default function run() {
   group('why it was cancelled decides what comes back');
   // The business pulled the vehicle, so the tiers — which exist to price a
   // client changing their mind — have nothing to say about it.
-  check('vehicle unavailable, fresh booking', refundAmountFor(paid(), 'vehicle_unavailable', null, now), 2000);
-  check('vehicle unavailable, week-old booking', refundAmountFor(paid({ createdAt: hoursAgo(24 * 7, now) }), 'vehicle_unavailable', null, now), 2000);
+  check('vehicle unavailable, fresh booking', refundAmountFor(paid(), 'vehicle_unavailable', now), 2000);
+  check('vehicle unavailable, week-old booking', refundAmountFor(paid({ createdAt: hoursAgo(24 * 7, now) }), 'vehicle_unavailable', now), 2000);
 
   group('a client changing their mind gets the normal policy');
   // Deliberately the same tiers as the in-app refund button, so nobody past
   // the window can get a full refund just by messaging admin instead.
-  check('within 12 hours', refundAmountFor(paid(), 'client_requested', null, now), 2000);
-  check('within 24 hours', refundAmountFor(paid({ createdAt: hoursAgo(20, now) }), 'client_requested', null, now), 1000);
-  check('after 24 hours', refundAmountFor(paid({ createdAt: hoursAgo(30, now) }), 'client_requested', null, now), 0);
+  check('within 12 hours', refundAmountFor(paid(), 'client_requested', now), 2000);
+  check('within 24 hours', refundAmountFor(paid({ createdAt: hoursAgo(20, now) }), 'client_requested', now), 1000);
+  check('after 24 hours', refundAmountFor(paid({ createdAt: hoursAgo(30, now) }), 'client_requested', now), 0);
 
-  group('an amount admin sets by hand is bounded');
-  check('a sensible figure', refundAmountFor(paid(), 'other', 600, now), 600);
-  check('more than was ever paid is capped', refundAmountFor(paid(), 'other', 5000, now), 2000);
-  check('a negative figure is nothing', refundAmountFor(paid(), 'other', -500, now), 0);
-  check('nonsense is nothing', refundAmountFor(paid(), 'other', 'lots', now), 0);
+  group('terms not met: half back, or nothing once the day arrives');
+  // The deduction is the day itself. Before it, the vehicle can still be let
+  // to somebody else and half is kept; on it, the day is gone whether this
+  // happens at 7:00 AM or at the counter, so nothing comes back.
+  const from = (ymd) => paid({ startDate: instantFrom(ymd, 7), endDate: instantFrom(ymd, 7), hasPickupTime: true });
+  check('cancelled the day before', refundAmountFor(from('2026-09-23'), 'terms_not_met', now), 1000);
+  check('cancelled weeks ahead', refundAmountFor(from('2026-10-15'), 'terms_not_met', now), 1000);
+  check('turned away on the day', refundAmountFor(from('2026-09-22'), 'terms_not_met', now), 0);
+  // Measured in Philippine time, not UTC. 7:00 AM here is 11:00 PM the
+  // previous day in UTC, so a UTC comparison would call this "the day
+  // before" and hand back half of a day that has already started.
+  check('at 7:00 AM on the pickup day', refundAmountFor(from('2026-09-22'), 'terms_not_met', new Date('2026-09-22T07:00:00+08:00')), 0);
+  check('rounds to the peso', refundAmountFor({ ...from('2026-10-15'), amountPaid: 1575 }, 'terms_not_met', now), 788);
+
+  group("a reason nothing offers any more can't quietly pay out");
+  // 'other' let admin type any figure. It is gone from the dialog and from
+  // CANCEL_REASONS; if anything ever sends it again it refunds nothing
+  // rather than falling through to an unchecked amount.
+  check('the retired free-amount reason', refundAmountFor(paid(), 'other', now), 0);
+  check('a reason nobody recognises', refundAmountFor(paid(), 'whatever', now), 0);
 
   group('nothing comes back from a booking that never paid');
-  check('never paid', refundAmountFor(paid({ payment: 'offline' }), 'vehicle_unavailable', null, now), 0);
-  check('abandoned at GCash', refundAmountFor(paid({ payment: 'gcash_pending' }), 'vehicle_unavailable', null, now), 0);
-  check('paid nothing', refundAmountFor(paid({ amountPaid: 0 }), 'vehicle_unavailable', null, now), 0);
+  check('never paid', refundAmountFor(paid({ payment: 'offline' }), 'vehicle_unavailable', now), 0);
+  check('abandoned at GCash', refundAmountFor(paid({ payment: 'gcash_pending' }), 'vehicle_unavailable', now), 0);
+  check('paid nothing', refundAmountFor(paid({ amountPaid: 0 }), 'vehicle_unavailable', now), 0);
 
   group('a booking already underway is left alone');
   // The client physically has the vehicle, so the blocked-dates sweep

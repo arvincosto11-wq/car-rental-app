@@ -16,7 +16,7 @@ import usePageTitle from '../../hooks/usePageTitle';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
 import { bookingAwaitingDecision, timeLeftLabel } from '../../utils/offerWindow';
-import { formatMoment } from '../../utils/phTime';
+import { formatMoment, phYmd } from '../../utils/phTime';
 
 const LOW_RATING_THRESHOLD = 3;
 // How long after the pickup time a no-show can still be recorded. Mirrors
@@ -34,15 +34,20 @@ const refundPercentage = (createdAt, now = new Date()) => {
   if (hours <= 24) return 50;
   return 0;
 };
-const previewRefund = (booking, reason, custom) => {
+const TERMS_NOT_MET_PERCENT = 50;
+const previewRefund = (booking, reason) => {
   if (!booking || booking.payment !== 'paid' || !booking.amountPaid) return 0;
   if (reason === 'vehicle_unavailable') return booking.amountPaid;
   if (reason === 'client_requested') {
     return Math.round(booking.amountPaid * (refundPercentage(booking.createdAt) / 100));
   }
-  const amount = Number(custom);
-  if (!Number.isFinite(amount) || amount < 0) return 0;
-  return Math.min(Math.round(amount), booking.amountPaid);
+  if (reason === 'terms_not_met') {
+    // Half back beforehand, nothing on the day itself — by then the vehicle
+    // can no longer be let to anybody else, so the day is gone either way.
+    const onTheDay = phYmd(new Date()) >= phYmd(booking.startDate);
+    return onTheDay ? 0 : Math.round(booking.amountPaid * (TERMS_NOT_MET_PERCENT / 100));
+  }
+  return 0;
 };
 
 const ManageBookings = () => {
@@ -76,7 +81,7 @@ const ManageBookings = () => {
   // Cancelling asks why first — the reason is what decides the refund, so it
   // can't be inferred after the fact. Everything else goes straight through.
   const [cancelTarget, setCancelTarget] = useState(null);
-  const [cancelForm, setCancelForm] = useState({ reason: 'vehicle_unavailable', amount: '', note: '' });
+  const [cancelForm, setCancelForm] = useState({ reason: 'vehicle_unavailable', note: '' });
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
   // Other paid requests for the same vehicle whose dates overlap this one.
@@ -139,17 +144,20 @@ const ManageBookings = () => {
   };
 
   const submitCancel = async () => {
-    // A hand-typed amount is the only one nobody has checked. Cancelling is
-    // irreversible, and 1 where 1,000 was meant looks exactly like a
-    // deliberate choice — so a refund well below what the client paid is
-    // read back before it happens, with both figures side by side.
-    const refund = previewRefund(cancelTarget, cancelForm.reason, cancelForm.amount);
+    // No read-back of the figure any more: nobody types it, the reason
+    // decides it, and it is shown in the dialog before the button is
+    // pressed. What still deserves one is keeping money back — so that is
+    // what gets confirmed, in the words of the policy it comes from.
+    const refund = previewRefund(cancelTarget, cancelForm.reason);
     const paid = cancelTarget?.amountPaid || 0;
-    if (cancelForm.reason === 'other' && paid > 0 && refund < paid / 2) {
+    if (cancelForm.reason === 'terms_not_met' && paid > 0) {
       const ok = await confirm(
-        `This refunds ₱${refund.toLocaleString()} of the ₱${paid.toLocaleString()} this client paid, `
-        + `and cancels their booking. That cannot be undone.`,
-        { confirmLabel: `Yes, refund ₱${refund.toLocaleString()}`, cancelLabel: 'Go back' }
+        refund > 0
+          ? `This client paid ₱${paid.toLocaleString()} and will get ₱${refund.toLocaleString()} back — half, `
+            + `because the booking conditions were not met. Cancelling can't be undone.`
+          : `This is the pickup date, so under our terms this client gets nothing back of the `
+            + `₱${paid.toLocaleString()} they paid. Cancelling can't be undone.`,
+        { confirmLabel: 'Yes, cancel the booking', cancelLabel: 'Go back' }
       );
       if (!ok) return;
     }
@@ -159,7 +167,6 @@ const ManageBookings = () => {
       await applyStatus(cancelTarget._id, {
         status: 'cancelled',
         cancelReason: cancelForm.reason,
-        cancelAmount: cancelForm.amount,
         cancelNote: cancelForm.note,
       });
       setCancelTarget(null);
@@ -787,20 +794,16 @@ const ManageBookings = () => {
               </span>
             </label>
             <label style={s.cancelOption}>
-              <input type="radio" name="cancel-reason" checked={cancelForm.reason === 'other'}
-                onChange={() => setCancelForm({ ...cancelForm, reason: 'other' })} />
+              <input type="radio" name="cancel-reason" checked={cancelForm.reason === 'terms_not_met'}
+                onChange={() => setCancelForm({ ...cancelForm, reason: 'terms_not_met' })} />
               <span>
-                <strong>Other</strong>
-                <span style={s.cancelOptionHint}>You set the amount.</span>
+                <strong>Terms not met</strong>
+                <span style={s.cancelOptionHint}>
+                  No valid licence, ID isn&apos;t theirs, not fit to drive. Half back before the
+                  pickup date, nothing on the day itself — it&apos;s in the terms they agreed to.
+                </span>
               </span>
             </label>
-
-            {cancelForm.reason === 'other' && (
-              <input style={{ ...s.cancelInput, marginTop: '4px' }} type="text" inputMode="decimal"
-                placeholder={`Refund amount (up to ₱${(cancelTarget.amountPaid || 0).toLocaleString()})`}
-                value={cancelForm.amount}
-                onChange={(e) => setCancelForm({ ...cancelForm, amount: e.target.value.replace(/[^0-9.]/g, '') })} />
-            )}
 
             <input style={s.cancelInput} type="text" placeholder="Note for the client (optional)"
               value={cancelForm.note} onChange={(e) => setCancelForm({ ...cancelForm, note: e.target.value })} />
@@ -808,7 +811,7 @@ const ManageBookings = () => {
             <div style={s.cancelSummary}>
               Refund to client:{' '}
               <strong style={s.cancelAmount}>
-                ₱{previewRefund(cancelTarget, cancelForm.reason, cancelForm.amount).toLocaleString()}
+                ₱{previewRefund(cancelTarget, cancelForm.reason).toLocaleString()}
               </strong>
               {cancelTarget?.amountPaid > 0 && (
                 <span style={s.cancelOfPaid}>

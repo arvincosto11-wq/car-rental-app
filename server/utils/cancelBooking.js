@@ -3,6 +3,7 @@ import { refundBookingPayment } from './paymongo.js';
 import { notifyUser, notifyAdmins } from './notify.js';
 import { vehicleUnavailableMessage, formatTripDates } from './blockReasons.js';
 import { bookingSpan } from './availability.js';
+import { phYmd } from './phTime.js';
 
 // Tiered on how long ago the booking was MADE, not on the pickup date.
 // Lives here rather than in routes/bookings.js so the admin cancel path and
@@ -14,7 +15,22 @@ export function getRefundPercentage(createdAt, now = new Date()) {
   return 0;
 }
 
-export const CANCEL_REASONS = ['vehicle_unavailable', 'client_requested', 'other'];
+// What a cancellation can be, and nothing else. 'other' used to be here
+// with a free-typed amount, which made the dialog's own promise — that the
+// reason decides the refund — untrue. It also meant a client could be
+// cancelled and handed back ₱1 with no explanation, which is the shape of
+// a scam whatever anybody intended. Old records keep it; nothing new can.
+export const CANCEL_REASONS = ['vehicle_unavailable', 'client_requested', 'terms_not_met'];
+
+// Half back if the booking is cancelled before the day it was due to start,
+// nothing on the day itself. The deduction exists because the vehicle can no
+// longer be let to anybody else, so once it IS that day, the day is gone
+// whether this happens at 7:00 AM or at the counter.
+//
+// Deliberately a date rather than a moment: "on the pickup day" is a line
+// anyone can check, where "at pickup" would be a judgement call — and
+// judgement calls are what this whole list exists to remove.
+const TERMS_NOT_MET_PERCENT = 50;
 
 // What admin cancelling this booking should refund.
 //
@@ -27,15 +43,19 @@ export const CANCEL_REASONS = ['vehicle_unavailable', 'client_requested', 'other
 // refund just by messaging admin instead of using the app.
 // `now` is injectable so the tiers can actually be checked — a rule about
 // money that reads the clock itself can only ever be tested by waiting.
-export function refundAmountFor(booking, reason, customAmount, now = new Date()) {
+export function refundAmountFor(booking, reason, now = new Date()) {
   if (booking.payment !== 'paid' || booking.amountPaid <= 0) return 0;
   if (reason === 'vehicle_unavailable') return booking.amountPaid;
   if (reason === 'client_requested') {
     return Math.round(booking.amountPaid * (getRefundPercentage(booking.createdAt, now) / 100));
   }
-  const amount = Number(customAmount);
-  if (!Number.isFinite(amount) || amount < 0) return 0;
-  return Math.min(Math.round(amount), booking.amountPaid);
+  if (reason === 'terms_not_met') {
+    const onTheDay = phYmd(now) >= phYmd(bookingSpan(booking).start);
+    return onTheDay ? 0 : Math.round(booking.amountPaid * (TERMS_NOT_MET_PERCENT / 100));
+  }
+  // Includes 'other', which no longer exists as a choice. Nothing should
+  // reach here, and returning zero silently would be worse than obvious.
+  return 0;
 }
 
 // A booking whose rental has already started. Deliberately left alone by the
@@ -76,6 +96,22 @@ function clientWording(booking, reason, amount, carName, cause, clientNote) {
     };
   }
 
+  if (reason === 'terms_not_met') {
+    // Firm, and specific about which rule and what it costs. Vague is what
+    // makes a deduction feel arbitrary; naming the clause they agreed to is
+    // what makes it a policy.
+    return {
+      message: `Your booking for ${trip} has been cancelled because the booking conditions were not met.` +
+        (amount > 0
+          ? ` As set out in our Terms and Conditions, half of what you paid (${peso}) will be refunded.`
+          : ' As set out in our Terms and Conditions, cancellations on the pickup date are not refunded,'
+            + ' because the vehicle can no longer be rented for that day.') +
+        (clientNote ? ` ${clientNote.trim().replace(/([^.!?])$/, '$1.')}` : '') +
+        ' If you believe this is a mistake, please contact us.',
+      short: clientNote || 'Booking conditions were not met.',
+    };
+  }
+
   return {
     message: `We regret to inform you that your booking for ${trip} has been cancelled by our team.` +
       (amount > 0 ? ` A refund of ${peso} will be processed.` : '') +
@@ -95,11 +131,13 @@ function clientWording(booking, reason, amount, carName, cause, clientNote) {
 //           Always the client-safe phrase, never admin's private note.
 // clientNote — optional text admin wrote FOR the client, from the cancel
 //           dialog. Distinct from any private note.
+// The amount is never passed in: the reason decides it, which is the whole
+// point of having reasons at all.
 // extra   — one more sentence appended to the client's message, for callers
 //           that need to explain how the cancellation came about (e.g. an
 //           unanswered offer of alternative dates).
-export async function cancelBookingWithRefund(booking, { reason, customAmount, cause = 'unforeseen circumstances', clientNote = '', extra = '' }) {
-  const amount = refundAmountFor(booking, reason, customAmount);
+export async function cancelBookingWithRefund(booking, { reason, cause = 'unforeseen circumstances', clientNote = '', extra = '' }) {
+  const amount = refundAmountFor(booking, reason);
 
   const carDoc = booking.car?.brand ? booking.car : await Car.findById(booking.car).select('brand model');
   const carName = carDoc ? `${carDoc.brand} ${carDoc.model}` : '';
