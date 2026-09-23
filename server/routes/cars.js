@@ -158,7 +158,12 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
     // what the form has always asked for. Recorded on the range rather than
     // baked into the stored date, so older ranges keep their own meaning.
     const endsInclusive = !hasTime;
-    if (!startDate || !endDate || isNaN(start) || isNaN(end) || end <= start) {
+    // A whole-day block may start and end on the same day — "the car is in
+    // the shop Tuesday" is the commonest one there is, and endsInclusive
+    // means that single date already covers the whole of it. With hours on
+    // it, the end has to be genuinely later.
+    const badRange = hasTime ? end <= start : end < start;
+    if (!startDate || !endDate || isNaN(start) || isNaN(end) || badRange) {
       return res.status(400).json({ message: 'Please provide a valid date range.' });
     }
 

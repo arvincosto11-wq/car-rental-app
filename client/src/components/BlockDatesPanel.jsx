@@ -94,15 +94,12 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
       setForm({ ...form, startDate: clicked, endDate: '' });
       return;
     }
+    // Tapping the same day again means that day and no other — which is
+    // the commonest block there is, and used to be impossible to express:
+    // it cleared the selection instead, so a one-day workshop visit had to
+    // be entered as two days.
     if (clicked === form.startDate) {
-      // Tapping the same day twice normally clears the range — but a block
-      // with hours on it is usually a single day ("in the workshop Oct 1,
-      // 8:00 AM to 12:00 PM"), so there it completes the range instead.
-      if (form.startHour !== '' && !form.endDate) {
-        setForm({ ...form, endDate: clicked });
-        return;
-      }
-      setForm({ ...form, startDate: '', endDate: '' });
+      setForm({ ...form, endDate: clicked });
       return;
     }
     if (new Date(clicked) < new Date(form.startDate)) {
@@ -454,8 +451,8 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
                 {form.startDate && form.endDate
                   ? `${fmt(form.startDate)} → ${fmt(form.endDate)}${offRoadText}`
                   : form.startDate
-                    ? 'Now pick the last day off the road'
-                    : 'Pick the first day off the road'}
+                    ? 'Tap the last day — or the same day again for that day only'
+                    : 'Tap the first day off the road'}
               </span>
               {form.startDate && (
                 <button type="button" className="text-link-btn" style={s.linkBtn}

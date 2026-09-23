@@ -81,6 +81,16 @@ const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance }) => 
           <Row label="Total price" value={`₱${booking.totalPrice.toLocaleString()}`} />
           <Row label="Paid so far" value={`₱${booking.amountPaid.toLocaleString()}`} />
           {remaining > 0 && <Row label="Remaining balance" value={`₱${remaining.toLocaleString()}`} />}
+          {/* How a booking came to be the length it is. Without this a
+              7-day booking that began as 5 looks identical to one booked
+              as 7, and the money it took does not obviously add up. */}
+          {(booking.extensions || []).map((ext, i) => (
+            <Row
+              key={ext.addedAt || i}
+              label={`Extended +${ext.days} day${ext.days === 1 ? '' : 's'}`}
+              value={`from ${new Date(ext.previousEndDate).toLocaleDateString()} · ₱${Number(ext.amount || 0).toLocaleString()}`}
+            />
+          ))}
           {booking.paymongoPaymentId && <Row label="Payment reference" value={booking.paymongoPaymentId} mono />}
           {remaining > 0 && booking.status !== 'cancelled' && (
             <button type="button" style={s.collectBtn} onClick={() => onCollectBalance(booking)}>

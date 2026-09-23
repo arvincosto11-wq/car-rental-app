@@ -17,6 +17,11 @@ import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, ph
 
 const router = express.Router();
 
+// How long after the pickup time a no-show can still be recorded. Mirrored
+// in ManageBookings on the client, which hides the button on the same rule;
+// this is the one that actually decides.
+const NO_SHOW_WINDOW_HOURS = 24;
+
 async function recomputeCarRating(carId) {
   const [result] = await Booking.aggregate([
     { $match: { car: new mongoose.Types.ObjectId(carId), 'carRating.overall': { $exists: true }, 'carRating.hidden': { $ne: true } } },
@@ -501,6 +506,18 @@ router.put('/:id/no-show', protect, adminOnly, async (req, res) => {
     if (new Date() < new Date(booking.startDate)) {
       return res.status(400).json({ message: "This booking can't be marked as a no-show before its pickup date." });
     }
+    // A no-show means the vehicle was never collected, and it forfeits
+    // everything the client paid. Extending a booking is proof they did
+    // collect it, so this must not be reachable afterwards — it is one
+    // misclick from taking somebody's money for a trip they are on.
+    if (booking.extensions?.length) {
+      return res.status(400).json({ message: 'This booking was extended, so the vehicle was collected. Cancel it instead if something has gone wrong.' });
+    }
+    // And it is something you discover on the day. Three days into a trip
+    // it is not a no-show, whatever else it might be.
+    if (new Date() > new Date(new Date(booking.startDate).getTime() + NO_SHOW_WINDOW_HOURS * 60 * 60 * 1000)) {
+      return res.status(400).json({ message: `A no-show can only be recorded within ${NO_SHOW_WINDOW_HOURS} hours of the pickup time. Cancel the booking instead.` });
+    }
 
     booking.status = 'cancelled';
     booking.refundStatus = 'declined';
@@ -512,7 +529,10 @@ router.put('/:id/no-show', protect, adminOnly, async (req, res) => {
       booking.user,
       'Booking Marked as No-Show',
       'Your booking was cancelled because the vehicle was not picked up. The amount you paid has been forfeited as a no-show fee, per our booking terms.',
-      '/my-bookings'
+      '/my-bookings',
+      // Their money is gone. A line in a notification bell they may never
+      // open is not enough notice of that.
+      { email: true }
     );
 
     res.json(booking);
@@ -538,6 +558,12 @@ router.post('/:id/refund', protect, async (req, res) => {
     }
     if (!['pending', 'confirmed'].includes(booking.status)) {
       return res.status(400).json({ message: 'This booking is not eligible for a refund.' });
+    }
+    // Nothing was ever taken, so there is nothing to give back — and a
+    // request against an unpaid booking lands in a queue admin cannot see,
+    // because Manage Bookings only lists paid ones.
+    if (booking.payment !== 'paid') {
+      return res.status(400).json({ message: 'This booking has not been paid for, so there is nothing to refund.' });
     }
     if (booking.refundStatus !== 'none') {
       return res.status(400).json({ message: 'A refund request already exists for this booking.' });
@@ -648,9 +674,9 @@ router.put('/:id/refund', protect, adminOnly, async (req, res) => {
     await booking.save();
 
     if (decision === 'approved') {
-      await notifyUser(booking.user, 'Refund Approved', `Your refund of ₱${booking.refundAmount.toLocaleString()} has been approved.`, '/my-bookings');
+      await notifyUser(booking.user, 'Refund Approved', `Your refund of ₱${booking.refundAmount.toLocaleString()} has been approved.`, '/my-bookings', { email: true });
     } else if (decision === 'declined') {
-      await notifyUser(booking.user, 'Refund Declined', 'Your refund request has been declined.', '/my-bookings');
+      await notifyUser(booking.user, 'Refund Declined', 'Your refund request has been declined.', '/my-bookings', { email: true });
     }
 
     res.json(booking);
@@ -672,6 +698,11 @@ router.post('/:id/reschedule', protect, async (req, res) => {
     }
     if (!['pending', 'confirmed'].includes(booking.status)) {
       return res.status(400).json({ message: 'This booking is not eligible for a reschedule.' });
+    }
+    // Same reason as the refund above: admin never sees an unpaid booking,
+    // so a request on one would sit forever with nobody able to answer it.
+    if (booking.payment !== 'paid') {
+      return res.status(400).json({ message: 'Please complete your payment before rescheduling this booking.' });
     }
     if (booking.refundStatus !== 'none') {
       return res.status(400).json({ message: 'This booking already has a refund request in progress.' });
@@ -764,7 +795,7 @@ router.put('/:id/reschedule', protect, adminOnly, async (req, res) => {
           ? 'Automatically declined: those dates are blocked.'
           : 'Automatically declined: those dates were booked by someone else in the meantime.';
         await booking.save();
-        await notifyUser(booking.user, 'Reschedule Declined', 'Your reschedule request could not be approved because those dates are no longer available. Your original dates are unchanged.', '/my-bookings');
+        await notifyUser(booking.user, 'Reschedule Declined', 'Your reschedule request could not be approved because those dates are no longer available. Your original dates are unchanged.', '/my-bookings', { email: true });
         return res.json(booking);
       }
 
@@ -772,7 +803,7 @@ router.put('/:id/reschedule', protect, adminOnly, async (req, res) => {
       booking.endDate = booking.rescheduleRequest.newEndDate;
       booking.rescheduleRequest.status = 'approved';
       await booking.save();
-      await notifyUser(booking.user, 'Reschedule Approved', 'Your booking has been moved to the new dates you requested.', '/my-bookings');
+      await notifyUser(booking.user, 'Reschedule Approved', 'Your booking has been moved to the new dates you requested.', '/my-bookings', { email: true });
 
       const car = await Car.findById(booking.car).select('brand model owner');
       if (car?.owner) {
@@ -782,7 +813,7 @@ router.put('/:id/reschedule', protect, adminOnly, async (req, res) => {
       booking.rescheduleRequest.status = 'declined';
       booking.rescheduleRequest.adminNotes = adminNotes || '';
       await booking.save();
-      await notifyUser(booking.user, 'Reschedule Declined', `Your reschedule request was declined.${adminNotes ? ` Reason: ${adminNotes}` : ''}`, '/my-bookings');
+      await notifyUser(booking.user, 'Reschedule Declined', `Your reschedule request was declined.${adminNotes ? ` Reason: ${adminNotes}` : ''}`, '/my-bookings', { email: true });
     }
 
     res.json(booking);

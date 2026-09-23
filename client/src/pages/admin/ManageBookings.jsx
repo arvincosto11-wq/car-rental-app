@@ -19,6 +19,10 @@ import { bookingAwaitingDecision, timeLeftLabel } from '../../utils/offerWindow'
 import { formatMoment } from '../../utils/phTime';
 
 const LOW_RATING_THRESHOLD = 3;
+// How long after the pickup time a no-show can still be recorded. Mirrors
+// the same rule on the server, which is the one that actually decides —
+// this only keeps the button from being offered when it would be refused.
+const NO_SHOW_WINDOW_HOURS = 24;
 const PAGE_SIZE = 10;
 
 // Mirrors refundAmountFor in server/utils/cancelBooking.js. The server
@@ -335,6 +339,10 @@ const ManageBookings = () => {
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
     },
+    extendedNote: {
+      fontSize: '10px', fontWeight: '700', lineHeight: 1.4, marginTop: '3px',
+      color: isDark ? GOLD_DARK : '#92400e',
+    },
     competingNote: {
       fontSize: '10px', fontWeight: '700', lineHeight: 1.45, marginTop: '5px', maxWidth: '200px',
       color: isDark ? GOLD_DARK : '#92400e',
@@ -557,6 +565,11 @@ const ManageBookings = () => {
                 </td>
                 <td style={s.td}>
                   {formatMoment(booking.startDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })} to {formatMoment(booking.endDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
+                  {booking.extensions?.length > 0 && (
+                    <div style={s.extendedNote}>
+                      Extended from {formatMoment(booking.extensions[0].previousEndDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  )}
                   {booking.totalDays && (
                     <div style={s.rentalLengthNote}>
                       {booking.totalDays} DAY{booking.totalDays === 1 ? '' : 'S'} RENTAL
@@ -648,13 +661,20 @@ const ManageBookings = () => {
                           >
                             Mark as Returned
                           </button>
-                          <button
-                            style={s.noShowBtn}
-                            onClick={() => handleMarkNoShow(booking)}
-                            title="Vehicle was never picked up — cancels the booking and forfeits what was paid."
-                          >
-                            No-Show
-                          </button>
+                          {/* A no-show means the vehicle was never collected,
+                              and it forfeits everything paid. An extension is
+                              proof it WAS collected, and three days into a
+                              trip it is not a no-show whatever else it is. */}
+                          {!booking.extensions?.length
+                            && new Date() <= new Date(new Date(booking.startDate).getTime() + NO_SHOW_WINDOW_HOURS * 60 * 60 * 1000) && (
+                            <button
+                              style={s.noShowBtn}
+                              onClick={() => handleMarkNoShow(booking)}
+                              title="Vehicle was never picked up — cancels the booking and forfeits what was paid."
+                            >
+                              No-Show
+                            </button>
+                          )}
                         </>
                       ) : (
                         <span style={{ fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', fontStyle: 'italic' }}>

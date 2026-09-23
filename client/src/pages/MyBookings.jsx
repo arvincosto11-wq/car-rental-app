@@ -858,6 +858,10 @@ const MyBookings = () => {
       fontSize: '11.5px', lineHeight: 1.5, margin: 0,
       color: isDark ? '#fca5a5' : '#b91c1c',
     },
+    extendedNote: {
+      fontSize: '11px', fontWeight: '700', lineHeight: 1.4, marginTop: '4px',
+      color: isDark ? GOLD_DARK : GOLD,
+    },
     badgeActionNeeded: {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
       background: isDark ? 'rgba(232,161,0,0.18)' : '#fef3c7',
@@ -1118,6 +1122,15 @@ const MyBookings = () => {
                         <div style={styles.returnLine}>
                           <ReturnLineIcon /> Return: {formatMoment(booking.endDate, booking.hasPickupTime)}
                         </div>
+                        {/* What it was before they made it longer. A booking
+                            that now runs a week reads very differently from
+                            one booked as a week, and the price says so. */}
+                        {booking.extensions?.length > 0 && (
+                          <div style={styles.extendedNote}>
+                            Extended from {formatMoment(booking.extensions[0].previousEndDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
+                            {booking.extensions.length > 1 ? ` · ${booking.extensions.length} extensions` : ''}
+                          </div>
+                        )}
                         <div style={styles.driverNote}>
                           {booking.bookingType === 'self-drive'
                             ? "Bring a valid ID and your driver's license to pick up the vehicle."
@@ -1147,7 +1160,12 @@ const MyBookings = () => {
                 </div>
 
                 <div className="grid-cell" style={styles.actionsCell}>
+                {/* Nothing has been paid on a booking still showing "Retry
+                    GCash Payment", so there is nothing to refund — and admin
+                    never sees an unpaid booking, so a reschedule request on
+                    one would sit forever with nobody able to answer it. */}
                 {(booking.status === 'pending' || booking.status === 'confirmed') &&
+                  booking.payment === 'paid' &&
                   !bookingAwaitingDecision(booking) &&
                   (!booking.refundStatus || booking.refundStatus === 'none') && (
                       <div style={styles.actionsIndent}>
