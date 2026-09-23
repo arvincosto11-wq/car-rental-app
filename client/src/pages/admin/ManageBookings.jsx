@@ -799,7 +799,7 @@ const ManageBookings = () => {
               <span>
                 <strong>Terms not met</strong>
                 <span style={s.cancelOptionHint}>
-                  No valid licence, ID isn&apos;t theirs, not fit to drive. Half back before the
+                  Missing IDs or proof of billing, no valid licence, not fit to drive. Half back before the
                   pickup date, nothing on the day itself — it&apos;s in the terms they agreed to.
                 </span>
               </span>

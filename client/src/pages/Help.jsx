@@ -16,7 +16,7 @@ const FAQS = [
   },
   {
     q: 'Can Rent-A-Ride Albay cancel my booking?',
-    a: 'Only for a reason set out in the Terms and Conditions. If the vehicle becomes unavailable on our side, you get everything you paid back in full. If the booking conditions are not met — no valid driver\'s licence for a self-drive booking, an ID that isn\'t yours, or you are not in a fit state to drive — we may cancel: half of what you paid is refunded if we cancel in advance, and nothing is refunded if you are turned away on the pickup date itself, because the vehicle can no longer be rented to anyone else that day. Either way you are told the reason.',
+    a: 'Only for a reason set out in the Terms and Conditions. If the vehicle becomes unavailable on our side, you get everything you paid back in full. If the booking conditions are not met — missing or expired documents, an ID that isn\'t yours, or you are not in a fit state to drive — we may cancel: half of what you paid is refunded if we cancel in advance, and nothing is refunded if you are turned away on the pickup date itself, because the vehicle can no longer be rented to anyone else that day. Either way you are told the reason.',
   },
   {
     q: 'Can I change my booking dates without cancelling?',
@@ -24,7 +24,11 @@ const FAQS = [
   },
   {
     q: 'Do I need a driver\'s license?',
-    a: 'Only for self-drive bookings. You can add your license number and expiry either from your Profile ahead of time, or right on the booking form when you self-drive-book — as long as it hasn\'t expired.',
+    a: 'Only for self-drive bookings. You can add your license number and expiry either from your Profile ahead of time, or right on the booking form when you self-drive-book — as long as it hasn\'t expired. Bring the licence itself to the pickup; we check it against what you entered.',
+  },
+  {
+    q: 'What do I need to bring at pickup?',
+    a: 'Two valid IDs and a proof of billing address in your name, plus your driver\'s licence if you booked self-drive. The names have to match the name on the booking. Your reservation deposit is the payment you already made online, so there is nothing extra to bring for that — only the remaining balance if you chose the 20% downpayment. We can\'t release the vehicle without these, and a cancellation on your pickup date is not refunded, so it is worth checking the night before.',
   },
   {
     q: 'Why can\'t I book a car for certain dates?',

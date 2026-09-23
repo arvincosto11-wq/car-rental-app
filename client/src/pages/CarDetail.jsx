@@ -658,8 +658,11 @@ const CarDetail = () => {
               <p><strong>9. Rescheduling</strong></p>
               <p>Instead of cancelling, you may request to move a pending or confirmed booking to different dates at no extra fee, as long as the new dates keep the same trip length and are approved by an admin. See My Bookings to request a reschedule.</p>
               <br/>
-              <p><strong>10. If These Terms Are Not Met</strong></p>
-              <p>These terms go both ways. If you cannot meet them — no valid driver's licence for a self-drive booking, an ID that isn't yours, or you are not in a fit state to drive — we may cancel your booking. If we cancel in advance, half of what you paid is refunded. If you are turned away at pickup, there is no refund, because the vehicle can no longer be rented to anyone else that day.</p>
+              <p><strong>10. What to Bring at Pickup</strong></p>
+              <p>Before we release the vehicle, you must present two valid IDs and a proof of billing address in your name, plus your driver's licence if you booked self-drive. The names on all of them must match the name on the booking. Your reservation deposit is the payment you already made online.</p>
+              <br/>
+              <p><strong>11. If These Terms Are Not Met</strong></p>
+              <p>These terms go both ways. If you cannot meet them — missing or expired documents, an ID that isn't yours, or you are not in a fit state to drive — we may cancel your booking. If we cancel in advance, half of what you paid is refunded. If you are turned away at pickup, there is no refund, because the vehicle can no longer be rented to anyone else that day.</p>
             </div>
             <button style={s.closeBtn} onClick={() => setShowTerms(false)}>
               I Understand — Close
@@ -683,6 +686,15 @@ const CarDetail = () => {
               </p>
               <p style={{ marginTop: '10px' }}>
                 ⛽ <strong>Fuel Policy:</strong> Please return the vehicle with the same fuel level it had at pickup, or the difference will be charged to you.
+              </p>
+              {/* The one thing on this screen the client can act on, so it
+                  earns its place beside the two policies. Leads with what to
+                  bring rather than what it costs — the instruction is what
+                  stops the penalty ever applying. */}
+              <p style={{ marginTop: '10px' }}>
+                &#129526; <strong>At Pickup:</strong> Bring two valid IDs and a proof of billing address in your name
+                {bookingType === 'self-drive' ? ", plus your driver's licence" : ''}. Without them we can&apos;t release
+                the vehicle, and a cancellation on your pickup date is not refunded.
               </p>
             </div>
             <div style={s.refundNoticeActions}>
