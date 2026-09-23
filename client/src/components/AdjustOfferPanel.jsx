@@ -143,11 +143,18 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
       background: gold, color: ON_GOLD, fontSize: '12px', fontWeight: '800', fontFamily: 'inherit',
       opacity: busy ? 0.6 : 1,
     },
-    ownLink: {
-      display: 'inline-block', marginTop: '2px', padding: 0, border: 'none', background: 'none',
-      color: gold, fontSize: '12px', fontWeight: '700', cursor: 'pointer',
-      textDecoration: 'underline', fontFamily: 'inherit',
+    // It is a fourth choice, so it is shaped like the three above it
+    // rather than left as a bare link among proper buttons. Dashed, to say
+    // it leads somewhere rather than being a date you can take.
+    ownRow: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+      width: '100%', padding: '11px 12px', borderRadius: '9px',
+      border: `1px dashed ${isDark ? 'rgba(232,161,0,0.55)' : 'rgba(184,121,10,0.5)'}`,
+      background: 'transparent', color: gold,
+      fontSize: '12.5px', fontWeight: '700', fontFamily: 'inherit',
+      cursor: 'pointer', textAlign: 'left',
     },
+    ownRowHint: { fontSize: '16px', fontWeight: '700', lineHeight: 1 },
     pickWrap: { marginTop: '10px' },
     pickSummary: {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
@@ -321,8 +328,9 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
       )}
 
       {!picking ? (
-        <button type="button" style={s.ownLink} onClick={() => setPicking(true)}>
-          None of these suit — let me pick my own dates
+        <button type="button" style={s.ownRow} onClick={() => setPicking(true)}>
+          <span>None of these suit — pick my own dates</span>
+          <span style={s.ownRowHint} aria-hidden="true">›</span>
         </button>
       ) : (
         <div style={s.pickWrap}>
