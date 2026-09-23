@@ -139,6 +139,21 @@ const ManageBookings = () => {
   };
 
   const submitCancel = async () => {
+    // A hand-typed amount is the only one nobody has checked. Cancelling is
+    // irreversible, and 1 where 1,000 was meant looks exactly like a
+    // deliberate choice — so a refund well below what the client paid is
+    // read back before it happens, with both figures side by side.
+    const refund = previewRefund(cancelTarget, cancelForm.reason, cancelForm.amount);
+    const paid = cancelTarget?.amountPaid || 0;
+    if (cancelForm.reason === 'other' && paid > 0 && refund < paid / 2) {
+      const ok = await confirm(
+        `This refunds ₱${refund.toLocaleString()} of the ₱${paid.toLocaleString()} this client paid, `
+        + `and cancels their booking. That cannot be undone.`,
+        { confirmLabel: `Yes, refund ₱${refund.toLocaleString()}`, cancelLabel: 'Go back' }
+      );
+      if (!ok) return;
+    }
+
     setCancelSubmitting(true);
     try {
       await applyStatus(cancelTarget._id, {
@@ -387,6 +402,7 @@ const ManageBookings = () => {
       fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280',
     },
     cancelAmount: { fontSize: '16px', fontWeight: '800', color: isDark ? GOLD_DARK : GOLD },
+    cancelOfPaid: { fontSize: '12px', color: isDark ? '#8a8d91' : '#9ca3af' },
     cancelConfirmBtn: {
       flex: 1, padding: '10px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
       fontSize: '13px', fontWeight: '700',
@@ -794,6 +810,11 @@ const ManageBookings = () => {
               <strong style={s.cancelAmount}>
                 ₱{previewRefund(cancelTarget, cancelForm.reason, cancelForm.amount).toLocaleString()}
               </strong>
+              {cancelTarget?.amountPaid > 0 && (
+                <span style={s.cancelOfPaid}>
+                  {' '}of ₱{cancelTarget.amountPaid.toLocaleString()} paid
+                </span>
+              )}
               {cancelTarget.payment !== 'paid' && <span style={s.cancelOptionHint}>This booking was never paid, so nothing is refunded.</span>}
             </div>
 

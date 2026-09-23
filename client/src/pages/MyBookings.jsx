@@ -69,12 +69,6 @@ const toDateValue = (d) => {
   return `${y}-${m}-${day}`;
 };
 
-const overlapsBooked = (start, end, ranges) => {
-  const s = new Date(start).getTime();
-  const e = new Date(end).getTime();
-  return ranges.some((r) => s < new Date(r.endDate).getTime() && e > new Date(r.startDate).getTime());
-};
-
 const REFUND_REASONS = [
   'Change of travel plans – Trip was canceled, postponed, or dates changed.',
   'Personal reasons',
@@ -436,10 +430,11 @@ const MyBookings = () => {
       setRescheduleError('Tap a date on the calendar to pick your new pickup date.');
       return;
     }
-    if (overlapsBooked(newStartDate, newEndDate, bookedRangesForReschedule)) {
-      setRescheduleError('That range includes a date this vehicle is already booked for. Please pick a different start day.');
-      return;
-    }
+    // No day-level check here any more. It predated pickup times and
+    // compared whole days, so it called a day "already booked" when only
+    // part of it was — refusing a client who had correctly picked one of
+    // the hours still free on it. The hour list below the calendar is the
+    // real answer now, and the server checks it again regardless.
     setRescheduleSubmitting(true);
     setRescheduleError('');
     try {
