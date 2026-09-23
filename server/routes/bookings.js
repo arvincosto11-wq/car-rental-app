@@ -12,6 +12,7 @@ import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { openAdjustOffer, acceptAdjustOffer, startTopUp, confirmTopUp, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
 import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS } from '../utils/cancelBooking.js';
 import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js';
+import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle } from '../utils/extendBooking.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
 
 const router = express.Router();
@@ -987,6 +988,89 @@ router.put('/:id/adjust/top-up/confirm', protect, async (req, res) => {
     const result = await confirmTopUp(booking);
     if (!result.ok) return res.status(400).json({ message: result.message });
     return res.json(result.booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ---- making a booking longer ----
+//
+// A client who wants two more days used to have one option: cancel and book
+// again, which costs them their deposit and risks losing the vehicle in the
+// gap — for a customer asking to pay more. See utils/extendBooking.js for
+// how the price is worked out, which differs before and after pickup.
+
+// Nothing can extend while something else is already deciding this
+// booking's dates. Two changes racing each other over the same days is how
+// a client ends up somewhere neither of them meant.
+const extendBlocker = (booking) => {
+  if (!['pending', 'confirmed'].includes(booking.status)) return 'This booking cannot be extended.';
+  if (booking.payment !== 'paid') return 'This booking has not been paid for yet.';
+  if (booking.refundStatus === 'requested') return 'Resolve your refund request before extending this booking.';
+  if (booking.rescheduleRequest?.status === 'pending') return 'Resolve your reschedule request before extending this booking.';
+  if (booking.adjustOffer?.status === 'open') return 'Choose new dates or a refund on this booking first.';
+  if (bookingSpan(booking).end <= new Date()) return 'This booking has already ended. Please make a new one.';
+  return null;
+};
+
+// What the client's screen needs: how far they can go, and what a given
+// date would cost. Read-only — nothing is held or changed by asking.
+router.get('/:id/extension', protect, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    const blocked = extendBlocker(booking);
+    if (blocked) return res.status(400).json({ message: blocked });
+
+    const latest = await latestPossibleEnd(booking);
+    const quote = req.query.endDate ? await quoteExtension(booking, req.query.endDate) : null;
+
+    res.json({
+      latestEndDate: latest,
+      collected: hasCollectedVehicle(booking),
+      currentEndDate: booking.endDate,
+      quote,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Start paying for one. The days are parked on the booking and only move
+// once the money lands.
+router.post('/:id/extension', protect, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    const blocked = extendBlocker(booking);
+    if (blocked) return res.status(400).json({ message: blocked });
+
+    const result = await startExtension(booking, req.body.endDate);
+    if (!result.ok) return res.status(400).json({ message: result.message });
+    res.json({ checkoutUrl: result.checkoutUrl });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Back from that payment. PayMongo is asked what really happened rather
+// than the redirect being trusted.
+router.put('/:id/extension/confirm', protect, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    const result = await confirmExtension(booking);
+    if (!result.ok) return res.status(400).json({ message: result.message });
+    res.json(result.booking);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

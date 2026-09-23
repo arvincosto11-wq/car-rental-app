@@ -12,6 +12,7 @@ import { SkeletonListCard } from '../components/Skeleton';
 import Pagination from '../components/Pagination';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import AdjustOfferPanel from '../components/AdjustOfferPanel';
+import ExtendBookingModal from '../components/ExtendBookingModal';
 import { paginate } from '../utils/paginate';
 import { bookingAwaitingDecision } from '../utils/offerWindow';
 import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays } from '../utils/phTime';
@@ -121,6 +122,7 @@ const MyBookings = () => {
   const [confirmation, setConfirmation] = useState(null);
   const [offerBusyId, setOfferBusyId] = useState('');
   const [withdrawingId, setWithdrawingId] = useState('');
+  const [extendBookingId, setExtendBookingId] = useState(null);
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -262,6 +264,30 @@ const MyBookings = () => {
       setOfferBusyId('');
     }
   };
+
+  // Back from paying for extra days. Asks the server what really happened
+  // rather than trusting the redirect, and also picks up a payment that
+  // finished with the tab already closed.
+  const extendChecked = useRef(new Set());
+  useEffect(() => {
+    const fromRedirect = searchParams.get('extend') && searchParams.get('bookingId');
+    const paying = bookings.find((b) => b.pendingExtension?.checkoutSessionId
+      && !extendChecked.current.has(b._id));
+    const id = fromRedirect ? searchParams.get('bookingId') : paying?._id;
+    if (!user || !id || extendChecked.current.has(id)) return;
+    extendChecked.current.add(id);
+    if (fromRedirect) setSearchParams({}, { replace: true });
+    (async () => {
+      try {
+        await api.put(`/bookings/${id}/extension/confirm`);
+        toast.success('Payment received — your booking now runs to the new date.');
+      } catch (err) {
+        if (fromRedirect) toast.info(err.response?.data?.message || 'That payment was not completed.');
+        else console.error(err);
+      }
+      await refreshBookings();
+    })();
+  }, [user, searchParams, bookings]);
 
   // Back from paying the difference on a booking being moved. Asks the
   // server what actually happened rather than trusting the redirect, the
@@ -1133,6 +1159,14 @@ const MyBookings = () => {
                             <CalendarPlusIcon /> Reschedule
                           </button>
                         )}
+                        {/* Only while there is still a booking to lengthen — a
+                            trip whose return has passed is overdue, which is
+                            somebody else's conversation. */}
+                        {booking.payment === 'paid' && new Date(booking.endDate) > new Date() && (
+                          <button className="btn-ghost-amber" style={styles.rescheduleBtn} onClick={() => setExtendBookingId(booking._id)}>
+                            <CalendarPlusIcon /> Keep it longer
+                          </button>
+                        )}
                       </div>
                 )}
                 {(booking.refundStatus === 'requested' || booking.rescheduleRequest?.status === 'pending')
@@ -1232,6 +1266,15 @@ const MyBookings = () => {
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} isDark={isDark} />
+
+      {extendBookingId && bookings.find((b) => b._id === extendBookingId) && (
+        <ExtendBookingModal
+          booking={bookings.find((b) => b._id === extendBookingId)}
+          isDark={isDark}
+          onClose={() => setExtendBookingId(null)}
+          onStarted={() => setExtendBookingId(null)}
+        />
+      )}
 
       {confirmation && (
         <BookingConfirmationModal

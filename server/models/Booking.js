@@ -106,6 +106,31 @@ const bookingSchema = new mongoose.Schema({
   // PayMongo dashboard or contacting their support, since GCash's own
   // internal reference isn't exposed to merchants.
   paymongoPaymentId: { type: String, default: '' },
+  // Each time this booking was made longer. Kept so the breakdown still
+  // reads afterwards — a 7-day booking that began as 5 is not the same
+  // thing as one booked as 7, and the difference shows in what was paid
+  // when. previousEndDate is what it ran to before that extension.
+  extensions: [{
+    days: { type: Number, default: 0 },
+    amount: { type: Number, default: 0 },
+    previousEndDate: { type: Date },
+    addedAt: { type: Date },
+  }],
+  // A GCash payment in flight for an extension. The dates do not move
+  // until it lands, so backing out of the payment changes nothing — see
+  // utils/extendBooking.js.
+  pendingExtension: {
+    checkoutSessionId: { type: String, default: '' },
+    amount: { type: Number, default: 0 },
+    startedAt: { type: Date },
+    days: { type: Number, default: 0 },
+    endDate: { type: Date },
+    totalDays: { type: Number, default: 0 },
+    subtotal: { type: Number, default: 0 },
+    discountAmount: { type: Number, default: 0 },
+    totalPrice: { type: Number, default: 0 },
+    promoLabel: { type: String, default: '' },
+  },
   // Further GCash payments taken on this booking after the first — at the
   // moment only the difference when a client moves to dates a promo
   // doesn't reach. A refund can't be taken from a payment that never held

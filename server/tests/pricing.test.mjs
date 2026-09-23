@@ -62,6 +62,40 @@ export default function run() {
   const tooShort = computeBookingPrice(plainCar, 6, instantFrom('2026-10-01', 7), instantFrom('2026-10-07', 7), rules);
   check('a 6-day trip does not qualify', tooShort.discountAmount, 0);
 
+  group('extending before pickup reprices the whole booking');
+  // The worked example: 5 days at 2,000 is 10,000 with no discount. Going
+  // to 7 crosses the 7+ rule, so the discount lands on the WHOLE booking —
+  // and the two extra days cost 2,600 rather than the 4,000 they would at
+  // the plain rate. Extending made the trip cheaper per day.
+  const fiveDays = computeBookingPrice(plainCar, 5, instantFrom('2026-10-01', 7), instantFrom('2026-10-06', 7), rules);
+  const sevenDays = computeBookingPrice(plainCar, 7, instantFrom('2026-10-01', 7), instantFrom('2026-10-08', 7), rules);
+  check('what they booked', fiveDays.totalPrice, 10000);
+  check('what it becomes', sevenDays.totalPrice, 12600);
+  check('due now to extend', sevenDays.totalPrice - fiveDays.totalPrice, 2600);
+  check('two days at the plain rate would have been', 2 * plainCar.pricePerDay, 4000);
+  check('the discount is named on the receipt', sevenDays.promoLabel, 'Long-rental discount (7+ days)');
+
+  group('extending once they have the vehicle does not reprice it');
+  // The days they already paid for keep the price they agreed, and the
+  // extra ones are charged at the standard rate. The discount is for
+  // committing in advance, which extending mid-trip is not.
+  const midTripExtra = 2 * plainCar.pricePerDay;
+  check('two more days', midTripExtra, 4000);
+  check('new total', fiveDays.totalPrice + midTripExtra, 14000);
+  check('which is dearer than booking 7 up front', (fiveDays.totalPrice + midTripExtra) > sevenDays.totalPrice, true);
+
+  group('extending can never hand money back');
+  // More days always costs more — the only way it could fall is a discount
+  // steep enough to make a longer trip cheaper, which the inversion guard
+  // refuses to let an admin create.
+  let neverCheaper = true;
+  for (let days = 1; days <= 40; days++) {
+    const shorter = computeBookingPrice(plainCar, days, instantFrom('2026-10-01', 7), instantFrom(`2026-10-01`, 7), rules);
+    const longer = computeBookingPrice(plainCar, days + 1, instantFrom('2026-10-01', 7), instantFrom('2026-10-01', 7), rules);
+    if (longer.totalPrice <= shorter.totalPrice) neverCheaper = false;
+  }
+  check('one more day always costs more, 1 to 40 days', neverCheaper, true);
+
   group('a promo can never take a booking below zero');
   const steep = { ...car, promo: { ...promo, type: 'amount', value: 5000 } };
   const clamped = computeBookingPrice(steep, 1, instantFrom('2026-09-21', 7), instantFrom('2026-09-22', 7), []);
