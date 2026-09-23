@@ -30,6 +30,9 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  // Which way they want to pay for it. Only offered where it is a real
+  // choice — see the server's quote.
+  const [mode, setMode] = useState('deposit');
 
   const ref = useModalA11y(onClose, true);
   const carId = booking.car?._id || booking.car;
@@ -74,7 +77,7 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
     setBusy(true);
     setError('');
     try {
-      const res = await api.post(`/bookings/${booking._id}/extension`, { endDate: newEnd });
+      const res = await api.post(`/bookings/${booking._id}/extension`, { endDate: newEnd, mode: chosen });
       onStarted();
       window.location.href = res.data.checkoutUrl;
     } catch (err) {
@@ -84,6 +87,11 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
   };
 
   const latest = limits?.latestEndDate ? phYmd(limits.latestEndDate) : '';
+  // Whichever way of paying is actually available, defaulting to the
+  // smaller ask when both are.
+  const options = quote?.payment?.options || ['full'];
+  const chosen = options.includes(mode) ? mode : options[0];
+  const due = quote?.payment?.[chosen];
   const currentEnd = booking.endDate;
 
   // Days the client may choose: after the current return, up to whatever
@@ -162,6 +170,22 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
       border: `1px solid ${isDark ? 'rgba(220,38,38,0.4)' : '#fecaca'}`,
       color: isDark ? '#fca5a5' : '#b91c1c',
     },
+    modeRow: {
+      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px',
+      margin: '12px 0 4px',
+    },
+    modeBtn: (active) => ({
+      display: 'flex', flexDirection: 'column', gap: '3px', textAlign: 'left',
+      padding: '10px 12px', borderRadius: '10px', cursor: 'pointer',
+      border: `1px solid ${active ? gold : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      background: active ? (isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.08)') : 'transparent',
+      color: isDark ? '#b0b3b8' : '#4b5563',
+      fontSize: '11.5px', fontWeight: '600', fontFamily: 'inherit', lineHeight: 1.35,
+    }),
+    modeAmount: (active) => ({
+      fontSize: '14px', fontWeight: '800',
+      color: active ? gold : (isDark ? '#e4e6eb' : '#1a1a1a'),
+    }),
     actions: { display: 'flex', gap: '9px', marginTop: '18px' },
     payBtn: {
       flex: 1, padding: '11px', borderRadius: '9px', border: 'none',
@@ -181,8 +205,8 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
       <div style={s.card} ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="extend-title">
         <h2 id="extend-title" style={s.title}>Keep the vehicle longer</h2>
         <p style={s.sub}>
-          Pick a new return date. The pickup and return time stay as they are, and anything
-          you already owe at pickup is untouched — you only pay for the extra days.
+          Pick a new return date. The pickup and return time stay as they are, and you
+          only pay for the extra days.
         </p>
 
         <div style={s.current}>
@@ -202,7 +226,7 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
               onSelectDay={(date) => { if (selectableDay(date)) setNewEnd(toYmd(date)); }}
               isDark={isDark}
             />
-            {latest && (
+            {latest && limits?.latestIsAConflict && (
               <p style={s.limitNote}>
                 This vehicle is free up to {formatMoment(instantFrom(latest, hour), booking.hasPickupTime)}.
                 {' '}Someone else has it after that.
@@ -233,14 +257,37 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
               <span>Was</span>
               <span>{peso(quote.was.totalPrice)}</span>
             </div>
+            {options.length > 1 && (
+              <div style={s.modeRow} role="group" aria-label="How to pay">
+                <button
+                  type="button"
+                  aria-pressed={chosen === 'deposit'}
+                  style={s.modeBtn(chosen === 'deposit')}
+                  onClick={() => setMode('deposit')}
+                >
+                  Pay a deposit now
+                  <span style={s.modeAmount(chosen === 'deposit')}>{peso(quote.payment.deposit.dueNow)}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={chosen === 'full'}
+                  style={s.modeBtn(chosen === 'full')}
+                  onClick={() => setMode('full')}
+                >
+                  Pay the extra days in full
+                  <span style={s.modeAmount(chosen === 'full')}>{peso(quote.payment.full.dueNow)}</span>
+                </button>
+              </div>
+            )}
+
             <div style={s.rowDue}>
               <span>Pay now to extend</span>
-              <span>{peso(quote.dueNow)}</span>
+              <span>{peso(due?.dueNow)}</span>
             </div>
-            {!quote.collected && quote.balanceAtPickup > 0 && (
+            {!quote.collected && due?.balanceAtPickup > 0 && (
               <div style={{ ...s.row, marginTop: '9px', marginBottom: 0 }}>
-                <span>Bring at pickup (unchanged)</span>
-                <span>{peso(quote.balanceAtPickup)}</span>
+                <span>Bring at pickup</span>
+                <span>{peso(due.balanceAtPickup)}</span>
               </div>
             )}
 
@@ -273,7 +320,7 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
             onClick={pay}
             disabled={busy || !quote || quote.forDate !== newEnd}
           >
-            {busy ? 'Opening GCash…' : (quote && quote.forDate === newEnd) ? `Pay ${peso(quote.dueNow)} with GCash` : 'Pick a date'}
+            {busy ? 'Opening GCash…' : (quote && quote.forDate === newEnd) ? `Pay ${peso(due?.dueNow)} with GCash` : 'Pick a date'}
           </button>
         </div>
       </div>

@@ -57,7 +57,12 @@ export async function latestPossibleEnd(booking, now = new Date()) {
     .filter((t) => t > own.end.getTime())
     .sort((a, b) => a - b);
 
-  const hardStop = ahead.length ? ahead[0] : addDays(now, MAX_LOOKAHEAD_DAYS).getTime();
+  // Nothing ahead means nothing is in the way. The lookahead below only
+  // exists so the calendar has an end, and must never be reported as though
+  // somebody else had the vehicle from that date — which would be a plain
+  // untruth dressed up as a limit.
+  const constrained = ahead.length > 0;
+  const hardStop = constrained ? ahead[0] : addDays(now, MAX_LOOKAHEAD_DAYS).getTime();
 
   // The return always lands on the pickup hour, so the answer is a day, not
   // a moment: the last day whose return still clears whatever is next.
@@ -69,7 +74,7 @@ export async function latestPossibleEnd(booking, now = new Date()) {
     if (ourEnd(candidate) > hardStop) break;
     best = candidate;
   }
-  return best;
+  return { end: best, constrained };
 }
 
 // What an extension to `newEnd` would cost and why, without changing
@@ -117,12 +122,35 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
     );
   }
 
-  const dueNow = priced.totalPrice - wasTotal;
-  if (dueNow <= 0) {
+  const extensionCost = priced.totalPrice - wasTotal;
+  if (extensionCost <= 0) {
     // Cannot normally happen: more days always costs more, and the
     // inversion guard refuses rule sets where a longer trip is cheaper.
     return { error: 'That change does not add anything to this booking.' };
   }
+
+  // How they may pay for it.
+  //
+  // Once they have the vehicle there is no pickup left to collect a balance
+  // at, so the extension is paid outright. Before pickup there is one, and
+  // a client part-paying for the booking should be able to part-pay for the
+  // extra days too. Charging 100% of the new days while they still owe 80%
+  // of the old ones is a rule this system applies nowhere else.
+  //
+  // Unless they paid the booking off in full, where a deposit has nothing
+  // left to mean and the extra days are simply paid the same way.
+  const paidInFull = booking.paymentType === 'full' || booking.amountPaid >= wasTotal;
+  const canSplit = !collected && !paidInFull;
+
+  const settled = (due) => ({
+    dueNow: due,
+    balanceAtPickup: Math.max(priced.totalPrice - booking.amountPaid - due, 0),
+  });
+  const payment = {
+    options: canSplit ? ['deposit', 'full'] : ['full'],
+    deposit: canSplit ? settled(Math.max(Math.ceil(priced.totalPrice * 0.2) - booking.amountPaid, 0)) : null,
+    full: settled(extensionCost),
+  };
 
   return {
     ok: true,
@@ -133,26 +161,30 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
     pricePerDay: car.pricePerDay,
     was: { subtotal: wasSubtotal, discountAmount: booking.discountAmount || 0, totalPrice: wasTotal, promoLabel: booking.promoLabel || '' },
     now: priced,
-    dueNow,
+    extensionCost,
+    payment,
     // Named so the breakdown can say what changed and why, rather than
     // leaving a client to work out why the number moved.
     discountGained: !booking.promoLabel && !!priced.promoLabel,
     discountLost: !!booking.promoLabel && !priced.promoLabel,
     discountChanged: !!booking.promoLabel && !!priced.promoLabel && booking.promoLabel !== priced.promoLabel,
-    balanceAtPickup: Math.max(priced.totalPrice - booking.amountPaid - (priced.totalPrice - wasTotal), 0),
   };
 }
 
 // Hands back a GCash checkout and parks the extension on the booking. The
 // dates do not move until confirmExtension sees the payment land, so
 // backing out on PayMongo's page costs the client nothing.
-export async function startExtension(booking, newEndYmd) {
+export async function startExtension(booking, newEndYmd, mode = 'full') {
   const quote = await quoteExtension(booking, newEndYmd);
   if (!quote.ok) return { ok: false, message: quote.error };
 
+  const chosen = quote.payment.options.includes(mode) ? mode : 'full';
+  const amount = quote.payment[chosen].dueNow;
+  if (amount <= 0) return { ok: false, message: 'There is nothing to pay for that change.' };
+
   const car = await Car.findById(booking.car).select('brand model');
   const { id, checkoutUrl } = await createGcashCheckout({
-    amount: quote.dueNow,
+    amount,
     name: `${car ? `${car.brand} ${car.model}` : 'Vehicle'} — ${quote.extraDays} more day${quote.extraDays === 1 ? '' : 's'}`,
     description: `Booking ${booking._id} extension`,
     reference: `${booking._id}-extend-${Date.now()}`,
@@ -163,7 +195,7 @@ export async function startExtension(booking, newEndYmd) {
 
   booking.pendingExtension = {
     checkoutSessionId: id,
-    amount: quote.dueNow,
+    amount,
     startedAt: new Date(),
     days: quote.extraDays,
     endDate: quote.endDate,

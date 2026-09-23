@@ -1029,7 +1029,10 @@ router.get('/:id/extension', protect, async (req, res) => {
     const quote = req.query.endDate ? await quoteExtension(booking, req.query.endDate) : null;
 
     res.json({
-      latestEndDate: latest,
+      latestEndDate: latest.end,
+      // False means nothing is booked ahead at all. Saying "someone else
+      // has it after that" in that case would simply be untrue.
+      latestIsAConflict: latest.constrained,
       collected: hasCollectedVehicle(booking),
       currentEndDate: booking.endDate,
       quote,
@@ -1051,7 +1054,7 @@ router.post('/:id/extension', protect, async (req, res) => {
     const blocked = extendBlocker(booking);
     if (blocked) return res.status(400).json({ message: blocked });
 
-    const result = await startExtension(booking, req.body.endDate);
+    const result = await startExtension(booking, req.body.endDate, req.body.mode);
     if (!result.ok) return res.status(400).json({ message: result.message });
     res.json({ checkoutUrl: result.checkoutUrl });
   } catch (err) {
