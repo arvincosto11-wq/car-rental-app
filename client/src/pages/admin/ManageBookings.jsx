@@ -18,6 +18,7 @@ import api from '../../api';
 import { bookingAwaitingDecision, timeLeftLabel } from '../../utils/offerWindow';
 import { formatMoment, phYmd } from '../../utils/phTime';
 import { FUEL_STEPS, fuelLabel, fuelShortfallLabel } from '../../utils/fuel';
+import ConditionPhotos from '../../components/ConditionPhotos';
 
 const LOW_RATING_THRESHOLD = 3;
 // How long after the pickup time a no-show can still be recorded. Mirrors
@@ -112,7 +113,7 @@ const ManageBookings = () => {
   // Closing a booking is the only chance to read the gauge, so it stopped
   // being a yes/no confirm and became a short form.
   const [returnTarget, setReturnTarget] = useState(null);
-  const [returnForm, setReturnForm] = useState({ fuel: undefined, charge: '' });
+  const [returnForm, setReturnForm] = useState({ fuel: undefined, charge: '', photos: [], note: '', damage: '' });
   const [returnSubmitting, setReturnSubmitting] = useState(false);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
@@ -263,7 +264,7 @@ const ManageBookings = () => {
       if (!ok) return;
     }
     setReturnTarget(booking);
-    setReturnForm({ fuel: undefined, charge: '' });
+    setReturnForm({ fuel: undefined, charge: '', photos: [], note: '', damage: '' });
   };
 
   const submitReturn = async () => {
@@ -273,11 +274,30 @@ const ManageBookings = () => {
         status: 'completed',
         fuelAtReturn: returnForm.fuel,
         fuelCharge: returnForm.charge,
+        returnPhotos: returnForm.photos,
+        returnNote: returnForm.note,
+        damageCharge: returnForm.damage,
       });
       setReturnTarget(null);
       toast.success('Return recorded.');
     } finally {
       setReturnSubmitting(false);
+    }
+  };
+
+  const handleCollectDamageCharge = async (booking) => {
+    const ok = await confirm(
+      `Confirm you have received the ${peso(booking.condition.damageCharge)} damage charge from this client, in cash or by GCash.`,
+      { confirmLabel: 'Received', cancelLabel: 'Not yet' }
+    );
+    if (!ok) return;
+    try {
+      await api.put(`/bookings/${booking._id}/damage-charge/collected`);
+      await fetchBookings();
+      toast.success('Damage charge recorded as settled.');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Something went wrong recording this charge.');
     }
   };
 
@@ -477,6 +497,16 @@ const ManageBookings = () => {
       background: on ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
       color: on ? ON_GOLD : (isDark ? '#b0b3b8' : '#6b7280'),
     }),
+    returnOutRow: {
+      margin: '4px 0 12px', padding: '10px 12px', borderRadius: '10px',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    returnOutLabel: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', lineHeight: 1.5 },
+    returnOutThumbs: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' },
+    returnOutThumb: {
+      width: '72px', height: '54px', objectFit: 'cover', borderRadius: '7px', cursor: 'zoom-in',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
     returnShort: {
       fontSize: '12px', lineHeight: 1.5, fontWeight: '700', margin: '0 0 12px',
       padding: '8px 10px', borderRadius: '8px',
@@ -1007,6 +1037,19 @@ const ManageBookings = () => {
                           the moment it completed. We had the record and
                           showed it nowhere, so nobody could see who makes a
                           habit of it — least of all the client. */}
+                      {booking.condition?.damageCharge > 0 && (
+                        booking.condition.damageCollectedAt ? (
+                          <span style={s.feeSettled}>{peso(booking.condition.damageCharge)} damage settled</span>
+                        ) : (
+                          <button
+                            style={s.feeBtn}
+                            onClick={() => handleCollectDamageCharge(booking)}
+                            title={booking.condition.atReturn?.note || 'Damage recorded at return.'}
+                          >
+                            Collect {peso(booking.condition.damageCharge)} damage
+                          </button>
+                        )
+                      )}
                       {booking.fuel?.charge > 0 && (
                         booking.fuel.collectedAt ? (
                           <span style={s.feeSettled}>{peso(booking.fuel.charge)} refuelling settled</span>
@@ -1141,6 +1184,55 @@ const ManageBookings = () => {
               placeholder="Refuelling charge (optional)"
               value={returnForm.charge}
               onChange={(e) => setReturnForm({ ...returnForm, charge: e.target.value.replace(/[^0-9.]/g, '') })}
+            />
+
+            {/* The other half of the walkaround. What it went out looking
+                like is a link away, so the comparison is one click rather
+                than a memory. */}
+            {returnTarget.condition?.atPickup?.photos?.length > 0 && (
+              <div style={s.returnOutRow}>
+                <span style={s.returnOutLabel}>
+                  It went out with {returnTarget.condition.atPickup.photos.length} photo
+                  {returnTarget.condition.atPickup.photos.length === 1 ? '' : 's'}
+                  {returnTarget.condition.atPickup.note ? ` — "${returnTarget.condition.atPickup.note}"` : ''}
+                </span>
+                <div style={s.returnOutThumbs}>
+                  {returnTarget.condition.atPickup.photos.map((url, i) => (
+                    <img
+                      key={url}
+                      src={url}
+                      alt={`Condition going out ${i + 1}`}
+                      style={s.returnOutThumb}
+                      onClick={() => window.open(url, '_blank', 'noopener')}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <ConditionPhotos
+              id={`return-cond-${returnTarget._id}`}
+              label="Condition coming back"
+              photos={returnForm.photos}
+              onChange={(next) => setReturnForm({ ...returnForm, photos: next })}
+              isDark={isDark}
+              disabled={returnSubmitting}
+            />
+
+            <input
+              style={s.cancelInput}
+              type="text"
+              placeholder="Anything new since it went out (optional)"
+              value={returnForm.note}
+              onChange={(e) => setReturnForm({ ...returnForm, note: e.target.value })}
+            />
+            <input
+              style={s.cancelInput}
+              type="text"
+              inputMode="decimal"
+              placeholder="Damage charge (optional)"
+              value={returnForm.damage}
+              onChange={(e) => setReturnForm({ ...returnForm, damage: e.target.value.replace(/[^0-9.]/g, '') })}
             />
 
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>

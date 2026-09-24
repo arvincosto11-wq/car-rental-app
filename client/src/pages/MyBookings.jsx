@@ -19,7 +19,7 @@ import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
-import { fuelShortfallLabel } from '../utils/fuel';
+import { fuelShortfallLabel, fuelLabel } from '../utils/fuel';
 
 const PAGE_SIZE = 10;
 
@@ -854,6 +854,19 @@ const MyBookings = () => {
       fontSize: '11.5px', lineHeight: 1.5, margin: 0,
       color: isDark ? '#fca5a5' : '#b91c1c',
     },
+    tripRecord: {
+      display: 'flex', flexDirection: 'column', gap: '4px',
+      margin: '10px 0 0', padding: '10px 12px', borderRadius: '10px',
+      fontSize: '12px', lineHeight: 1.5,
+      background: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb',
+      color: isDark ? '#b0b3b8' : '#6b7280',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`,
+    },
+    tripPhotosRow: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' },
+    tripPhoto: {
+      width: '58px', height: '44px', objectFit: 'cover', borderRadius: '6px', cursor: 'zoom-in',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
     lateFeeNote: {
       margin: '10px 0 0', padding: '10px 12px', borderRadius: '10px',
       fontSize: '12px', fontWeight: '600', lineHeight: 1.5,
@@ -1230,6 +1243,59 @@ const MyBookings = () => {
                 )}
                 {/* They should not have to hear it from us first. The sum
                     is the clause, not a figure somebody chose. */}
+                {/* What actually happened, not only what it cost. Everything
+                    here was already recorded and the client was shown none
+                    of it, so they heard from us only when something came
+                    with a bill — which makes a charge feel like an ambush
+                    rather than a line in an account they can already see. */}
+                {booking.collectedAt && (
+                  <div style={styles.tripRecord}>
+                    <span>
+                      <strong>Picked up</strong> {formatMoment(booking.collectedAt, true)}
+                      {booking.fuel?.atPickup !== null && booking.fuel?.atPickup !== undefined
+                        ? ` — fuel at ${fuelLabel(booking.fuel.atPickup)}`
+                        : ''}
+                    </span>
+                    {booking.returnedAt && (
+                      <span>
+                        <strong>Returned</strong> {formatMoment(booking.returnedAt, true)}
+                        {booking.fuel?.atReturn !== null && booking.fuel?.atReturn !== undefined
+                          ? ` — fuel at ${fuelLabel(booking.fuel.atReturn)}`
+                          : ''}
+                      </span>
+                    )}
+                    {booking.condition?.atPickup?.photos?.length > 0 && (
+                      <span style={styles.tripPhotosRow}>
+                        {booking.condition.atPickup.photos.map((url, i) => (
+                          <img
+                            key={url}
+                            src={url}
+                            alt={`Vehicle at pickup ${i + 1}`}
+                            style={styles.tripPhoto}
+                            onClick={() => window.open(url, '_blank', 'noopener')}
+                          />
+                        ))}
+                        {(booking.condition?.atReturn?.photos || []).map((url, i) => (
+                          <img
+                            key={url}
+                            src={url}
+                            alt={`Vehicle at return ${i + 1}`}
+                            style={styles.tripPhoto}
+                            onClick={() => window.open(url, '_blank', 'noopener')}
+                          />
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {booking.status === 'completed' && booking.condition?.damageCharge > 0 && (
+                  <div style={styles.lateFeeNote}>
+                    A damage charge of ₱{booking.condition.damageCharge.toLocaleString()} applies to this
+                    return, per our Terms and Conditions.
+                    {booking.condition.atReturn?.note ? ` ${booking.condition.atReturn.note}` : ''}
+                    {booking.condition.damageCollectedAt ? ' This has been settled.' : ' Please settle it with us.'}
+                  </div>
+                )}
                 {booking.status === 'completed' && booking.fuel?.charge > 0 && (
                   <div style={styles.lateFeeNote}>
                     {fuelShortfallLabel(booking)

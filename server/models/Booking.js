@@ -63,6 +63,18 @@ const bookingSchema = new mongoose.Schema({
     charge: { type: Number, default: 0 },
     collectedAt: { type: Date, default: null },
   },
+  // What the vehicle looked like at each end. Section 4 makes the renter
+  // liable for damage during the rental, which was unarguable in principle
+  // and unprovable in practice — nothing recorded the state it left in, so
+  // "it was already like that" was a claim nobody could answer. The charge
+  // is typed for the same reason the fuel one is: a repair costs what the
+  // shop charges, and no clause names a rate.
+  condition: {
+    atPickup: { photos: [{ type: String }], note: { type: String, default: '' } },
+    atReturn: { photos: [{ type: String }], note: { type: String, default: '' } },
+    damageCharge: { type: Number, default: 0 },
+    damageCollectedAt: { type: Date, default: null },
+  },
   // Highest escalation already sent to admin about this booking sitting
   // unconfirmed — see utils/pendingReminders.js. Stored so each tier fires
   // once rather than on every request that triggers the sweep.

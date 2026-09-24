@@ -5,6 +5,7 @@ import usePageTitle from '../../hooks/usePageTitle';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { formatMoment } from '../../utils/phTime';
 import { FUEL_STEPS, fuelLabel } from '../../utils/fuel';
+import ConditionPhotos from '../../components/ConditionPhotos';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK } from '../../theme';
 import api from '../../api';
 
@@ -43,6 +44,10 @@ const PickupDesk = () => {
   // The gauge reading, per booking. Like the tick boxes, it is of the
   // vehicle in front of you, so it starts blank every time.
   const [fuel, setFuel] = useState({});
+  // The walkaround, per booking. Optional — worth encouraging, but refusing
+  // to release a vehicle over a photo would be a rule about paperwork.
+  const [photos, setPhotos] = useState({});
+  const [notes, setNotes] = useState({});
 
   const fetchAll = async () => {
     try {
@@ -124,7 +129,11 @@ const PickupDesk = () => {
   const handOver = async (booking) => {
     setWorking(booking._id);
     try {
-      await api.put(`/bookings/${booking._id}/collect`, { fuelLevel: fuel[booking._id] });
+      await api.put(`/bookings/${booking._id}/collect`, {
+        fuelLevel: fuel[booking._id],
+        conditionPhotos: photos[booking._id] || [],
+        conditionNote: notes[booking._id] || '',
+      });
       await fetchAll();
       toast.success('Keys handed over.');
     } catch (err) {
@@ -228,6 +237,11 @@ const PickupDesk = () => {
       padding: '7px 0', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#374151',
     },
     fuelBlock: { marginTop: '12px' },
+    noteInput: {
+      width: '100%', marginTop: '10px', padding: '8px 10px', fontSize: '12.5px',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', outline: 'none',
+      background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
     fuelLabel: {
       fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
       color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '6px',
@@ -385,6 +399,21 @@ const PickupDesk = () => {
                 ))}
               </div>
             </div>
+            <ConditionPhotos
+              id={`cond-${booking._id}`}
+              label="Condition going out"
+              photos={photos[booking._id] || []}
+              onChange={(next) => setPhotos((prev) => ({ ...prev, [booking._id]: next }))}
+              isDark={isDark}
+              disabled={busy}
+            />
+            <input
+              style={s.noteInput}
+              type="text"
+              placeholder="Anything already marked or scratched (optional)"
+              value={notes[booking._id] || ''}
+              onChange={(e) => setNotes((prev) => ({ ...prev, [booking._id]: e.target.value }))}
+            />
             {remaining > 0 ? (
               <div style={s.balanceDue}>
                 <div><strong>{peso(remaining)}</strong> still to collect before the keys go over.</div>

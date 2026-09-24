@@ -24,6 +24,16 @@ const router = express.Router();
 // this is the one that actually decides.
 const NO_SHOW_WINDOW_HOURS = 24;
 
+// Whatever the walkaround produced, kept to something storable. Deliberately
+// not pinned to a particular image host: the upload endpoint is admin-only,
+// so the risk here is malformed input rather than someone else's pictures,
+// and a hostname guessed wrong would silently drop every photo somebody took
+// of a scratched bumper.
+const photoUrls = (value) => (Array.isArray(value) ? value : [])
+  .filter((u) => typeof u === 'string' && u.startsWith('https://') && u.length <= 500)
+  .slice(0, 12);
+
+
 // How far ahead of the pickup time a handover can be recorded. Clients turn
 // up early and the counter shouldn't have to wait for the clock to catch up
 // before it can hand over the keys.
@@ -471,6 +481,15 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         booking.fuel.charge = Math.round(charge);
       }
 
+      booking.condition.atReturn = {
+        photos: photoUrls(req.body.returnPhotos),
+        note: String(req.body.returnNote || '').slice(0, 500),
+      };
+      const damage = Number(req.body.damageCharge);
+      if (Number.isFinite(damage) && damage > 0) {
+        booking.condition.damageCharge = Math.round(damage);
+      }
+
       const carForFee = await Car.findById(booking.car).select('pricePerDay').lean();
       const fee = lateFeeFor(booking, carForFee?.pricePerDay);
       booking.lateFee = { days: fee.days, amount: fee.amount, collectedAt: null };
@@ -509,6 +528,9 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       if (booking.lateFee?.amount > 0) {
         owed.push(`a late fee of ₱${booking.lateFee.amount.toLocaleString()} for returning `
           + `${booking.lateFee.days} day${booking.lateFee.days === 1 ? '' : 's'} late, at one day's rental rate per day of delay`);
+      }
+      if (booking.condition?.damageCharge > 0) {
+        owed.push(`₱${booking.condition.damageCharge.toLocaleString()} for damage to the vehicle`);
       }
       if (booking.fuel?.charge > 0) {
         const short = fuelShortfallLabel(booking);
@@ -563,6 +585,25 @@ router.put('/:id/collect-balance', protect, adminOnly, async (req, res) => {
 
     await notifyUser(booking.user, 'Balance Received', `We've recorded your remaining balance of ₱${collected.toLocaleString()} as paid. Thanks!`, '/my-bookings');
 
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin records the damage charge as settled.
+router.put('/:id/damage-charge/collected', protect, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!(booking.condition?.damageCharge > 0)) {
+      return res.status(400).json({ message: 'There is no damage charge on this booking.' });
+    }
+    if (booking.condition.damageCollectedAt) {
+      return res.status(400).json({ message: 'This damage charge is already marked as settled.' });
+    }
+    booking.condition.damageCollectedAt = new Date();
+    await booking.save();
     res.json(booking);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -643,6 +684,13 @@ router.put('/:id/collect', protect, adminOnly, async (req, res) => {
 
     booking.collectedAt = new Date();
     booking.fuel.atPickup = Number(req.body.fuelLevel);
+    // Optional, unlike the gauge: a walkaround is worth having and worth
+    // encouraging, but refusing to release a vehicle over a photo would be
+    // a rule about paperwork rather than about the vehicle.
+    booking.condition.atPickup = {
+      photos: photoUrls(req.body.conditionPhotos),
+      note: String(req.body.conditionNote || '').slice(0, 500),
+    };
     await booking.save();
     res.json(booking);
   } catch (err) {
