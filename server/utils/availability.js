@@ -59,6 +59,21 @@ const blockRanges = (car, extraBlocks) => [
 // `extraBlocks` covers a range that is about to be saved but hasn't been
 // written yet — the block being created in this very request — so we never
 // hand out dates that the thing causing the question has already claimed.
+// How long the vehicle is actually unavailable for, which is not always
+// what the booking says. A car that went out and has not come back is still
+// gone after its return date, and treating those dates as free hands them
+// to a second client who then turns up to a vehicle that isn't here.
+//
+// Only a recorded handover counts. Without one there is nothing to say the
+// car ever left, and every old booking would look permanently overdue.
+export const occupiedSpan = (booking, now = new Date()) => {
+  const span = bookingSpan(booking);
+  if (booking.collectedAt && !booking.returnedAt && span.end < now) {
+    return { start: span.start, end: now };
+  }
+  return span;
+};
+
 export async function busySpans(carId, {
   statuses = ['confirmed'],
   excludeBookingId = null,
@@ -70,12 +85,12 @@ export async function busySpans(carId, {
 
   const query = { car: carId, status: { $in: statuses } };
   if (excludeBookingId) query._id = { $ne: excludeBookingId };
-  const bookings = await Booking.find(query).select('startDate endDate hasPickupTime').lean();
+  const bookings = await Booking.find(query).select('startDate endDate hasPickupTime collectedAt returnedAt').lean();
 
   return {
     turnaroundHours,
     spans: [
-      ...bookings.map((b) => ({ ...padded(bookingSpan(b), turnaroundHours), kind: 'booking' })),
+      ...bookings.map((b) => ({ ...padded(occupiedSpan(b), turnaroundHours), kind: 'booking' })),
       ...blockRanges(car, extraBlocks),
     ],
   };

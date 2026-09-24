@@ -10,7 +10,7 @@ import { SkeletonTableRows } from '../../components/Skeleton';
 import Pagination from '../../components/Pagination';
 import StatusDropdown from '../../components/StatusDropdown';
 import { paginate } from '../../utils/paginate';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
@@ -26,10 +26,20 @@ const NO_SHOW_WINDOW_HOURS = 24;
 // How early a handover can be recorded, mirroring the server. Clients turn
 // up before their hour and the counter shouldn't have to wait for the clock.
 const EARLY_COLLECT_HOURS = 2;
+const DASH_JS = '—';
 // Confirmed covers three different situations @ booked for next month, due
 // today, and gone. Only the last one means a vehicle is physically not here,
 // which is the thing worth being able to see on its own.
-const isOnTrip = (b) => b.status === 'confirmed' && !!b.collectedAt;
+const isOnTrip = (b) => b.status === 'confirmed' && !!b.collectedAt && !b.returnedAt;
+// Out and past its return time. Mirrors isOverdue on the server, which is
+// the one that actually decides — this only drives what admin is shown.
+const isOverdue = (b) => isOnTrip(b) && new Date(b.endDate) < new Date();
+// Out and due back before the day is over. The point of saying so is that
+// it is still preventable, so it is a different colour and a different
+// sentence from one that is already late.
+const isDueBack = (b) => isOnTrip(b) && !isOverdue(b)
+  && new Date(b.endDate) <= new Date(new Date().getTime() + 24 * 60 * 60 * 1000);
+const daysOverdue = (b) => Math.max(1, Math.ceil((Date.now() - new Date(b.endDate).getTime()) / (24 * 60 * 60 * 1000)));
 const PAGE_SIZE = 10;
 
 // Mirrors refundAmountFor in server/utils/cancelBooking.js. The server
@@ -298,6 +308,8 @@ const ManageBookings = () => {
   const ratingBooking = bookings.find((b) => b._id === ratingModalId);
   const detailsBooking = bookings.find((b) => b._id === detailsBookingId);
   const unratedClientCount = bookings.filter((b) => b.status === 'completed' && !b.clientRating?.ratedAt).length;
+  const overdueBookings = paidBookings.filter(isOverdue);
+  const dueBackBookings = paidBookings.filter(isDueBack);
   const pendingRescheduleCount = bookings.filter((b) => b.rescheduleRequest?.status === 'pending').length;
 
   // Unpaid bookings never show up here at all (see filteredBookings below),
@@ -395,7 +407,31 @@ const ManageBookings = () => {
       color: due ? ON_GOLD : (isDark ? GOLD_DARK : GOLD),
     }),
     pickedUpBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '700' },
+    overdueNote: { fontSize: '11px', fontWeight: '800', color: isDark ? '#f87171' : '#dc2626' },
     pickedUpNote: { fontSize: '11px', fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
+    outPanel: (late) => ({
+      marginBottom: '18px', padding: '16px 18px', borderRadius: '14px',
+      border: `1px solid ${late ? (isDark ? '#f87171' : '#dc2626') : (isDark ? GOLD_DARK : GOLD)}`,
+      background: late
+        ? (isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2')
+        : (isDark ? GOLD_TINT_DARK : GOLD_TINT),
+    }),
+    outPanelTitle: {
+      fontSize: '16px', fontWeight: '800', marginBottom: '10px',
+      color: isDark ? '#e4e6eb' : '#111827',
+    },
+    outPanelList: { listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '6px' },
+    outPanelItem: { fontSize: '13px', lineHeight: 1.5, color: isDark ? '#e4e6eb' : '#374151' },
+    outPanelLate: { fontWeight: '800', color: isDark ? '#f87171' : '#dc2626' },
+    outPanelFoot: {
+      fontSize: '12px', lineHeight: 1.5, marginTop: '10px',
+      color: isDark ? '#b0b3b8' : '#6b7280',
+    },
+    outPanelBtn: {
+      marginTop: '12px', padding: '7px 14px', fontSize: '12px', fontWeight: '700',
+      border: 'none', borderRadius: '8px', cursor: 'pointer',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+    },
     cancelRowBtn: {
       padding: '4px 10px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500',
       border: `1px solid ${isDark ? '#f87171' : '#dc2626'}`, background: 'transparent',
@@ -570,6 +606,48 @@ const ManageBookings = () => {
           )}
         </div>
       </div>
+
+      {/* Vehicles that are not here. Loud on purpose: everything else on
+          this page is a record of something that already happened, and this
+          is the one row that is still going wrong while you read it. */}
+      {!loading && (overdueBookings.length > 0 || dueBackBookings.length > 0) && (
+        <div style={s.outPanel(overdueBookings.length > 0)}>
+          <div style={s.outPanelTitle}>
+            {overdueBookings.length > 0
+              ? `${overdueBookings.length} vehicle${overdueBookings.length === 1 ? '' : 's'} not returned`
+              : `${dueBackBookings.length} vehicle${dueBackBookings.length === 1 ? '' : 's'} due back`}
+          </div>
+          <ul style={s.outPanelList}>
+            {overdueBookings.map((b) => (
+              <li key={b._id} style={s.outPanelItem}>
+                <strong>{b.car?.brand} {b.car?.model}</strong> {DASH_JS} {b.user?.name || 'a client'} {DASH_JS}{' '}
+                <span style={s.outPanelLate}>
+                  {daysOverdue(b)} day{daysOverdue(b) === 1 ? '' : 's'} overdue
+                </span>
+                , due {formatMoment(b.endDate, b.hasPickupTime)}
+              </li>
+            ))}
+            {dueBackBookings.map((b) => (
+              <li key={b._id} style={s.outPanelItem}>
+                <strong>{b.car?.brand} {b.car?.model}</strong> {DASH_JS} {b.user?.name || 'a client'} {DASH_JS}{' '}
+                due back {formatMoment(b.endDate, b.hasPickupTime)}
+              </li>
+            ))}
+          </ul>
+          <div style={s.outPanelFoot}>
+            {overdueBookings.length > 0
+              ? 'These dates stay blocked until the vehicle is marked returned, so nobody can book a car that is not here. The client is reminded once a day.'
+              : 'Still on time. Mark each one returned when it comes back.'}
+          </div>
+          <button
+            type="button"
+            style={s.outPanelBtn}
+            onClick={() => { setStatusFilter('on_trip'); setPage(1); }}
+          >
+            Show these bookings
+          </button>
+        </div>
+      )}
 
       <div style={s.filterRow}>
         <input
@@ -750,8 +828,10 @@ const ManageBookings = () => {
                           longer any question of a no-show. */}
                       {booking.collectedAt ? (
                         <>
-                          <span style={s.pickedUpNote}>
-                            Picked up {formatMoment(booking.collectedAt, true, { month: 'numeric', day: 'numeric' })}
+                          <span style={isOverdue(booking) ? s.overdueNote : s.pickedUpNote}>
+                            {isOverdue(booking)
+                              ? `${daysOverdue(booking)} day${daysOverdue(booking) === 1 ? '' : 's'} overdue`
+                              : `Picked up ${formatMoment(booking.collectedAt, true, { month: 'numeric', day: 'numeric' })}`}
                           </span>
                           <button
                             style={s.returnBtn(new Date() >= new Date(booking.endDate))}

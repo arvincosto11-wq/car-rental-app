@@ -34,6 +34,14 @@ const bookingSchema = new mongoose.Schema({
   // means not collected yet, not "unknown": utils/backfillCollected.js
   // filled it in for everything that predates the field.
   collectedAt: { type: Date, default: null },
+  // And when it came back. Collected with no return is the whole definition
+  // of a vehicle that is still out @ past its return date, that is a car
+  // nobody can book and nobody knew was missing.
+  returnedAt: { type: Date, default: null },
+  // The Philippine calendar day the client was last told they are overdue.
+  // The sweep runs on every admin page load, so without this they would be
+  // emailed on every refresh.
+  overdueNotifiedOn: { type: String, default: '' },
   // Highest escalation already sent to admin about this booking sitting
   // unconfirmed — see utils/pendingReminders.js. Stored so each tier fires
   // once rather than on every request that triggers the sweep.

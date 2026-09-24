@@ -14,6 +14,7 @@ import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS, reasonUna
 import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js';
 import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
+import { notifyOverdueReturns, isOverdue } from '../utils/overdueReturns.js';
 
 const router = express.Router();
 
@@ -50,11 +51,22 @@ async function autoCompleteExpiredBookings() {
 
   const expired = await Booking.find({ status: 'confirmed', endDate: { $lt: startOfToday } });
   for (const booking of expired) {
+    // The vehicle went out and nobody has recorded it coming back, so the
+    // trip is not over — it is late. Completing it here would ask the
+    // client to rate a journey they are still on, credit the consignor for
+    // a rental that hasn't ended, and put the dates back on sale while the
+    // car is in somebody's garage. It stays confirmed and overdue until
+    // somebody marks it returned. See utils/overdueReturns.js.
+    if (isOverdue(booking)) continue;
+
     booking.status = 'completed';
     // A trip that ran to its return date was collected, whether or not the
     // counter pressed the button. Stamped with the pickup time, since that
     // is when it happened.
     if (!booking.collectedAt) booking.collectedAt = booking.startDate;
+    // And it came back when it was due, which is the only thing anybody can
+    // conclude from nothing having been said about it.
+    if (!booking.returnedAt) booking.returnedAt = booking.endDate;
     await booking.save();
     await notifyUser(booking.user, 'Vehicle Returned', 'Your vehicle return has been recorded. You can now rate your experience.', '/my-bookings/rate');
   }
@@ -241,6 +253,9 @@ router.post('/', protect, async (req, res) => {
 router.get('/my', protect, async (req, res) => {
   try {
     await autoCompleteExpiredBookings();
+    // Scoped to this client, so somebody who is late hears about it when
+    // they open the app rather than whenever an admin next loads a page.
+    await notifyOverdueReturns({ userId: req.user.id });
     await remindStalePendingBookings();
     await expireAdjustOffers();
     // Plate number is confidential — clients never see it, not even in the
@@ -258,6 +273,7 @@ router.get('/my', protect, async (req, res) => {
 router.get('/all', protect, adminOnly, async (req, res) => {
   try {
     await autoCompleteExpiredBookings();
+    await notifyOverdueReturns();
     await remindStalePendingBookings();
     await expireAdjustOffers();
     const bookings = await Booking.find()
@@ -437,6 +453,8 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       // pressed the button at the counter. Backdated to the pickup time
       // rather than stamped now, because now is when it came back.
       if (!booking.collectedAt) booking.collectedAt = booking.startDate;
+      // Somebody pressed the button, so this is the moment it came back.
+      if (!booking.returnedAt) booking.returnedAt = new Date();
     }
 
     // Cancelling used to just flip the status and notify — no refund record,
