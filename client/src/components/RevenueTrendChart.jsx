@@ -36,7 +36,13 @@ const RevenueTrendChart = ({ data, isDark, barColor, barColorHover, formatValue,
   const chartW = width - padLeft - padRight;
   const chartH = height - padTop - padBottom;
 
-  const maxValue = Math.max(...data.map((d) => d.value), 0);
+  // Coerced before anything is measured against it. One non-numeric point
+  // — a month with no bookings arriving as undefined — turned maxValue into
+  // NaN, which turned every grid line's y into NaN, which the browser
+  // rejected as `Expected length, "undefined"`. The chart still drew its
+  // bars, so it looked fine and complained four times in the console.
+  const values = data.map((d) => (Number.isFinite(Number(d.value)) ? Number(d.value) : 0));
+  const maxValue = Math.max(...values, 0);
   const scaleMax = niceMax(maxValue);
   const gridColor = isDark ? '#3a3b3c' : '#e5e7eb';
   const axisTextColor = isDark ? '#8a8d91' : '#9ca3af';
@@ -59,7 +65,8 @@ const RevenueTrendChart = ({ data, isDark, barColor, barColorHover, formatValue,
       })}
 
       {data.map((d, i) => {
-        const barHeight = scaleMax > 0 ? Math.max((d.value / scaleMax) * chartH, d.value > 0 ? 2 : 0) : 0;
+        const value = values[i];
+        const barHeight = scaleMax > 0 ? Math.max((value / scaleMax) * chartH, value > 0 ? 2 : 0) : 0;
         const x = padLeft + i * bandWidth + (bandWidth - barWidth) / 2;
         const y = padTop + chartH - barHeight;
         const isLast = i === data.length - 1;
