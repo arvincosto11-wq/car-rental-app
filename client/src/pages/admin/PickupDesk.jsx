@@ -97,7 +97,15 @@ const PickupDesk = () => {
     return list;
   };
 
-  const allTicked = (booking) => docsFor(booking).every((d) => checked[`${booking._id}:${d.key}`]);
+  const balanceDue = (booking) => Math.max(0, (booking.totalPrice || 0) - (booking.amountPaid || 0));
+
+  // Everything that has to be true before a vehicle leaves. The money is on
+  // this list because the terms put it there — "the remaining balance must
+  // be paid upon vehicle pickup" — and because the card said "before the
+  // keys go over" while letting the keys go over anyway. A requirement the
+  // screen states and does not hold to is worse than one it never mentions.
+  const readyToRelease = (booking) =>
+    docsFor(booking).every((d) => checked[`${booking._id}:${d.key}`]) && balanceDue(booking) === 0;
 
   const tick = (booking, key) => setChecked((prev) => ({
     ...prev,
@@ -209,6 +217,13 @@ const PickupDesk = () => {
     check: {
       display: 'flex', alignItems: 'flex-start', gap: '9px', fontSize: '13px', lineHeight: 1.5,
       padding: '7px 0', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#374151',
+    },
+    balanceDue: {
+      marginTop: '10px', padding: '10px 12px', borderRadius: '10px', fontSize: '13px', lineHeight: 1.5,
+      display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '9px',
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      color: isDark ? '#f87171' : '#991b1b',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
     },
     balance: {
       marginTop: '10px', padding: '10px 12px', borderRadius: '10px', fontSize: '13px', lineHeight: 1.5,
@@ -333,27 +348,27 @@ const PickupDesk = () => {
                 <span>{d.label}</span>
               </label>
             ))}
-            {remaining > 0 && (
-              <div style={s.balance}>
-                <strong>{peso(remaining)}</strong> still to collect before the keys go over.
+            {remaining > 0 ? (
+              <div style={s.balanceDue}>
+                <div><strong>{peso(remaining)}</strong> still to collect before the keys go over.</div>
+                <button style={s.link} disabled={busy} onClick={() => collectBalance(booking, remaining)}>
+                  Record {peso(remaining)} received
+                </button>
               </div>
+            ) : (
+              <div style={s.balance}>Paid in full. Nothing to collect.</div>
             )}
           </div>
         </div>
 
         <div style={s.actions}>
           <button
-            style={s.primary(allTicked(booking) && !busy)}
-            disabled={!allTicked(booking) || busy}
+            style={s.primary(readyToRelease(booking) && !busy)}
+            disabled={!readyToRelease(booking) || busy}
             onClick={() => handOver(booking)}
           >
             {busy ? 'Working…' : 'Hand over the keys'}
           </button>
-          {remaining > 0 && (
-            <button style={s.link} disabled={busy} onClick={() => collectBalance(booking, remaining)}>
-              Record {peso(remaining)} received
-            </button>
-          )}
           {/* A no-show can only be recorded within a day of the pickup
               time, so offering it here would only produce a refusal. */}
           {late && !stale && (
@@ -361,8 +376,12 @@ const PickupDesk = () => {
               They never came
             </button>
           )}
-          {!allTicked(booking) && (
-            <span style={s.hint}>Tick each document once you have seen it.</span>
+          {!readyToRelease(booking) && (
+            <span style={s.hint}>
+              {remaining > 0
+                ? `Take the ${peso(remaining)} and record it, then tick each document you have seen.`
+                : 'Tick each document once you have seen it.'}
+            </span>
           )}
         </div>
       </div>
