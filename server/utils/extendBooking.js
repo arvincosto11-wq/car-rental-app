@@ -1,7 +1,7 @@
 import Car from '../models/Car.js';
 import LongRentalDiscount from '../models/LongRentalDiscount.js';
 import { computeBookingPrice } from './promo.js';
-import { createGcashCheckout, paymongoFetch } from './paymongo.js';
+import { createGcashCheckout, paymongoFetch, refundOnePayment } from './paymongo.js';
 import { notifyUser, notifyAdmins } from './notify.js';
 import { busySpans, bookingSpan, padded, overlaps } from './availability.js';
 import {
@@ -38,6 +38,21 @@ const PAYMENT_GRACE_MINUTES = 30;
 const MAX_LOOKAHEAD_DAYS = 120;
 
 const CLIENT_URL = process.env.CLIENT_URL || 'https://rent-a-ride-albay.vercel.app';
+
+// Why this booking can't be made longer, or null when it can. Lives here
+// rather than in the route because confirmExtension has to ask the same
+// question again when the client comes back from GCash — a booking can be
+// cancelled, completed or rescheduled in the minutes somebody spends at a
+// payment page, and the answer that let them start is no longer the answer.
+export const extendBlocker = (booking, now = new Date()) => {
+  if (!['pending', 'confirmed'].includes(booking.status)) return 'This booking cannot be extended.';
+  if (booking.payment !== 'paid') return 'This booking has not been paid for yet.';
+  if (booking.refundStatus === 'requested') return 'Resolve your refund request before extending this booking.';
+  if (booking.rescheduleRequest?.status === 'pending') return 'Resolve your reschedule request before extending this booking.';
+  if (booking.adjustOffer?.status === 'open') return 'Choose new dates or a refund on this booking first.';
+  if (bookingSpan(booking).end <= now) return 'This booking has already ended. Please make a new one.';
+  return null;
+};
 
 // Whether the client actually has the vehicle. This used to read the clock
 // — start <= now — which meant a client an hour late for a 7:00 AM pickup
@@ -246,6 +261,60 @@ export async function confirmExtension(booking) {
   // Already recorded — they came back to the page a second time.
   if ((booking.extraPayments || []).some((p) => p.paymongoPaymentId === paid.id)) {
     return { ok: true, booking };
+  }
+
+  // The booking closed while they were at GCash. Admin can mark a trip
+  // returned or cancel it at any moment, and none of that reaches the
+  // client standing at a payment page. Without this the money lands and the
+  // days get added to a booking that is already over, which is a trip that
+  // does not exist and a payment for nothing.
+  //
+  // Nothing on a closed booking can carry the amount forward — a cancelled
+  // one has already had its refund worked out — so it goes straight back.
+  if (!['pending', 'confirmed'].includes(booking.status)) {
+    let returned = false;
+    try {
+      await refundOnePayment({
+        paymentId: paid.id,
+        amount: pending.amount,
+        notes: 'Extension paid after the booking was already closed.',
+      });
+      returned = true;
+    } catch (err) {
+      // The refund is what failed, not the payment — we are holding money
+      // that isn't ours. Recorded on the booking so it is visible, and put
+      // in front of admin rather than left in a log.
+      console.error('Refund of a late extension payment failed:', err.message);
+      booking.extraPayments.push({ paymongoPaymentId: paid.id, amount: pending.amount, paidAt: new Date() });
+      booking.amountPaid += pending.amount;
+    }
+    clearPending(booking);
+    await booking.save();
+
+    await notifyAdmins(
+      returned ? 'Extension paid after booking closed' : 'Extension payment needs refunding by hand',
+      `A client paid ₱${pending.amount.toLocaleString()} to extend a booking that was already `
+        + `${booking.status}. `
+        + (returned
+          ? 'It has been refunded automatically.'
+          : 'The automatic refund failed, so it needs returning through PayMongo by hand.'),
+      '/admin/manage-bookings'
+    );
+    await notifyUser(
+      booking.user,
+      'Extension could not be applied',
+      `That booking had already been closed, so it could not be extended. The ₱${pending.amount.toLocaleString()} you paid `
+        + (returned ? 'is being refunded to you.' : 'will be refunded to you — we are arranging it now.'),
+      '/my-bookings',
+      // Money moved. A line in a bell they may never open is not enough.
+      { email: true }
+    );
+    return {
+      ok: false,
+      message: returned
+        ? `This booking had already been closed, so it could not be extended. The ₱${pending.amount.toLocaleString()} you paid is being refunded.`
+        : `This booking had already been closed, so it could not be extended. We are arranging the refund of your ₱${pending.amount.toLocaleString()} now.`,
+    };
   }
 
   // Re-checked at the last moment: the offer was made against a calendar

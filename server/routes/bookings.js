@@ -12,7 +12,7 @@ import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { openAdjustOffer, acceptAdjustOffer, startTopUp, confirmTopUp, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
 import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS, reasonUnavailable } from '../utils/cancelBooking.js';
 import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js';
-import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle } from '../utils/extendBooking.js';
+import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
 
 const router = express.Router();
@@ -1089,16 +1089,6 @@ router.put('/:id/adjust/top-up/confirm', protect, async (req, res) => {
 // Nothing can extend while something else is already deciding this
 // booking's dates. Two changes racing each other over the same days is how
 // a client ends up somewhere neither of them meant.
-const extendBlocker = (booking) => {
-  if (!['pending', 'confirmed'].includes(booking.status)) return 'This booking cannot be extended.';
-  if (booking.payment !== 'paid') return 'This booking has not been paid for yet.';
-  if (booking.refundStatus === 'requested') return 'Resolve your refund request before extending this booking.';
-  if (booking.rescheduleRequest?.status === 'pending') return 'Resolve your reschedule request before extending this booking.';
-  if (booking.adjustOffer?.status === 'open') return 'Choose new dates or a refund on this booking first.';
-  if (bookingSpan(booking).end <= new Date()) return 'This booking has already ended. Please make a new one.';
-  return null;
-};
-
 // What the client's screen needs: how far they can go, and what a given
 // date would cost. Read-only — nothing is held or changed by asking.
 router.get('/:id/extension', protect, async (req, res) => {

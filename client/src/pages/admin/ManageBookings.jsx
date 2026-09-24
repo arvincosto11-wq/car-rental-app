@@ -26,6 +26,10 @@ const NO_SHOW_WINDOW_HOURS = 24;
 // How early a handover can be recorded, mirroring the server. Clients turn
 // up before their hour and the counter shouldn't have to wait for the clock.
 const EARLY_COLLECT_HOURS = 2;
+// Confirmed covers three different situations @ booked for next month, due
+// today, and gone. Only the last one means a vehicle is physically not here,
+// which is the thing worth being able to see on its own.
+const isOnTrip = (b) => b.status === 'confirmed' && !!b.collectedAt;
 const PAGE_SIZE = 10;
 
 // Mirrors refundAmountFor in server/utils/cancelBooking.js. The server
@@ -196,6 +200,17 @@ const ManageBookings = () => {
   };
 
   const handleMarkReturned = async (booking) => {
+    // Closing a booking the client is at GCash paying to extend. Their
+    // payment is refunded rather than applied, which is right, but it is
+    // better not to take their money and give it back inside a minute.
+    if (booking.pendingExtension?.checkoutSessionId) {
+      const ok = await confirm(
+        'This client is part-way through paying to extend this booking. Completing it now cancels that '
+        + 'extension and refunds what they pay. Give them a few minutes if they are still at the payment page.',
+        { confirmLabel: 'Complete it anyway', cancelLabel: 'Wait' }
+      );
+      if (!ok) return;
+    }
     const isEarly = new Date() < new Date(booking.endDate);
     if (isEarly) {
       const ok = await confirm(
@@ -293,6 +308,7 @@ const ManageBookings = () => {
     { value: 'all', label: 'All', count: paidBookings.length },
     { value: 'pending', label: 'Pending', count: paidBookings.filter((b) => b.status === 'pending').length },
     { value: 'confirmed', label: 'Confirmed', count: paidBookings.filter((b) => b.status === 'confirmed').length },
+    { value: 'on_trip', label: 'On Trip', count: paidBookings.filter(isOnTrip).length },
     { value: 'completed', label: 'Completed', count: paidBookings.filter((b) => b.status === 'completed').length },
     { value: 'cancelled', label: 'Cancelled', count: paidBookings.filter((b) => b.status === 'cancelled').length },
   ];
@@ -301,7 +317,9 @@ const ManageBookings = () => {
     // Unpaid bookings (checkout never completed) aren't shown at all —
     // there's nothing for admin to do with one until it's actually paid.
     if (b.payment !== 'paid') return false;
-    const matchStatus = statusFilter === 'all' ? true : b.status === statusFilter;
+    const matchStatus = statusFilter === 'all' ? true
+      : statusFilter === 'on_trip' ? isOnTrip(b)
+        : b.status === statusFilter;
     const matchReschedule = !rescheduleOnly || b.rescheduleRequest?.status === 'pending';
     const q = search.trim().toLowerCase();
     const matchSearch = !q
@@ -366,7 +384,16 @@ const ManageBookings = () => {
     // A small solid dot before the label — matches the color of its own
     // badge, e.g. dotStyle('#16a34a') for the confirmed badge's dot.
     statusDot: (color) => ({ width: '6px', height: '6px', borderRadius: '50%', background: color, flexShrink: 0 }),
-    returnBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '500' },
+    // Solid only once the return is actually due. While the trip is still
+    // running the expected action is none at all, and a gold button reads
+    // as the next thing to do @ on a label that already sounds like a
+    // statement of fact rather than something you are about to do.
+    returnBtn: (due) => ({
+      padding: '4px 10px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500',
+      border: due ? 'none' : `1px solid ${isDark ? GOLD_DARK : GOLD}`,
+      background: due ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
+      color: due ? ON_GOLD : (isDark ? GOLD_DARK : GOLD),
+    }),
     pickedUpBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '700' },
     pickedUpNote: { fontSize: '11px', fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
     cancelRowBtn: {
@@ -727,7 +754,7 @@ const ManageBookings = () => {
                             Picked up {formatMoment(booking.collectedAt, true, { month: 'numeric', day: 'numeric' })}
                           </span>
                           <button
-                            style={s.returnBtn}
+                            style={s.returnBtn(new Date() >= new Date(booking.endDate))}
                             onClick={() => handleMarkReturned(booking)}
                             title="Only needed for an early return — this completes automatically the day after the return date."
                           >
@@ -853,6 +880,12 @@ const ManageBookings = () => {
             {/* Cancelling a trip that is running is a different act from
                 cancelling one that hasn't started, and the row it was
                 clicked from doesn't say so once the dialog is open. */}
+            {cancelTarget.pendingExtension?.checkoutSessionId && (
+              <p style={s.cancelUnderway}>
+                This client is part-way through paying to extend this booking. Cancelling now refunds
+                whatever they pay, but give them a few minutes if they are still at the payment page.
+              </p>
+            )}
             {cancelTarget.collectedAt && (
               <p style={s.cancelUnderway}>
                 This client picked the vehicle up on{' '}

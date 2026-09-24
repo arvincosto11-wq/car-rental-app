@@ -64,6 +64,27 @@ export const paymentSources = (booking) => {
 // in place with the resulting refund id/status; caller is responsible for
 // saving it. No-ops (returns null) if there's no real payment behind the
 // booking to refund.
+// One payment straight back, without going through a booking's refund
+// fields. Used where money arrives for something that can no longer happen
+// — an extension paid for after the booking was already closed — and the
+// honest answer is to return it rather than record it against a trip that
+// is over.
+export async function refundOnePayment({ paymentId, amount, notes = '' }) {
+  return paymongoFetch('/refunds', {
+    method: 'POST',
+    body: JSON.stringify({
+      data: {
+        attributes: {
+          amount: Math.round(amount * 100),
+          payment_id: paymentId,
+          reason: 'others',
+          notes: notes.slice(0, 255),
+        },
+      },
+    }),
+  });
+}
+
 export async function refundBookingPayment(booking) {
   if (!booking.refundAmount) return null;
   const sources = paymentSources(booking);

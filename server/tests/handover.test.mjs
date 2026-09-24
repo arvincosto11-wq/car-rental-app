@@ -1,5 +1,5 @@
 import { suite, group, check } from './harness.mjs';
-import { hasCollectedVehicle } from '../utils/extendBooking.js';
+import { hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom } from '../utils/phTime.js';
 
 // A confirmed booking whose pickup hour has already gone by.
@@ -32,4 +32,20 @@ export default function run() {
   group('nothing is collected before it exists');
   check('no record and no dates', hasCollectedVehicle({}), false);
   check('a booking still weeks away', hasCollectedVehicle({ startDate: instantFrom('2026-12-01', 7), collectedAt: null }), false);
+
+  group('a booking that closed while the client was paying takes nothing more');
+  // Admin can complete or cancel a trip at any moment, and none of that
+  // reaches somebody standing at a GCash page. The rule that let them start
+  // has to be asked again when they come back — otherwise the money lands
+  // and the extra days get added to a trip that is already over.
+  const live = {
+    status: 'confirmed', payment: 'paid', refundStatus: 'none',
+    startDate: instantFrom('2026-09-22', 7), endDate: instantFrom('2026-09-30', 7), hasPickupTime: true,
+  };
+  const at = new Date('2026-09-24T12:00:00+08:00');
+  check('a running trip can still be extended', extendBlocker(live, at), null);
+  check('one marked returned cannot', !!extendBlocker({ ...live, status: 'completed' }, at), true);
+  check('a cancelled one cannot', !!extendBlocker({ ...live, status: 'cancelled' }, at), true);
+  check('nor one with a refund in progress', !!extendBlocker({ ...live, refundStatus: 'requested' }, at), true);
+  check('nor one that has already ended', !!extendBlocker({ ...live, endDate: instantFrom('2026-09-23', 7) }, at), true);
 }
