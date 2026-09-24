@@ -9,8 +9,8 @@ import { validatePromo } from '../utils/promo.js';
 import { cancelBookingWithRefund, refundAmountFor, isUnderway } from '../utils/cancelBooking.js';
 import { BLOCK_REASON_CODES, causeFor, blockLabelFor } from '../utils/blockReasons.js';
 import { openAdjustOffer, previewAlternatives } from '../utils/adjustOffer.js';
-import { bookingSpan, blockedSpan, padded, bookingsOverlapping, overlaps } from '../utils/availability.js';
-import { instantFrom, isClockHour, formatMoment, turnaroundHoursFor } from '../utils/phTime.js';
+import { bookingSpan, blockedSpan, padded, bookingsOverlapping, overlaps, OFF_ROAD_HORIZON_DAYS } from '../utils/availability.js';
+import { instantFrom, isClockHour, formatMoment, turnaroundHoursFor, addDays } from '../utils/phTime.js';
 import User from '../models/User.js';
 
 const router = express.Router();
@@ -101,7 +101,7 @@ router.get('/:id/booked-dates', async (req, res) => {
 
     const [bookings, car] = await Promise.all([
       Booking.find({ car: req.params.id, status: { $in: statuses } }).select('startDate endDate hasPickupTime'),
-      Car.findById(req.params.id).select('blockedDates turnaroundHours'),
+      Car.findById(req.params.id).select('blockedDates turnaroundHours offRoad'),
     ]);
 
     // Each range carries BOTH forms. startDate/endDate are the raw stored
@@ -123,6 +123,17 @@ router.get('/:id/booked-dates', async (req, res) => {
           return { startDate: b.startDate, endDate: b.endDate, busyStart: busy.start, busyEnd: busy.end, kind: 'block' };
         }),
     ];
+
+    // A vehicle off the road belongs here too. It was added to the rule that
+    // decides whether a booking is accepted, and not to the one that draws
+    // the calendar — so the car showed every date free, took a client all
+    // the way through picking dates, and refused them at the last step. Two
+    // sources of truth for the same question, which is how they always fail.
+    if (car?.offRoad?.since) {
+      const from = new Date(car.offRoad.since);
+      const until = addDays(new Date(), OFF_ROAD_HORIZON_DAYS);
+      ranges.push({ startDate: from, endDate: until, busyStart: from, busyEnd: until, kind: 'off-road' });
+    }
     res.json(ranges);
   } catch (err) {
     res.status(500).json({ message: err.message });

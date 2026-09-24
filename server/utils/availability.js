@@ -51,7 +51,7 @@ export const overlaps = (a, b) => a.start < b.end && a.end > b.start;
 // does. The buffer is between customers only.
 // Far enough ahead that nothing bookable falls past it. A vehicle off the
 // road has no known end date, and a span has to end somewhere.
-const OFF_ROAD_HORIZON_DAYS = 800;
+export const OFF_ROAD_HORIZON_DAYS = 800;
 
 export const blockRanges = (car, extraBlocks = []) => {
   const ranges = [

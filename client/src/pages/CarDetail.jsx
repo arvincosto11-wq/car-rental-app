@@ -401,6 +401,15 @@ const CarDetail = () => {
     price: { fontSize: '28px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     perDay: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280' },
     priceBreakdown: { background: isDark ? '#18191a' : '#f9fafb', borderRadius: '8px', padding: '12px', marginBottom: '14px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
+    offRoadBox: {
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
+      borderRadius: '8px', padding: '12px', marginBottom: '14px',
+    },
+    offRoadNote: {
+      fontSize: '12.5px', lineHeight: 1.55, fontWeight: '700', margin: 0,
+      color: isDark ? '#f87171' : '#991b1b',
+    },
     licenseBox: { background: isDark ? 'rgba(37,99,235,0.1)' : '#eff6ff', border: `1px solid ${isDark ? '#1e40af' : '#bfdbfe'}`, borderRadius: '8px', padding: '12px', marginBottom: '14px' },
     licenseNote: { fontSize: '12px', color: isDark ? '#93c5fd' : '#1e40af', marginBottom: '10px', marginTop: 0 },
     fieldHint: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px' },
@@ -911,6 +920,18 @@ const CarDetail = () => {
                           <Link to="/profile" style={{ color: isDark ? GOLD_DARK : GOLD, fontWeight: '700' }}>Profile</Link>.
                         </span>
                       </p>
+                    )}
+
+                    {/* Otherwise the calendar is simply red from end to
+                        end and the client is left guessing whether they
+                        have done something wrong. */}
+                    {car?.offRoad?.since && (
+                      <div style={s.offRoadBox}>
+                        <p style={s.offRoadNote}>
+                          This vehicle is off the road for repairs and isn&apos;t taking bookings at the moment.
+                          Please choose another vehicle, or check back later.
+                        </p>
+                      </div>
                     )}
 
                     {licenceIssue && (
