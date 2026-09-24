@@ -108,7 +108,7 @@ const ManageBookings = () => {
     if (status === 'cancelled') {
       const booking = bookings.find((b) => b._id === id);
       setCancelTarget(booking || { _id: id });
-      setCancelForm({ reason: 'vehicle_unavailable', amount: '', note: '' });
+      setCancelForm({ reason: 'vehicle_unavailable', note: '' });
       return;
     }
 
@@ -369,6 +369,11 @@ const ManageBookings = () => {
     returnBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '500' },
     pickedUpBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '700' },
     pickedUpNote: { fontSize: '11px', fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
+    cancelRowBtn: {
+      padding: '4px 10px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500',
+      border: `1px solid ${isDark ? '#f87171' : '#dc2626'}`, background: 'transparent',
+      color: isDark ? '#f87171' : '#dc2626',
+    },
     noShowBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     acceptBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     declineBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
@@ -418,6 +423,12 @@ const ManageBookings = () => {
       padding: '24px', maxHeight: '88vh', overflowY: 'auto',
     },
     cancelTitle: { fontSize: '17px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    cancelUnderway: {
+      fontSize: '12px', lineHeight: 1.5, fontWeight: '700', margin: '0 0 12px',
+      padding: '8px 10px', borderRadius: '8px',
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      color: isDark ? '#f87171' : '#991b1b',
+    },
     cancelSub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', margin: '6px 0 16px' },
     cancelOption: {
       display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer',
@@ -751,6 +762,22 @@ const ManageBookings = () => {
                           Pickup {formatMoment(booking.startDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
                         </span>
                       )}
+                      {/* Accepting a booking used to be one-way: the status
+                          dropdown with Cancelled on it only ever showed on
+                          pending rows, so a confirmed booking couldn't be
+                          cancelled from anywhere. That left "Terms not met"
+                          unreachable in the one situation it was written for,
+                          since nobody turns up at pickup for a booking that
+                          was never accepted. Quieter than No-Show on purpose
+                          — No-Show forfeits everything and shouldn't be the
+                          calmer-looking of the two. */}
+                      <button
+                        style={s.cancelRowBtn}
+                        onClick={() => handleStatus(booking._id, 'cancelled')}
+                        title="Cancel this booking and refund by policy."
+                      >
+                        Cancel
+                      </button>
                     </div>
                   ) : booking.status === 'cancelled' ? (
                     <span style={s.cancelled}><span style={s.statusDot(isDark ? '#fca5a5' : '#991b1b')} />Cancelled</span>
@@ -823,6 +850,16 @@ const ManageBookings = () => {
               Why it&apos;s being cancelled decides what gets refunded, so the client
               is treated the same way every time.
             </p>
+            {/* Cancelling a trip that is running is a different act from
+                cancelling one that hasn't started, and the row it was
+                clicked from doesn't say so once the dialog is open. */}
+            {cancelTarget.collectedAt && (
+              <p style={s.cancelUnderway}>
+                This client picked the vehicle up on{' '}
+                {formatMoment(cancelTarget.collectedAt, true, { month: 'numeric', day: 'numeric' })} and still has it.
+                Cancelling frees the dates for other bookings, so arrange the return first.
+              </p>
+            )}
 
             <label style={s.cancelOption}>
               <input type="radio" name="cancel-reason" checked={cancelForm.reason === 'vehicle_unavailable'}
@@ -840,6 +877,9 @@ const ManageBookings = () => {
                 <span style={s.cancelOptionHint}>Uses the normal refund policy, same as the app&apos;s own refund button.</span>
               </span>
             </label>
+            {/* They produced their documents and drove away, so whatever
+                has gone wrong since, it isn't this. */}
+            {!cancelTarget.collectedAt && (
             <label style={s.cancelOption}>
               <input type="radio" name="cancel-reason" checked={cancelForm.reason === 'terms_not_met'}
                 onChange={() => setCancelForm({ ...cancelForm, reason: 'terms_not_met' })} />
@@ -851,6 +891,7 @@ const ManageBookings = () => {
                 </span>
               </span>
             </label>
+            )}
 
             <input style={s.cancelInput} type="text" placeholder="Note for the client (optional)"
               value={cancelForm.note} onChange={(e) => setCancelForm({ ...cancelForm, note: e.target.value })} />

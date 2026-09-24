@@ -10,7 +10,7 @@ import { refundBookingPayment } from '../utils/paymongo.js';
 import { computeBookingPrice } from '../utils/promo.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { openAdjustOffer, acceptAdjustOffer, startTopUp, confirmTopUp, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
-import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS } from '../utils/cancelBooking.js';
+import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS, reasonUnavailable } from '../utils/cancelBooking.js';
 import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js';
 import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle } from '../utils/extendBooking.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
@@ -448,6 +448,12 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       if (!CANCEL_REASONS.includes(cancelReason)) {
         return res.status(400).json({ message: 'Please say why this booking is being cancelled.' });
       }
+      // They produced their documents and drove away, so whatever has gone
+      // wrong since, it isn't that the terms weren't met. This reason keeps
+      // back half their money, so it is refused here and not only hidden in
+      // the dialog.
+      const unavailable = reasonUnavailable(booking, cancelReason);
+      if (unavailable) return res.status(400).json({ message: unavailable });
       await cancelBookingWithRefund(booking, {
         reason: cancelReason,
         clientNote: cancelNote || '',

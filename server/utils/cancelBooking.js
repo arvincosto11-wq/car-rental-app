@@ -32,6 +32,16 @@ export const CANCEL_REASONS = ['vehicle_unavailable', 'client_requested', 'terms
 // judgement calls are what this whole list exists to remove.
 const TERMS_NOT_MET_PERCENT = 50;
 
+// Not every reason fits every booking. Returns why a reason can't be used,
+// or null when it can — the dialog hides what it gets back here, and the
+// route refuses it, so the two can't drift apart.
+export function reasonUnavailable(booking, reason) {
+  if (reason === 'terms_not_met' && booking.collectedAt) {
+    return 'This client already picked the vehicle up, so the booking conditions were met. Choose another reason.';
+  }
+  return null;
+}
+
 // What admin cancelling this booking should refund.
 //
 // vehicle_unavailable is always the full amount: the business pulled the

@@ -1,5 +1,5 @@
 import { suite, group, check } from './harness.mjs';
-import { getRefundPercentage, refundAmountFor, isUnderway } from '../utils/cancelBooking.js';
+import { getRefundPercentage, refundAmountFor, isUnderway, reasonUnavailable, CANCEL_REASONS } from '../utils/cancelBooking.js';
 import { paymentSources } from '../utils/paymongo.js';
 import { instantFrom } from '../utils/phTime.js';
 
@@ -50,6 +50,21 @@ export default function run() {
   // before" and hand back half of a day that has already started.
   check('at 7:00 AM on the pickup day', refundAmountFor(from('2026-09-22'), 'terms_not_met', new Date('2026-09-22T07:00:00+08:00')), 0);
   check('rounds to the peso', refundAmountFor({ ...from('2026-10-15'), amountPaid: 1575 }, 'terms_not_met', now), 788);
+
+  group('a client who drove away has met the terms');
+  // Admin can now cancel a booking after accepting it, which is what makes
+  // this reachable at all — and mid-trip, "terms not met" is the one reason
+  // that cannot be true, since producing the documents is how they got the
+  // keys. It keeps back half their money, so it is refused outright rather
+  // than merely hidden in the dialog.
+  const out = { collectedAt: new Date('2026-09-22T08:15:00+08:00') };
+  check('refused once the vehicle is out', !!reasonUnavailable(out, 'terms_not_met'), true);
+  check('allowed while it is still here', reasonUnavailable({ collectedAt: null }, 'terms_not_met'), null);
+  check('our own fault stays available mid-trip', reasonUnavailable(out, 'vehicle_unavailable'), null);
+  check('so does the client asking', reasonUnavailable(out, 'client_requested'), null);
+  // Nothing else is quietly ruled out as reasons get added.
+  check('every reason works on a booking not yet collected',
+    CANCEL_REASONS.every((r) => reasonUnavailable({ collectedAt: null }, r) === null), true);
 
   group("a reason nothing offers any more can't quietly pay out");
   // 'other' let admin type any figure. It is gone from the dialog and from
