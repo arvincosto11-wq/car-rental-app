@@ -421,6 +421,12 @@ const ManageCars = ({ view = 'active' }) => {
     carPriceWrap: { textAlign: 'right' },
     carPrice: { fontSize: '26px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     carPriceUnit: { fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px' },
+    offRoadFlag: {
+      display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
+      padding: '3px 10px', borderRadius: '20px',
+      background: isDark ? 'rgba(248,113,113,0.15)' : '#fee2e2',
+      color: isDark ? '#f87171' : '#991b1b',
+    },
     available: {
       display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
       padding: '3px 10px', borderRadius: '20px',
@@ -444,12 +450,15 @@ const ManageCars = ({ view = 'active' }) => {
     actions: { display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '8px' },
     editBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? GOLD_DARK : GOLD, border: 'none', color: ON_GOLD },
     toggleBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb'}`, color: isDark ? '#b0b3b8' : '#374151' },
-    offRoadBtn: {
-      border: `1px solid ${isDark ? '#f87171' : '#dc2626'}`, background: 'transparent',
-      color: isDark ? '#f87171' : '#dc2626', fontWeight: '600',
-    },
+    // Both are plain, like Block Dates beside them. Taking a vehicle off the
+    // road is maintenance, not danger, and putting it back is the opposite
+    // of danger — a solid red button on the one row where things are being
+    // put right read as a warning about fixing the problem. Red belongs on
+    // the badge, which says what is true, not on the action.
+    offRoadBtn: {},
     backOnRoadBtn: {
-      border: 'none', background: isDark ? '#f87171' : '#dc2626', color: '#fff', fontWeight: '700',
+      border: `1px solid ${isDark ? GOLD_DARK : GOLD}`, background: 'transparent',
+      color: isDark ? GOLD_DARK : GOLD, fontWeight: '700',
     },
     modalOverlay: {
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'grid',
@@ -700,6 +709,13 @@ const ManageCars = ({ view = 'active' }) => {
                       <span style={styles.carName}>{car.brand} {car.model}</span>
                       {car.status === 'draft' ? (
                         <span style={styles.draftFlag}>Draft</span>
+                      ) : car.offRoad?.since ? (
+                        /* It said AVAILABLE while sitting at a workshop. The
+                           state of the vehicle is the thing worth shouting
+                           about; the button to fix it is not. */
+                        <span style={styles.offRoadFlag} title={car.offRoad.note || 'Off the road for repairs'}>
+                          Off the Road
+                        </span>
                       ) : (
                         <span style={car.isAvailable ? styles.available : styles.unavailable}>
                           {car.isAvailable ? 'Available' : 'Unavailable'}
