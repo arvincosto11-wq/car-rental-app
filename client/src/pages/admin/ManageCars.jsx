@@ -416,7 +416,12 @@ const ManageCars = ({ view = 'active' }) => {
     carRatingText: { fontSize: '12px', fontWeight: '600', color: isDark ? '#b0b3b8' : '#6b7280' },
     carSide: {
       display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between',
-      gap: '18px', maxWidth: '560px',
+      // Six buttons need about 580px and this was capped at 560, so Archive
+      // dropped to a line of its own the moment a row gained one. The extra
+      // room is taken from the details column, which wraps happily; the
+      // buttons do not. Wrapping is still there underneath for real narrow
+      // screens — this only stops it happening on a desktop that has space.
+      gap: '18px', maxWidth: '680px',
     },
     carPriceWrap: { textAlign: 'right' },
     carPrice: { fontSize: '26px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
@@ -454,14 +459,19 @@ const ManageCars = ({ view = 'active' }) => {
     // radius, weight and muted background — so it sits in the row instead of
     // interrupting it. Only the text and border are red, which is enough to
     // find at a glance without the solid block that made it shout.
+    // One width for both states. "Back on the Road" is the longer label, and
+    // without this the whole row re-laid itself the moment you pressed the
+    // button — everything beside it shuffling is a poor reward for a click.
     offRoadBtn: {
       padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+      minWidth: '132px', textAlign: 'center',
       background: isDark ? '#18191a' : '#f3f4f6',
       border: `1px solid ${isDark ? 'rgba(248,113,113,0.45)' : 'rgba(220,38,38,0.4)'}`,
       color: isDark ? '#f87171' : '#dc2626',
     },
     backOnRoadBtn: {
       padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+      minWidth: '132px', textAlign: 'center',
       background: isDark ? '#18191a' : '#f3f4f6',
       border: `1px solid ${isDark ? 'rgba(248,113,113,0.45)' : 'rgba(220,38,38,0.4)'}`,
       color: isDark ? '#f87171' : '#dc2626',
