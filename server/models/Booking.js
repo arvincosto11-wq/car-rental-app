@@ -42,6 +42,18 @@ const bookingSchema = new mongoose.Schema({
   // The sweep runs on every admin page load, so without this they would be
   // emailed on every refresh.
   overdueNotifiedOn: { type: String, default: '' },
+  // The last thing a person did to this booking, and who. Position in the
+  // lists is decided by urgency, not by recency — a booking moved for March
+  // should not outrank today's pickup just because somebody touched it — so
+  // a change needs to announce itself where it sits instead.
+  //
+  // Deliberately not Mongoose's own updatedAt: sweeps write to bookings all
+  // the time, and "the server restarted" is not news.
+  lastActivity: {
+    at: { type: Date, default: null },
+    by: { type: String, enum: ['client', 'admin', ''], default: '' },
+    what: { type: String, default: '' },
+  },
   // What being late cost them, worked out when the vehicle came back. Kept
   // apart from totalPrice on purpose: that figure is what the rental was
   // sold for, and rewriting it afterwards would make every past booking's

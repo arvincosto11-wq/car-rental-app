@@ -129,7 +129,9 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
       aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: '11px', borderRadius: '6px',
       fontWeight: selected || onPromo ? '700' : '500',
-      opacity: inMonth ? (past ? 0.35 : 1) : 0.25,
+      // Faded to show they belong to another month, but not so faint that a
+      // day you can actually take reads as disabled.
+      opacity: past ? 0.35 : inMonth ? 1 : 0.55,
       // Gold REPLACES green on a promo day, because both mean the same thing
       // — you can book this — so nothing is lost by swapping one for the
       // other. Red always wins: a booked day stays red and gets the gold bar
@@ -230,7 +232,11 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
           // Booked days stay red but become pickable when the caller allows it
           // (admin choosing promo dates — overlapping bookings warn rather
           // than block, so the calendar must not block either).
-          const clickable = !!onSelectDay && inMonth && !past && (selectableWhenBooked || !booked);
+          // The days either side of the month are drawn, and they used to be
+          // the only free days on the grid nobody could take. A trip from the
+          // 30th to the 1st meant pressing Next first, for no reason a client
+          // could see — the day was right there, in the same week row.
+          const clickable = !!onSelectDay && !past && (selectableWhenBooked || !booked);
           // Never colour alone: the hours are in the tooltip and the label
           // a screen reader reads out, and spelled out under the grid for
           // whichever day is picked.
@@ -247,7 +253,12 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
                 `${promoDay ? `, on promo, ${promoSummary}` : ''}`
               }
               tabIndex={clickable ? 0 : -1}
-              onClick={clickable ? () => onSelectDay(date) : undefined}
+              onClick={clickable ? () => {
+                onSelectDay(date);
+                // Follow theselection into its own month, so a day picked off the
+                // edge does not vanish the moment it is chosen.
+                if (!inMonth) setCursor(new Date(date.getFullYear(), date.getMonth(), 1));
+              } : undefined}
             >
               {date.getDate()}
               {promoDay && (

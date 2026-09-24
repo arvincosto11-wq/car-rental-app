@@ -5,6 +5,7 @@ import { isOverdue, daysOverdue, daysLate, lateFeeFor } from '../utils/overdueRe
 import { occupiedSpan } from '../utils/availability.js';
 import { fuelShortfall, fuelShortfallLabel, isFuelLevel, fuelLabel } from '../utils/fuel.js';
 import { licenceProblem, idProblem } from '../utils/documents.js';
+import { bookingPriority, byUrgency, TIER } from '../utils/priority.js';
 
 // A confirmed booking whose pickup hour has already gone by.
 const pickupWasThisMorning = {
@@ -169,4 +170,41 @@ export default function run() {
   check('outlasts the trip', idProblem({ validIdExpiry: instantFrom('2030-01-01', 7) }, { endDate: instantFrom('2026-09-28', 7) }, today), null);
   check('expires mid-trip', idProblem({ validIdExpiry: instantFrom('2026-09-26', 7) }, { endDate: instantFrom('2026-09-28', 7) }, today).kind, 'expires_during');
   check('none on file is not a problem here', idProblem({}, { endDate: instantFrom('2026-09-28', 7) }, today), null);
+
+  group('the list runs from what is late to what is far off');
+  // Both lists were sorted by when the booking was made, which answers a
+  // question nobody asks. What matters is what needs doing next.
+  const when = new Date('2026-09-25T12:00:00+08:00');
+  const base = { status: 'confirmed', payment: 'paid', createdAt: new Date('2026-09-01T00:00:00Z') };
+  const missing = { ...base, startDate: instantFrom('2026-09-20', 7), endDate: instantFrom('2026-09-23', 7), collectedAt: instantFrom('2026-09-20', 7), returnedAt: null };
+  const waiting = { ...base, status: 'pending', startDate: instantFrom('2026-10-10', 7), endDate: instantFrom('2026-10-12', 7) };
+  const soon = { ...base, startDate: instantFrom('2026-09-25', 17), endDate: instantFrom('2026-09-26', 17) };
+  const later = { ...base, startDate: instantFrom('2026-11-01', 7), endDate: instantFrom('2026-11-03', 7) };
+  const done = { ...base, status: 'completed', startDate: instantFrom('2026-09-01', 7), endDate: instantFrom('2026-09-02', 7), returnedAt: instantFrom('2026-09-02', 7) };
+
+  check('a missing vehicle outranks everything', bookingPriority(missing, { now: when }).tier, TIER.MISSING);
+  check('a pending booking is a decision', bookingPriority(waiting, { now: when }).tier, TIER.DECIDE);
+  check('a trip today is merely scheduled', bookingPriority(soon, { now: when }).tier, TIER.SCHEDULED);
+  check('and so is one in November', bookingPriority(later, { now: when }).tier, TIER.SCHEDULED);
+  check('a finished one is done', bookingPriority(done, { now: when }).tier, TIER.DONE);
+
+  // Kind outranks clock: a vehicle nobody has seen since Sunday comes above
+  // a pickup at five, however close five is.
+  const order = byUrgency([done, later, soon, waiting, missing], { now: when });
+  check('missing first', order[0], missing);
+  check('then the decision', order[1], waiting);
+  check('then today', order[2], soon);
+  check('then November', order[3], later);
+  check('finished last', order[4], done);
+
+  group('a client reads their own list by what they owe');
+  // Not "what must I action" but "what is happening to me". An offer they
+  // have to answer beats a trip they have only to turn up for.
+  const offer = { ...base, startDate: instantFrom('2026-12-01', 7), endDate: instantFrom('2026-12-03', 7), adjustOffer: { status: 'open', deadline: new Date('2026-09-26T00:00:00Z') } };
+  const unpaid = { ...base, payment: 'gcash_pending', startDate: instantFrom('2026-10-01', 7), endDate: instantFrom('2026-10-02', 7) };
+  check('an offer with a deadline needs them', bookingPriority(offer, { role: 'client', now: when }).tier, TIER.DECIDE);
+  check('so does an abandoned checkout', bookingPriority(unpaid, { role: 'client', now: when }).tier, TIER.DECIDE);
+  check('a paid upcoming trip does not', bookingPriority(soon, { role: 'client', now: when }).tier, TIER.SCHEDULED);
+  // Admin has nothing to do about an unpaid booking — they never see it.
+  check('but admin is not asked to decide an unpaid one', bookingPriority(unpaid, { now: when }).tier, TIER.SCHEDULED);
 }

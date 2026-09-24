@@ -4,6 +4,7 @@ import { computeBookingPrice } from './promo.js';
 import { createGcashCheckout, paymongoFetch, refundOnePayment } from './paymongo.js';
 import { notifyUser, notifyAdmins } from './notify.js';
 import { busySpans, bookingSpan, padded, overlaps } from './availability.js';
+import { recordActivity } from './priority.js';
 import {
   instantFrom, phYmd, phHour, addDays, daysBetween, turnaroundHoursFor, formatMoment,
 } from './phTime.js';
@@ -355,6 +356,7 @@ export async function confirmExtension(booking) {
     addedAt: new Date(),
   });
   clearPending(booking);
+  recordActivity(booking, 'client', `extended to ${formatMoment(booking.endDate, booking.hasPickupTime)}`);
   await booking.save();
 
   const car = await Car.findById(booking.car).select('brand model');

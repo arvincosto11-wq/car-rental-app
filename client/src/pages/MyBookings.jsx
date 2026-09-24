@@ -21,6 +21,29 @@ import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import { fuelShortfallLabel, fuelLabel } from '../utils/fuel';
 
+// How long a change is worth pointing out. After a day it is history, and a
+// list covered in badges says nothing at all.
+const ACTIVITY_WINDOW_HOURS = 24;
+
+const agoLabel = (at) => {
+  const mins = Math.round((Date.now() - new Date(at).getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  return hrs === 1 ? 'an hour ago' : `${hrs} hours ago`;
+};
+
+// Position is decided by urgency now, so a change has to announce itself
+// where it sits rather than by jumping the queue.
+const freshActivity = (b) => {
+  const at = b.lastActivity?.at;
+  if (!at) return '';
+  const hrs = (Date.now() - new Date(at).getTime()) / 3600000;
+  if (hrs > ACTIVITY_WINDOW_HOURS || hrs < 0) return '';
+  return `Updated ${agoLabel(at)}${b.lastActivity.what ? ` — ${b.lastActivity.what}` : ''}`;
+};
+
+
 const PAGE_SIZE = 10;
 
 // Small stat-card icons — same hand-drawn inline-SVG approach used
@@ -854,6 +877,10 @@ const MyBookings = () => {
       fontSize: '11.5px', lineHeight: 1.5, margin: 0,
       color: isDark ? '#fca5a5' : '#b91c1c',
     },
+    activityNote: {
+      fontSize: '11.5px', fontWeight: '700', lineHeight: 1.4, marginTop: '10px',
+      color: isDark ? GOLD_DARK : GOLD,
+    },
     tripRecord: {
       display: 'flex', flexDirection: 'column', gap: '4px',
       margin: '10px 0 0', padding: '10px 12px', borderRadius: '10px',
@@ -1248,6 +1275,9 @@ const MyBookings = () => {
                     of it, so they heard from us only when something came
                     with a bill — which makes a charge feel like an ambush
                     rather than a line in an account they can already see. */}
+                {freshActivity(booking) && (
+                  <div style={styles.activityNote}>{freshActivity(booking)}</div>
+                )}
                 {booking.collectedAt && (
                   <div style={styles.tripRecord}>
                     <span>

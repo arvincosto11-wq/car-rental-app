@@ -32,6 +32,29 @@ const EARLY_COLLECT_HOURS = 2;
 const DASH_JS = '—';
 const peso = (n) => `\u20b1${(n || 0).toLocaleString()}`;
 
+// How long a change is worth pointing out. After a day it is history, and a
+// list covered in badges says nothing at all.
+const ACTIVITY_WINDOW_HOURS = 24;
+
+const agoLabel = (at) => {
+  const mins = Math.round((Date.now() - new Date(at).getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  return hrs === 1 ? 'an hour ago' : `${hrs} hours ago`;
+};
+
+// Position is decided by urgency now, so a change has to announce itself
+// where it sits rather than by jumping the queue.
+const freshActivity = (b) => {
+  const at = b.lastActivity?.at;
+  if (!at) return '';
+  const hrs = (Date.now() - new Date(at).getTime()) / 3600000;
+  if (hrs > ACTIVITY_WINDOW_HOURS || hrs < 0) return '';
+  return `Updated ${agoLabel(at)}${b.lastActivity.what ? ` — ${b.lastActivity.what}` : ''}`;
+};
+
+
 // Papers that will not last the booking. Only worth saying while something
 // can still be done about it, which means before the trip is over.
 const docWarning = (b) => {
@@ -555,6 +578,10 @@ const ManageBookings = () => {
       border: `1px solid ${isDark ? GOLD_DARK : GOLD}`, background: 'transparent', color: isDark ? GOLD_DARK : GOLD,
     },
     feeSettled: { fontSize: '11px', fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
+    activityNote: {
+      fontSize: '11px', fontWeight: '700', lineHeight: 1.4, marginTop: '4px',
+      color: isDark ? GOLD_DARK : GOLD,
+    },
     docWarn: {
       fontSize: '11px', fontWeight: '700', lineHeight: 1.4, marginTop: '4px', maxWidth: '190px',
       color: isDark ? '#f87171' : '#b91c1c',
@@ -887,6 +914,9 @@ const ManageBookings = () => {
                   {/* Asked before you accept, while it can still be fixed.
                       A licence that runs out mid-trip is fine on the day
                       they booked and useless on the day they drive. */}
+                  {freshActivity(booking) && (
+                    <div style={s.activityNote}>{freshActivity(booking)}</div>
+                  )}
                   {docWarning(booking) && (
                     <div style={s.docWarn}>{docWarning(booking)}</div>
                   )}

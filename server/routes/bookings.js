@@ -17,6 +17,8 @@ import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, ph
 import { notifyOverdueReturns, isOverdue, lateFeeFor } from '../utils/overdueReturns.js';
 import { isFuelLevel, fuelShortfall, fuelShortfallLabel } from '../utils/fuel.js';
 import { licenceProblem, licenceMessage } from '../utils/documents.js';
+import { byUrgency } from '../utils/priority.js';
+import { recordActivity } from '../utils/priority.js';
 
 const router = express.Router();
 
@@ -276,7 +278,7 @@ router.get('/my', protect, async (req, res) => {
     const bookings = await Booking.find({ user: req.user.id })
       .populate('car', '-plateNumber')
       .sort({ createdAt: -1 });
-    res.json(bookings);
+    res.json(byUrgency(bookings, { role: 'client' }));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -293,7 +295,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
       .populate('car')
       .populate('user', 'name email avgRating ratingCount licenseExpiry validIdExpiry licenseNumber')
       .sort({ createdAt: -1 });
-    res.json(bookings);
+    res.json(byUrgency(bookings, { role: 'admin' }));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -312,7 +314,9 @@ router.get('/owner', protect, consignorOnly, async (req, res) => {
       .populate('car')
       .populate('user', 'name')
       .sort({ createdAt: -1 });
-    res.json(bookings);
+    // The owner reads this the way admin does: what needs attention on their
+    // vehicles first, finished rentals last.
+    res.json(byUrgency(bookings, { role: 'admin' }));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -519,6 +523,10 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       return res.json(booking);
     }
 
+    recordActivity(booking, 'admin',
+      status === 'confirmed' ? 'booking accepted'
+        : status === 'completed' ? 'returned'
+          : status);
     booking.status = status;
     await booking.save();
     if (status === 'completed' && previousStatus !== 'completed') {
@@ -703,6 +711,7 @@ router.put('/:id/collect', protect, adminOnly, async (req, res) => {
 
     booking.collectedAt = new Date();
     booking.fuel.atPickup = Number(req.body.fuelLevel);
+    recordActivity(booking, 'admin', 'picked up');
     // Optional, unlike the gauge: a walkaround is worth having and worth
     // encouraging, but refusing to release a vehicle over a photo would be
     // a rule about paperwork rather than about the vehicle.
@@ -809,6 +818,8 @@ router.post('/:id/refund', protect, async (req, res) => {
     booking.refundAmount = Math.round(booking.amountPaid * (percentage / 100));
     await booking.save();
 
+    recordActivity(booking, 'client', 'refund requested');
+    await booking.save();
     await notifyAdmins('New Refund Request', 'A client has requested a refund for a booking.', '/admin/manage-bookings');
 
     res.json(booking);
@@ -844,6 +855,8 @@ router.delete('/:id/refund', protect, async (req, res) => {
     booking.refundAmount = 0;
     await booking.save();
 
+    recordActivity(booking, 'client', 'refund request withdrawn');
+    await booking.save();
     await notifyAdmins('Refund Request Withdrawn', 'A client has withdrawn their refund request.', '/admin/manage-bookings');
     res.json(booking);
   } catch (err) {
@@ -867,6 +880,8 @@ router.delete('/:id/reschedule', protect, async (req, res) => {
     booking.rescheduleRequest = { status: 'none', reason: '', adminNotes: '' };
     await booking.save();
 
+    recordActivity(booking, 'client', 'reschedule request withdrawn');
+    await booking.save();
     await notifyAdmins('Reschedule Request Withdrawn', 'A client has withdrawn their reschedule request.', '/admin/manage-bookings');
     res.json(booking);
   } catch (err) {
@@ -995,6 +1010,8 @@ router.post('/:id/reschedule', protect, async (req, res) => {
     };
     await booking.save();
 
+    recordActivity(booking, 'client', 'reschedule requested');
+    await booking.save();
     await notifyAdmins('New Reschedule Request', 'A client has requested to reschedule a booking.', '/admin/manage-bookings');
 
     res.json(booking);
