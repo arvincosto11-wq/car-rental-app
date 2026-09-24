@@ -27,6 +27,21 @@ export default async function backfillCollected() {
       // "when did they collect it?" was always "at the pickup time".
       [{ $set: { collectedAt: '$startDate' } }]
     );
+    // And the other half of the record. Every path that completes a booking
+    // now stamps returnedAt as it does so, so a completed booking without
+    // one can only predate the field — which makes this safe to run on every
+    // boot with no cutoff, and safe to run twice.
+    //
+    // Without it a finished trip showed "Picked up" and nothing else, which
+    // reads as a vehicle that never came back.
+    const returns = await Booking.updateMany(
+      { status: 'completed', returnedAt: null },
+      [{ $set: { returnedAt: '$endDate' } }]
+    );
+    if (returns.modifiedCount) {
+      console.log(`📋 Recorded return on ${returns.modifiedCount} booking(s) completed before it was tracked`);
+    }
+
     if (result.modifiedCount) {
       console.log(`📋 Recorded handover on ${result.modifiedCount} booking(s) made before it was tracked`);
     }
