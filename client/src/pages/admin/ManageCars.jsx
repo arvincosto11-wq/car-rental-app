@@ -450,15 +450,21 @@ const ManageCars = ({ view = 'active' }) => {
     actions: { display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '8px' },
     editBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? GOLD_DARK : GOLD, border: 'none', color: ON_GOLD },
     toggleBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb'}`, color: isDark ? '#b0b3b8' : '#374151' },
-    // Both are plain, like Block Dates beside them. Taking a vehicle off the
-    // road is maintenance, not danger, and putting it back is the opposite
-    // of danger — a solid red button on the one row where things are being
-    // put right read as a warning about fixing the problem. Red belongs on
-    // the badge, which says what is true, not on the action.
-    offRoadBtn: {},
+    // Shaped exactly like Block Dates and Archive beside it — same padding,
+    // radius, weight and muted background — so it sits in the row instead of
+    // interrupting it. Only the text and border are red, which is enough to
+    // find at a glance without the solid block that made it shout.
+    offRoadBtn: {
+      padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+      background: isDark ? '#18191a' : '#f3f4f6',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.45)' : 'rgba(220,38,38,0.4)'}`,
+      color: isDark ? '#f87171' : '#dc2626',
+    },
     backOnRoadBtn: {
-      border: `1px solid ${isDark ? GOLD_DARK : GOLD}`, background: 'transparent',
-      color: isDark ? GOLD_DARK : GOLD, fontWeight: '700',
+      padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+      background: isDark ? '#18191a' : '#f3f4f6',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.45)' : 'rgba(220,38,38,0.4)'}`,
+      color: isDark ? '#f87171' : '#dc2626',
     },
     modalOverlay: {
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'grid',
