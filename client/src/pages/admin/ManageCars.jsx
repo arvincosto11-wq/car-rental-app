@@ -65,6 +65,9 @@ const ManageCars = ({ view = 'active' }) => {
   const [editModelChoice, setEditModelChoice] = useState('');
   const [search, setSearch] = useState('');
   const [blockPanelCarId, setBlockPanelCarId] = useState(null);
+  const [offRoadTarget, setOffRoadTarget] = useState(null);
+  const [offRoadNote, setOffRoadNote] = useState('');
+  const [offRoadSubmitting, setOffRoadSubmitting] = useState(false);
   const [page, setPage] = useState(1);
   const [discountsOpen, setDiscountsOpen] = useState(false);
   // Active long-rental rules, for the count on the Discounts button. Promo
@@ -103,6 +106,53 @@ const ManageCars = ({ view = 'active' }) => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOffRoad = (car) => {
+    setOffRoadTarget(car);
+    setOffRoadNote('');
+  };
+
+  const submitOffRoad = async () => {
+    setOffRoadSubmitting(true);
+    try {
+      const res = await api.put(`/cars/${offRoadTarget._id}/off-road`, { note: offRoadNote });
+      setOffRoadTarget(null);
+      await fetchCars();
+      const { underway = [], offered = 0 } = res.data || {};
+      if (underway.length) {
+        // Named, because admin has to settle each one by hand and how much
+        // comes back depends on why it broke.
+        toast.info(`${underway.length} client${underway.length === 1 ? ' is' : 's are'} out in this vehicle right now `
+          + `— settle ${underway.length === 1 ? 'that booking' : 'those bookings'} from Manage Bookings.`);
+      } else {
+        toast.success(offered
+          ? `Marked off the road. ${offered} upcoming booking${offered === 1 ? '' : 's'} offered other dates or a refund.`
+          : 'Marked off the road. No bookings were affected.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Something went wrong.');
+    } finally {
+      setOffRoadSubmitting(false);
+    }
+  };
+
+  const handleBackOnRoad = async (car) => {
+    const ok = await confirm(
+      `Put ${car.brand} ${car.model} back on the road? It starts taking bookings again straight away. `
+      + 'Clients already moved or refunded stay that way.',
+      { confirmLabel: 'Yes, it is roadworthy', cancelLabel: 'Not yet' }
+    );
+    if (!ok) return;
+    try {
+      await api.delete(`/cars/${car._id}/off-road`);
+      await fetchCars();
+      toast.success('Back on the road.');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Something went wrong.');
     }
   };
 
@@ -394,6 +444,37 @@ const ManageCars = ({ view = 'active' }) => {
     actions: { display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '8px' },
     editBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? GOLD_DARK : GOLD, border: 'none', color: ON_GOLD },
     toggleBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb'}`, color: isDark ? '#b0b3b8' : '#374151' },
+    offRoadBtn: {
+      border: `1px solid ${isDark ? '#f87171' : '#dc2626'}`, background: 'transparent',
+      color: isDark ? '#f87171' : '#dc2626', fontWeight: '600',
+    },
+    backOnRoadBtn: {
+      border: 'none', background: isDark ? '#f87171' : '#dc2626', color: '#fff', fontWeight: '700',
+    },
+    modalOverlay: {
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'grid',
+      placeItems: 'center', padding: '16px', zIndex: 1000,
+    },
+    offRoadCard: {
+      width: '100%', maxWidth: '440px', background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '16px', padding: '24px',
+    },
+    offRoadTitle: { fontSize: '17px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#111827', marginBottom: '8px' },
+    offRoadSub: { fontSize: '13px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#6b7280', margin: '0 0 14px' },
+    offRoadInput: {
+      width: '100%', padding: '9px 12px', fontSize: '13px', outline: 'none',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px',
+      background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    offRoadConfirm: {
+      flex: 1, padding: '10px', border: 'none', borderRadius: '9px', cursor: 'pointer',
+      background: isDark ? '#f87171' : '#dc2626', color: '#fff', fontSize: '13px', fontWeight: '700',
+    },
+    offRoadBack: {
+      padding: '10px 16px', borderRadius: '9px', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, background: 'transparent',
+      color: isDark ? '#e4e6eb' : '#374151',
+    },
     archiveBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb'}`, color: isDark ? '#b0b3b8' : '#374151' },
     featureBtn: (active) => ({
       padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
@@ -700,6 +781,20 @@ const ManageCars = ({ view = 'active' }) => {
                             ? `Block Dates · ${upcomingBlockCount(car.blockedDates)}`
                             : 'Block Dates'}
                         </button>
+                        {/* A breakdown is not a date range. Nobody knows on
+                            the day how long a workshop will take, so this is
+                            a state you clear when the car is back rather
+                            than an end date somebody has to guess. */}
+                        <button
+                          className="mc-btn"
+                          style={car.offRoad?.since ? styles.backOnRoadBtn : styles.offRoadBtn}
+                          onClick={() => (car.offRoad?.since ? handleBackOnRoad(car) : handleOffRoad(car))}
+                          title={car.offRoad?.since
+                            ? 'This vehicle is taking no bookings. Put it back on the road.'
+                            : 'Broken down or not fit to rent — blocks all future dates until you clear it.'}
+                        >
+                          {car.offRoad?.since ? 'Back on the Road' : 'Off the Road'}
+                        </button>
                         <button className="mc-btn" style={styles.archiveBtn} onClick={() => handleArchive(car._id)}>Archive</button>
                       </div>
                     )}
@@ -940,6 +1035,36 @@ const ManageCars = ({ view = 'active' }) => {
           </div>
         );
       })()}
+      {offRoadTarget && (
+        <div style={styles.modalOverlay} onClick={() => !offRoadSubmitting && setOffRoadTarget(null)}>
+          <div style={styles.offRoadCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="off-road-title">
+            <div id="off-road-title" style={styles.offRoadTitle}>
+              Take {offRoadTarget.brand} {offRoadTarget.model} off the road
+            </div>
+            <p style={styles.offRoadSub}>
+              It stops taking bookings from now until you say it is roadworthy again — no end date, because
+              nobody knows yet how long it will take. Anyone already booked is offered the nearest dates we
+              can still do, or a full refund.
+            </p>
+            <input
+              style={styles.offRoadInput}
+              type="text"
+              placeholder="What happened? (optional, kept internal)"
+              value={offRoadNote}
+              onChange={(e) => setOffRoadNote(e.target.value)}
+            />
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button style={styles.offRoadConfirm} onClick={submitOffRoad} disabled={offRoadSubmitting}>
+                {offRoadSubmitting ? 'Working...' : 'Take it off the road'}
+              </button>
+              <button style={styles.offRoadBack} onClick={() => setOffRoadTarget(null)} disabled={offRoadSubmitting}>
+                Go back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {blockPanelCarId && (() => {
         // Read from the live list rather than a snapshot, so the panel shows
         // the new range the moment it's saved.

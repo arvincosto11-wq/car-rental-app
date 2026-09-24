@@ -1,5 +1,5 @@
 import { suite, group, check } from './harness.mjs';
-import { bookingSpan, blockedSpan, padded, overlaps } from '../utils/availability.js';
+import { bookingSpan, blockedSpan, padded, overlaps, blockRanges } from '../utils/availability.js';
 import { instantFrom, formatPhDateTime, turnaroundHoursFor } from '../utils/phTime.js';
 
 const trip = (sd, sh, ed, eh) => ({ startDate: instantFrom(sd, sh), endDate: instantFrom(ed, eh), hasPickupTime: true });
@@ -67,4 +67,24 @@ export default function run() {
   check('a 7:00 AM pickup that day is refused', overlaps(wants('2026-10-01', 7, '2026-10-02', 7), half), true);
   check('a 1:00 PM pickup that day is allowed', overlaps(wants('2026-10-01', 13, '2026-10-02', 13), half), false);
   check('a trip returning 8:00 AM that day is allowed', overlaps(wants('2026-09-30', 8, '2026-10-01', 8), half), false);
+
+  group('a vehicle off the road is off it until somebody says otherwise');
+  // A breakdown is a state, not a date range. On the day it happens nobody
+  // knows how long the workshop will take, so guessing an end date either
+  // frees the car too early or holds it longer than it needs holding.
+  const roadworthy = { blockedDates: [] };
+  const broken = { blockedDates: [], offRoad: { since: new Date('2026-09-25T10:00:00+08:00') } };
+
+  check('a working vehicle blocks nothing', blockRanges(roadworthy).length, 0);
+  check('a broken one blocks a span', blockRanges(broken).length, 1);
+  check('and says why', blockRanges(broken)[0].kind, 'off-road');
+  check('starting when it broke', blockRanges(broken)[0].start.getTime(), broken.offRoad.since.getTime());
+  // Far enough ahead that nothing bookable falls past it — the point is that
+  // no future date is free while the car is on a ramp.
+  check('running well past anything bookable', blockRanges(broken)[0].end > new Date('2028-01-01'), true);
+  // Cleared by hand, and then it is simply available again.
+  check('cleared puts it back', blockRanges({ blockedDates: [], offRoad: { since: null } }).length, 0);
+  // Existing blocked ranges still count alongside it.
+  const both = { blockedDates: [{ status: 'approved', startDate: instantFrom('2026-10-01', 0), endDate: instantFrom('2026-10-03', 0), endsInclusive: true }], offRoad: { since: new Date('2026-09-25T10:00:00+08:00') } };
+  check('a block and a breakdown both apply', blockRanges(both).length, 2);
 }

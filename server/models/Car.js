@@ -15,6 +15,15 @@ const carSchema = new mongoose.Schema({
   // before this field existed) — plate number is enforced in the Add
   // Vehicle form instead for anything created going forward.
   plateNumber: { type: String, default: '' },
+  // A vehicle that is not fit to rent, from now until somebody says it is
+  // again. Open-ended on purpose: a blocked date range needs an end, and
+  // nobody knows on the day of a breakdown how long the workshop will take.
+  // Until it is cleared the car is unavailable for every future date, which
+  // is what stops the next client booking a car sitting on a ramp.
+  offRoad: {
+    since: { type: Date, default: null },
+    note: { type: String, default: '' },
+  },
   // CR (Certificate of Registration) renewal date — optional, since older
   // cars added before this field existed won't have one on file yet. See
   // GET /admin/expiring-documents.

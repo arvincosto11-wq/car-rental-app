@@ -293,6 +293,113 @@ router.post('/:id/blocked-dates', protect, async (req, res) => {
   }
 });
 
+// A vehicle that is not fit to rent, from now until somebody says otherwise.
+//
+// A breakdown is not a blocked date range: on the day it happens nobody
+// knows how long the workshop will take, and guessing an end date either
+// frees the car too early or holds it longer than needed. So this is a
+// state, not a range, and it is cleared by hand when the car is back.
+//
+// What it does NOT do is settle the trip the vehicle broke down on. That
+// client is mid-rental with days they paid for and did not get, and how much
+// of it comes back depends on why it broke — which is a decision the
+// business has to make rather than one this route can assume. It flags that
+// booking for admin instead.
+router.put('/:id/off-road', protect, adminOnly, async (req, res) => {
+  try {
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Vehicle not found' });
+    if (car.offRoad?.since) {
+      return res.status(400).json({ message: 'This vehicle is already off the road.' });
+    }
+
+    car.offRoad = { since: new Date(), note: String(req.body.note || '').slice(0, 300) };
+    await car.save();
+
+    const now = new Date();
+    const affected = await Booking.find({
+      car: car._id,
+      status: { $in: ['pending', 'confirmed'] },
+      endDate: { $gte: now },
+    }).populate('user', 'name');
+
+    const underway = affected.filter((b) => isUnderway(b));
+    const upcoming = affected.filter((b) => !isUnderway(b));
+
+    // Everybody whose trip hasn't started gets the same treatment a blocked
+    // range gives them: the nearest dates we can still honour, or a full
+    // refund. Their dates are gone either way — the vehicle is not coming
+    // back in time to be certain of.
+    for (const booking of upcoming) {
+      const offered = await openAdjustOffer(booking, {
+        reason: 'vehicle_unavailable',
+        cause: 'the vehicle is off the road for repairs',
+      });
+      if (offered) continue;
+      await cancelBookingWithRefund(booking, {
+        reason: 'vehicle_unavailable',
+        cause: 'the vehicle is off the road for repairs',
+      });
+    }
+
+    // The owner's car broke. They should hear it here, not from a phone call.
+    if (car.owner) {
+      await notifyUser(
+        car.owner,
+        'Your vehicle is off the road',
+        `${car.brand} ${car.model} has been marked off the road`
+          + `${car.offRoad.note ? `: ${car.offRoad.note}` : '.'} `
+          + 'It will not take new bookings until it is marked roadworthy again, and anyone already booked has been offered other dates or a refund.',
+        '/consignor',
+        { email: true }
+      );
+    }
+
+    res.json({
+      car,
+      // Named rather than counted, because admin has to do something about
+      // each one and a number tells them nothing useful.
+      underway: underway.map((b) => ({
+        id: b._id,
+        client: b.user?.name || 'A client',
+        startDate: b.startDate,
+        endDate: b.endDate,
+      })),
+      offered: upcoming.length,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Back on the road. Nothing is restored — clients already moved or refunded
+// stay moved or refunded, because they have made plans around our answer.
+router.delete('/:id/off-road', protect, adminOnly, async (req, res) => {
+  try {
+    const car = await Car.findById(req.params.id);
+    if (!car) return res.status(404).json({ message: 'Vehicle not found' });
+    if (!car.offRoad?.since) {
+      return res.status(400).json({ message: 'This vehicle is not marked off the road.' });
+    }
+
+    car.offRoad = { since: null, note: '' };
+    await car.save();
+
+    if (car.owner) {
+      await notifyUser(
+        car.owner,
+        'Your vehicle is back on the road',
+        `${car.brand} ${car.model} is taking bookings again.`,
+        '/consignor'
+      );
+    }
+
+    res.json(car);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Admin approves or declines a consignor's pending blocked-date request
 router.put('/:id/blocked-dates/:blockId/decision', protect, adminOnly, async (req, res) => {
   try {

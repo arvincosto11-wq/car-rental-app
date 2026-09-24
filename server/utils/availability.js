@@ -49,10 +49,26 @@ export const overlaps = (a, b) => a.start < b.end && a.end > b.start;
 // Blocked ranges deliberately get no turnaround: a vehicle coming out of the
 // workshop needs no cleaning window, and admin can block an extra hour if it
 // does. The buffer is between customers only.
-const blockRanges = (car, extraBlocks) => [
-  ...(car?.blockedDates || []).filter((b) => b.status === 'approved'),
-  ...extraBlocks,
-].map((b) => ({ ...blockedSpan(b), kind: 'block' }));
+// Far enough ahead that nothing bookable falls past it. A vehicle off the
+// road has no known end date, and a span has to end somewhere.
+const OFF_ROAD_HORIZON_DAYS = 800;
+
+export const blockRanges = (car, extraBlocks = []) => {
+  const ranges = [
+    ...(car?.blockedDates || []).filter((b) => b.status === 'approved'),
+    ...extraBlocks,
+  ].map((b) => ({ ...blockedSpan(b), kind: 'block' }));
+
+  // Off the road blocks everything from now on, not a range somebody typed.
+  if (car?.offRoad?.since) {
+    ranges.push({
+      start: new Date(car.offRoad.since),
+      end: addDays(new Date(), OFF_ROAD_HORIZON_DAYS),
+      kind: 'off-road',
+    });
+  }
+  return ranges;
+};
 
 // Every span that stands in the way of booking this vehicle.
 //
@@ -80,7 +96,7 @@ export async function busySpans(carId, {
   extraBlocks = [],
   car: preloaded = null,
 } = {}) {
-  const car = preloaded || await Car.findById(carId).select('blockedDates turnaroundHours').lean();
+  const car = preloaded || await Car.findById(carId).select('blockedDates turnaroundHours offRoad').lean();
   const turnaroundHours = turnaroundHoursFor(car);
 
   const query = { car: carId, status: { $in: statuses } };
