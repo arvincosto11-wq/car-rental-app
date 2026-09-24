@@ -38,7 +38,11 @@ const docWarning = (b) => {
   if (!['pending', 'confirmed'].includes(b.status)) return '';
   const on = (d) => new Date(d).toLocaleDateString();
   const lic = licenceProblem(b.user, { bookingType: b.bookingType, endDate: b.endDate });
-  if (lic?.kind === 'missing') return "No driver's licence on file for a self-drive booking.";
+  // 'missing' is deliberately not reported here. This list only receives the
+  // fields the bookings query populates, so an absent expiry date is just as
+  // likely to mean "not loaded" as "not on file" — and accusing a client of
+  // having no licence because of a stale deploy is worse than saying nothing.
+  // The booking route has the whole user record and refuses it there.
   if (lic?.kind === 'expired') return `Licence expired ${on(lic.expiry)} — they cannot drive this.`;
   if (lic?.kind === 'expires_during') return `Licence expires ${on(lic.expiry)}, before this trip ends.`;
   const id = idProblem(b.user, { endDate: b.endDate });
