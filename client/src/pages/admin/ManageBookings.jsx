@@ -259,31 +259,6 @@ const ManageBookings = () => {
     await handleStatus(booking._id, 'completed');
   };
 
-  const handleMarkPickedUp = async (booking) => {
-    // The documents live in this dialog because this is the one moment
-    // anybody is in a position to check them. Listing them in the terms and
-    // then never asking again is how a requirement quietly stops existing.
-    const docs = [
-      '\u2022 Two valid IDs, names matching the booking',
-      '\u2022 Proof of billing address in their name',
-      booking.bookingType === 'self-drive' ? '\u2022 Driver\u2019s licence, not expired' : null,
-    ].filter(Boolean).join('\n');
-    const ok = await confirm(
-      `Confirm you have checked, in person:\n\n${docs}\n\nThis records that ${booking.user?.name || 'the client'} `
-      + 'has the vehicle, and takes away the No-Show option for this booking.',
-      { confirmLabel: 'Yes, keys handed over', cancelLabel: 'Not yet' }
-    );
-    if (!ok) return;
-    try {
-      await api.put(`/bookings/${booking._id}/collect`);
-      await fetchBookings();
-      toast.success('Recorded as picked up.');
-    } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || 'Something went wrong recording this pickup.');
-    }
-  };
-
   const handleMarkNoShow = async (booking) => {
     const ok = await confirm(
       `Mark this booking as a no-show? This cancels it and forfeits the ₱${booking.amountPaid.toLocaleString()} already paid — this can't be undone.`,
@@ -911,12 +886,19 @@ const ManageBookings = () => {
                         </>
                       ) : new Date() >= new Date(new Date(booking.startDate).getTime() - EARLY_COLLECT_HOURS * 60 * 60 * 1000) ? (
                         <>
+                          {/* Not a handover button any more. This row could
+                              only ever show the documents as a list and take
+                              one yes, while the Pickup Desk makes you tick
+                              each one — two doors to the same act, held to
+                              two different standards. A check that can be
+                              skipped by clicking the easier button is not a
+                              check. */}
                           <button
                             style={s.pickedUpBtn}
-                            onClick={() => handleMarkPickedUp(booking)}
-                            title="Record that the documents were checked and the keys handed over."
+                            onClick={() => navigate('/admin/pickups')}
+                            title="Check their documents at the Pickup Desk, then hand over the keys there."
                           >
-                            Picked Up
+                            Check in at desk
                           </button>
                           {/* Three days into a trip it is not a no-show,
                               whatever else it might be. */}

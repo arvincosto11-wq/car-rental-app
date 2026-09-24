@@ -73,6 +73,15 @@ const PickupDesk = () => {
     .filter((b) => hoursFromNow(b.startDate) > EARLY_COLLECT_HOURS && hoursFromNow(b.startDate) <= 24)
     .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
+  // Past the window the desk normally covers, and never recorded. These
+  // exist because the desk is now the only place a handover can be written
+  // down — without them, a pickup somebody forgot to record on the day
+  // would have nowhere left to be recorded at all, and the booking could
+  // never be marked returned either.
+  const overlooked = waiting
+    .filter((b) => hoursFromNow(b.startDate) < -NO_SHOW_WINDOW_HOURS)
+    .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+
   const handedOverToday = bookings
     .filter((b) => b.collectedAt && new Date(b.collectedAt).toDateString() === new Date().toDateString())
     .sort((a, b) => new Date(b.collectedAt) - new Date(a.collectedAt));
@@ -155,6 +164,10 @@ const PickupDesk = () => {
       fontSize: '12px', fontWeight: '800', letterSpacing: '0.05em', textTransform: 'uppercase',
       color: isDark ? '#b0b3b8' : '#6b7280', margin: '26px 0 12px',
     },
+    sectionNote: {
+      fontSize: '12.5px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#6b7280',
+      margin: '-4px 0 12px', maxWidth: '68ch',
+    },
     empty: {
       padding: '28px', borderRadius: '14px', textAlign: 'center', fontSize: '14px',
       border: `1px dashed ${isDark ? '#3a3b3c' : '#e5e7eb'}`, color: isDark ? '#b0b3b8' : '#6b7280',
@@ -229,7 +242,7 @@ const PickupDesk = () => {
     doneWhen: { fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
   };
 
-  const Card = ({ booking, late }) => {
+  const Card = ({ booking, late, stale }) => {
     const client = clientFor(booking);
     const remaining = (booking.totalPrice || 0) - (booking.amountPaid || 0);
     const selfDrive = booking.bookingType === 'self-drive';
@@ -248,10 +261,10 @@ const PickupDesk = () => {
               {' · '}{selfDrive ? 'Self-drive' : 'With driver'}
             </div>
           </div>
-          <div style={s.when}>
+          <div style={stale || late ? { ...s.when, color: isDark ? '#f87171' : '#dc2626' } : s.when}>
             {formatMoment(booking.startDate, booking.hasPickupTime)}
             <div style={s.whenNote}>
-              {late ? 'Pickup time has passed' : 'Due'}
+              {stale ? 'Pickup was never recorded' : late ? 'Pickup time has passed' : 'Due'}
               {' · back '}
               {formatMoment(booking.endDate, booking.hasPickupTime)}
             </div>
@@ -341,7 +354,9 @@ const PickupDesk = () => {
               Record {peso(remaining)} received
             </button>
           )}
-          {late && (
+          {/* A no-show can only be recorded within a day of the pickup
+              time, so offering it here would only produce a refusal. */}
+          {late && !stale && (
             <button style={s.ghost} disabled={busy} onClick={() => markNoShow(booking)}>
               They never came
             </button>
@@ -368,7 +383,10 @@ const PickupDesk = () => {
         <>
           <div style={s.sectionTitle}>Ready to collect</div>
           {awaiting.length === 0 ? (
-            <div style={s.empty}>Nobody is due at the counter right now.</div>
+            <div style={s.empty}>
+              Nobody is due at the counter right now.
+              {laterToday.length > 0 ? ' The next one is below.' : ''}
+            </div>
           ) : (
             awaiting.map((b) => <Card key={b._id} booking={b} late={hoursFromNow(b.startDate) < 0} />)
           )}
@@ -377,6 +395,18 @@ const PickupDesk = () => {
             <>
               <div style={s.sectionTitle}>Later today</div>
               {laterToday.map((b) => <Card key={b._id} booking={b} late={false} />)}
+            </>
+          )}
+
+          {overlooked.length > 0 && (
+            <>
+              <div style={s.sectionTitle}>Not recorded</div>
+              <p style={s.sectionNote}>
+                The pickup window has passed on these and no handover was written down. Check the documents
+                the same way, then record it — it will be stamped with today&apos;s date and time, since
+                that is when it was recorded rather than when it happened.
+              </p>
+              {overlooked.map((b) => <Card key={b._id} booking={b} late stale />)}
             </>
           )}
 
