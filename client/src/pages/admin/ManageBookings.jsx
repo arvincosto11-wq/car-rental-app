@@ -308,14 +308,14 @@ const ManageBookings = () => {
   const ratingBooking = bookings.find((b) => b._id === ratingModalId);
   const detailsBooking = bookings.find((b) => b._id === detailsBookingId);
   const unratedClientCount = bookings.filter((b) => b.status === 'completed' && !b.clientRating?.ratedAt).length;
-  const overdueBookings = paidBookings.filter(isOverdue);
-  const dueBackBookings = paidBookings.filter(isDueBack);
   const pendingRescheduleCount = bookings.filter((b) => b.rescheduleRequest?.status === 'pending').length;
 
   // Unpaid bookings never show up here at all (see filteredBookings below),
   // so counts for the status tabs are scoped to paid bookings only —
   // otherwise "All" would include bookings nothing else on this page shows.
   const paidBookings = bookings.filter((b) => b.payment === 'paid');
+  const overdueBookings = paidBookings.filter(isOverdue);
+  const dueBackBookings = paidBookings.filter(isDueBack);
   const statusTabs = [
     { value: 'all', label: 'All', count: paidBookings.length },
     { value: 'pending', label: 'Pending', count: paidBookings.filter((b) => b.status === 'pending').length },
