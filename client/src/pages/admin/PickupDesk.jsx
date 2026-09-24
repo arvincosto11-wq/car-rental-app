@@ -6,6 +6,7 @@ import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { formatMoment } from '../../utils/phTime';
 import { FUEL_STEPS, fuelLabel } from '../../utils/fuel';
 import ConditionPhotos from '../../components/ConditionPhotos';
+import { idTypeLabel } from '../../data/validIdTypes';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK } from '../../theme';
 import api from '../../api';
 
@@ -327,7 +328,7 @@ const PickupDesk = () => {
             <div style={s.paneTitle}>What we hold on file</div>
             <div style={s.field}>
               <span style={s.fieldLabel}>Valid ID: </span>
-              {client?.validIdType || 'none on file'}
+              {idTypeLabel(client?.validIdType) || 'none on file'}
               {client?.validIdExpiry ? ` · expires ${new Date(client.validIdExpiry).toLocaleDateString()}` : ''}
             </div>
             {selfDrive && (

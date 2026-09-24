@@ -16,4 +16,10 @@ export const VALID_ID_TYPES = [
   { value: 'other', label: 'Other government-issued ID', sides: 1 },
 ];
 
+// What to call an ID type in front of a person. The stored value is a slug,
+// and a screen that prints "drivers_license" at somebody is showing them the
+// database rather than an answer.
+export const idTypeLabel = (value) =>
+  VALID_ID_TYPES.find((t) => t.value === value)?.label || value || '';
+
 export const idTypeNeedsBack = (value) => VALID_ID_TYPES.find((t) => t.value === value)?.sides === 2;
