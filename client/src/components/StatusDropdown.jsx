@@ -16,9 +16,16 @@ const ChevronIcon = ({ open }) => (
 // Confirmed/Cancelled read at a glance the same way the table's own status
 // badges already do, without repainting the whole pill. Closes on an
 // outside click, same pattern as NotificationBell's own dropdown.
+// Roughly what one row and the menu's own padding come to. Only used to
+// decide which way to open before the menu exists to be measured; being a
+// few pixels out just means flipping up slightly earlier than needed.
+const ROW_HEIGHT = 32;
+const MENU_PADDING = 8;
+
 const StatusDropdown = ({ value, options, onChange, isDark }) => {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(null);
+  const [at, setAt] = useState(null);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -28,6 +35,40 @@ const StatusDropdown = ({ value, options, onChange, isDark }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // A menu anchored inside the table was cut off at the table's edge: the
+  // table rounds its corners with overflow hidden, and .table-scroll scrolls
+  // sideways, which clips vertically too. On the Pending tab with a single
+  // booking there was nothing below to spill over, so the list appeared as a
+  // sliver. Measuring the trigger and drawing the menu in viewport
+  // coordinates takes it out of both containers.
+  useEffect(() => {
+    // Cleared on close so a reopen never flashes at where the row used to
+    // be before the effect below corrects it.
+    if (!open) { setAt(null); return undefined; }
+    const place = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (!r) return;
+      const needed = options.length * ROW_HEIGHT + MENU_PADDING;
+      const below = window.innerHeight - r.bottom;
+      setAt({
+        left: r.left,
+        // Opens upward when the row sits near the bottom of the window,
+        // which is exactly where a short list of results leaves it.
+        top: below < needed + 12 && r.top > needed ? r.top - needed - 4 : r.bottom + 4,
+      });
+    };
+    place();
+    // Scrolling would leave the menu behind, since it is no longer attached
+    // to the row. Closing is honest and costs one click.
+    const close = () => setOpen(false);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open, options.length]);
 
   const current = options.find((o) => o.value === value);
 
@@ -39,7 +80,7 @@ const StatusDropdown = ({ value, options, onChange, isDark }) => {
       background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a', cursor: 'pointer',
     },
     menu: {
-      position: 'absolute', top: 'calc(100% + 4px)', left: 0, minWidth: '150px', zIndex: 50,
+      position: 'fixed', top: at?.top ?? 0, left: at?.left ?? 0, minWidth: '150px', zIndex: 1200,
       background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '8px', boxShadow: '0 8px 20px rgba(0,0,0,0.16)', overflow: 'hidden', padding: '4px',
     },
@@ -59,7 +100,7 @@ const StatusDropdown = ({ value, options, onChange, isDark }) => {
         <ChevronIcon open={open} />
       </button>
       <AnimatePresence>
-        {open && (
+        {open && at && (
           <motion.div
             role="listbox"
             style={s.menu}
