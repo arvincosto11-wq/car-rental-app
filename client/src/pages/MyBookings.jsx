@@ -19,6 +19,7 @@ import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { fuelShortfallLabel } from '../utils/fuel';
 
 const PAGE_SIZE = 10;
 
@@ -1229,6 +1230,15 @@ const MyBookings = () => {
                 )}
                 {/* They should not have to hear it from us first. The sum
                     is the clause, not a figure somebody chose. */}
+                {booking.status === 'completed' && booking.fuel?.charge > 0 && (
+                  <div style={styles.lateFeeNote}>
+                    {fuelShortfallLabel(booking)
+                      ? `The vehicle came back ${fuelShortfallLabel(booking)} short of the fuel it went out with. `
+                      : 'A refuelling charge applies to this return. '}
+                    A refuelling charge of ₱{booking.fuel.charge.toLocaleString()} applies, per our Terms and Conditions.
+                    {booking.fuel.collectedAt ? ' This has been settled.' : ' Please settle it with us.'}
+                  </div>
+                )}
                 {booking.status === 'completed' && booking.lateFee?.days > 0 && (
                   <div style={styles.lateFeeNote}>
                     Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late.

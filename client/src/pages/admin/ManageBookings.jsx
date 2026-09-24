@@ -17,6 +17,7 @@ import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
 import { bookingAwaitingDecision, timeLeftLabel } from '../../utils/offerWindow';
 import { formatMoment, phYmd } from '../../utils/phTime';
+import { FUEL_STEPS, fuelLabel, fuelShortfallLabel } from '../../utils/fuel';
 
 const LOW_RATING_THRESHOLD = 3;
 // How long after the pickup time a no-show can still be recorded. Mirrors
@@ -108,6 +109,11 @@ const ManageBookings = () => {
   // can't be inferred after the fact. Everything else goes straight through.
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelForm, setCancelForm] = useState({ reason: 'vehicle_unavailable', note: '' });
+  // Closing a booking is the only chance to read the gauge, so it stopped
+  // being a yes/no confirm and became a short form.
+  const [returnTarget, setReturnTarget] = useState(null);
+  const [returnForm, setReturnForm] = useState({ fuel: undefined, charge: '' });
+  const [returnSubmitting, setReturnSubmitting] = useState(false);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
   // Other paid requests for the same vehicle whose dates overlap this one.
@@ -256,7 +262,39 @@ const ManageBookings = () => {
       );
       if (!ok) return;
     }
-    await handleStatus(booking._id, 'completed');
+    setReturnTarget(booking);
+    setReturnForm({ fuel: undefined, charge: '' });
+  };
+
+  const submitReturn = async () => {
+    setReturnSubmitting(true);
+    try {
+      await applyStatus(returnTarget._id, {
+        status: 'completed',
+        fuelAtReturn: returnForm.fuel,
+        fuelCharge: returnForm.charge,
+      });
+      setReturnTarget(null);
+      toast.success('Return recorded.');
+    } finally {
+      setReturnSubmitting(false);
+    }
+  };
+
+  const handleCollectFuelCharge = async (booking) => {
+    const ok = await confirm(
+      `Confirm you have received the ${peso(booking.fuel.charge)} refuelling charge from this client, in cash or by GCash.`,
+      { confirmLabel: 'Received', cancelLabel: 'Not yet' }
+    );
+    if (!ok) return;
+    try {
+      await api.put(`/bookings/${booking._id}/fuel-charge/collected`);
+      await fetchBookings();
+      toast.success('Refuelling charge recorded as settled.');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Something went wrong recording this charge.');
+    }
   };
 
   const handleMarkNoShow = async (booking) => {
@@ -317,6 +355,11 @@ const ManageBookings = () => {
   // otherwise "All" would include bookings nothing else on this page shows.
   const paidBookings = bookings.filter((b) => b.payment === 'paid');
   const overdueBookings = paidBookings.filter(isOverdue);
+  // Worked out here rather than in the markup, so the modal reads as one
+  // sentence and this stays above everything that uses it.
+  const shortfallNow = returnTarget
+    ? fuelShortfallLabel({ fuel: { atPickup: returnTarget.fuel?.atPickup, atReturn: returnForm.fuel } })
+    : '';
   const dueBackBookings = paidBookings.filter(isDueBack);
   // In the order a booking lives through them, so the row of tabs is the
   // journey rather than a bag of labels.
@@ -422,6 +465,24 @@ const ManageBookings = () => {
       color: due ? ON_GOLD : (isDark ? GOLD_DARK : GOLD),
     }),
     pickedUpBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '700' },
+    returnLabel: {
+      fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
+      color: isDark ? '#8a8d91' : '#9ca3af', margin: '4px 0 7px',
+    },
+    fuelRow: { display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '12px' },
+    fuelChip: (on) => ({
+      padding: '5px 9px', fontSize: '11px', fontWeight: on ? '800' : '500', borderRadius: '7px',
+      cursor: 'pointer',
+      border: `1px solid ${on ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      background: on ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
+      color: on ? ON_GOLD : (isDark ? '#b0b3b8' : '#6b7280'),
+    }),
+    returnShort: {
+      fontSize: '12px', lineHeight: 1.5, fontWeight: '700', margin: '0 0 12px',
+      padding: '8px 10px', borderRadius: '8px',
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      color: isDark ? '#f87171' : '#991b1b',
+    },
     feeBtn: {
       padding: '4px 10px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', cursor: 'pointer',
       border: `1px solid ${isDark ? GOLD_DARK : GOLD}`, background: 'transparent', color: isDark ? GOLD_DARK : GOLD,
@@ -946,6 +1007,21 @@ const ManageBookings = () => {
                           the moment it completed. We had the record and
                           showed it nowhere, so nobody could see who makes a
                           habit of it — least of all the client. */}
+                      {booking.fuel?.charge > 0 && (
+                        booking.fuel.collectedAt ? (
+                          <span style={s.feeSettled}>{peso(booking.fuel.charge)} refuelling settled</span>
+                        ) : (
+                          <button
+                            style={s.feeBtn}
+                            onClick={() => handleCollectFuelCharge(booking)}
+                            title={fuelShortfallLabel(booking)
+                              ? `Came back ${fuelShortfallLabel(booking)} short of the level it went out with.`
+                              : 'Refuelling charge recorded at return.'}
+                          >
+                            Collect {peso(booking.fuel.charge)} refuelling
+                          </button>
+                        )
+                      )}
                       {booking.lateFee?.days > 0 && (
                         <>
                           <span style={s.overdueNote}>
@@ -1024,6 +1100,61 @@ const ManageBookings = () => {
           onCollectBalance={handleCollectBalance}
         />
       )}
+      {/* Closing a booking is the only moment anybody looks at the gauge,
+          so it asks rather than assumes. Both fields are optional: a return
+          nobody read is better recorded as unread than as full. */}
+      {returnTarget && (
+        <div style={s.modalOverlay} onClick={() => !returnSubmitting && setReturnTarget(null)}>
+          <div style={s.cancelCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="return-title">
+            <div id="return-title" style={s.cancelTitle}>Record this return</div>
+            <p style={s.cancelSub}>
+              {returnTarget.fuel?.atPickup !== null && returnTarget.fuel?.atPickup !== undefined
+                ? `It went out at ${fuelLabel(returnTarget.fuel.atPickup)}. Our terms ask for it back at the same level.`
+                : 'No fuel level was recorded when this vehicle went out, so there is nothing to compare against.'}
+            </p>
+
+            <div style={s.returnLabel}>Fuel coming back</div>
+            <div style={s.fuelRow}>
+              {Array.from({ length: FUEL_STEPS + 1 }, (_, i) => i).map((i) => (
+                <button
+                  key={i}
+                  type="button"
+                  style={s.fuelChip(returnForm.fuel === i)}
+                  onClick={() => setReturnForm({ ...returnForm, fuel: i })}
+                >
+                  {fuelLabel(i)}
+                </button>
+              ))}
+            </div>
+
+            {shortfallNow && (
+              <p style={s.returnShort}>
+                That is {shortfallNow} short of the level it went out with. Section 5 of the terms charges
+                the difference — enter what putting it right actually costs.
+              </p>
+            )}
+
+            <input
+              style={s.cancelInput}
+              type="text"
+              inputMode="decimal"
+              placeholder="Refuelling charge (optional)"
+              value={returnForm.charge}
+              onChange={(e) => setReturnForm({ ...returnForm, charge: e.target.value.replace(/[^0-9.]/g, '') })}
+            />
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button style={s.cancelConfirmBtn} onClick={submitReturn} disabled={returnSubmitting}>
+                {returnSubmitting ? 'Recording...' : 'Mark as returned'}
+              </button>
+              <button style={s.cancelBackBtn} onClick={() => setReturnTarget(null)} disabled={returnSubmitting}>
+                Go back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {cancelTarget && (
         <div style={s.modalOverlay} onClick={() => !cancelSubmitting && setCancelTarget(null)}>
           <div style={s.cancelCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="cancel-title">

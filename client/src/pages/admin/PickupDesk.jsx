@@ -4,6 +4,7 @@ import AdminLayout from '../../components/AdminLayout';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { formatMoment } from '../../utils/phTime';
+import { FUEL_STEPS, fuelLabel } from '../../utils/fuel';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK } from '../../theme';
 import api from '../../api';
 
@@ -39,6 +40,9 @@ const PickupDesk = () => {
   // is of the person standing in front of you, so it starts again each time.
   const [checked, setChecked] = useState({});
   const [working, setWorking] = useState('');
+  // The gauge reading, per booking. Like the tick boxes, it is of the
+  // vehicle in front of you, so it starts blank every time.
+  const [fuel, setFuel] = useState({});
 
   const fetchAll = async () => {
     try {
@@ -105,7 +109,12 @@ const PickupDesk = () => {
   // keys go over" while letting the keys go over anyway. A requirement the
   // screen states and does not hold to is worse than one it never mentions.
   const readyToRelease = (booking) =>
-    docsFor(booking).every((d) => checked[`${booking._id}:${d.key}`]) && balanceDue(booking) === 0;
+    docsFor(booking).every((d) => checked[`${booking._id}:${d.key}`])
+    && balanceDue(booking) === 0
+    // Without a reading now there is nothing for the return to be measured
+    // against, and section 5 of the terms becomes unenforceable for this
+    // booking. It costs one tap and cannot be recovered later.
+    && fuel[booking._id] !== undefined;
 
   const tick = (booking, key) => setChecked((prev) => ({
     ...prev,
@@ -115,7 +124,7 @@ const PickupDesk = () => {
   const handOver = async (booking) => {
     setWorking(booking._id);
     try {
-      await api.put(`/bookings/${booking._id}/collect`);
+      await api.put(`/bookings/${booking._id}/collect`, { fuelLevel: fuel[booking._id] });
       await fetchAll();
       toast.success('Keys handed over.');
     } catch (err) {
@@ -218,6 +227,19 @@ const PickupDesk = () => {
       display: 'flex', alignItems: 'flex-start', gap: '9px', fontSize: '13px', lineHeight: 1.5,
       padding: '7px 0', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#374151',
     },
+    fuelBlock: { marginTop: '12px' },
+    fuelLabel: {
+      fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
+      color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '6px',
+    },
+    fuelRow: { display: 'flex', flexWrap: 'wrap', gap: '5px' },
+    fuelChip: (on) => ({
+      padding: '5px 9px', fontSize: '11px', fontWeight: on ? '800' : '500', borderRadius: '7px',
+      cursor: 'pointer',
+      border: `1px solid ${on ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      background: on ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
+      color: on ? ON_GOLD : (isDark ? '#b0b3b8' : '#6b7280'),
+    }),
     balanceDue: {
       marginTop: '10px', padding: '10px 12px', borderRadius: '10px', fontSize: '13px', lineHeight: 1.5,
       display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '9px',
@@ -348,6 +370,21 @@ const PickupDesk = () => {
                 <span>{d.label}</span>
               </label>
             ))}
+            <div style={s.fuelBlock}>
+              <div style={s.fuelLabel}>Fuel going out</div>
+              <div style={s.fuelRow}>
+                {Array.from({ length: FUEL_STEPS + 1 }, (_, i) => i).map((i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    style={s.fuelChip(fuel[booking._id] === i)}
+                    onClick={() => setFuel((prev) => ({ ...prev, [booking._id]: i }))}
+                  >
+                    {fuelLabel(i)}
+                  </button>
+                ))}
+              </div>
+            </div>
             {remaining > 0 ? (
               <div style={s.balanceDue}>
                 <div><strong>{peso(remaining)}</strong> still to collect before the keys go over.</div>
@@ -380,7 +417,9 @@ const PickupDesk = () => {
             <span style={s.hint}>
               {remaining > 0
                 ? `Take the ${peso(remaining)} and record it, then tick each document you have seen.`
-                : 'Tick each document once you have seen it.'}
+                : fuel[booking._id] === undefined
+                  ? 'Read the fuel gauge before the vehicle leaves — the return is measured against it.'
+                  : 'Tick each document once you have seen it.'}
             </span>
           )}
         </div>

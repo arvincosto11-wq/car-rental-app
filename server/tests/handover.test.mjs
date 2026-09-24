@@ -3,6 +3,7 @@ import { hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom } from '../utils/phTime.js';
 import { isOverdue, daysOverdue, daysLate, lateFeeFor } from '../utils/overdueReturns.js';
 import { occupiedSpan } from '../utils/availability.js';
+import { fuelShortfall, fuelShortfallLabel, isFuelLevel, fuelLabel } from '../utils/fuel.js';
 
 // A confirmed booking whose pickup hour has already gone by.
 const pickupWasThisMorning = {
@@ -109,4 +110,30 @@ export default function run() {
   check('no rate on the vehicle', lateFeeFor(back(instantFrom('2026-09-25', 7)), undefined).amount, 0);
   check('but the days are still counted', lateFeeFor(back(instantFrom('2026-09-25', 7)), undefined).days, 3);
   check('and daysLate agrees with daysOverdue mid-delay', daysLate(ended, now), daysOverdue(ended, now));
+
+  group('fuel is measured, never assumed');
+  // Terms section 5: back at the level it went out at, or the difference is
+  // charged. Both readings have to exist — a missing one is not evidence
+  // of anything, and charging on it would invent a debt.
+  const tank = (out, back) => ({ fuel: { atPickup: out, atReturn: back } });
+  check('same level, nothing owed', fuelShortfall(tank(8, 8)), 0);
+  check('returned fuller, still nothing', fuelShortfall(tank(4, 6)), 0);
+  check('half a tank short', fuelShortfall(tank(8, 4)), 4);
+  check('and said in tank terms', fuelShortfallLabel(tank(8, 4)), '2/4 of a tank');
+  check('an eighth short', fuelShortfallLabel(tank(8, 7)), '1/8 of a tank');
+  check('emptied completely', fuelShortfallLabel(tank(8, 0)), 'a full tank');
+  check('never read at pickup', fuelShortfall(tank(null, 2)), 0);
+  check('never read at return', fuelShortfall(tank(6, null)), 0);
+  check('neither read', fuelShortfall({}), 0);
+
+  group('a gauge reading is a whole eighth or it is nothing');
+  // Empty is a real reading and must not be mistaken for a missing one,
+  // which is why the check is on the value's shape rather than its truth.
+  check('empty is a reading', isFuelLevel(0), true);
+  check('full is a reading', isFuelLevel(8), true);
+  check('over full is not', isFuelLevel(9), false);
+  check('below empty is not', isFuelLevel(-1), false);
+  check('half an eighth is not', isFuelLevel(3.5), false);
+  check('nothing is not', isFuelLevel(null), false);
+  check('and empty still reads as Empty', fuelLabel(0), 'Empty');
 }

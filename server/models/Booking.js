@@ -52,6 +52,17 @@ const bookingSchema = new mongoose.Schema({
     amount: { type: Number, default: 0 },
     collectedAt: { type: Date, default: null },
   },
+  // The gauge when the keys went over and when they came back, in eighths
+  // of a tank — see utils/fuel.js. Null means nobody read it, which is not
+  // the same as empty and must never be charged for. The charge is typed
+  // rather than worked out, because section 5 of the terms names no rate:
+  // fuel costs what fuel costs, and only whoever buys it knows.
+  fuel: {
+    atPickup: { type: Number, default: null },
+    atReturn: { type: Number, default: null },
+    charge: { type: Number, default: 0 },
+    collectedAt: { type: Date, default: null },
+  },
   // Highest escalation already sent to admin about this booking sitting
   // unconfirmed — see utils/pendingReminders.js. Stored so each tier fires
   // once rather than on every request that triggers the sweep.

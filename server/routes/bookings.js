@@ -15,6 +15,7 @@ import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js'
 import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
 import { notifyOverdueReturns, isOverdue, lateFeeFor } from '../utils/overdueReturns.js';
+import { isFuelLevel, fuelShortfall, fuelShortfallLabel } from '../utils/fuel.js';
 
 const router = express.Router();
 
@@ -459,6 +460,17 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       // What being late costs, straight out of the terms they agreed to.
       // Worked out here rather than asked for, so it is the same figure for
       // everybody and nobody has to do it on paper at the counter.
+      // What came back in the tank, and what putting it right cost. Both
+      // optional: a booking closed without anybody reading the gauge simply
+      // has no fuel record, which is honest.
+      if (isFuelLevel(req.body.fuelAtReturn)) {
+        booking.fuel.atReturn = Number(req.body.fuelAtReturn);
+      }
+      const charge = Number(req.body.fuelCharge);
+      if (Number.isFinite(charge) && charge > 0) {
+        booking.fuel.charge = Math.round(charge);
+      }
+
       const carForFee = await Car.findById(booking.car).select('pricePerDay').lean();
       const fee = lateFeeFor(booking, carForFee?.pricePerDay);
       booking.lateFee = { days: fee.days, amount: fee.amount, collectedAt: null };
@@ -489,15 +501,27 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     booking.status = status;
     await booking.save();
     if (status === 'completed' && previousStatus !== 'completed') {
-      // A bill is not something to discover in a notification bell, so the
-      // late version is its own message and goes by email as well.
+      // A bill is not something to discover in a notification bell, so
+      // anything owed is its own message and goes by email as well. Both
+      // charges can land on one return, and hearing about them separately
+      // would read as two surprises rather than one account.
+      const owed = [];
       if (booking.lateFee?.amount > 0) {
+        owed.push(`a late fee of ₱${booking.lateFee.amount.toLocaleString()} for returning `
+          + `${booking.lateFee.days} day${booking.lateFee.days === 1 ? '' : 's'} late, at one day's rental rate per day of delay`);
+      }
+      if (booking.fuel?.charge > 0) {
+        const short = fuelShortfallLabel(booking);
+        owed.push(`₱${booking.fuel.charge.toLocaleString()} for refuelling`
+          + (short ? `, the vehicle having come back ${short} short of the level it went out with` : ''));
+      }
+
+      if (owed.length) {
         await notifyUser(
           booking.user,
-          'Vehicle returned late',
-          `Your return was ${booking.lateFee.days} day${booking.lateFee.days === 1 ? '' : 's'} late, so a late fee of `
-            + `₱${booking.lateFee.amount.toLocaleString()} applies — one day's rental rate per day of delay, as set out `
-            + 'in our Terms and Conditions. Please settle it with us if you have not already.',
+          owed.length > 1 ? 'Charges on your returned booking' : 'A charge on your returned booking',
+          `Your return has been recorded, and ${owed.join(' and ')}. `
+            + 'Both are set out in our Terms and Conditions. Please settle with us if you have not already.',
           '/my-bookings',
           { email: true }
         );
@@ -539,6 +563,26 @@ router.put('/:id/collect-balance', protect, adminOnly, async (req, res) => {
 
     await notifyUser(booking.user, 'Balance Received', `We've recorded your remaining balance of ₱${collected.toLocaleString()} as paid. Thanks!`, '/my-bookings');
 
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin records the refuelling charge as settled, the same way the late fee
+// and the balance are — this only writes down that the money arrived.
+router.put('/:id/fuel-charge/collected', protect, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!(booking.fuel?.charge > 0)) {
+      return res.status(400).json({ message: 'There is no refuelling charge on this booking.' });
+    }
+    if (booking.fuel.collectedAt) {
+      return res.status(400).json({ message: 'This refuelling charge is already marked as settled.' });
+    }
+    booking.fuel.collectedAt = new Date();
+    await booking.save();
     res.json(booking);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -590,7 +634,15 @@ router.put('/:id/collect', protect, adminOnly, async (req, res) => {
       return res.status(400).json({ message: `This booking can only be marked as picked up within ${EARLY_COLLECT_HOURS} hours of its pickup time.` });
     }
 
+    // The reading the return is measured against. Refused rather than
+    // guessed if it is missing or nonsense: half a comparison is worse than
+    // none, because it looks like evidence.
+    if (!isFuelLevel(req.body.fuelLevel)) {
+      return res.status(400).json({ message: 'Please record the fuel level the vehicle is going out with.' });
+    }
+
     booking.collectedAt = new Date();
+    booking.fuel.atPickup = Number(req.body.fuelLevel);
     await booking.save();
     res.json(booking);
   } catch (err) {
