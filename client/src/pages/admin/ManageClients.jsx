@@ -94,6 +94,11 @@ const ManageClients = () => {
   const bookingsForClient = (clientId) =>
     bookings.filter((b) => b.user?._id === clientId);
 
+  const finishedTripsFor = (clientId) =>
+    bookingsForClient(clientId).filter((b) => b.status === 'completed' && b.collectedAt);
+  const lateReturnsFor = (clientId) =>
+    finishedTripsFor(clientId).filter((b) => b.lateFee?.days > 0);
+
   const filtered = clients.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.email.toLowerCase().includes(search.toLowerCase())
@@ -103,6 +108,8 @@ const ManageClients = () => {
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
   const selectedClient = clients.find((c) => c._id === selectedClientId);
+  const finishedTrips = selectedClient ? finishedTripsFor(selectedClient._id).length : 0;
+  const lateReturns = selectedClient ? lateReturnsFor(selectedClient._id).length : 0;
   const clientModalRef = useModalA11y(() => setSelectedClientId(null), !!selectedClient);
   const rejectPendingIdModalRef = useModalA11y(() => setRejectPendingIdTarget(null), !!rejectPendingIdTarget);
 
@@ -291,6 +298,17 @@ const ManageClients = () => {
               <div style={s.profileItem}>
                 <span style={s.profileLabel}>Emergency Contact #</span>
                 <span style={s.profileValue}>{selectedClient.emergencyContactNumber || '—'}</span>
+              </div>
+              {/* One late return is a bad day. Four is a pattern, and it is
+                  the kind of thing you want to know before handing over the
+                  keys again rather than after. */}
+              <div style={s.profileItem}>
+                <span style={s.profileLabel}>Late Returns</span>
+                <span style={{ ...s.profileValue, color: lateReturns > 0 ? (isDark ? '#f87171' : '#dc2626') : undefined }}>
+                  {lateReturns === 0
+                    ? 'None'
+                    : `${lateReturns} of ${finishedTrips} trip${finishedTrips === 1 ? '' : 's'}`}
+                </span>
               </div>
             </div>
 

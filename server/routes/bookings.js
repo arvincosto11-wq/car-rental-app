@@ -14,7 +14,7 @@ import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS, reasonUna
 import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js';
 import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
-import { notifyOverdueReturns, isOverdue } from '../utils/overdueReturns.js';
+import { notifyOverdueReturns, isOverdue, lateFeeFor } from '../utils/overdueReturns.js';
 
 const router = express.Router();
 
@@ -455,6 +455,13 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       if (!booking.collectedAt) booking.collectedAt = booking.startDate;
       // Somebody pressed the button, so this is the moment it came back.
       if (!booking.returnedAt) booking.returnedAt = new Date();
+
+      // What being late costs, straight out of the terms they agreed to.
+      // Worked out here rather than asked for, so it is the same figure for
+      // everybody and nobody has to do it on paper at the counter.
+      const carForFee = await Car.findById(booking.car).select('pricePerDay').lean();
+      const fee = lateFeeFor(booking, carForFee?.pricePerDay);
+      booking.lateFee = { days: fee.days, amount: fee.amount, collectedAt: null };
     }
 
     // Cancelling used to just flip the status and notify — no refund record,
@@ -482,7 +489,21 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     booking.status = status;
     await booking.save();
     if (status === 'completed' && previousStatus !== 'completed') {
-      await notifyUser(booking.user, 'Vehicle Returned', 'Your vehicle return has been recorded. You can now rate your experience.', '/my-bookings/rate');
+      // A bill is not something to discover in a notification bell, so the
+      // late version is its own message and goes by email as well.
+      if (booking.lateFee?.amount > 0) {
+        await notifyUser(
+          booking.user,
+          'Vehicle returned late',
+          `Your return was ${booking.lateFee.days} day${booking.lateFee.days === 1 ? '' : 's'} late, so a late fee of `
+            + `₱${booking.lateFee.amount.toLocaleString()} applies — one day's rental rate per day of delay, as set out `
+            + 'in our Terms and Conditions. Please settle it with us if you have not already.',
+          '/my-bookings',
+          { email: true }
+        );
+      } else {
+        await notifyUser(booking.user, 'Vehicle Returned', 'Your vehicle return has been recorded. You can now rate your experience.', '/my-bookings/rate');
+      }
     }
 
     res.json(booking);
@@ -518,6 +539,27 @@ router.put('/:id/collect-balance', protect, adminOnly, async (req, res) => {
 
     await notifyUser(booking.user, 'Balance Received', `We've recorded your remaining balance of ₱${collected.toLocaleString()} as paid. Thanks!`, '/my-bookings');
 
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin records the late fee as settled. Cash or GCash at the counter, the
+// same way the remaining balance is taken — this only writes down that it
+// happened, so the debt stops showing against the booking.
+router.put('/:id/late-fee/collected', protect, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!(booking.lateFee?.amount > 0)) {
+      return res.status(400).json({ message: 'There is no late fee on this booking.' });
+    }
+    if (booking.lateFee.collectedAt) {
+      return res.status(400).json({ message: 'This late fee is already marked as settled.' });
+    }
+    booking.lateFee.collectedAt = new Date();
+    await booking.save();
     res.json(booking);
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -27,6 +27,7 @@ const NO_SHOW_WINDOW_HOURS = 24;
 // up before their hour and the counter shouldn't have to wait for the clock.
 const EARLY_COLLECT_HOURS = 2;
 const DASH_JS = '—';
+const peso = (n) => `\u20b1${(n || 0).toLocaleString()}`;
 // Confirmed covers three different situations @ booked for next month, due
 // today, and gone. Only the last one means a vehicle is physically not here,
 // which is the thing worth being able to see on its own.
@@ -198,6 +199,24 @@ const ManageBookings = () => {
       toast.success('Booking cancelled. The client has been notified.');
     } finally {
       setCancelSubmitting(false);
+    }
+  };
+
+  const handleCollectLateFee = async (booking) => {
+    const ok = await confirm(
+      `Confirm you have received the ${peso(booking.lateFee.amount)} late fee from this client, in cash or by GCash. `
+      + `It covers ${booking.lateFee.days} day${booking.lateFee.days === 1 ? '' : 's'} at the vehicle's daily rate, `
+      + 'as set out in the booking terms.',
+      { confirmLabel: 'Received', cancelLabel: 'Not yet' }
+    );
+    if (!ok) return;
+    try {
+      await api.put(`/bookings/${booking._id}/late-fee/collected`);
+      await fetchBookings();
+      toast.success('Late fee recorded as settled.');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Something went wrong recording this late fee.');
     }
   };
 
@@ -428,6 +447,11 @@ const ManageBookings = () => {
       color: due ? ON_GOLD : (isDark ? GOLD_DARK : GOLD),
     }),
     pickedUpBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '700' },
+    feeBtn: {
+      padding: '4px 10px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', cursor: 'pointer',
+      border: `1px solid ${isDark ? GOLD_DARK : GOLD}`, background: 'transparent', color: isDark ? GOLD_DARK : GOLD,
+    },
+    feeSettled: { fontSize: '11px', fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
     overdueNote: { fontSize: '11px', fontWeight: '800', color: isDark ? '#f87171' : '#dc2626' },
     pickedUpNote: { fontSize: '11px', fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
     deskNote: {
@@ -935,6 +959,31 @@ const ManageBookings = () => {
                   ) : booking.status === 'completed' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={s.completed}><span style={s.statusDot(isDark ? '#93c5fd' : '#1e40af')} />Completed</span>
+                      {/* A booking that came back three days late used to be
+                          indistinguishable from one that came back on time
+                          the moment it completed. We had the record and
+                          showed it nowhere, so nobody could see who makes a
+                          habit of it — least of all the client. */}
+                      {booking.lateFee?.days > 0 && (
+                        <>
+                          <span style={s.overdueNote}>
+                            Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late
+                          </span>
+                          {booking.lateFee.collectedAt ? (
+                            <span style={s.feeSettled}>
+                              {peso(booking.lateFee.amount)} late fee settled
+                            </span>
+                          ) : (
+                            <button
+                              style={s.feeBtn}
+                              onClick={() => handleCollectLateFee(booking)}
+                              title="One day's rental rate per day of delay, per the booking terms."
+                            >
+                              Collect {peso(booking.lateFee.amount)} late fee
+                            </button>
+                          )}
+                        </>
+                      )}
                       {booking.clientRating?.ratedAt && (
                         <>
                           <StarRating value={booking.clientRating.rating} size={12} readOnly />

@@ -42,6 +42,16 @@ const bookingSchema = new mongoose.Schema({
   // The sweep runs on every admin page load, so without this they would be
   // emailed on every refresh.
   overdueNotifiedOn: { type: String, default: '' },
+  // What being late cost them, worked out when the vehicle came back. Kept
+  // apart from totalPrice on purpose: that figure is what the rental was
+  // sold for, and rewriting it afterwards would make every past booking's
+  // price a thing that could still change. This is a separate debt — see
+  // utils/overdueReturns.js for the sum, which is the terms' own.
+  lateFee: {
+    days: { type: Number, default: 0 },
+    amount: { type: Number, default: 0 },
+    collectedAt: { type: Date, default: null },
+  },
   // Highest escalation already sent to admin about this booking sitting
   // unconfirmed — see utils/pendingReminders.js. Stored so each tier fires
   // once rather than on every request that triggers the sweep.

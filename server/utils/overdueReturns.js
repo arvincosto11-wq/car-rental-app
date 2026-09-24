@@ -19,10 +19,29 @@ export const isOverdue = (booking, now = new Date()) =>
   && !booking.returnedAt
   && new Date(booking.endDate) < now;
 
-// Whole days past the return time, counted from one. An hour late and a
-// day late are the same thing to a client who needs the car tomorrow.
-export const daysOverdue = (booking, now = new Date()) =>
-  Math.max(1, Math.ceil((now.getTime() - new Date(booking.endDate).getTime()) / (24 * 60 * 60 * 1000)));
+// Whole days past the return time, rounded up, and zero when it was on
+// time. An hour late and a day late are the same thing to whoever needed
+// the car this morning @ and it is the terms' own unit: "one day's rental
+// rate per day of delay".
+export const daysLate = (booking, at) => {
+  if (!at || !booking?.endDate) return 0;
+  const ms = new Date(at).getTime() - new Date(booking.endDate).getTime();
+  return ms > 0 ? Math.ceil(ms / (24 * 60 * 60 * 1000)) : 0;
+};
+
+// How late it is right now, for chasing somebody who still has the vehicle.
+// Never zero: this is only ever asked about a booking already past its time.
+export const daysOverdue = (booking, now = new Date()) => Math.max(1, daysLate(booking, now));
+
+// Terms and Conditions, section 8: "Late returns will be charged an
+// additional fee equivalent to one day's rental rate per day of delay."
+// Worked out from the clause rather than typed, for the same reason the
+// cancellation reasons decide their own refunds @ a figure somebody enters
+// by hand is a figure nobody can check.
+export function lateFeeFor(booking, pricePerDay) {
+  const days = daysLate(booking, booking.returnedAt);
+  return { days, amount: days * (Number(pricePerDay) || 0) };
+}
 
 // Chases anything still out. Told once per Philippine calendar day, not once
 // per page load — this runs on every admin fetch, and an inbox filling up

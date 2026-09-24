@@ -853,6 +853,12 @@ const MyBookings = () => {
       fontSize: '11.5px', lineHeight: 1.5, margin: 0,
       color: isDark ? '#fca5a5' : '#b91c1c',
     },
+    lateFeeNote: {
+      margin: '10px 0 0', padding: '10px 12px', borderRadius: '10px',
+      fontSize: '12px', fontWeight: '600', lineHeight: 1.5,
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      color: isDark ? '#f87171' : '#991b1b',
+    },
     extendedNote: {
       fontSize: '11px', fontWeight: '700', lineHeight: 1.4, marginTop: '4px',
       color: isDark ? GOLD_DARK : GOLD,
@@ -1220,6 +1226,16 @@ const MyBookings = () => {
                           {retryingPaymentId === booking._id ? 'Redirecting...' : 'Retry GCash Payment'}
                         </button>
                       </div>
+                )}
+                {/* They should not have to hear it from us first. The sum
+                    is the clause, not a figure somebody chose. */}
+                {booking.status === 'completed' && booking.lateFee?.days > 0 && (
+                  <div style={styles.lateFeeNote}>
+                    Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late.
+                    {' '}A late fee of ₱{booking.lateFee.amount.toLocaleString()} applies — one day&apos;s rental
+                    rate per day of delay, per our Terms and Conditions.
+                    {booking.lateFee.collectedAt ? ' This has been settled.' : ' Please settle it with us.'}
+                  </div>
                 )}
                 {booking.status === 'completed' && (
                     <div style={{ ...styles.actionsIndent, alignItems: 'center' }}>

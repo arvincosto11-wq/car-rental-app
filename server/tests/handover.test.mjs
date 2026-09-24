@@ -1,7 +1,7 @@
 import { suite, group, check } from './harness.mjs';
 import { hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom } from '../utils/phTime.js';
-import { isOverdue, daysOverdue } from '../utils/overdueReturns.js';
+import { isOverdue, daysOverdue, daysLate, lateFeeFor } from '../utils/overdueReturns.js';
 import { occupiedSpan } from '../utils/availability.js';
 
 // A confirmed booking whose pickup hour has already gone by.
@@ -84,4 +84,29 @@ export default function run() {
   check('a returned booking keeps its own end', occupiedSpan({ ...ended, returnedAt: now }, now).end.getTime(), ended.endDate.getTime());
   check('so does one nobody collected', occupiedSpan({ ...ended, collectedAt: null }, now).end.getTime(), ended.endDate.getTime());
   check('and a trip still running is untouched', occupiedSpan({ ...ended, endDate: instantFrom('2026-09-30', 7) }, now).end.getTime(), instantFrom('2026-09-30', 7).getTime());
+
+  group('what being late costs, out of the terms rather than out of the air');
+  // Terms and Conditions, section 8: "one day's rental rate per day of
+  // delay". It was written down, agreed to, and implemented nowhere — so
+  // collecting it meant noticing, counting and multiplying by hand.
+  const back = (at) => ({ ...ended, status: 'completed', returnedAt: at });
+  const RATE = 2500;
+
+  check('on time costs nothing', lateFeeFor(back(instantFrom('2026-09-22', 7)), RATE).amount, 0);
+  check('early costs nothing', lateFeeFor(back(instantFrom('2026-09-21', 7)), RATE).amount, 0);
+  // Part of a day is a day: the vehicle could not be let to anybody else
+  // that morning either.
+  check('an hour late is one day', lateFeeFor(back(new Date('2026-09-22T08:00:00+08:00')), RATE).days, 1);
+  check('and costs one day', lateFeeFor(back(new Date('2026-09-22T08:00:00+08:00')), RATE).amount, 2500);
+  check('exactly 24 hours is still one day', lateFeeFor(back(instantFrom('2026-09-23', 7)), RATE).days, 1);
+  check('an hour past that is two', lateFeeFor(back(new Date('2026-09-23T08:00:00+08:00')), RATE).days, 2);
+  check('three days at the daily rate', lateFeeFor(back(instantFrom('2026-09-25', 7)), RATE).amount, 7500);
+
+  group('a fee is never invented from missing numbers');
+  // A vehicle still out has no return time, and a car with no rate must not
+  // silently become a free late return that reads as deliberate.
+  check('never returned, nothing owed yet', lateFeeFor(ended, RATE).amount, 0);
+  check('no rate on the vehicle', lateFeeFor(back(instantFrom('2026-09-25', 7)), undefined).amount, 0);
+  check('but the days are still counted', lateFeeFor(back(instantFrom('2026-09-25', 7)), undefined).days, 3);
+  check('and daysLate agrees with daysOverdue mid-delay', daysLate(ended, now), daysOverdue(ended, now));
 }
