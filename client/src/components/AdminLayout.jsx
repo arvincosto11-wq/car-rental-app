@@ -26,6 +26,7 @@ const ConsignmentsIcon = () => <NavIcon><path d="M3 12l3-7h12l3 7" /><path d="M3
 const AvailabilityIcon = () => <NavIcon><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" /></NavIcon>;
 const ReviewsIcon = () => <NavIcon><polygon points="12 2 15 9 22 9.5 16.5 14.3 18.3 21 12 17.2 5.7 21 7.5 14.3 2 9.5 9 9" /></NavIcon>;
 const AccountIcon = () => <NavIcon><circle cx="12" cy="8" r="4" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></NavIcon>;
+const PickupIcon = () => <NavIcon><path d="M15 7h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2" /><rect x="9" y="3" width="6" height="5" rx="1.5" /><polyline points="9 13 11 15 15 11" /></NavIcon>;
 const ExpiringDocsIcon = () => <NavIcon><path d="M6 2h9l4 4v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" /><path d="M14 2v5h5" /><line x1="12" y1="12" x2="12" y2="16" /><line x1="12" y1="18.5" x2="12" y2="18.5" /></NavIcon>;
 
 const AdminLayout = ({ children, activePage }) => {
@@ -73,6 +74,7 @@ const AdminLayout = ({ children, activePage }) => {
         { to: '/admin', label: 'Dashboard', Icon: DashboardIcon },
         { to: '/admin/analytics', label: 'Analytics', Icon: AnalyticsIcon },
         { to: '/admin/manage-bookings', label: 'Manage Bookings', Icon: BookingsIcon },
+        { to: '/admin/pickups', label: 'Pickup Desk', Icon: PickupIcon },
       ],
     },
     {

@@ -31,6 +31,7 @@ const AddCar = lazy(() => import('./pages/admin/AddCar'));
 const ManageCars = lazy(() => import('./pages/admin/ManageCars'));
 const ManageArchivedCars = lazy(() => import('./pages/admin/ManageArchivedCars'));
 const ManageBookings = lazy(() => import('./pages/admin/ManageBookings'));
+const PickupDesk = lazy(() => import('./pages/admin/PickupDesk'));
 const BookingsCalendar = lazy(() => import('./pages/admin/BookingsCalendar'));
 const ManageClients = lazy(() => import('./pages/admin/ManageClients'));
 const ManageConsignments = lazy(() => import('./pages/admin/ManageConsignments'));
@@ -196,6 +197,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <ManageBookings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/pickups"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <PickupDesk />
                 </ProtectedRoute>
               }
             />

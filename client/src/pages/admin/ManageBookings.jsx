@@ -40,6 +40,14 @@ const isOverdue = (b) => isOnTrip(b) && new Date(b.endDate) < new Date();
 const isDueBack = (b) => isOnTrip(b) && !isOverdue(b)
   && new Date(b.endDate) <= new Date(new Date().getTime() + 24 * 60 * 60 * 1000);
 const daysOverdue = (b) => Math.max(1, Math.ceil((Date.now() - new Date(b.endDate).getTime()) / (24 * 60 * 60 * 1000)));
+// Confirmed was one label over four situations, each wanting a different
+// thing from you: nothing yet, check them in, nothing again, chase them.
+// Splitting it is what lets a row show the one action that belongs to it
+// instead of every action a booking can ever have.
+const hoursTo = (d) => (new Date(d).getTime() - Date.now()) / (1000 * 60 * 60);
+const isAwaitingPickup = (b) => b.status === 'confirmed' && !b.collectedAt;
+const isForPickup = (b) => isAwaitingPickup(b) && hoursTo(b.startDate) <= EARLY_COLLECT_HOURS;
+const isUpcoming = (b) => isAwaitingPickup(b) && hoursTo(b.startDate) > EARLY_COLLECT_HOURS;
 const PAGE_SIZE = 10;
 
 // Mirrors refundAmountFor in server/utils/cancelBooking.js. The server
@@ -316,11 +324,15 @@ const ManageBookings = () => {
   const paidBookings = bookings.filter((b) => b.payment === 'paid');
   const overdueBookings = paidBookings.filter(isOverdue);
   const dueBackBookings = paidBookings.filter(isDueBack);
+  // In the order a booking lives through them, so the row of tabs is the
+  // journey rather than a bag of labels.
   const statusTabs = [
     { value: 'all', label: 'All', count: paidBookings.length },
     { value: 'pending', label: 'Pending', count: paidBookings.filter((b) => b.status === 'pending').length },
-    { value: 'confirmed', label: 'Confirmed', count: paidBookings.filter((b) => b.status === 'confirmed').length },
-    { value: 'on_trip', label: 'On Trip', count: paidBookings.filter(isOnTrip).length },
+    { value: 'upcoming', label: 'Upcoming', count: paidBookings.filter(isUpcoming).length },
+    { value: 'for_pickup', label: 'For Pickup', count: paidBookings.filter(isForPickup).length },
+    { value: 'on_trip', label: 'On Trip', count: paidBookings.filter((b) => isOnTrip(b) && !isOverdue(b)).length },
+    { value: 'overdue', label: 'Overdue', count: overdueBookings.length },
     { value: 'completed', label: 'Completed', count: paidBookings.filter((b) => b.status === 'completed').length },
     { value: 'cancelled', label: 'Cancelled', count: paidBookings.filter((b) => b.status === 'cancelled').length },
   ];
@@ -329,8 +341,17 @@ const ManageBookings = () => {
     // Unpaid bookings (checkout never completed) aren't shown at all —
     // there's nothing for admin to do with one until it's actually paid.
     if (b.payment !== 'paid') return false;
+    const stage = {
+      upcoming: isUpcoming,
+      for_pickup: isForPickup,
+      // On Trip is the calm one: out, and not yet a problem. Overdue has
+      // its own tab because it is the only one of these that needs you to
+      // do something today.
+      on_trip: (x) => isOnTrip(x) && !isOverdue(x),
+      overdue: isOverdue,
+    }[statusFilter];
     const matchStatus = statusFilter === 'all' ? true
-      : statusFilter === 'on_trip' ? isOnTrip(b)
+      : stage ? stage(b)
         : b.status === statusFilter;
     const matchReschedule = !rescheduleOnly || b.rescheduleRequest?.status === 'pending';
     const q = search.trim().toLowerCase();
@@ -409,6 +430,17 @@ const ManageBookings = () => {
     pickedUpBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '700' },
     overdueNote: { fontSize: '11px', fontWeight: '800', color: isDark ? '#f87171' : '#dc2626' },
     pickedUpNote: { fontSize: '11px', fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
+    deskNote: {
+      display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
+      marginBottom: '14px', padding: '12px 16px', borderRadius: '12px', fontSize: '13px',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      background: isDark ? GOLD_TINT_DARK : GOLD_TINT,
+      color: isDark ? '#e4e6eb' : '#7c4a03',
+    },
+    deskBtn: {
+      padding: '7px 14px', fontSize: '12px', fontWeight: '700', border: 'none', borderRadius: '8px',
+      cursor: 'pointer', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+    },
     outPanel: (late) => ({
       marginBottom: '18px', padding: '16px 18px', borderRadius: '14px',
       border: `1px solid ${late ? (isDark ? '#f87171' : '#dc2626') : (isDark ? GOLD_DARK : GOLD)}`,
@@ -642,9 +674,21 @@ const ManageBookings = () => {
           <button
             type="button"
             style={s.outPanelBtn}
-            onClick={() => { setStatusFilter('on_trip'); setPage(1); }}
+            onClick={() => { setStatusFilter(overdueBookings.length > 0 ? 'overdue' : 'on_trip'); setPage(1); }}
           >
             Show these bookings
+          </button>
+        </div>
+      )}
+
+      {/* This list is for looking things up. Actually working the counter
+          is a different job, and it now has a screen shaped for it. */}
+      {statusFilter === 'for_pickup' && (
+        <div style={s.deskNote}>
+          Checking clients in? The <strong>Pickup Desk</strong> shows each one&apos;s documents beside what
+          they should be carrying.
+          <button type="button" style={s.deskBtn} onClick={() => navigate('/admin/pickups')}>
+            Open Pickup Desk
           </button>
         </div>
       )}
