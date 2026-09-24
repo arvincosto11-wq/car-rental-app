@@ -19,6 +19,7 @@ import { bookingAwaitingDecision, timeLeftLabel } from '../../utils/offerWindow'
 import { formatMoment, phYmd } from '../../utils/phTime';
 import { FUEL_STEPS, fuelLabel, fuelShortfallLabel } from '../../utils/fuel';
 import ConditionPhotos from '../../components/ConditionPhotos';
+import { licenceProblem, idProblem } from '../../utils/documents';
 
 const LOW_RATING_THRESHOLD = 3;
 // How long after the pickup time a no-show can still be recorded. Mirrors
@@ -30,6 +31,22 @@ const NO_SHOW_WINDOW_HOURS = 24;
 const EARLY_COLLECT_HOURS = 2;
 const DASH_JS = '—';
 const peso = (n) => `\u20b1${(n || 0).toLocaleString()}`;
+
+// Papers that will not last the booking. Only worth saying while something
+// can still be done about it, which means before the trip is over.
+const docWarning = (b) => {
+  if (!['pending', 'confirmed'].includes(b.status)) return '';
+  const on = (d) => new Date(d).toLocaleDateString();
+  const lic = licenceProblem(b.user, { bookingType: b.bookingType, endDate: b.endDate });
+  if (lic?.kind === 'missing') return "No driver's licence on file for a self-drive booking.";
+  if (lic?.kind === 'expired') return `Licence expired ${on(lic.expiry)} — they cannot drive this.`;
+  if (lic?.kind === 'expires_during') return `Licence expires ${on(lic.expiry)}, before this trip ends.`;
+  const id = idProblem(b.user, { endDate: b.endDate });
+  if (id?.kind === 'expired') return `Their ID expired ${on(id.expiry)}.`;
+  if (id?.kind === 'expires_during') return `Their ID expires ${on(id.expiry)}, before this trip ends.`;
+  return '';
+};
+
 // Confirmed covers three different situations @ booked for next month, due
 // today, and gone. Only the last one means a vehicle is physically not here,
 // which is the thing worth being able to see on its own.
@@ -183,6 +200,22 @@ const ManageBookings = () => {
     // what gets confirmed, in the words of the policy it comes from.
     const refund = previewRefund(cancelTarget, cancelForm.reason);
     const paid = cancelTarget?.amountPaid || 0;
+    // Every reason that keeps money back should have to be meant. This one
+    // refunds nothing once the booking is more than a day old, and went
+    // through on a single click while the other two asked first — so one
+    // slip down the reason list cancelled somebody's booking and returned
+    // nothing, silently.
+    if (cancelForm.reason === 'client_requested' && paid > 0 && refund < paid) {
+      const ok = await confirm(
+        refund > 0
+          ? `This client paid ${peso(paid)} and will get ${peso(refund)} back under the refund policy, `
+            + `measured from when they booked. Cancelling can't be undone.`
+          : `This booking is more than 24 hours old, so under the refund policy this client gets nothing `
+            + `back of the ${peso(paid)} they paid. Cancelling can't be undone.`,
+        { confirmLabel: 'Yes, cancel the booking', cancelLabel: 'Go back' }
+      );
+      if (!ok) return;
+    }
     if (cancelForm.reason === 'terms_not_met' && paid > 0) {
       const ok = await confirm(
         refund > 0
@@ -518,6 +551,10 @@ const ManageBookings = () => {
       border: `1px solid ${isDark ? GOLD_DARK : GOLD}`, background: 'transparent', color: isDark ? GOLD_DARK : GOLD,
     },
     feeSettled: { fontSize: '11px', fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
+    docWarn: {
+      fontSize: '11px', fontWeight: '700', lineHeight: 1.4, marginTop: '4px', maxWidth: '190px',
+      color: isDark ? '#f87171' : '#b91c1c',
+    },
     overdueNote: { fontSize: '11px', fontWeight: '800', color: isDark ? '#f87171' : '#dc2626' },
     pickedUpNote: { fontSize: '11px', fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
     deskNote: {
@@ -843,6 +880,12 @@ const ManageBookings = () => {
                   </div>
                   <div style={s.clientMeta}>{booking.user?.email}</div>
                   <div style={s.clientMeta}>ID: {booking.user?._id?.slice(-6) || '—'}</div>
+                  {/* Asked before you accept, while it can still be fixed.
+                      A licence that runs out mid-trip is fine on the day
+                      they booked and useless on the day they drive. */}
+                  {docWarning(booking) && (
+                    <div style={s.docWarn}>{docWarning(booking)}</div>
+                  )}
                   {booking.user?.ratingCount > 0 && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                       <StarRating value={booking.user.avgRating} size={11} readOnly />

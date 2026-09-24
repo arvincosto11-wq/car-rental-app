@@ -4,6 +4,7 @@ import { instantFrom } from '../utils/phTime.js';
 import { isOverdue, daysOverdue, daysLate, lateFeeFor } from '../utils/overdueReturns.js';
 import { occupiedSpan } from '../utils/availability.js';
 import { fuelShortfall, fuelShortfallLabel, isFuelLevel, fuelLabel } from '../utils/fuel.js';
+import { licenceProblem, idProblem } from '../utils/documents.js';
 
 // A confirmed booking whose pickup hour has already gone by.
 const pickupWasThisMorning = {
@@ -136,4 +137,36 @@ export default function run() {
   check('half an eighth is not', isFuelLevel(3.5), false);
   check('nothing is not', isFuelLevel(null), false);
   check('and empty still reads as Empty', fuelLabel(0), 'Empty');
+
+  group('papers have to outlast the booking, not just today');
+  // The old check asked "is the licence valid now?", which let somebody book
+  // a trip their licence expires halfway through and find out at the counter
+  // — where nobody can renew anything.
+  const today = new Date('2026-09-25T10:00:00+08:00');
+  const driver = (expiry) => ({ licenseNumber: 'N02-19-004417', licenseExpiry: expiry });
+  const trip = (endYmd) => ({ bookingType: 'self-drive', endDate: instantFrom(endYmd, 7) });
+
+  check('valid past the return', licenceProblem(driver(instantFrom('2027-01-01', 7)), trip('2026-09-28'), today), null);
+  check('expires mid-trip', licenceProblem(driver(instantFrom('2026-09-26', 7)), trip('2026-09-28'), today).kind, 'expires_during');
+  check('already expired', licenceProblem(driver(instantFrom('2026-09-20', 7)), trip('2026-09-28'), today).kind, 'expired');
+  check('none on file', licenceProblem({}, trip('2026-09-28'), today).kind, 'missing');
+  // A licence is good for the whole of its expiry date, so one expiring on
+  // the return day still covers the trip. Compared as Philippine calendar
+  // days: a UTC comparison retires it eight hours early.
+  check('expires on the return day itself', licenceProblem(driver(instantFrom('2026-09-28', 7)), trip('2026-09-28'), today), null);
+  check('expires today, trip ends today', licenceProblem(driver(instantFrom('2026-09-25', 7)), trip('2026-09-25'), today), null);
+
+  group("a driver's licence is only asked of the person driving");
+  // With-driver bookings never ask. It is not their licence doing the work,
+  // and refusing them over it would turn a rule about safety into paperwork.
+  check('with-driver, no licence at all', licenceProblem({}, { bookingType: 'with-driver', endDate: instantFrom('2026-09-28', 7) }, today), null);
+  check('with-driver, expired licence', licenceProblem(driver(instantFrom('2020-01-01', 7)), { bookingType: 'with-driver', endDate: instantFrom('2026-09-28', 7) }, today), null);
+
+  group('an ID is warned about, never refused over');
+  // The terms ask for two IDs at the counter, so one expiring on file is
+  // something to raise rather than something to block a booking over. The
+  // rule still has to spot it.
+  check('outlasts the trip', idProblem({ validIdExpiry: instantFrom('2030-01-01', 7) }, { endDate: instantFrom('2026-09-28', 7) }, today), null);
+  check('expires mid-trip', idProblem({ validIdExpiry: instantFrom('2026-09-26', 7) }, { endDate: instantFrom('2026-09-28', 7) }, today).kind, 'expires_during');
+  check('none on file is not a problem here', idProblem({}, { endDate: instantFrom('2026-09-28', 7) }, today), null);
 }

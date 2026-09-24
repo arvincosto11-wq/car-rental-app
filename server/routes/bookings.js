@@ -16,6 +16,7 @@ import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, ha
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
 import { notifyOverdueReturns, isOverdue, lateFeeFor } from '../utils/overdueReturns.js';
 import { isFuelLevel, fuelShortfall, fuelShortfallLabel } from '../utils/fuel.js';
+import { licenceProblem, licenceMessage } from '../utils/documents.js';
 
 const router = express.Router();
 
@@ -198,15 +199,16 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({ message: 'Your valid ID has expired. Please update it in your Profile before booking.' });
     }
 
-    // Self-drive additionally requires a valid, unexpired driver's license —
-    // with-driver bookings don't, since the renter isn't the one driving.
-    if (bookingType === 'self-drive') {
-      if (!currentUser.licenseNumber || !currentUser.licenseExpiry) {
-        return res.status(400).json({ message: "A driver's license is required to book self-drive. Please add it in your Profile." });
-      }
-      if (new Date(currentUser.licenseExpiry) < new Date()) {
-        return res.status(400).json({ message: "Your driver's license has expired. Please update it in your Profile." });
-      }
+    // Self-drive additionally requires a driver's licence that lasts as long
+    // as the booking does — with-driver bookings don't ask, since the renter
+    // isn't the one driving.
+    //
+    // It used to ask only whether the licence was valid today, which let
+    // somebody book a trip their licence expires halfway through and only
+    // discover it at the counter, where nothing can be done about it.
+    const licence = licenceProblem(currentUser, { bookingType, endDate: requestedEnd });
+    if (licence) {
+      return res.status(400).json({ message: licenceMessage(licence) });
     }
 
     const start = requestedStart;
@@ -289,7 +291,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
     await expireAdjustOffers();
     const bookings = await Booking.find()
       .populate('car')
-      .populate('user', 'name email avgRating ratingCount')
+      .populate('user', 'name email avgRating ratingCount licenseExpiry validIdExpiry licenseNumber')
       .sort({ createdAt: -1 });
     res.json(bookings);
   } catch (err) {
@@ -549,6 +551,23 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         );
       } else {
         await notifyUser(booking.user, 'Vehicle Returned', 'Your vehicle return has been recorded. You can now rate your experience.', '/my-bookings/rate');
+      }
+
+      // The owner hears about their own vehicle coming back marked. Facts
+      // only @ what happened and what it looks like. What it was charged for
+      // is left out until the revenue split is settled, because naming an
+      // amount would answer a question nobody has decided yet.
+      const carForOwner = await Car.findById(booking.car).select('brand model owner').lean();
+      if (carForOwner?.owner && booking.condition?.damageCharge > 0) {
+        await notifyUser(
+          carForOwner.owner,
+          'Damage recorded on your vehicle',
+          `${carForOwner.brand} ${carForOwner.model} came back with damage recorded at return`
+            + `${booking.condition.atReturn?.note ? `: ${booking.condition.atReturn.note}` : '.'} `
+            + 'Photos from both ends of the rental are on the booking.',
+          '/consignor',
+          { email: true }
+        );
       }
     }
 

@@ -21,6 +21,7 @@ import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 import { isPromoVisible, promoOffer, promoDateRange, promoCoversRange, promoDiscountOn } from '../utils/promo';
 import api from '../api';
+import { licenceProblem, licenceMessage } from '../utils/documents';
 
 // Booking-modal icons — hand-drawn inline SVG, like the rest of the site.
 const ModalIcon = ({ children, size = 17 }) => (
@@ -174,6 +175,12 @@ const CarDetail = () => {
   const isSelfDriveEligible = !!profile?.idVerified;
   const supportedBookingTypes = car?.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver'];
   const selfDriveBlocked = bookingType === 'self-drive' && !isSelfDriveEligible;
+  // Asked here rather than at the counter. A licence that runs out mid-trip
+  // is fine today and useless on the day it matters, and nobody can renew
+  // one while a client stands at the desk waiting for keys.
+  const licenceIssue = endDate
+    ? licenceProblem(profile, { bookingType, endDate: new Date(endDate) })
+    : null;
 
   const totalDays = startDate && endDate
     ? Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24))
@@ -301,6 +308,9 @@ const CarDetail = () => {
   };
 
   const goToConfirmNext = () => {
+    if (licenceIssue) {
+      return setError(licenceMessage(licenceIssue));
+    }
     if (selfDriveBlocked) {
       return setError("Self-drive isn't available on your account yet — see the notice above for what's needed.");
     }
@@ -901,6 +911,13 @@ const CarDetail = () => {
                           <Link to="/profile" style={{ color: isDark ? GOLD_DARK : GOLD, fontWeight: '700' }}>Profile</Link>.
                         </span>
                       </p>
+                    )}
+
+                    {licenceIssue && (
+                      <div style={s.licenseBox}>
+                        <p style={s.licenseNote}>{licenceMessage(licenceIssue)}</p>
+                        <Link to="/profile" style={s.licenseLink}>Go to Profile</Link>
+                      </div>
                     )}
 
                     {selfDriveBlocked && (

@@ -11,8 +11,17 @@ import { ownerEarningFor, adminCoveredFor, isPromoVisible } from '../../utils/pr
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
+import { formatMoment } from '../../utils/phTime';
+import { fuelLabel } from '../../utils/fuel';
 
 
+
+
+// Out on the road right now, and whether it should have been back by now.
+// Mirrors the server's own rule; this only decides what the owner is shown.
+const isOut = (b) => b.status === 'confirmed' && !!b.collectedAt && !b.returnedAt;
+const overdueNow = (b) => isOut(b) && new Date(b.endDate) < new Date();
+const daysOverdue = (b) => Math.max(1, Math.ceil((Date.now() - new Date(b.endDate).getTime()) / (24 * 60 * 60 * 1000)));
 
 const formatPayment = (payment) => {
   if (payment === 'gcash_pending') return 'GCash pending';
@@ -248,6 +257,14 @@ const ConsignorDashboard = () => {
       fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(37,99,235,0.35)' : 'none',
     },
     carCell: { display: 'flex', alignItems: 'center', gap: '10px' },
+    tripLine: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '4px', lineHeight: 1.45 },
+    tripOut: { fontSize: '11px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, marginTop: '3px' },
+    tripLate: { fontSize: '11px', fontWeight: '700', color: isDark ? '#f87171' : '#b91c1c', marginTop: '3px', lineHeight: 1.45 },
+    tripPhotos: { display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '6px' },
+    tripPhoto: {
+      width: '52px', height: '40px', objectFit: 'cover', borderRadius: '6px', cursor: 'zoom-in',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
     clientName: { fontWeight: '600', fontSize: '13px' },
     clientMeta: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
     carThumb: { width: '44px', height: '32px', background: isDark ? '#3a3b3c' : '#f3f4f6', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 },
@@ -441,7 +458,53 @@ const ConsignorDashboard = () => {
                       <span>{b.car?.brand} {b.car?.model}</span>
                     </div>
                   </td>
-                  <td style={s.td}>{new Date(b.startDate).toLocaleDateString()} to {new Date(b.endDate).toLocaleDateString()}</td>
+                  <td style={s.td}>
+                    {new Date(b.startDate).toLocaleDateString()} to {new Date(b.endDate).toLocaleDateString()}
+                    {/* What actually happened to their vehicle. It is their
+                        asset: it went out, it came back, and until now the
+                        person who owns it was the only one told nothing. */}
+                    {b.collectedAt && (
+                      <div style={s.tripLine}>
+                        Out {formatMoment(b.collectedAt, true, { month: 'numeric', day: 'numeric' })}
+                        {b.fuel?.atPickup !== null && b.fuel?.atPickup !== undefined ? ` — ${fuelLabel(b.fuel.atPickup)}` : ''}
+                        {b.returnedAt
+                          ? ` · back ${formatMoment(b.returnedAt, true, { month: 'numeric', day: 'numeric' })}`
+                            + (b.fuel?.atReturn !== null && b.fuel?.atReturn !== undefined ? ` — ${fuelLabel(b.fuel.atReturn)}` : '')
+                          : ''}
+                      </div>
+                    )}
+                    {isOut(b) && (
+                      <div style={overdueNow(b) ? s.tripLate : s.tripOut}>
+                        {overdueNow(b)
+                          ? `Still out · ${daysOverdue(b)} day${daysOverdue(b) === 1 ? '' : 's'} past its return`
+                          : 'Currently out with the client'}
+                      </div>
+                    )}
+                    {b.lateFee?.days > 0 && (
+                      <div style={s.tripLate}>
+                        Came back {b.lateFee.days} day{b.lateFee.days === 1 ? '' : 's'} late
+                      </div>
+                    )}
+                    {b.condition?.damageCharge > 0 && (
+                      <div style={s.tripLate}>
+                        Damage recorded on return
+                        {b.condition.atReturn?.note ? `: ${b.condition.atReturn.note}` : ''}
+                      </div>
+                    )}
+                    {(b.condition?.atPickup?.photos?.length > 0 || b.condition?.atReturn?.photos?.length > 0) && (
+                      <div style={s.tripPhotos}>
+                        {[...(b.condition.atPickup?.photos || []), ...(b.condition.atReturn?.photos || [])].map((url, i) => (
+                          <img
+                            key={url}
+                            src={url}
+                            alt={`Vehicle condition ${i + 1}`}
+                            style={s.tripPhoto}
+                            onClick={() => window.open(url, '_blank', 'noopener')}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </td>
                   <td style={s.td}>
                     ₱{ownerEarningFor(b).toLocaleString()}
                     {adminCoveredFor(b) > 0 && (

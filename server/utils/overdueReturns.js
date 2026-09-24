@@ -59,7 +59,7 @@ export async function notifyOverdueReturns({ userId = null } = {}) {
   };
   if (userId) query.user = userId;
 
-  const late = await Booking.find(query).populate('car', 'brand model');
+  const late = await Booking.find(query).populate('car', 'brand model owner');
 
   for (const booking of late) {
     const days = daysOverdue(booking, now);
@@ -78,6 +78,19 @@ export async function notifyOverdueReturns({ userId = null } = {}) {
       // they may never open is not enough.
       { email: true }
     );
+
+    // The person who owns the car. It is their asset sitting in a stranger's
+    // garage past its return date, and until now they were the only party
+    // nobody told.
+    if (booking.car?.owner) {
+      await notifyUser(
+        booking.car.owner,
+        'Your vehicle is overdue',
+        `${car} has not been returned. It was due back on ${formatMoment(booking.endDate, booking.hasPickupTime)}, `
+          + `${days} day${days === 1 ? '' : 's'} ago. We are chasing the client and the dates stay blocked until it is back.`,
+        '/consignor'
+      );
+    }
 
     await notifyAdmins(
       'Vehicle not returned',
