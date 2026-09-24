@@ -1,3 +1,5 @@
 node_modules
 .env
 dist
+# Snapshots the browser-automation tool drops while testing the live site.
+.playwright-mcp
