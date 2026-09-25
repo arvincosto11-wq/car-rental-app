@@ -46,6 +46,10 @@ const bookingSchema = new mongoose.Schema({
   // fine: most late returns are somebody who lost track of the day, not
   // somebody chancing it.
   dueSoonNotifiedOn: { type: String, default: '' },
+  // And the day this booking was warned that the vehicle it is waiting for
+  // has not come back yet. Kept on the booking that is about to be let down,
+  // not on the one that is late.
+  delayWarnedOn: { type: String, default: '' },
   // The last thing a person did to this booking, and who. Position in the
   // lists is decided by urgency, not by recency — a booking moved for March
   // should not outrank today's pickup just because somebody touched it — so
@@ -67,6 +71,12 @@ const bookingSchema = new mongoose.Schema({
     days: { type: Number, default: 0 },
     amount: { type: Number, default: 0 },
     collectedAt: { type: Date, default: null },
+    // Lateness already paid for by extending. Without this, extending would
+    // move the return date into the future and the days somebody was
+    // already late would simply vanish @ making an extension the cheapest
+    // way to dodge the fine rather than the honest way to put it right.
+    carriedDays: { type: Number, default: 0 },
+    carriedAmount: { type: Number, default: 0 },
   },
   // The gauge when the keys went over and when they came back, in eighths
   // of a tank — see utils/fuel.js. Null means nobody read it, which is not
@@ -221,6 +231,10 @@ const bookingSchema = new mongoose.Schema({
     discountAmount: { type: Number, default: 0 },
     totalPrice: { type: Number, default: 0 },
     promoLabel: { type: String, default: '' },
+    // The lateness this extension settles, held here until the money lands
+    // so that abandoning the payment leaves the fine exactly where it was.
+    lateDays: { type: Number, default: 0 },
+    lateAmount: { type: Number, default: 0 },
   },
   // Further GCash payments taken on this booking after the first — at the
   // moment only the difference when a client moves to dates a promo

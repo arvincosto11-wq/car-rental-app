@@ -1,7 +1,7 @@
 import { suite, group, check } from './harness.mjs';
 import { hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom } from '../utils/phTime.js';
-import { isOverdue, daysOverdue, daysLate, lateFeeFor, isDueSoon } from '../utils/overdueReturns.js';
+import { isOverdue, daysOverdue, daysLate, lateFeeFor, isDueSoon, carriedLateFee } from '../utils/overdueReturns.js';
 import { occupiedSpan } from '../utils/availability.js';
 import { fuelShortfall, fuelShortfallLabel, isFuelLevel, fuelLabel } from '../utils/fuel.js';
 import { licenceProblem, idProblem } from '../utils/documents.js';
@@ -227,4 +227,28 @@ export default function run() {
   check('already overdue is not due soon', isDueSoon({ ...running, endDate: instantFrom('2026-09-24', 17) }, noon25), false);
   check('never collected gets no reminder', isDueSoon({ ...running, collectedAt: null }, noon25), false);
   check('already back gets no reminder', isDueSoon({ ...running, returnedAt: noon25 }, noon25), false);
+
+  group('extending settles the lateness instead of erasing it');
+  // Extending moves the return date, and the days somebody was already late
+  // would vanish with it — making an extension the cheapest way to dodge
+  // the fine rather than the honest way to put it right.
+  const RATE2 = 1500;
+  check('half, because half is the arithmetic', carriedLateFee(2, RATE2), 1500);
+  check('nothing carried when nothing was late', carriedLateFee(0, RATE2), 0);
+  // Two days late, extend by one: half the fine plus a day's rent is 3,000
+  // — exactly what returning on the spot would have cost — and they get
+  // a day's use for it. Same money for the business, car properly booked.
+  check('costs the same as returning on the spot', carriedLateFee(2, RATE2) + RATE2, 2 * RATE2);
+
+  const after = {
+    endDate: instantFrom('2026-09-30', 7),
+    returnedAt: instantFrom('2026-09-30', 7),
+    lateFee: { carriedDays: 2, carriedAmount: 1500 },
+  };
+  check('settled lateness survives the new end date', lateFeeFor(after, RATE2).days, 2);
+  check('and so does what was paid for it', lateFeeFor(after, RATE2).amount, 1500);
+  // Late again after extending: both halves count.
+  const lateTwice = { ...after, returnedAt: instantFrom('2026-10-01', 7) };
+  check('new lateness stacks on the carried', lateFeeFor(lateTwice, RATE2).days, 3);
+  check('at full rate for the new days', lateFeeFor(lateTwice, RATE2).amount, 1500 + RATE2);
 }

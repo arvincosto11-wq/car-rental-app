@@ -38,9 +38,29 @@ export const daysOverdue = (booking, now = new Date()) => Math.max(1, daysLate(b
 // Worked out from the clause rather than typed, for the same reason the
 // cancellation reasons decide their own refunds @ a figure somebody enters
 // by hand is a figure nobody can check.
+// What a client who extends pays for the days they were already late.
+//
+// Half, and half is not arbitrary. The fine is one day's rental per day, so
+// a client two days late who extends by one pays half the fine plus a day's
+// rent @ exactly what returning on the spot would have cost @ and gets a
+// day's use for it. The business takes the same money and the vehicle stops
+// being unaccounted for, which is the whole point.
+export const EXTENSION_LATE_DISCOUNT = 0.5;
+
+export const carriedLateFee = (days, pricePerDay) =>
+  Math.round(days * (Number(pricePerDay) || 0) * EXTENSION_LATE_DISCOUNT);
+
 export function lateFeeFor(booking, pricePerDay) {
-  const days = daysLate(booking, booking.returnedAt);
-  return { days, amount: days * (Number(pricePerDay) || 0) };
+  // Days late against the return date as it stands now, plus any lateness
+  // already settled through an extension. The second half would otherwise
+  // disappear the moment the end date moved.
+  const fresh = daysLate(booking, booking.returnedAt);
+  const carriedDays = booking?.lateFee?.carriedDays || 0;
+  const carriedAmount = booking?.lateFee?.carriedAmount || 0;
+  return {
+    days: fresh + carriedDays,
+    amount: fresh * (Number(pricePerDay) || 0) + carriedAmount,
+  };
 }
 
 // How far ahead of the return a client is warned. A day is enough to change
@@ -90,6 +110,71 @@ export async function notifyUpcomingReturns({ userId = null } = {}) {
   }
 
   return due.length;
+}
+
+// How close the next booking has to be before an overdue vehicle stops being
+// a paperwork problem and becomes somebody's ruined afternoon. Half a day:
+// far enough ahead to ring people while it can still be sorted, near enough
+// that we are not frightening a client over a car two hours late for a trip
+// that starts on Thursday.
+export const COLLISION_HOURS = 12;
+
+// An overdue vehicle with somebody waiting for it.
+//
+// The blocking we do stops NEW bookings being made on a car that is out. It
+// does nothing about the ones already there, so the next client's booking
+// sits quietly in the calendar until they turn up to a vehicle that isn't
+// back. Nobody found out until the counter.
+//
+// Deliberately only a warning to both sides. Cancelling or moving that
+// client automatically would be wrong: the car might be twenty minutes
+// away, and only a person ringing another person can find that out.
+export async function warnOfCollidingBookings({ now = new Date() } = {}) {
+  const today = phYmd(now);
+  const late = await Booking.find({
+    status: 'confirmed',
+    collectedAt: { $ne: null },
+    returnedAt: null,
+    endDate: { $lt: now },
+  }).populate('car', 'brand model');
+
+  let warned = 0;
+  for (const booking of late) {
+    const next = await Booking.findOne({
+      car: booking.car?._id || booking.car,
+      _id: { $ne: booking._id },
+      status: { $in: ['pending', 'confirmed'] },
+      startDate: { $gte: booking.endDate, $lte: new Date(now.getTime() + COLLISION_HOURS * 60 * 60 * 1000) },
+      delayWarnedOn: { $ne: today },
+    }).sort({ startDate: 1 }).populate('user', 'name');
+    if (!next) continue;
+
+    const car = booking.car ? `${booking.car.brand} ${booking.car.model}` : 'A vehicle';
+    next.delayWarnedOn = today;
+    await next.save();
+    warned += 1;
+
+    await notifyAdmins(
+      'An overdue vehicle is booked again shortly',
+      `${car} is ${daysOverdue(booking, now)} day(s) overdue and ${next.user?.name || 'another client'} is `
+        + `booked to collect it at ${formatMoment(next.startDate, next.hasPickupTime)}. `
+        + 'Both clients need a call: this cannot be settled from a screen.',
+      '/admin/manage-bookings'
+    );
+
+    await notifyUser(
+      next.user?._id || next.user,
+      'Your vehicle may be delayed',
+      `The ${car} you have booked for ${formatMoment(next.startDate, next.hasPickupTime)} has not been `
+        + 'returned by the previous renter yet. We are chasing it and will contact you shortly. '
+        + 'If it cannot be ready in time we will offer you another vehicle or a full refund.',
+      '/my-bookings',
+      // They may be about to set off for a vehicle that is not there.
+      { email: true }
+    );
+  }
+
+  return warned;
 }
 
 // Chases anything still out. Told once per Philippine calendar day, not once

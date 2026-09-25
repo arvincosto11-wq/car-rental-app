@@ -14,7 +14,7 @@ import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS, reasonUna
 import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js';
 import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
-import { notifyOverdueReturns, notifyUpcomingReturns, isOverdue, lateFeeFor } from '../utils/overdueReturns.js';
+import { notifyOverdueReturns, notifyUpcomingReturns, warnOfCollidingBookings, isOverdue, lateFeeFor } from '../utils/overdueReturns.js';
 import { isFuelLevel } from '../utils/fuel.js';
 import { licenceProblem, licenceMessage } from '../utils/documents.js';
 import { byUrgency } from '../utils/priority.js';
@@ -292,6 +292,9 @@ router.get('/all', protect, adminOnly, async (req, res) => {
     await autoCompleteExpiredBookings();
     await notifyUpcomingReturns();
     await notifyOverdueReturns();
+    // Only from the admin list: this one wants admin to see it immediately,
+    // and it should not depend on a client happening to open the app.
+    await warnOfCollidingBookings();
     await remindStalePendingBookings();
     await expireAdjustOffers();
     const bookings = await Booking.find()

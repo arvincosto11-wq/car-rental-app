@@ -145,6 +145,18 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
       display: 'flex', justifyContent: 'space-between', gap: '14px',
       fontSize: '12.5px', marginBottom: '7px', color: isDark ? '#b0b3b8' : '#4b5563',
     },
+    lateBlock: {
+      margin: '10px 0', padding: '10px 12px', borderRadius: '10px',
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.3)' : '#fecaca'}`,
+    },
+    lateTitle: {
+      fontSize: '12.5px', fontWeight: '800', marginBottom: '6px',
+      color: isDark ? '#f87171' : '#991b1b',
+    },
+    lateStruck: { textDecoration: 'line-through', color: isDark ? '#8a8d91' : '#9ca3af' },
+    lateNow: { fontWeight: '800', color: isDark ? '#f87171' : '#991b1b' },
+    lateNote: { fontSize: '11px', marginTop: '6px', color: isDark ? '#b0b3b8' : '#6b7280' },
     rowStrong: {
       display: 'flex', justifyContent: 'space-between', gap: '14px',
       fontSize: '13.5px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a',
@@ -257,6 +269,28 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
               <span>Was</span>
               <span>{peso(quote.was.totalPrice)}</span>
             </div>
+
+            {/* Shown whole, then reduced, then charged. A fine that quietly
+                arrives at half price changes nobody's mind — and changing
+                minds is the entire reason for reducing it. */}
+            {quote.lateDays > 0 && (
+              <div style={s.lateBlock}>
+                <div style={s.lateTitle}>
+                  You are {quote.lateDays} day{quote.lateDays === 1 ? '' : 's'} overdue
+                </div>
+                <div style={s.row}>
+                  <span>Late fee owed</span>
+                  <span style={s.lateStruck}>{peso(quote.lateFeeFull)}</span>
+                </div>
+                <div style={s.row}>
+                  <span>Reduced for extending</span>
+                  <span style={s.lateNow}>{peso(quote.lateFeeDue)}</span>
+                </div>
+                <div style={s.lateNote}>
+                  Included below, so nothing is left outstanding once this is paid.
+                </div>
+              </div>
+            )}
             {options.length > 1 && (
               <div style={s.modeRow} role="group" aria-label="How to pay">
                 <button

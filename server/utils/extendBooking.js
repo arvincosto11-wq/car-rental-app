@@ -5,6 +5,7 @@ import { createGcashCheckout, paymongoFetch, refundOnePayment } from './paymongo
 import { notifyUser, notifyAdmins } from './notify.js';
 import { busySpans, bookingSpan, padded, overlaps } from './availability.js';
 import { recordActivity } from './priority.js';
+import { daysLate, carriedLateFee } from './overdueReturns.js';
 import {
   instantFrom, phYmd, phHour, addDays, daysBetween, turnaroundHoursFor, formatMoment,
 } from './phTime.js';
@@ -51,7 +52,15 @@ export const extendBlocker = (booking, now = new Date()) => {
   if (booking.refundStatus === 'requested') return 'Resolve your refund request before extending this booking.';
   if (booking.rescheduleRequest?.status === 'pending') return 'Resolve your reschedule request before extending this booking.';
   if (booking.adjustOffer?.status === 'open') return 'Choose new dates or a refund on this booking first.';
-  if (bookingSpan(booking).end <= now) return 'This booking has already ended. Please make a new one.';
+  // A client who still has the vehicle is not finished, they are late — and
+  // telling them to "make a new one" for the car they are sitting in, while
+  // charging them a day's rental for every day they keep it, blocks the one
+  // cooperative thing they could do. Only a booking whose vehicle actually
+  // came back, or never went out, is over.
+  const stillOut = !!booking.collectedAt && !booking.returnedAt;
+  if (!stillOut && bookingSpan(booking).end <= now) {
+    return 'This booking has already ended. Please make a new one.';
+  }
   return null;
 };
 
@@ -111,8 +120,18 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
   if (isNaN(newEnd.getTime())) return { error: 'Please choose a valid date.' };
   if (newEnd <= own.end) return { error: 'Pick a date after your current return date.' };
 
-  const extraDays = daysBetween(own.end, newEnd);
+  // Counted from whichever is later: their return date, or today. An
+  // overdue client must not be charged rental for days that have already
+  // passed AND a late fee for the same days.
+  const from = own.end > now ? own.end : now;
+  const extraDays = Math.max(1, daysBetween(from, newEnd));
   const newTotalDays = booking.totalDays + extraDays;
+
+  // Lateness they are carrying, and what extending settles it for. Shown
+  // whole so they can see the reduction rather than just a smaller number.
+  const lateDaysNow = daysLate(booking, now);
+  const lateFeeFull = lateDaysNow * car.pricePerDay;
+  const lateFeeDue = carriedLateFee(lateDaysNow, car.pricePerDay);
 
   // The whole booking, with its turnaround, has to fit where it is going.
   const { spans, turnaroundHours } = await busySpans(booking.car, { excludeBookingId: booking._id });
@@ -167,15 +186,22 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
     dueNow: due,
     balanceAtPickup: Math.max(priced.totalPrice - booking.amountPaid - due, 0),
   });
+  // The outstanding fine is settled here rather than left to the counter.
+  // They see the full figure and the reduction, and pay the reduced one as
+  // part of this, so they walk away owing nothing.
   const payment = {
     options: canSplit ? ['deposit', 'full'] : ['full'],
-    deposit: canSplit ? settled(Math.max(Math.ceil(priced.totalPrice * 0.2) - booking.amountPaid, 0)) : null,
-    full: settled(extensionCost),
+    deposit: canSplit ? settled(Math.max(Math.ceil(priced.totalPrice * 0.2) - booking.amountPaid, 0) + lateFeeDue) : null,
+    full: settled(extensionCost + lateFeeDue),
   };
 
   return {
     ok: true,
     collected,
+    // Zero for anybody on time, which is almost everybody.
+    lateDays: lateDaysNow,
+    lateFeeFull,
+    lateFeeDue,
     extraDays,
     newTotalDays,
     endDate: newEnd,
@@ -225,6 +251,8 @@ export async function startExtension(booking, newEndYmd, mode = 'full') {
     discountAmount: quote.now.discountAmount,
     totalPrice: quote.now.totalPrice,
     promoLabel: quote.now.promoLabel,
+    lateDays: quote.lateDays,
+    lateAmount: quote.lateFeeDue,
   };
   await booking.save();
   return { ok: true, checkoutUrl };
@@ -234,6 +262,7 @@ const clearPending = (booking) => {
   booking.pendingExtension = {
     checkoutSessionId: '', amount: 0, startedAt: null, days: 0,
     endDate: null, totalDays: 0, subtotal: 0, discountAmount: 0, totalPrice: 0, promoLabel: '',
+    lateDays: 0, lateAmount: 0,
   };
 };
 
@@ -340,6 +369,14 @@ export async function confirmExtension(booking) {
       '/admin/manage-bookings'
     );
     return { ok: false, message: 'Those extra days were taken while your payment went through. Nothing has changed, and the amount you paid is on your booking — please contact us.' };
+  }
+
+  // Settled, so it survives the end date moving past the days they were
+  // late for. Recorded only now that the money has actually landed.
+  if (pending.lateDays > 0) {
+    booking.lateFee.carriedDays = (booking.lateFee.carriedDays || 0) + pending.lateDays;
+    booking.lateFee.carriedAmount = (booking.lateFee.carriedAmount || 0) + pending.lateAmount;
+    booking.lateFee.collectedAt = new Date();
   }
 
   const previousEndDate = booking.endDate;
