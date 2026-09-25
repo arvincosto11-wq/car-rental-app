@@ -522,6 +522,14 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       // the dialog.
       const unavailable = reasonUnavailable(booking, cancelReason);
       if (unavailable) return res.status(400).json({ message: unavailable });
+      // A repair bill, entered because no clause names a rate and a garage
+      // charges what it charges. Stored where the return's damage charge
+      // lives, so it is collected and settled the same way.
+      const repair = Number(req.body.damageCharge);
+      if (cancelReason === 'breakdown_client' && Number.isFinite(repair) && repair > 0) {
+        booking.condition.damageCharge = Math.round(repair);
+      }
+
       await cancelBookingWithRefund(booking, {
         reason: cancelReason,
         clientNote: cancelNote || '',

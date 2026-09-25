@@ -20,7 +20,39 @@ export function getRefundPercentage(createdAt, now = new Date()) {
 // reason decides the refund — untrue. It also meant a client could be
 // cancelled and handed back ₱1 with no explanation, which is the shape of
 // a scam whatever anybody intended. Old records keep it; nothing new can.
-export const CANCEL_REASONS = ['vehicle_unavailable', 'client_requested', 'terms_not_met'];
+export const CANCEL_REASONS = [
+  'vehicle_unavailable', 'client_requested', 'terms_not_met',
+  // A trip that ended in the middle because the vehicle stopped working.
+  // Apart from vehicle_unavailable because that refunds everything, which is
+  // right when we pull a car before a trip and wrong once somebody has had
+  // three days of it.
+  'breakdown', 'breakdown_client',
+];
+
+// Days paid for and not had. The refund is the same for both breakdown
+// reasons on purpose: you do not keep money for days nobody had the vehicle,
+// whoever broke it. Fault is priced where it actually lands @ in the repair
+// bill @ which is both easier to explain to an angry customer and usually
+// the larger figure anyway.
+//
+// The day it broke is the only place fault touches this. A client charged a
+// full day for a morning that ended with our engine failing has a fair
+// complaint; a client who wrote the car off that morning does not.
+export function unusedDayRefund(booking, { chargeBrokenDay }, now = new Date()) {
+  const total = booking.totalDays || 1;
+  const span = bookingSpan(booking);
+  const elapsedDays = (now.getTime() - span.start.getTime()) / (24 * 60 * 60 * 1000);
+
+  // Before it even started, nothing has been used.
+  const raw = elapsedDays <= 0 ? 0 : (chargeBrokenDay ? Math.ceil(elapsedDays) : Math.floor(elapsedDays));
+  const used = Math.min(total, Math.max(0, raw));
+
+  // What the days they actually had were worth, against what they have
+  // handed over. A client on a deposit may have paid less than they have
+  // used, and then nothing comes back rather than a negative number.
+  const owedForUsed = Math.round((booking.totalPrice || 0) * (used / total));
+  return Math.max(0, Math.min(booking.amountPaid, booking.amountPaid - owedForUsed));
+}
 
 // Half back if the booking is cancelled before the day it was due to start,
 // nothing on the day itself. The deduction exists because the vehicle can no
@@ -36,6 +68,9 @@ const TERMS_NOT_MET_PERCENT = 50;
 // or null when it can — the dialog hides what it gets back here, and the
 // route refuses it, so the two can't drift apart.
 export function reasonUnavailable(booking, reason) {
+  if ((reason === 'breakdown' || reason === 'breakdown_client') && !booking.collectedAt) {
+    return 'This vehicle has not been collected, so nothing broke down mid-trip. Use "Vehicle unavailable" instead.';
+  }
   if (reason === 'terms_not_met' && booking.collectedAt) {
     return 'This client already picked the vehicle up, so the booking conditions were met. Choose another reason.';
   }
@@ -63,6 +98,10 @@ export function refundAmountFor(booking, reason, now = new Date()) {
     const onTheDay = phYmd(now) >= phYmd(bookingSpan(booking).start);
     return onTheDay ? 0 : Math.round(booking.amountPaid * (TERMS_NOT_MET_PERCENT / 100));
   }
+  // Our vehicle failed, so the day it failed on is not a day of service.
+  if (reason === 'breakdown') return unusedDayRefund(booking, { chargeBrokenDay: false }, now);
+  // They had the use of the day they wrecked it on, whatever else is true.
+  if (reason === 'breakdown_client') return unusedDayRefund(booking, { chargeBrokenDay: true }, now);
   // Includes 'other', which no longer exists as a choice. Nothing should
   // reach here, and returning zero silently would be worse than obvious.
   return 0;
@@ -103,6 +142,21 @@ function clientWording(booking, reason, amount, carName, cause, clientNote) {
           : ' Under our refund policy, this booking is no longer eligible for a refund.') +
         ' Thank you for choosing Rent-A-Ride Albay.',
       short: 'Cancelled at your request.',
+    };
+  }
+
+  if (reason === 'breakdown' || reason === 'breakdown_client') {
+    return {
+      message: `Your booking for ${trip} has been ended early because the vehicle is no longer roadworthy.`
+        + (amount > 0
+          ? ` The days you paid for and did not get (${peso}) will be refunded.`
+          : ' The days you had account for what you paid, so there is nothing to refund.')
+        + (reason === 'breakdown_client'
+          ? ' Any repair costs are charged separately, as set out in our Terms and Conditions.'
+          : '')
+        + (clientNote ? ` ${clientNote.trim().replace(/([^.!?])$/, '$1.')}` : '')
+        + ' If you have any questions, please contact us.',
+      short: clientNote || 'The vehicle broke down.',
     };
   }
 

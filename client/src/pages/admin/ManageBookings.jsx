@@ -113,6 +113,17 @@ const previewRefund = (booking, reason) => {
   if (reason === 'client_requested') {
     return Math.round(booking.amountPaid * (refundPercentage(booking.createdAt) / 100));
   }
+  if (reason === 'breakdown' || reason === 'breakdown_client') {
+    // Days paid for and not had. Same refund whoever broke it — we do not
+    // keep money for days nobody used the vehicle — except the day it broke
+    // on, which is a day of service only if they were the ones who ended it.
+    const total = booking.totalDays || 1;
+    const elapsed = (Date.now() - new Date(booking.startDate).getTime()) / 86400000;
+    const raw = elapsed <= 0 ? 0 : (reason === 'breakdown_client' ? Math.ceil(elapsed) : Math.floor(elapsed));
+    const used = Math.min(total, Math.max(0, raw));
+    const owedForUsed = Math.round((booking.totalPrice || 0) * (used / total));
+    return Math.max(0, Math.min(booking.amountPaid, booking.amountPaid - owedForUsed));
+  }
   if (reason === 'terms_not_met') {
     // Half back beforehand, nothing on the day itself — by then the vehicle
     // can no longer be let to anybody else, so the day is gone either way.
@@ -261,6 +272,7 @@ const ManageBookings = () => {
         status: 'cancelled',
         cancelReason: cancelForm.reason,
         cancelNote: cancelForm.note,
+        damageCharge: cancelForm.damage,
       });
       setCancelTarget(null);
       toast.success('Booking cancelled. The client has been notified.');
@@ -1105,7 +1117,20 @@ const ManageBookings = () => {
                       </button>
                     </div>
                   ) : booking.status === 'cancelled' ? (
-                    <span style={s.cancelled}><span style={s.statusDot(isDark ? '#fca5a5' : '#991b1b')} />Cancelled</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={s.cancelled}><span style={s.statusDot(isDark ? '#fca5a5' : '#991b1b')} />Cancelled</span>
+                      {/* A breakdown the client caused ends the booking and
+                          leaves a repair bill behind it. */}
+                      {booking.condition?.damageCharge > 0 && (
+                        booking.condition.damageCollectedAt ? (
+                          <span style={s.feeSettled}>{peso(booking.condition.damageCharge)} damage settled</span>
+                        ) : (
+                          <button style={s.feeBtn} onClick={() => handleCollectDamageCharge(booking)}>
+                            Collect {peso(booking.condition.damageCharge)} damage
+                          </button>
+                        )
+                      )}
+                    </div>
                   ) : booking.status === 'completed' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={s.completed}><span style={s.statusDot(isDark ? '#93c5fd' : '#1e40af')} />Completed</span>
@@ -1365,6 +1390,46 @@ const ManageBookings = () => {
                 <span style={s.cancelOptionHint}>Uses the normal refund policy, same as the app&apos;s own refund button.</span>
               </span>
             </label>
+            {/* Only once somebody has the vehicle: nothing breaks down
+                mid-trip on a trip that has not started. */}
+            {cancelTarget.collectedAt && (
+              <>
+                <label style={s.cancelOption}>
+                  <input type="radio" name="cancel-reason" checked={cancelForm.reason === 'breakdown'}
+                    onChange={() => setCancelForm({ ...cancelForm, reason: 'breakdown' })} />
+                  <span>
+                    <strong>Vehicle broke down</strong>
+                    <span style={s.cancelOptionHint}>
+                      Mechanical failure, weather, another driver — not the client&apos;s doing. Refunds the days
+                      they paid for and didn&apos;t get, including the day it broke.
+                    </span>
+                  </span>
+                </label>
+                <label style={s.cancelOption}>
+                  <input type="radio" name="cancel-reason" checked={cancelForm.reason === 'breakdown_client'}
+                    onChange={() => setCancelForm({ ...cancelForm, reason: 'breakdown_client' })} />
+                  <span>
+                    <strong>Client damaged the vehicle</strong>
+                    <span style={s.cancelOptionHint}>
+                      Same refund of unused days, but they had the day they ended it on — and the repair is
+                      charged separately below.
+                    </span>
+                  </span>
+                </label>
+              </>
+            )}
+
+            {cancelForm.reason === 'breakdown_client' && (
+              <input
+                style={{ ...s.cancelInput, marginTop: '4px' }}
+                type="text"
+                inputMode="decimal"
+                placeholder="Repair cost (optional, charged to the client)"
+                value={cancelForm.damage || ''}
+                onChange={(e) => setCancelForm({ ...cancelForm, damage: e.target.value.replace(/[^0-9.]/g, '') })}
+              />
+            )}
+
             {/* They produced their documents and drove away, so whatever
                 has gone wrong since, it isn't this. */}
             {!cancelTarget.collectedAt && (

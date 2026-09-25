@@ -1,5 +1,5 @@
 import { suite, group, check } from './harness.mjs';
-import { getRefundPercentage, refundAmountFor, isUnderway, reasonUnavailable, CANCEL_REASONS } from '../utils/cancelBooking.js';
+import { getRefundPercentage, refundAmountFor, isUnderway, reasonUnavailable, CANCEL_REASONS, unusedDayRefund } from '../utils/cancelBooking.js';
 import { paymentSources } from '../utils/paymongo.js';
 import { instantFrom } from '../utils/phTime.js';
 
@@ -62,9 +62,16 @@ export default function run() {
   check('allowed while it is still here', reasonUnavailable({ collectedAt: null }, 'terms_not_met'), null);
   check('our own fault stays available mid-trip', reasonUnavailable(out, 'vehicle_unavailable'), null);
   check('so does the client asking', reasonUnavailable(out, 'client_requested'), null);
-  // Nothing else is quietly ruled out as reasons get added.
-  check('every reason works on a booking not yet collected',
-    CANCEL_REASONS.every((r) => reasonUnavailable({ collectedAt: null }, r) === null), true);
+  // Nothing is quietly ruled out as reasons get added. The breakdown pair
+  // are the deliberate exception in the other direction: they need somebody
+  // to have the vehicle, because nothing breaks down mid-trip on a trip
+  // that has not started.
+  const beforePickup = CANCEL_REASONS.filter((r) => !r.startsWith('breakdown'));
+  check('every other reason works before pickup',
+    beforePickup.every((r) => reasonUnavailable({ collectedAt: null }, r) === null), true);
+  check('and every reason works once collected',
+    CANCEL_REASONS.filter((r) => r !== 'terms_not_met')
+      .every((r) => reasonUnavailable({ collectedAt: new Date() }, r) === null), true);
 
   group("a reason nothing offers any more can't quietly pay out");
   // 'other' let admin type any figure. It is gone from the dialog and from
@@ -110,4 +117,33 @@ export default function run() {
   check('together they are everything paid', topped[0].amount + topped[1].amount, 2000);
 
   check('a booking that never paid has no sources', paymentSources({ amountPaid: 0, paymongoPaymentId: '', extraPayments: [] }).length, 0);
+
+  group('a breakdown refunds the days they paid for and did not get');
+  // One refund rule whoever broke it: we do not keep money for days nobody
+  // had the vehicle. Fault is priced in the repair bill instead, which is
+  // easier to explain and usually the larger figure.
+  const fiveDays = {
+    payment: 'paid', amountPaid: 10000, totalPrice: 10000, totalDays: 5,
+    startDate: instantFrom('2026-09-25', 7), endDate: instantFrom('2026-09-30', 7), hasPickupTime: true,
+  };
+  const onDay = (n, hour = 12) => new Date(`2026-09-${String(24 + n).padStart(2, '0')}T${hour}:00:00+08:00`);
+
+  check('breaks on day one, ours', refundAmountFor(fiveDays, 'breakdown', onDay(1)), 10000);
+  check('breaks on day one, theirs', refundAmountFor(fiveDays, 'breakdown_client', onDay(1)), 8000);
+  check('breaks on day four, ours', refundAmountFor(fiveDays, 'breakdown', onDay(4)), 4000);
+  check('breaks on day four, theirs', refundAmountFor(fiveDays, 'breakdown_client', onDay(4)), 2000);
+  // The day it broke is the only place fault touches the money.
+  check('one day apart, always', 
+    refundAmountFor(fiveDays, 'breakdown', onDay(3)) - refundAmountFor(fiveDays, 'breakdown_client', onDay(3)), 2000);
+
+  group('a deposit is not refunded past what it covered');
+  // Paid 20% and used 60% of the trip: nothing comes back, and certainly
+  // not a negative number.
+  const deposit = { ...fiveDays, amountPaid: 2000 };
+  check('used more than they paid for', refundAmountFor(deposit, 'breakdown', onDay(4)), 0);
+  check('never collected at all', unusedDayRefund(deposit, { chargeBrokenDay: false }, onDay(0)), 2000);
+
+  group('a breakdown is only a breakdown once somebody has the vehicle');
+  check('refused before pickup', !!reasonUnavailable({ collectedAt: null }, 'breakdown'), true);
+  check('allowed once collected', reasonUnavailable({ collectedAt: new Date() }, 'breakdown'), null);
 }
