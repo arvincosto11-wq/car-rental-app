@@ -1254,10 +1254,14 @@ const MyBookings = () => {
                             <CalendarPlusIcon /> Reschedule
                           </button>
                         )}
-                        {/* Only while there is still a booking to lengthen — a
-                            trip whose return has passed is overdue, which is
-                            somebody else's conversation. */}
-                        {booking.payment === 'paid' && new Date(booking.endDate) > new Date() && (
+                        {/* While there is still a booking to lengthen, and
+                            while somebody is late with the vehicle — which
+                            this used to call "somebody else's conversation"
+                            and hide the button for. It is the same client,
+                            sitting in the same car, and extending is the one
+                            cooperative thing available to them. */}
+                        {booking.payment === 'paid'
+                          && (new Date(booking.endDate) > new Date() || isStillOut(booking)) && (
                           <button className="btn-ghost-amber" style={styles.rescheduleBtn} onClick={() => setExtendBookingId(booking._id)}>
                             <CalendarPlusIcon /> Keep it longer
                           </button>
