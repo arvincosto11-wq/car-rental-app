@@ -142,6 +142,29 @@ const bookingSchema = new mongoose.Schema({
       totalPrice: { type: Number, default: 0 },
       promoLabel: { type: String, default: '' },
     }],
+    // Other vehicles, on the dates they already have. Offered because the
+    // dates option is worthless in the case it matters most: when a car is
+    // off the road there are no free dates on it, so "same car, other days"
+    // always comes back empty and everybody gets cancelled.
+    //
+    // Only ever vehicles at the same price or cheaper, with the difference
+    // refunded. Our vehicle failed, so nobody is asked to pay more because
+    // of it, and no price negotiation happens over a notification.
+    //
+    // Brand, model and image are copied rather than looked up, so the offer
+    // shows what it showed when it was made even if the car is edited after.
+    vehicleOptions: [{
+      car: { type: mongoose.Schema.Types.ObjectId, ref: 'Car' },
+      brand: { type: String, default: '' },
+      model: { type: String, default: '' },
+      image: { type: String, default: '' },
+      pricePerDay: { type: Number, default: 0 },
+      subtotal: { type: Number, default: 0 },
+      discountAmount: { type: Number, default: 0 },
+      totalPrice: { type: Number, default: 0 },
+      promoLabel: { type: String, default: '' },
+      refundDifference: { type: Number, default: 0 },
+    }],
     deadline: { type: Date },
     offeredAt: { type: Date },
     resolvedAt: { type: Date },

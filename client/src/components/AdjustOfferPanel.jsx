@@ -57,6 +57,7 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
 
   const gold = isDark ? GOLD_DARK : GOLD;
   const options = offer?.options || [];
+  const vehicleOptions = offer?.vehicleOptions || [];
   const refundable = booking.payment === 'paid' ? booking.amountPaid : 0;
   const anyCostsMore = options.some((o) => o.totalPrice > booking.totalPrice);
 
@@ -127,6 +128,11 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
     listLabel: {
       display: 'block', fontSize: '10px', fontWeight: '800', letterSpacing: '0.14em',
       textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#6b7280', margin: '14px 0 6px',
+    },
+    vehicleRow: { display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 },
+    vehicleThumb: {
+      width: '54px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0,
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
     option: {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
@@ -292,6 +298,41 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
           costs more. You will see the exact amount before anything changes, and you can still take a
           full refund instead.
         </p>
+      )}
+
+      {/* Listed first. When the vehicle itself is what went away, keeping
+          your dates matters more than keeping the model — and it is the only
+          offer that exists at all once a car is off the road, since there
+          are no free dates left on it. */}
+      {vehicleOptions.length > 0 && (
+        <>
+          <span style={s.listLabel}>
+            Other vehicles free on your dates — nothing else changes
+          </span>
+          {vehicleOptions.map((v, i) => (
+            <div key={v.car || i} style={s.option}>
+              <div style={s.vehicleRow}>
+                {v.image && <img src={v.image} alt="" style={s.vehicleThumb} />}
+                <div>
+                  <div style={s.optionDates}>{v.brand} {v.model}</div>
+                  <div style={s.optionPrice}>
+                    {v.refundDifference > 0
+                      ? `₱${v.totalPrice.toLocaleString()} — ₱${v.refundDifference.toLocaleString()} refunded to you`
+                      : `₱${v.totalPrice.toLocaleString()} — same price as your booking`}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                style={s.takeBtn}
+                disabled={busy}
+                onClick={() => decide('accept', { vehicleIndex: i })}
+              >
+                Take this vehicle
+              </button>
+            </div>
+          ))}
+        </>
       )}
 
       {options.length > 0 && (

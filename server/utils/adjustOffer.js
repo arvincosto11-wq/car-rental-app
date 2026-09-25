@@ -3,7 +3,7 @@ import Car from '../models/Car.js';
 import LongRentalDiscount from '../models/LongRentalDiscount.js';
 import { computeBookingPrice } from './promo.js';
 import { cancelBookingWithRefund } from './cancelBooking.js';
-import { createGcashCheckout, paymongoFetch } from './paymongo.js';
+import { createGcashCheckout, paymongoFetch, paymentSources, refundOnePayment } from './paymongo.js';
 import { notifyUser, notifyAdmins } from './notify.js';
 import { formatTripDates } from './blockReasons.js';
 import { offerDeadline, hasEnoughNotice, offerMessage, MIN_NOTICE_HOURS } from './offerWindow.js';
@@ -105,6 +105,64 @@ async function priceOptions(car, booking, ranges) {
   });
 }
 
+// Another vehicle, on the dates they already have.
+//
+// The dates option is worthless in the case it matters most. When a car goes
+// off the road there are no free dates on it at all, so "same car, other
+// days" comes back empty every time and everybody is cancelled and refunded
+// — which is the worst outcome available to anybody: they lose the trip, the
+// business loses the revenue, and nine other vehicles sit on the forecourt.
+//
+// Only same price or cheaper is offered, and a cheaper one refunds the
+// difference. Our vehicle failed, so nobody is asked to pay more because of
+// it, and nothing has to be negotiated through a notification.
+export async function alternativeVehicles(booking, { limit = 3 } = {}) {
+  const original = await Car.findById(booking.car).select('pricePerDay').lean();
+  if (!original) return [];
+
+  const span = bookingSpan(booking);
+  const rules = await LongRentalDiscount.find({ active: true }).lean();
+
+  const candidates = await Car.find({
+    _id: { $ne: booking.car },
+    status: { $ne: 'draft' },
+    isAvailable: true,
+    archived: { $ne: true },
+    'offRoad.since': null,
+    pricePerDay: { $lte: original.pricePerDay },
+    availableBookingTypes: booking.bookingType,
+  }).lean();
+
+  const free = [];
+  for (const car of candidates) {
+    // Asked of each car in turn rather than in one query: availability is
+    // bookings plus blocks plus turnaround, and that lives in one place.
+    const { spans } = await busySpans(car._id, { car });
+    if (spans.some((b) => overlaps(span, b))) continue;
+
+    const priced = computeBookingPrice(car, booking.totalDays, span.start, span.end, rules);
+    free.push({
+      car: car._id,
+      brand: car.brand,
+      model: car.model,
+      image: car.image || '',
+      pricePerDay: car.pricePerDay,
+      subtotal: priced.subtotal,
+      discountAmount: priced.discountAmount,
+      totalPrice: priced.totalPrice,
+      promoLabel: priced.promoLabel || '',
+      // Never negative: a vehicle priced above what they paid is filtered
+      // out above, and a promo could only ever make this larger.
+      refundDifference: Math.max(0, booking.totalPrice - priced.totalPrice),
+    });
+  }
+
+  // Closest to what they chose first. Somebody who booked the Fortuner wants
+  // the next thing like it, not the cheapest scooter on the lot.
+  free.sort((a, b) => b.pricePerDay - a.pricePerDay);
+  return free.slice(0, limit);
+}
+
 // The same search openAdjustOffer runs, without saving anything — so the
 // admin's confirmation dialog can say which of the affected clients will be
 // offered other dates and which can only be refunded.
@@ -129,12 +187,18 @@ export async function openAdjustOffer(booking, { reason, cause = '', extra = [] 
   if (!car) return false;
 
   const ranges = await previewAlternatives(booking, { extra, now });
-  if (!ranges.length) return false;
+  // Other vehicles on the dates they already have, which is the only offer
+  // worth making when the car itself is the thing that has gone — there are
+  // no free dates on a vehicle that is off the road.
+  const vehicleOptions = hasEnoughNotice(booking.startDate, now)
+    ? await alternativeVehicles(booking)
+    : [];
+  if (!ranges.length && !vehicleOptions.length) return false;
 
-  const options = await priceOptions(car, booking, ranges);
+  const options = ranges.length ? await priceOptions(car, booking, ranges) : [];
   const deadline = offerDeadline(booking.startDate, now);
 
-  booking.adjustOffer = { status: 'open', reason, cause, options, deadline, offeredAt: now };
+  booking.adjustOffer = { status: 'open', reason, cause, options, vehicleOptions, deadline, offeredAt: now };
   await booking.save();
 
   await notifyUser(
@@ -145,7 +209,7 @@ export async function openAdjustOffer(booking, { reason, cause = '', extra = [] 
       cause,
       carName: `${car.brand} ${car.model}`,
       totalDays: booking.totalDays,
-      optionCount: options.length,
+      optionCount: options.length + vehicleOptions.length,
       deadlineText: when(deadline),
     }),
     '/my-bookings',
@@ -290,9 +354,97 @@ async function resolveOption(booking, { optionIndex, startDate, pickupHour }) {
 // stands right now, because the offer has been sitting there for up to a
 // day and anything could have claimed those dates since.
 export async function acceptAdjustOffer(booking, choice, opts) {
+  // A different vehicle on the dates they already have. Handled apart from
+  // the date options because almost nothing is shared: the dates do not
+  // move, the car does, and money can only ever go back rather than be
+  // asked for — so none of the pay-now-or-at-pickup machinery applies.
+  if (choice?.vehicleIndex !== undefined && choice.vehicleIndex !== null && choice.vehicleIndex !== '') {
+    return acceptVehicleOffer(booking, Number(choice.vehicleIndex));
+  }
   const { option, error } = await resolveOption(booking, choice);
   if (error) return { ok: false, message: error };
   return applyOption(booking, option, opts);
+}
+
+// Moves the booking onto another vehicle, keeping its dates.
+async function acceptVehicleOffer(booking, index) {
+  const choice = booking.adjustOffer?.vehicleOptions?.[index];
+  if (!choice) return { ok: false, message: 'That vehicle is no longer available. Please refresh and try again.' };
+
+  // Asked again at the last moment: the offer has been sitting for up to a
+  // day, and the replacement could have been booked by somebody else since.
+  const span = bookingSpan(booking);
+  const { spans } = await busySpans(choice.car, { excludeBookingId: booking._id });
+  if (spans.some((b) => overlaps(span, b))) {
+    return { ok: false, message: 'That vehicle has just been taken. Please choose another, or the refund.' };
+  }
+
+  const previousCar = booking.car;
+  booking.car = choice.car;
+  booking.subtotal = choice.subtotal;
+  booking.discountAmount = choice.discountAmount;
+  booking.totalPrice = choice.totalPrice;
+  booking.promoLabel = choice.promoLabel || '';
+
+  // A cheaper replacement gives money back rather than sitting as credit.
+  // Our vehicle failed; they should not be left holding a balance they
+  // never asked for.
+  let refunded = 0;
+  if (choice.refundDifference > 0 && booking.payment === 'paid') {
+    const owed = Math.min(choice.refundDifference, booking.amountPaid);
+    try {
+      let left = owed;
+      for (const source of paymentSources(booking)) {
+        if (left <= 0) break;
+        const take = Math.min(left, source.amount);
+        await refundOnePayment({
+          paymentId: source.paymongoPaymentId,
+          amount: take,
+          notes: 'Difference after moving to a cheaper vehicle.',
+        });
+        left -= take;
+      }
+      refunded = owed - left;
+      booking.amountPaid -= refunded;
+    } catch (err) {
+      // The move is right even if the refund fails; what is not right is
+      // saying it happened. Admin is told by name so somebody can finish it.
+      console.error('Refund of a vehicle-swap difference failed:', err.message);
+      await notifyAdmins(
+        'Refund needed after a vehicle swap',
+        `A client moved to a cheaper vehicle and the automatic refund of ${PESO}${owed.toLocaleString()} failed. `
+          + 'It needs returning through PayMongo by hand.',
+        '/admin/manage-bookings'
+      );
+    }
+  }
+
+  booking.adjustOffer.status = 'accepted';
+  booking.adjustOffer.resolvedAt = new Date();
+  await booking.save();
+
+  const [from, to] = await Promise.all([
+    Car.findById(previousCar).select('brand model').lean(),
+    Car.findById(choice.car).select('brand model').lean(),
+  ]);
+
+  await notifyUser(
+    booking.user,
+    'Your booking has moved to another vehicle',
+    `Your dates are unchanged. ${from ? `${from.brand} ${from.model}` : 'Your original vehicle'} has been `
+      + `replaced with ${to ? `${to.brand} ${to.model}` : 'another vehicle'}`
+      + (refunded > 0 ? `, and ${PESO}${refunded.toLocaleString()} has been refunded to you as it costs less.` : '.'),
+    '/my-bookings',
+    { email: true }
+  );
+  await notifyAdmins(
+    'A client moved to another vehicle',
+    `${to ? `${to.brand} ${to.model}` : 'Another vehicle'} now covers a booking that was on `
+      + `${from ? `${from.brand} ${from.model}` : 'a vehicle taken off the road'}.`,
+    '/admin/manage-bookings'
+  );
+
+  return { ok: true, booking };
 }
 
 // The client had already settled this booking in full, and the dates they

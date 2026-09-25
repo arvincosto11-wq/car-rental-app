@@ -1187,7 +1187,14 @@ router.put('/:id/adjust', protect, async (req, res) => {
     if (decision === 'accept') {
       const result = await acceptAdjustOffer(
         booking,
-        { optionIndex, startDate: req.body.startDate, pickupHour: req.body.pickupHour },
+        {
+          optionIndex,
+          startDate: req.body.startDate,
+          pickupHour: req.body.pickupHour,
+          // A different vehicle on the same dates, which is the only offer
+          // that means anything when the car itself is what went away.
+          vehicleIndex: req.body.vehicleIndex,
+        },
         {
           confirmPrice: req.body.confirmPrice === true,
           payAtPickup: req.body.payAtPickup === true,
