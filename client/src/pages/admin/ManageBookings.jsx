@@ -170,6 +170,9 @@ const ManageBookings = () => {
   const [returnTarget, setReturnTarget] = useState(null);
   const [returnForm, setReturnForm] = useState({ fuel: undefined, charge: '', photos: [], note: '', damage: '' });
   const [returnSubmitting, setReturnSubmitting] = useState(false);
+  const [moveTarget, setMoveTarget] = useState(null);
+  const [moveOptions, setMoveOptions] = useState(null);
+  const [moveBusy, setMoveBusy] = useState('');
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
   // Other paid requests for the same vehicle whose dates overlap this one.
@@ -354,6 +357,48 @@ const ManageBookings = () => {
       toast.success('Return recorded.');
     } finally {
       setReturnSubmitting(false);
+    }
+  };
+
+  // Settled on the phone, then recorded here. The list is what admin needs
+  // in front of them while they are talking to somebody at a roadside.
+  const openMove = async (booking) => {
+    setMoveTarget(booking);
+    setMoveOptions(null);
+    try {
+      const res = await api.get(`/bookings/${booking._id}/vehicle-options`);
+      setMoveOptions(res.data.options || []);
+    } catch (err) {
+      console.error(err);
+      setMoveOptions([]);
+      toast.error(err.response?.data?.message || 'Could not load available vehicles.');
+    }
+  };
+
+  const doMove = async (option) => {
+    const ok = await confirm(
+      `Move this booking onto the ${option.brand} ${option.model} for the remaining `
+      + `${option.left} day${option.left === 1 ? '' : 's'}? `
+      + (option.difference === 0
+        ? 'The price does not change.'
+        : option.difference > 0
+          ? `The client would owe ${peso(option.difference)} more.`
+          : `${peso(Math.abs(option.difference))} would be due back to them.`)
+      + ' Settle the money with them directly.',
+      { confirmLabel: 'Yes, move it', cancelLabel: 'Go back' }
+    );
+    if (!ok) return;
+    setMoveBusy(option.id);
+    try {
+      await api.put(`/bookings/${moveTarget._id}/move-vehicle`, { carId: option.id });
+      setMoveTarget(null);
+      await fetchBookings();
+      toast.success(`Moved to the ${option.brand} ${option.model}.`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Something went wrong moving this booking.');
+    } finally {
+      setMoveBusy('');
     }
   };
 
@@ -634,6 +679,26 @@ const ManageBookings = () => {
       border: 'none', borderRadius: '8px', cursor: 'pointer',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
     },
+    moveBtn: {
+      padding: '4px 10px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, background: 'transparent',
+      color: isDark ? '#b0b3b8' : '#374151',
+    },
+    moveRow: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+      padding: '10px 12px', borderRadius: '10px', marginBottom: '8px',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    moveCar: { display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 },
+    moveThumb: {
+      width: '52px', height: '38px', objectFit: 'cover', borderRadius: '7px', flexShrink: 0,
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    moveName: { fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#111827' },
+    moveDiff: (up) => ({
+      fontSize: '11.5px', fontWeight: '700',
+      color: up ? (isDark ? '#f87171' : '#b91c1c') : (isDark ? '#86efac' : '#065f46'),
+    }),
     cancelRowBtn: {
       padding: '4px 10px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500',
       border: `1px solid ${isDark ? '#f87171' : '#dc2626'}`, background: 'transparent',
@@ -1109,6 +1174,13 @@ const ManageBookings = () => {
                           — No-Show forfeits everything and shouldn't be the
                           calmer-looking of the two. */}
                       <button
+                        style={s.moveBtn}
+                        onClick={() => openMove(booking)}
+                        title="Put this booking on a different vehicle, keeping its dates."
+                      >
+                        Move vehicle
+                      </button>
+                      <button
                         style={s.cancelRowBtn}
                         onClick={() => handleStatus(booking._id, 'cancelled')}
                         title="Cancel this booking and refund by policy."
@@ -1248,6 +1320,51 @@ const ManageBookings = () => {
       {/* Closing a booking is the only moment anybody looks at the gauge,
           so it asks rather than assumes. Both fields are optional: a return
           nobody read is better recorded as unread than as full. */}
+      {moveTarget && (
+        <div style={s.modalOverlay} onClick={() => setMoveTarget(null)}>
+          <div style={s.cancelCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="move-title">
+            <div id="move-title" style={s.cancelTitle}>Move to another vehicle</div>
+            <p style={s.cancelSub}>
+              The client keeps their dates. Days they have already had stay charged at the rate they booked;
+              the rest are priced at the new vehicle&apos;s. Settle any difference with them directly.
+            </p>
+
+            {moveOptions === null ? (
+              <p style={s.cancelSub}>Looking for vehicles free for the rest of these dates...</p>
+            ) : moveOptions.length === 0 ? (
+              <p style={s.cancelSub}>
+                Nothing is free for the rest of this booking. A refund is the only thing left to offer.
+              </p>
+            ) : (
+              moveOptions.map((o) => (
+                <div key={o.id} style={s.moveRow}>
+                  <div style={s.moveCar}>
+                    {o.image && <img src={o.image} alt="" style={s.moveThumb} />}
+                    <div>
+                      <div style={s.moveName}>{o.brand} {o.model}</div>
+                      <div style={s.moveDiff(o.difference > 0)}>
+                        {o.difference === 0
+                          ? 'Same price'
+                          : o.difference > 0
+                            ? `${peso(o.difference)} more`
+                            : `${peso(Math.abs(o.difference))} back to them`}
+                      </div>
+                    </div>
+                  </div>
+                  <button style={s.feeBtn} disabled={moveBusy === o.id} onClick={() => doMove(o)}>
+                    {moveBusy === o.id ? 'Moving...' : 'Move here'}
+                  </button>
+                </div>
+              ))
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button style={s.cancelBackBtn} onClick={() => setMoveTarget(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {returnTarget && (
         <div style={s.modalOverlay} onClick={() => !returnSubmitting && setReturnTarget(null)}>
           <div style={s.cancelCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="return-title">

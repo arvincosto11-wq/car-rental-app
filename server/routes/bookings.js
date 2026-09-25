@@ -19,6 +19,7 @@ import { isFuelLevel } from '../utils/fuel.js';
 import { licenceProblem, licenceMessage } from '../utils/documents.js';
 import { byUrgency } from '../utils/priority.js';
 import { recordActivity } from '../utils/priority.js';
+import { vehiclesForSwap, remainingSpan, repriceForSwap } from '../utils/moveVehicle.js';
 
 const router = express.Router();
 
@@ -609,6 +610,81 @@ router.put('/:id/collect-balance', protect, adminOnly, async (req, res) => {
     await notifyUser(booking.user, 'Balance Received', `We've recorded your remaining balance of ₱${collected.toLocaleString()} as paid. Thanks!`, '/my-bookings');
 
     res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// What this booking could be moved onto from today, and what each would do
+// to the price. Read-only — nothing changes until admin says which.
+router.get('/:id/vehicle-options', protect, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      return res.status(400).json({ message: 'This booking is not running, so there is nothing to move.' });
+    }
+    res.json({ options: await vehiclesForSwap(booking) });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Moves a running booking onto another vehicle. The client keeps their
+// dates; the days they already had stay charged at the rate they were sold
+// at, and the rest are priced at the new vehicle's.
+//
+// The money is left as a balance or an overpayment rather than moved
+// automatically. A swap like this is agreed on the phone with somebody at a
+// roadside, and what they settle is theirs to record — not something this
+// route should guess and put through PayMongo.
+router.put('/:id/move-vehicle', protect, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      return res.status(400).json({ message: 'This booking is not running, so there is nothing to move.' });
+    }
+
+    const target = await Car.findById(req.body.carId);
+    if (!target) return res.status(404).json({ message: 'That vehicle no longer exists.' });
+    if (String(target._id) === String(booking.car)) {
+      return res.status(400).json({ message: 'That is the vehicle this booking is already on.' });
+    }
+    if (target.offRoad?.since) {
+      return res.status(400).json({ message: 'That vehicle is off the road.' });
+    }
+
+    // Asked again here, not trusted from the list the screen was drawn with.
+    const wanted = remainingSpan(booking);
+    const { spans } = await busySpans(target._id, { excludeBookingId: booking._id });
+    if (spans.some((b) => overlaps(wanted, b))) {
+      return res.status(400).json({ message: 'That vehicle is not free for the rest of these dates.' });
+    }
+
+    const priced = repriceForSwap(booking, target.pricePerDay);
+    const from = await Car.findById(booking.car).select('brand model').lean();
+
+    booking.car = target._id;
+    booking.totalPrice = priced.newTotal;
+    recordActivity(booking, 'admin', `moved to ${target.brand} ${target.model}`);
+    await booking.save();
+
+    await notifyUser(
+      booking.user,
+      'Your booking has moved to another vehicle',
+      `Your dates are unchanged. ${from ? `${from.brand} ${from.model}` : 'Your vehicle'} has been replaced with `
+        + `${target.brand} ${target.model} for the rest of your trip`
+        + (priced.difference === 0
+          ? ', at no change to what you pay.'
+          : priced.difference > 0
+            ? `. The difference of ${PESO}${priced.difference.toLocaleString()} is payable to us.`
+            : `. ${PESO}${Math.abs(priced.difference).toLocaleString()} is due back to you.`),
+      '/my-bookings',
+      { email: true }
+    );
+
+    res.json({ booking, priced });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

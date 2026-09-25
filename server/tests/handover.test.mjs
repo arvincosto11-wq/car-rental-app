@@ -3,6 +3,7 @@ import { hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom } from '../utils/phTime.js';
 import { isOverdue, daysOverdue, daysLate, lateFeeFor, isDueSoon, carriedLateFee } from '../utils/overdueReturns.js';
 import { occupiedSpan } from '../utils/availability.js';
+import { splitDays, repriceForSwap, remainingSpan } from '../utils/moveVehicle.js';
 import { fuelShortfall, fuelShortfallLabel, isFuelLevel, fuelLabel } from '../utils/fuel.js';
 import { licenceProblem, idProblem } from '../utils/documents.js';
 import { bookingPriority, byUrgency, TIER } from '../utils/priority.js';
@@ -251,4 +252,33 @@ export default function run() {
   const lateTwice = { ...after, returnedAt: instantFrom('2026-10-01', 7) };
   check('new lateness stacks on the carried', lateFeeFor(lateTwice, RATE2).days, 3);
   check('at full rate for the new days', lateFeeFor(lateTwice, RATE2).amount, 1500 + RATE2);
+
+  group('moving a running booking onto another vehicle');
+  // Settled on the phone with somebody at a roadside, then recorded. The
+  // days already had stay at the rate they were sold at; only the rest move
+  // to the new vehicle's price.
+  const trip5 = {
+    totalDays: 5, totalPrice: 10000, hasPickupTime: true,
+    startDate: instantFrom('2026-09-25', 7), endDate: instantFrom('2026-09-30', 7),
+  };
+  const day3 = new Date('2026-09-27T12:00:00+08:00');
+
+  check('two days had, three to come', splitDays(trip5, day3).used, 2);
+  check('and three left', splitDays(trip5, day3).left, 3);
+  // Sold at 2,000/day. Swap to a 1,500/day car on day three: 2 x 2,000 plus
+  // 3 x 1,500.
+  check('repriced across both vehicles', repriceForSwap(trip5, 1500, day3).newTotal, 8500);
+  check('and the difference comes back', repriceForSwap(trip5, 1500, day3).difference, -1500);
+  check('a dearer one is owed, not refunded', repriceForSwap(trip5, 2500, day3).difference > 0, true);
+  check('same rate changes nothing', repriceForSwap(trip5, 2000, day3).difference, 0);
+
+  // Before it starts, nothing has been used and the whole trip reprices.
+  const beforeStart = new Date('2026-09-24T12:00:00+08:00');
+  check('nothing used before pickup', splitDays(trip5, beforeStart).used, 0);
+  check('so the new rate covers all of it', repriceForSwap(trip5, 1500, beforeStart).newTotal, 7500);
+
+  // A vehicle only has to be free from today: the days already spent were
+  // spent in the old one.
+  check('only the rest of the trip has to be free', remainingSpan(trip5, day3).start.getTime(), day3.getTime());
+  check('and it still ends when the trip does', remainingSpan(trip5, day3).end.getTime(), trip5.endDate.getTime());
 }
