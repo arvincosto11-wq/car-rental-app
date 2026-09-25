@@ -5,6 +5,8 @@ import { createGcashCheckout, paymongoFetch, refundOnePayment } from './paymongo
 import { notifyUser, notifyAdmins } from './notify.js';
 import { busySpans, bookingSpan, padded, overlaps } from './availability.js';
 import { recordActivity } from './priority.js';
+import User from '../models/User.js';
+import { licenceProblem, licenceMessage, idProblem } from './documents.js';
 import { daysLate, carriedLateFee } from './overdueReturns.js';
 import {
   instantFrom, phYmd, phHour, addDays, daysBetween, turnaroundHoursFor, formatMoment,
@@ -114,6 +116,12 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
   const car = await Car.findById(booking.car);
   if (!car) return { error: 'That vehicle is no longer available.' };
 
+  // The papers have to cover the longer trip, not the one they booked.
+  // Asked at booking and never asked again, so a client could extend past
+  // the day their licence runs out and keep driving on it — the one place
+  // where the system, rather than a counter, is the only thing checking.
+  const client = await User.findById(booking.user).select('licenseNumber licenseExpiry validIdExpiry').lean();
+
   const own = bookingSpan(booking);
   const hour = booking.hasPickupTime ? phHour(own.start) : 0;
   const newEnd = instantFrom(newEndYmd, hour);
@@ -124,6 +132,9 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
   // overdue client must not be charged rental for days that have already
   // passed AND a late fee for the same days.
   const from = own.end > now ? own.end : now;
+  const licence = licenceProblem(client, { bookingType: booking.bookingType, endDate: newEnd }, now);
+  if (licence) return { error: licenceMessage(licence) };
+
   const extraDays = Math.max(1, daysBetween(from, newEnd));
   const newTotalDays = booking.totalDays + extraDays;
 
@@ -198,6 +209,11 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
   return {
     ok: true,
     collected,
+    // An ID running out mid-trip warns rather than refuses, as it does at
+    // booking — the terms ask for two at the counter, and stranding somebody
+    // who already has the vehicle would only turn this into an overdue
+    // return instead.
+    idExpiring: idProblem(client, { endDate: newEnd }, now)?.expiry || null,
     // Zero for anybody on time, which is almost everybody.
     lateDays: lateDaysNow,
     lateFeeFull,
