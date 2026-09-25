@@ -19,6 +19,8 @@ import { paginate } from '../../utils/paginate';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
 import { isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
 
+const DASH_CH = '—';
+
 const OTHER = '__other__';
 
 const PAGE_SIZE = 10;
@@ -68,6 +70,7 @@ const ManageCars = ({ view = 'active' }) => {
   const [offRoadTarget, setOffRoadTarget] = useState(null);
   const [offRoadNote, setOffRoadNote] = useState('');
   const [offRoadSubmitting, setOffRoadSubmitting] = useState(false);
+  const [offRoadAffected, setOffRoadAffected] = useState(null);
   const [page, setPage] = useState(1);
   const [discountsOpen, setDiscountsOpen] = useState(false);
   // Active long-rental rules, for the count on the Discounts button. Promo
@@ -112,12 +115,17 @@ const ManageCars = ({ view = 'active' }) => {
   const handleOffRoad = (car) => {
     setOffRoadTarget(car);
     setOffRoadNote('');
+    setOffRoadAffected(null);
   };
 
-  const submitOffRoad = async () => {
+  // The first attempt goes without confirmCancellations, so the server can
+  // answer with who it would hit rather than hitting them. Blocking a date
+  // range has always worked this way; pulling a vehicle did not, and it is
+  // the more dangerous of the two.
+  const submitOffRoad = async (confirmCancellations = false) => {
     setOffRoadSubmitting(true);
     try {
-      const res = await api.put(`/cars/${offRoadTarget._id}/off-road`, { note: offRoadNote });
+      const res = await api.put(`/cars/${offRoadTarget._id}/off-road`, { note: offRoadNote, confirmCancellations });
       setOffRoadTarget(null);
       await fetchCars();
       const { underway = [], offered = 0 } = res.data || {};
@@ -132,8 +140,13 @@ const ManageCars = ({ view = 'active' }) => {
           : 'Marked off the road. No bookings were affected.');
       }
     } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || 'Something went wrong.');
+      const data = err.response?.data;
+      if (data?.needsConfirmation) {
+        setOffRoadAffected(data);
+      } else {
+        console.error(err);
+        toast.error(data?.message || 'Something went wrong.');
+      }
     } finally {
       setOffRoadSubmitting(false);
     }
@@ -483,6 +496,21 @@ const ManageCars = ({ view = 'active' }) => {
     offRoadCard: {
       width: '100%', maxWidth: '440px', background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '16px', padding: '24px',
+    },
+    offRoadAffected: {
+      marginTop: '14px', padding: '12px 14px', borderRadius: '10px',
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
+    },
+    offRoadAffectedTitle: {
+      fontSize: '13px', fontWeight: '800', marginBottom: '8px',
+      color: isDark ? '#f87171' : '#991b1b',
+    },
+    offRoadList: { listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '6px' },
+    offRoadItem: { fontSize: '12.5px', lineHeight: 1.5, color: isDark ? '#e4e6eb' : '#374151' },
+    offRoadUnderway: {
+      fontSize: '12px', lineHeight: 1.5, marginTop: '10px',
+      color: isDark ? '#b0b3b8' : '#6b7280',
     },
     offRoadTitle: { fontSize: '17px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#111827', marginBottom: '8px' },
     offRoadSub: { fontSize: '13px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#6b7280', margin: '0 0 14px' },
@@ -1085,9 +1113,45 @@ const ManageCars = ({ view = 'active' }) => {
               value={offRoadNote}
               onChange={(e) => setOffRoadNote(e.target.value)}
             />
+
+            {/* Named, with the money beside each one. A count would tell you
+                nothing you could act on, and this is irreversible for the
+                clients in it — putting the car back does not un-refund
+                anybody. */}
+            {offRoadAffected && (
+              <div style={styles.offRoadAffected}>
+                <div style={styles.offRoadAffectedTitle}>
+                  This affects {offRoadAffected.cancellable.length} booking
+                  {offRoadAffected.cancellable.length === 1 ? '' : 's'}
+                </div>
+                <ul style={styles.offRoadList}>
+                  {offRoadAffected.cancellable.map((b) => (
+                    <li key={b.id} style={styles.offRoadItem}>
+                      <strong>{b.client}</strong> {DASH_CH} {new Date(b.startDate).toLocaleDateString()} to{' '}
+                      {new Date(b.endDate).toLocaleDateString()} {DASH_CH}{' '}
+                      {b.offerCount > 0
+                        ? `offered ${b.offerCount} other vehicle${b.offerCount === 1 ? '' : 's'}, or ₱${b.refund.toLocaleString()} back`
+                        : `cancelled and refunded ₱${b.refund.toLocaleString()}`}
+                    </li>
+                  ))}
+                </ul>
+                {offRoadAffected.underway?.length > 0 && (
+                  <div style={styles.offRoadUnderway}>
+                    {offRoadAffected.underway.length} client
+                    {offRoadAffected.underway.length === 1 ? ' is' : 's are'} out in this vehicle right now and
+                    will not be touched — settle those from Manage Bookings.
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <button style={styles.offRoadConfirm} onClick={submitOffRoad} disabled={offRoadSubmitting}>
-                {offRoadSubmitting ? 'Working...' : 'Take it off the road'}
+              <button
+                style={styles.offRoadConfirm}
+                onClick={() => submitOffRoad(!!offRoadAffected)}
+                disabled={offRoadSubmitting}
+              >
+                {offRoadSubmitting ? 'Working...' : offRoadAffected ? 'Yes, do it anyway' : 'Take it off the road'}
               </button>
               <button style={styles.offRoadBack} onClick={() => setOffRoadTarget(null)} disabled={offRoadSubmitting}>
                 Go back

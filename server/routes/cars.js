@@ -8,7 +8,7 @@ import { fetchAikaGps } from '../utils/aikaGps.js';
 import { validatePromo } from '../utils/promo.js';
 import { cancelBookingWithRefund, refundAmountFor, isUnderway } from '../utils/cancelBooking.js';
 import { BLOCK_REASON_CODES, causeFor, blockLabelFor } from '../utils/blockReasons.js';
-import { openAdjustOffer, previewAlternatives } from '../utils/adjustOffer.js';
+import { openAdjustOffer, previewAlternatives, alternativeVehicles } from '../utils/adjustOffer.js';
 import { bookingSpan, blockedSpan, padded, bookingsOverlapping, overlaps, OFF_ROAD_HORIZON_DAYS } from '../utils/availability.js';
 import { instantFrom, isClockHour, formatMoment, turnaroundHoursFor, addDays } from '../utils/phTime.js';
 import User from '../models/User.js';
@@ -324,9 +324,6 @@ router.put('/:id/off-road', protect, adminOnly, async (req, res) => {
       return res.status(400).json({ message: 'This vehicle is already off the road.' });
     }
 
-    car.offRoad = { since: new Date(), note: String(req.body.note || '').slice(0, 300) };
-    await car.save();
-
     const now = new Date();
     const affected = await Booking.find({
       car: car._id,
@@ -336,6 +333,43 @@ router.put('/:id/off-road', protect, adminOnly, async (req, res) => {
 
     const underway = affected.filter((b) => isUnderway(b));
     const upcoming = affected.filter((b) => !isUnderway(b));
+
+    // Blocking a date range shows admin who it will hit before it hits
+    // them. Pulling a vehicle has exactly the same consequences and did it
+    // on one click, which is the more dangerous of the two — a range is
+    // bounded and a breakdown takes every future booking on the car.
+    //
+    // Nothing is saved on this pass. Only the replacement vehicles are
+    // counted, because the date options are worked out against this car and
+    // it is about to have no free dates at all — counting them would
+    // promise each client an offer they will never see.
+    if (upcoming.length && !req.body.confirmCancellations) {
+      const offerable = await Promise.all(upcoming.map(async (b) => (await alternativeVehicles(b)).length));
+      return res.status(409).json({
+        needsConfirmation: true,
+        message: 'Taking this vehicle off the road affects the bookings below.',
+        cancellable: upcoming.map((b, i) => ({
+          id: b._id,
+          client: b.user?.name || 'A client',
+          startDate: b.startDate,
+          endDate: b.endDate,
+          status: b.status,
+          refund: refundAmountFor(b, 'vehicle_unavailable'),
+          // Zero means nothing suitable is free, or it is too close to
+          // pickup — those are cancelled and refunded outright.
+          offerCount: offerable[i],
+        })),
+        underway: underway.map((b) => ({
+          id: b._id,
+          client: b.user?.name || 'A client',
+          startDate: b.startDate,
+          endDate: b.endDate,
+        })),
+      });
+    }
+
+    car.offRoad = { since: new Date(), note: String(req.body.note || '').slice(0, 300) };
+    await car.save();
 
     // Everybody whose trip hasn't started gets the same treatment a blocked
     // range gives them: the nearest dates we can still honour, or a full
