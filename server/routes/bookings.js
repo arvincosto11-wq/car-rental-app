@@ -14,7 +14,7 @@ import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS, reasonUna
 import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js';
 import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
-import { notifyOverdueReturns, isOverdue, lateFeeFor } from '../utils/overdueReturns.js';
+import { notifyOverdueReturns, notifyUpcomingReturns, isOverdue, lateFeeFor } from '../utils/overdueReturns.js';
 import { isFuelLevel } from '../utils/fuel.js';
 import { licenceProblem, licenceMessage } from '../utils/documents.js';
 import { byUrgency } from '../utils/priority.js';
@@ -268,8 +268,10 @@ router.post('/', protect, async (req, res) => {
 router.get('/my', protect, async (req, res) => {
   try {
     await autoCompleteExpiredBookings();
-    // Scoped to this client, so somebody who is late hears about it when
-    // they open the app rather than whenever an admin next loads a page.
+    // Scoped to this client, so somebody who is late — or about to be —
+    // hears about it when they open the app rather than whenever an admin
+    // next loads a page.
+    await notifyUpcomingReturns({ userId: req.user.id });
     await notifyOverdueReturns({ userId: req.user.id });
     await remindStalePendingBookings();
     await expireAdjustOffers();
@@ -288,6 +290,7 @@ router.get('/my', protect, async (req, res) => {
 router.get('/all', protect, adminOnly, async (req, res) => {
   try {
     await autoCompleteExpiredBookings();
+    await notifyUpcomingReturns();
     await notifyOverdueReturns();
     await remindStalePendingBookings();
     await expireAdjustOffers();

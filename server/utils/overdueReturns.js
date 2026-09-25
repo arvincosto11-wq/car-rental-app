@@ -43,6 +43,55 @@ export function lateFeeFor(booking, pricePerDay) {
   return { days, amount: days * (Number(pricePerDay) || 0) };
 }
 
+// How far ahead of the return a client is warned. A day is enough to change
+// somebody's plans and not so far that they forget again before it matters.
+export const DUE_SOON_HOURS = 24;
+
+// Out, and due back within the day. Nothing has gone wrong yet — the whole
+// point is to reach them while it still hasn't.
+export const isDueSoon = (booking, now = new Date()) =>
+  booking.status === 'confirmed'
+  && !!booking.collectedAt
+  && !booking.returnedAt
+  && new Date(booking.endDate) >= now
+  && new Date(booking.endDate) <= new Date(now.getTime() + DUE_SOON_HOURS * 60 * 60 * 1000);
+
+// A word before the deadline rather than a bill after it. Told once per
+// Philippine calendar day, like the chase that follows it.
+export async function notifyUpcomingReturns({ userId = null } = {}) {
+  const now = new Date();
+  const today = phYmd(now);
+
+  const query = {
+    status: 'confirmed',
+    collectedAt: { $ne: null },
+    returnedAt: null,
+    endDate: { $gte: now, $lte: new Date(now.getTime() + DUE_SOON_HOURS * 60 * 60 * 1000) },
+    dueSoonNotifiedOn: { $ne: today },
+  };
+  if (userId) query.user = userId;
+
+  const due = await Booking.find(query).populate('car', 'brand model');
+
+  for (const booking of due) {
+    const car = booking.car ? `${booking.car.brand} ${booking.car.model}` : 'Your vehicle';
+    booking.dueSoonNotifiedOn = today;
+    await booking.save();
+
+    await notifyUser(
+      booking.user,
+      'Your return is due soon',
+      `${car} is due back on ${formatMoment(booking.endDate, booking.hasPickupTime)}. `
+        + "Please return it on time — our terms charge a late fee of one day's rental for every day a "
+        + 'vehicle comes back late. If you need it longer, you can extend the booking from My Bookings.',
+      '/my-bookings',
+      { email: true }
+    );
+  }
+
+  return due.length;
+}
+
 // Chases anything still out. Told once per Philippine calendar day, not once
 // per page load — this runs on every admin fetch, and an inbox filling up
 // with the same message is how people learn to ignore it.

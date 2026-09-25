@@ -1,7 +1,7 @@
 import { suite, group, check } from './harness.mjs';
 import { hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom } from '../utils/phTime.js';
-import { isOverdue, daysOverdue, daysLate, lateFeeFor } from '../utils/overdueReturns.js';
+import { isOverdue, daysOverdue, daysLate, lateFeeFor, isDueSoon } from '../utils/overdueReturns.js';
 import { occupiedSpan } from '../utils/availability.js';
 import { fuelShortfall, fuelShortfallLabel, isFuelLevel, fuelLabel } from '../utils/fuel.js';
 import { licenceProblem, idProblem } from '../utils/documents.js';
@@ -207,4 +207,24 @@ export default function run() {
   check('a paid upcoming trip does not', bookingPriority(soon, { role: 'client', now: when }).tier, TIER.SCHEDULED);
   // Admin has nothing to do about an unpaid booking — they never see it.
   check('but admin is not asked to decide an unpaid one', bookingPriority(unpaid, { now: when }).tier, TIER.SCHEDULED);
+
+  group('a word before the deadline, not only a bill after it');
+  // Most late returns are somebody who lost track of the day. A reminder
+  // costs nothing and is worth more than any fine.
+  const running = {
+    status: 'confirmed', hasPickupTime: true,
+    startDate: instantFrom('2026-09-24', 17), endDate: instantFrom('2026-09-26', 17),
+    collectedAt: instantFrom('2026-09-24', 17), returnedAt: null,
+  };
+  const noon25 = new Date('2026-09-25T12:00:00+08:00');
+  check('due tomorrow morning, out now', isDueSoon({ ...running, endDate: instantFrom('2026-09-26', 7) }, noon25), true);
+  // 5pm tomorrow is 29 hours away, which is outside the window on purpose.
+  check('due tomorrow evening is not yet soon', isDueSoon(running, noon25), false);
+  // A day and a half out is not yet worth a message; they would forget again.
+  check('still two days off', isDueSoon({ ...running, endDate: instantFrom('2026-09-28', 17) }, noon25), false);
+  // Once it is late the other sweep takes over, and being told to return it
+  // "on time" would be absurd.
+  check('already overdue is not due soon', isDueSoon({ ...running, endDate: instantFrom('2026-09-24', 17) }, noon25), false);
+  check('never collected gets no reminder', isDueSoon({ ...running, collectedAt: null }, noon25), false);
+  check('already back gets no reminder', isDueSoon({ ...running, returnedAt: noon25 }, noon25), false);
 }

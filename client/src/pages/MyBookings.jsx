@@ -18,7 +18,7 @@ import { bookingAwaitingDecision } from '../utils/offerWindow';
 import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays } from '../utils/phTime';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK } from '../theme';
 import { fuelShortfallLabel, fuelLabel } from '../utils/fuel';
 
 // How long a change is worth pointing out. After a day it is history, and a
@@ -40,6 +40,12 @@ const agoLabel = (at) => {
 const isStillOut = (b) => b.status === 'confirmed' && !!b.collectedAt && !b.returnedAt
   && new Date(b.endDate) < new Date();
 const daysOut = (b) => Math.max(1, Math.ceil((Date.now() - new Date(b.endDate).getTime()) / 86400000));
+// Out, and due back within the day. Amber rather than red: nothing has gone
+// wrong yet, and the point of saying it now is that it still hasn't.
+const DUE_SOON_HOURS = 24;
+const isDueSoon = (b) => b.status === 'confirmed' && !!b.collectedAt && !b.returnedAt
+  && new Date(b.endDate) >= new Date()
+  && new Date(b.endDate) <= new Date(Date.now() + DUE_SOON_HOURS * 3600000);
 
 const freshActivity = (b) => {
   const at = b.lastActivity?.at;
@@ -900,6 +906,13 @@ const MyBookings = () => {
       width: '58px', height: '44px', objectFit: 'cover', borderRadius: '6px', cursor: 'zoom-in',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
+    dueSoonBanner: {
+      margin: '10px 0 0', padding: '11px 13px', borderRadius: '10px',
+      fontSize: '12.5px', fontWeight: '700', lineHeight: 1.5,
+      background: isDark ? GOLD_TINT_DARK : GOLD_TINT,
+      color: isDark ? '#e4e6eb' : '#7c4a03',
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.35)' : 'rgba(184,121,10,0.3)'}`,
+    },
     overdueBanner: {
       margin: '10px 0 0', padding: '11px 13px', borderRadius: '10px',
       fontSize: '12.5px', fontWeight: '700', lineHeight: 1.5,
@@ -1303,6 +1316,13 @@ const MyBookings = () => {
                 {/* The chase, where they would actually look for it. It was
                     reaching them by email and in the notification bell, and
                     the one place it was missing is the booking it is about. */}
+                {isDueSoon(booking) && (
+                  <div style={styles.dueSoonBanner}>
+                    Due back {formatMoment(booking.endDate, booking.hasPickupTime)}. Returning on time avoids
+                    a late fee of one day&apos;s rental for every day it is late — and if you need it longer,
+                    you can extend below.
+                  </div>
+                )}
                 {isStillOut(booking) && (
                   <div style={styles.overdueBanner}>
                     This vehicle is overdue. It was due back on{' '}

@@ -42,6 +42,10 @@ const bookingSchema = new mongoose.Schema({
   // The sweep runs on every admin page load, so without this they would be
   // emailed on every refresh.
   overdueNotifiedOn: { type: String, default: '' },
+  // And the day they were reminded it is due back soon. Cheaper than any
+  // fine: most late returns are somebody who lost track of the day, not
+  // somebody chancing it.
+  dueSoonNotifiedOn: { type: String, default: '' },
   // The last thing a person did to this booking, and who. Position in the
   // lists is decided by urgency, not by recency — a booking moved for March
   // should not outrank today's pickup just because somebody touched it — so
