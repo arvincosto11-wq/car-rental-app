@@ -15,7 +15,7 @@ import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js'
 import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
 import { notifyOverdueReturns, isOverdue, lateFeeFor } from '../utils/overdueReturns.js';
-import { isFuelLevel, fuelShortfall, fuelShortfallLabel } from '../utils/fuel.js';
+import { isFuelLevel } from '../utils/fuel.js';
 import { licenceProblem, licenceMessage } from '../utils/documents.js';
 import { byUrgency } from '../utils/priority.js';
 import { recordActivity } from '../utils/priority.js';
@@ -530,36 +530,18 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     booking.status = status;
     await booking.save();
     if (status === 'completed' && previousStatus !== 'completed') {
-      // A bill is not something to discover in a notification bell, so
-      // anything owed is its own message and goes by email as well. Both
-      // charges can land on one return, and hearing about them separately
-      // would read as two surprises rather than one account.
-      const owed = [];
-      if (booking.lateFee?.amount > 0) {
-        owed.push(`a late fee of ₱${booking.lateFee.amount.toLocaleString()} for returning `
-          + `${booking.lateFee.days} day${booking.lateFee.days === 1 ? '' : 's'} late, at one day's rental rate per day of delay`);
-      }
-      if (booking.condition?.damageCharge > 0) {
-        owed.push(`₱${booking.condition.damageCharge.toLocaleString()} for damage to the vehicle`);
-      }
-      if (booking.fuel?.charge > 0) {
-        const short = fuelShortfallLabel(booking);
-        owed.push(`₱${booking.fuel.charge.toLocaleString()} for refuelling`
-          + (short ? `, the vehicle having come back ${short} short of the level it went out with` : ''));
-      }
-
-      if (owed.length) {
-        await notifyUser(
-          booking.user,
-          owed.length > 1 ? 'Charges on your returned booking' : 'A charge on your returned booking',
-          `Your return has been recorded, and ${owed.join(' and ')}. `
-            + 'Both are set out in our Terms and Conditions. Please settle with us if you have not already.',
-          '/my-bookings',
-          { email: true }
-        );
-      } else {
-        await notifyUser(booking.user, 'Vehicle Returned', 'Your vehicle return has been recorded. You can now rate your experience.', '/my-bookings/rate');
-      }
+      // A return is a record, not a demand. Every one of these charges is
+      // found with the client standing at the counter — the gauge, the
+      // damage, the days late — so a message about them tells somebody what
+      // they were just told to their face. Worse, "please settle it" is
+      // untrue the moment they pay on the spot and before anyone presses
+      // Collect. The amounts and whether they are settled live on the
+      // booking, where both sides can see them.
+      //
+      // Overdue is the opposite case and still chases daily: the client is
+      // not there, they have our vehicle, and a message is the only way to
+      // reach them. See utils/overdueReturns.js.
+      await notifyUser(booking.user, 'Vehicle Returned', 'Your vehicle return has been recorded. You can now rate your experience.', '/my-bookings/rate');
 
       // The owner hears about their own vehicle coming back marked. Facts
       // only @ what happened and what it looks like. What it was charged for

@@ -35,6 +35,12 @@ const agoLabel = (at) => {
 
 // Position is decided by urgency now, so a change has to announce itself
 // where it sits rather than by jumping the queue.
+// Out past its return, right now. Mirrors the server's rule; this only
+// decides what the client is shown on their own booking.
+const isStillOut = (b) => b.status === 'confirmed' && !!b.collectedAt && !b.returnedAt
+  && new Date(b.endDate) < new Date();
+const daysOut = (b) => Math.max(1, Math.ceil((Date.now() - new Date(b.endDate).getTime()) / 86400000));
+
 const freshActivity = (b) => {
   const at = b.lastActivity?.at;
   if (!at) return '';
@@ -894,6 +900,22 @@ const MyBookings = () => {
       width: '58px', height: '44px', objectFit: 'cover', borderRadius: '6px', cursor: 'zoom-in',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
     },
+    overdueBanner: {
+      margin: '10px 0 0', padding: '11px 13px', borderRadius: '10px',
+      fontSize: '12.5px', fontWeight: '700', lineHeight: 1.5,
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      color: isDark ? '#f87171' : '#991b1b',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
+    },
+    chargeNote: (settled) => ({
+      margin: '10px 0 0', padding: '9px 12px', borderRadius: '10px',
+      fontSize: '12px', fontWeight: '600', lineHeight: 1.5,
+      background: settled
+        ? (isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb')
+        : (isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2'),
+      color: settled ? (isDark ? '#b0b3b8' : '#6b7280') : (isDark ? '#f87171' : '#991b1b'),
+      border: `1px solid ${settled ? (isDark ? '#3a3b3c' : '#f3f4f6') : (isDark ? 'rgba(248,113,113,0.3)' : '#fecaca')}`,
+    }),
     lateFeeNote: {
       margin: '10px 0 0', padding: '10px 12px', borderRadius: '10px',
       fontSize: '12px', fontWeight: '600', lineHeight: 1.5,
@@ -1278,6 +1300,17 @@ const MyBookings = () => {
                 {freshActivity(booking) && (
                   <div style={styles.activityNote}>{freshActivity(booking)}</div>
                 )}
+                {/* The chase, where they would actually look for it. It was
+                    reaching them by email and in the notification bell, and
+                    the one place it was missing is the booking it is about. */}
+                {isStillOut(booking) && (
+                  <div style={styles.overdueBanner}>
+                    This vehicle is overdue. It was due back on{' '}
+                    {formatMoment(booking.endDate, booking.hasPickupTime)}, {daysOut(booking)} day
+                    {daysOut(booking) === 1 ? '' : 's'} ago. Please return it as soon as you can, or contact us
+                    if something has gone wrong — our terms charge a late fee for every day it is late.
+                  </div>
+                )}
                 {booking.collectedAt && (
                   <div style={styles.tripRecord}>
                     <span>
@@ -1318,29 +1351,35 @@ const MyBookings = () => {
                     )}
                   </div>
                 )}
+                {/* A record, not a demand. All three of these are found with
+                    the client standing at the counter, so telling them here
+                    is telling them something they were just told — and
+                    "please settle it" is plainly wrong if they paid on the
+                    spot and nobody has pressed Collect yet. Red only while
+                    something is genuinely outstanding. */}
                 {booking.status === 'completed' && booking.condition?.damageCharge > 0 && (
-                  <div style={styles.lateFeeNote}>
-                    A damage charge of ₱{booking.condition.damageCharge.toLocaleString()} applies to this
-                    return, per our Terms and Conditions.
-                    {booking.condition.atReturn?.note ? ` ${booking.condition.atReturn.note}` : ''}
-                    {booking.condition.damageCollectedAt ? ' This has been settled.' : ' Please settle it with us.'}
+                  <div style={styles.chargeNote(!!booking.condition.damageCollectedAt)}>
+                    Damage recorded on return
+                    {booking.condition.atReturn?.note ? `: ${booking.condition.atReturn.note}` : ''}
+                    {' '}— ₱{booking.condition.damageCharge.toLocaleString()} damage charge.
+                    {booking.condition.damageCollectedAt ? ' Settled.' : ' Not yet settled.'}
                   </div>
                 )}
                 {booking.status === 'completed' && booking.fuel?.charge > 0 && (
-                  <div style={styles.lateFeeNote}>
+                  <div style={styles.chargeNote(!!booking.fuel.collectedAt)}>
                     {fuelShortfallLabel(booking)
-                      ? `The vehicle came back ${fuelShortfallLabel(booking)} short of the fuel it went out with. `
-                      : 'A refuelling charge applies to this return. '}
-                    A refuelling charge of ₱{booking.fuel.charge.toLocaleString()} applies, per our Terms and Conditions.
-                    {booking.fuel.collectedAt ? ' This has been settled.' : ' Please settle it with us.'}
+                      ? `Returned ${fuelShortfallLabel(booking)} short of the fuel it went out with`
+                      : 'Refuelled after this return'}
+                    {' '}— ₱{booking.fuel.charge.toLocaleString()} refuelling charge.
+                    {booking.fuel.collectedAt ? ' Settled.' : ' Not yet settled.'}
                   </div>
                 )}
                 {booking.status === 'completed' && booking.lateFee?.days > 0 && (
-                  <div style={styles.lateFeeNote}>
-                    Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late.
-                    {' '}A late fee of ₱{booking.lateFee.amount.toLocaleString()} applies — one day&apos;s rental
-                    rate per day of delay, per our Terms and Conditions.
-                    {booking.lateFee.collectedAt ? ' This has been settled.' : ' Please settle it with us.'}
+                  <div style={styles.chargeNote(!!booking.lateFee.collectedAt)}>
+                    Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late
+                    {' '}— ₱{booking.lateFee.amount.toLocaleString()} late fee, one day&apos;s rental rate per day
+                    of delay.
+                    {booking.lateFee.collectedAt ? ' Settled.' : ' Not yet settled.'}
                   </div>
                 )}
                 {booking.status === 'completed' && (
