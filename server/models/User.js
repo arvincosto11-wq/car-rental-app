@@ -58,6 +58,10 @@ const userSchema = new mongoose.Schema({
   // last fields a verified client could still rewrite for themselves.
   pendingLicenseNumber: { type: String, default: '' },
   pendingLicenseExpiry: { type: Date },
+  pendingLicenseImage: { type: String, default: '' },
+  pendingLicenseImageFileId: { type: String, default: '' },
+  pendingLicenseImageBack: { type: String, default: '' },
+  pendingLicenseImageBackFileId: { type: String, default: '' },
   pendingIdSubmittedAt: { type: Date },
   isBlocked: { type: Boolean, default: false },
   avgRating: { type: Number, default: 0 },

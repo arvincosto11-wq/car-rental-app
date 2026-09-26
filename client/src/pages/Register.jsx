@@ -65,7 +65,7 @@ const Register = () => {
   const [form, setForm] = useState({
     name: '', email: '', password: '', birthDate: '',
     phone: '', address: '',
-    licenseNumber: '', licenseExpiry: '',
+    licenseNumber: '',
     emergencyContactName: '', emergencyContactNumber: '',
   });
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -246,11 +246,6 @@ const Register = () => {
         uploadedLicenseBack = await uploadToImageKit(licenseBackImage);
       }
 
-      // The driver's license IS the valid ID in this case — one physical
-      // document, so its expiry only needs to be entered once (in the
-      // License Expiry field) rather than twice.
-      const isDriversLicense = validIdType === 'drivers_license';
-
       const res = await api.post('/auth/register', {
         ...form,
         validIdType,
@@ -258,7 +253,7 @@ const Register = () => {
         validIdImageFileId: uploaded.fileId,
         validIdImageBack: uploadedBack.url,
         validIdImageBackFileId: uploadedBack.fileId,
-        validIdExpiry: isDriversLicense ? (form.licenseExpiry || null) : (validIdExpiry || null),
+
         licenseImage: uploadedLicense.url,
         licenseImageFileId: uploadedLicense.fileId,
         licenseImageBack: uploadedLicenseBack.url,
@@ -610,7 +605,7 @@ const Register = () => {
                       onBackChange={handleIdBackChange}
                       expiry={validIdExpiry}
                       onExpiryChange={setValidIdExpiry}
-                      hideExpiry={validIdType === 'drivers_license'}
+                      hideExpiry
                     />
                     {fieldErrors.validId && <p style={styles.fieldError}>{fieldErrors.validId}</p>}
 
@@ -629,16 +624,9 @@ const Register = () => {
                           onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })}
                         />
                       </div>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="reg-license-expiry">License Expiry Date</label>
-                        <input
-                          id="reg-license-expiry"
-                          style={styles.input}
-                          type="date"
-                          value={form.licenseExpiry}
-                          onChange={(e) => setForm({ ...form, licenseExpiry: e.target.value })}
-                        />
-                      </div>
+                      {/* No expiry here. Our team reads it off the photo
+                          when the licence is checked — a date typed by its
+                          holder is a claim, not a fact. */}
                     </div>
 
                     {validIdType === 'drivers_license' ? (

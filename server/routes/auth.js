@@ -50,13 +50,20 @@ router.put('/me', protect, async (req, res) => {
   try {
     const {
       name, phone, address, birthDate,
-      licenseNumber, licenseExpiry,
+      licenseNumber,
       licenseImage, licenseImageFileId, licenseImageBack, licenseImageBackFileId,
       emergencyContactName, emergencyContactNumber,
       validIdType, validIdImage, validIdImageFileId,
-      validIdImageBack, validIdImageBackFileId, validIdExpiry,
+      validIdImageBack, validIdImageBackFileId,
       image, imageFileId
     } = req.body;
+
+    // Expiry dates are deliberately NOT read from this request, for either
+    // document. A date the holder types is a claim about their own papers
+    // and worth nothing — commercial rental systems read it off the scanned
+    // document for exactly that reason. Admin enters both from the photo
+    // they are already looking at. Anything sent here is ignored rather
+    // than refused, so an older client build simply has no effect.
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -69,18 +76,12 @@ router.put('/me', protect, async (req, res) => {
     if (image) { user.image = image; user.imageFileId = imageFileId || ''; }
     // Held back below for a verified client, the same as the ID. Applied
     // directly only while there is nothing verified to protect.
-    const ymd = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
     const licenceChanged =
       (licenseNumber !== undefined && String(licenseNumber || '') !== String(user.licenseNumber || ''))
-      || (licenseExpiry !== undefined && String(licenseExpiry || '') !== ymd(user.licenseExpiry));
+      || (licenseImage && licenseImage !== user.licenseImage)
+      || (licenseImageBack && licenseImageBack !== user.licenseImageBack);
     if (emergencyContactName !== undefined) user.emergencyContactName = emergencyContactName;
     if (emergencyContactNumber !== undefined) user.emergencyContactNumber = emergencyContactNumber;
-
-    // License photos aren't gated behind admin re-verification the way the
-    // valid ID is — idVerified/booking eligibility never depended on them,
-    // they're just supporting evidence for the license number/expiry.
-    if (licenseImage) { user.licenseImage = licenseImage; user.licenseImageFileId = licenseImageFileId || ''; }
-    if (licenseImageBack) { user.licenseImageBack = licenseImageBack; user.licenseImageBackFileId = licenseImageBackFileId || ''; }
 
     if (birthDate && !user.birthDate) {
       if (ageInYears(birthDate) < MIN_AGE_YEARS) {
@@ -95,20 +96,7 @@ router.put('/me', protect, async (req, res) => {
     const idPhotoChanged =
       (validIdType && validIdType !== user.validIdType) ||
       (validIdImage && validIdImage !== user.validIdImage) ||
-      (validIdImageBack && validIdImageBack !== user.validIdImageBack) ||
-      // The expiry belongs in here too. It was the one part of an ID a
-      // verified client could rewrite on their own: push the date two years
-      // out, keep the tick, carry on booking. The date is printed on the
-      // photograph admin already looks at, so it is admin's to confirm
-      // against it — commercial systems read it off the document precisely
-      // because nobody's word for their own expiry date is worth anything.
-      (validIdExpiry !== undefined && String(validIdExpiry || '') !== String(user.validIdExpiry ? new Date(user.validIdExpiry).toISOString().slice(0, 10) : ''));
-
-    // Already verified: don't touch the live ID at all, so booking stays
-    // unaffected. Stash the update in the pending slot instead — the user
-    // keeps using their existing (still legitimate) ID until admin reviews
-    // the new one. Only unverified/never-verified users get a direct
-    // overwrite, since there's nothing verified yet to protect.
+      (validIdImageBack && validIdImageBack !== user.validIdImageBack);
     // Renamed in spirit: it is any change to the ID, the date included.
     const wentPending = (idPhotoChanged || licenceChanged) && user.idVerified;
 
@@ -116,16 +104,16 @@ router.put('/me', protect, async (req, res) => {
       if (validIdType) user.pendingValidIdType = validIdType;
       if (validIdImage) { user.pendingValidIdImage = validIdImage; user.pendingValidIdImageFileId = validIdImageFileId || ''; }
       if (validIdImageBack) { user.pendingValidIdImageBack = validIdImageBack; user.pendingValidIdImageBackFileId = validIdImageBackFileId || ''; }
-      if (validIdExpiry !== undefined) user.pendingValidIdExpiry = validIdExpiry || null;
       if (licenceChanged) {
         if (licenseNumber !== undefined) user.pendingLicenseNumber = licenseNumber || '';
-        if (licenseExpiry !== undefined) user.pendingLicenseExpiry = licenseExpiry || null;
+        if (licenseImage) { user.pendingLicenseImage = licenseImage; user.pendingLicenseImageFileId = licenseImageFileId || ''; }
+        if (licenseImageBack) { user.pendingLicenseImageBack = licenseImageBack; user.pendingLicenseImageBackFileId = licenseImageBackFileId || ''; }
       }
       user.pendingIdSubmittedAt = new Date();
     } else {
       if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
-      if (licenseExpiry !== undefined) user.licenseExpiry = licenseExpiry;
-      if (validIdExpiry !== undefined) user.validIdExpiry = validIdExpiry || null;
+      if (licenseImage) { user.licenseImage = licenseImage; user.licenseImageFileId = licenseImageFileId || ''; }
+      if (licenseImageBack) { user.licenseImageBack = licenseImageBack; user.licenseImageBackFileId = licenseImageBackFileId || ''; }
       if (idPhotoChanged) {
         if (validIdType) user.validIdType = validIdType;
         if (validIdImage) { user.validIdImage = validIdImage; user.validIdImageFileId = validIdImageFileId || ''; }

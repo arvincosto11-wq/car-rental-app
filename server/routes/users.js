@@ -17,6 +17,22 @@ router.get('/', protect, adminOnly, async (req, res) => {
   }
 });
 
+// Correcting the dates on an already-verified client, read off the ID and
+// licence photos on file. Separate from approval because a typo found a
+// week later should not mean sending somebody back through review.
+router.put('/:id/document-dates', protect, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (req.body.validIdExpiry !== undefined) user.validIdExpiry = req.body.validIdExpiry || null;
+    if (req.body.licenseExpiry !== undefined) user.licenseExpiry = req.body.licenseExpiry || null;
+    await user.save();
+    res.json({ validIdExpiry: user.validIdExpiry, licenseExpiry: user.licenseExpiry });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Verify or unverify a client's ID (admin)
 router.put('/:id/verify', protect, adminOnly, async (req, res) => {
   try {
@@ -56,9 +72,17 @@ router.put('/:id/pending-id/approve', protect, adminOnly, async (req, res) => {
     if (user.pendingValidIdType) user.validIdType = user.pendingValidIdType;
     if (user.pendingValidIdImage) { user.validIdImage = user.pendingValidIdImage; user.validIdImageFileId = user.pendingValidIdImageFileId; }
     if (user.pendingValidIdImageBack) { user.validIdImageBack = user.pendingValidIdImageBack; user.validIdImageBackFileId = user.pendingValidIdImageBackFileId; }
-    if (user.pendingValidIdExpiry !== undefined) user.validIdExpiry = user.pendingValidIdExpiry;
     if (user.pendingLicenseNumber) user.licenseNumber = user.pendingLicenseNumber;
-    if (user.pendingLicenseExpiry) user.licenseExpiry = user.pendingLicenseExpiry;
+    if (user.pendingLicenseImage) { user.licenseImage = user.pendingLicenseImage; user.licenseImageFileId = user.pendingLicenseImageFileId; }
+    if (user.pendingLicenseImageBack) { user.licenseImageBack = user.pendingLicenseImageBack; user.licenseImageBackFileId = user.pendingLicenseImageBackFileId; }
+
+    // The dates come from admin, read off the photographs above, not from
+    // anything the client sent — that is the whole point of the change.
+    // Blank clears the date, which is a real answer for an ID that does not
+    // expire, so undefined and '' are told apart.
+    if (req.body.validIdExpiry !== undefined) user.validIdExpiry = req.body.validIdExpiry || null;
+    if (req.body.licenseExpiry !== undefined) user.licenseExpiry = req.body.licenseExpiry || null;
+
     user.idVerified = true;
 
     user.pendingValidIdType = '';
@@ -69,6 +93,10 @@ router.put('/:id/pending-id/approve', protect, adminOnly, async (req, res) => {
     user.pendingValidIdExpiry = null;
     user.pendingLicenseNumber = '';
     user.pendingLicenseExpiry = null;
+    user.pendingLicenseImage = '';
+    user.pendingLicenseImageFileId = '';
+    user.pendingLicenseImageBack = '';
+    user.pendingLicenseImageBackFileId = '';
     user.pendingIdSubmittedAt = null;
 
     await user.save();
@@ -100,6 +128,10 @@ router.put('/:id/pending-id/reject', protect, adminOnly, async (req, res) => {
     user.pendingValidIdExpiry = null;
     user.pendingLicenseNumber = '';
     user.pendingLicenseExpiry = null;
+    user.pendingLicenseImage = '';
+    user.pendingLicenseImageFileId = '';
+    user.pendingLicenseImageBack = '';
+    user.pendingLicenseImageBackFileId = '';
     user.pendingIdSubmittedAt = null;
 
     await user.save();

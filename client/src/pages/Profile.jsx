@@ -172,15 +172,10 @@ const Profile = () => {
     setSaving(true);
     setSaveError('');
     try {
-      // The driver's license IS the valid ID in this case — one physical
-      // document, so its expiry only needs to be entered once (in the
-      // License Expiry field) rather than twice.
-      const isDriversLicense = validIdType === 'drivers_license';
-      const payload = {
-        ...form,
-        validIdType,
-        validIdExpiry: isDriversLicense ? (form.licenseExpiry || null) : (validIdExpiry || null),
-      };
+      // Neither expiry is sent any more. Both are read off the documents by
+      // admin when they check them — see PUT /auth/me, which ignores them.
+      const { licenseExpiry: _dropped, ...rest } = form;
+      const payload = { ...rest, validIdType };
       if (validIdImage) {
         const uploaded = await uploadToImageKit(validIdImage);
         payload.validIdImage = uploaded.url;
@@ -355,6 +350,10 @@ const Profile = () => {
     },
     idThumb: { width: '100%', maxWidth: '260px', height: '130px', objectFit: 'cover', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, marginTop: '8px' },
     field: { marginBottom: '14px' },
+    readOnlyValue: {
+      margin: 0, padding: '10px 0 0', fontSize: '13px',
+      color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic',
+    },
     label: { display: 'block', fontSize: '13px', color: isDark ? '#b0b3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
     input: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     uploadHint: { fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280' },
@@ -592,10 +591,16 @@ const Profile = () => {
                   <input id="profile-license-number" style={s.input} type="text" value={form.licenseNumber}
                     onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} />
                 </div>
+                {/* Read-only on purpose. A date the holder types is a claim
+                    about their own papers; this one is read off the photo by
+                    whoever checks it. */}
                 <div style={s.field}>
-                  <label style={s.label} htmlFor="profile-license-expiry">License Expiry</label>
-                  <input id="profile-license-expiry" style={s.input} type="date" value={form.licenseExpiry}
-                    onChange={(e) => setForm({ ...form, licenseExpiry: e.target.value })} />
+                  <span style={s.label}>License Expiry</span>
+                  <p style={s.readOnlyValue}>
+                    {profile.licenseExpiry
+                      ? new Date(profile.licenseExpiry).toLocaleDateString()
+                      : 'Set by our team when your licence is checked'}
+                  </p>
                 </div>
               </div>
 
@@ -644,6 +649,7 @@ const Profile = () => {
                 onFrontChange={(f) => { setValidIdImage(f); setValidIdPreview(URL.createObjectURL(f)); }}
                 backPreview={validIdBackPreview || profile.validIdImageBack}
                 onBackChange={(f) => { setValidIdBackImage(f); setValidIdBackPreview(URL.createObjectURL(f)); }}
+                hideExpiry
                 expiry={validIdExpiry}
                 onExpiryChange={setValidIdExpiry}
                 hideExpiry={validIdType === 'drivers_license'}

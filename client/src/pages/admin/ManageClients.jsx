@@ -62,13 +62,37 @@ const ManageClients = () => {
     }
   };
 
+  // The dates are read off the photographs above and typed here, not taken
+  // from anything the client sent. Blank is a real answer — a TIN ID does
+  // not expire — so it is sent as an empty string rather than omitted.
+  const [docDates, setDocDates] = useState({ validIdExpiry: '', licenseExpiry: '' });
+  const [savingDates, setSavingDates] = useState(false);
+
   const handleApprovePendingId = async (id) => {
     try {
-      await api.put(`/users/${id}/pending-id/approve`);
+      await api.put(`/users/${id}/pending-id/approve`, {
+        validIdExpiry: docDates.validIdExpiry || '',
+        licenseExpiry: docDates.licenseExpiry || '',
+      });
       fetchData();
       refetchPendingCounts();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const saveDocumentDates = async (id) => {
+    setSavingDates(true);
+    try {
+      await api.put(`/users/${id}/document-dates`, {
+        validIdExpiry: docDates.validIdExpiry || '',
+        licenseExpiry: docDates.licenseExpiry || '',
+      });
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingDates(false);
     }
   };
 
@@ -153,6 +177,13 @@ const ManageClients = () => {
     badgeRow: { display: 'flex', gap: '8px', marginBottom: '18px' },
     profileGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' },
     profileItem: { background: isDark ? '#18191a' : '#f9fafb', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
+    dateRow: { display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' },
+    dateField: { display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '160px' },
+    dateInput: {
+      padding: '8px 10px', fontSize: '13px', borderRadius: '8px', outline: 'none',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
     profileLabel: { display: 'block', fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '3px' },
     profileValue: { fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a', fontWeight: '500' },
     idImage: { width: '100%', maxHeight: '220px', objectFit: 'contain', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, marginBottom: '18px', background: isDark ? '#18191a' : '#f9fafb' },
@@ -238,7 +269,16 @@ const ManageClients = () => {
                   </span>
                 </td>
                 <td style={s.td}>
-                  <button style={s.viewBtn} onClick={() => setSelectedClientId(client._id)}>
+                  <button
+                    style={s.viewBtn}
+                    onClick={() => {
+                      // Seeded from what is on file, so admin edits a date
+                      // rather than retyping one from scratch.
+                      const ymd = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
+                      setDocDates({ validIdExpiry: ymd(client.validIdExpiry), licenseExpiry: ymd(client.licenseExpiry) });
+                      setSelectedClientId(client._id);
+                    }}
+                  >
                     View Details
                   </button>
                 </td>
@@ -290,6 +330,39 @@ const ManageClients = () => {
                 <span style={s.profileValue}>
                   {selectedClient.licenseExpiry ? new Date(selectedClient.licenseExpiry).toLocaleDateString() : '—'}
                 </span>
+              </div>
+              {/* Both dates live here rather than on the client's profile.
+                  A typo found a week later should be a correction, not a
+                  trip back through review. */}
+              <div style={{ ...s.profileItem, gridColumn: '1 / -1' }}>
+                <span style={s.profileLabel}>Document expiry dates (from the photos on file)</span>
+                <div style={s.dateRow}>
+                  <label style={s.dateField}>
+                    <span style={s.profileLabel}>Valid ID</span>
+                    <input
+                      type="date"
+                      style={s.dateInput}
+                      value={docDates.validIdExpiry}
+                      onChange={(e) => setDocDates({ ...docDates, validIdExpiry: e.target.value })}
+                    />
+                  </label>
+                  <label style={s.dateField}>
+                    <span style={s.profileLabel}>Licence</span>
+                    <input
+                      type="date"
+                      style={s.dateInput}
+                      value={docDates.licenseExpiry}
+                      onChange={(e) => setDocDates({ ...docDates, licenseExpiry: e.target.value })}
+                    />
+                  </label>
+                  <button
+                    style={s.verifyBtn(false)}
+                    disabled={savingDates}
+                    onClick={() => saveDocumentDates(selectedClient._id)}
+                  >
+                    {savingDates ? 'Saving...' : 'Save dates'}
+                  </button>
+                </div>
               </div>
               <div style={s.profileItem}>
                 <span style={s.profileLabel}>Emergency Contact</span>
@@ -404,6 +477,30 @@ const ManageClients = () => {
                       : ''}
                   </p>
                 )}
+                <div style={s.dateRow}>
+                  <label style={s.dateField}>
+                    <span style={s.profileLabel}>ID expiry (read it off the photo)</span>
+                    <input
+                      type="date"
+                      style={s.dateInput}
+                      value={docDates.validIdExpiry}
+                      onChange={(e) => setDocDates({ ...docDates, validIdExpiry: e.target.value })}
+                    />
+                  </label>
+                  <label style={s.dateField}>
+                    <span style={s.profileLabel}>Licence expiry</span>
+                    <input
+                      type="date"
+                      style={s.dateInput}
+                      value={docDates.licenseExpiry}
+                      onChange={(e) => setDocDates({ ...docDates, licenseExpiry: e.target.value })}
+                    />
+                  </label>
+                </div>
+                <p style={{ ...s.subCell, marginBottom: '10px' }}>
+                  Leave a date blank if that document doesn&apos;t expire.
+                </p>
+
                 <div style={s.actionRow}>
                   <button style={s.verifyBtn(false)} onClick={() => handleApprovePendingId(selectedClient._id)}>
                     Approve New ID
