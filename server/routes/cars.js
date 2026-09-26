@@ -9,7 +9,7 @@ import { validatePromo } from '../utils/promo.js';
 import { cancelBookingWithRefund, refundAmountFor, isUnderway } from '../utils/cancelBooking.js';
 import { BLOCK_REASON_CODES, causeFor, blockLabelFor } from '../utils/blockReasons.js';
 import { openAdjustOffer, previewAlternatives, alternativeVehicles } from '../utils/adjustOffer.js';
-import { bookingSpan, blockedSpan, padded, bookingsOverlapping, overlaps, OFF_ROAD_HORIZON_DAYS } from '../utils/availability.js';
+import { bookingSpan, blockedSpan, padded, bookingsOverlapping, overlaps, occupiedSpan, OFF_ROAD_HORIZON_DAYS } from '../utils/availability.js';
 import { instantFrom, isClockHour, formatMoment, turnaroundHoursFor, addDays } from '../utils/phTime.js';
 import User from '../models/User.js';
 
@@ -100,7 +100,8 @@ router.get('/:id/booked-dates', async (req, res) => {
     const statuses = includePending ? ['confirmed', 'pending'] : ['confirmed'];
 
     const [bookings, car] = await Promise.all([
-      Booking.find({ car: req.params.id, status: { $in: statuses } }).select('startDate endDate hasPickupTime'),
+      Booking.find({ car: req.params.id, status: { $in: statuses } })
+        .select('startDate endDate hasPickupTime collectedAt returnedAt'),
       Car.findById(req.params.id).select('blockedDates turnaroundHours offRoad'),
     ]);
 
@@ -113,8 +114,21 @@ router.get('/:id/booked-dates', async (req, res) => {
     const hours = turnaroundHoursFor(car);
     const ranges = [
       ...bookings.map((b) => {
-        const busy = padded(bookingSpan(b), hours);
-        return { startDate: b.startDate, endDate: b.endDate, busyStart: busy.start, busyEnd: busy.end, kind: 'booking' };
+        // occupiedSpan, not bookingSpan: a vehicle that went out and has not
+        // come back is busy past its return date, and this endpoint draws
+        // the calendar a client picks from. Using the plain span here while
+        // the rule that accepts bookings used the longer one meant the
+        // calendar showed free hours the server would then refuse — the
+        // same two-answers-to-one-question that bit the off-road block.
+        const busy = padded(occupiedSpan(b), hours);
+        const out = b.collectedAt && !b.returnedAt && new Date(b.endDate) < new Date();
+        return {
+          startDate: b.startDate,
+          endDate: b.endDate,
+          busyStart: busy.start,
+          busyEnd: busy.end,
+          kind: out ? 'overdue' : 'booking',
+        };
       }),
       ...(car?.blockedDates || [])
         .filter((b) => b.status === 'approved')
