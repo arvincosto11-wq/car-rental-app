@@ -91,13 +91,21 @@ router.put('/me', protect, async (req, res) => {
     const idPhotoChanged =
       (validIdType && validIdType !== user.validIdType) ||
       (validIdImage && validIdImage !== user.validIdImage) ||
-      (validIdImageBack && validIdImageBack !== user.validIdImageBack);
+      (validIdImageBack && validIdImageBack !== user.validIdImageBack) ||
+      // The expiry belongs in here too. It was the one part of an ID a
+      // verified client could rewrite on their own: push the date two years
+      // out, keep the tick, carry on booking. The date is printed on the
+      // photograph admin already looks at, so it is admin's to confirm
+      // against it — commercial systems read it off the document precisely
+      // because nobody's word for their own expiry date is worth anything.
+      (validIdExpiry !== undefined && String(validIdExpiry || '') !== String(user.validIdExpiry ? new Date(user.validIdExpiry).toISOString().slice(0, 10) : ''));
 
     // Already verified: don't touch the live ID at all, so booking stays
     // unaffected. Stash the update in the pending slot instead — the user
     // keeps using their existing (still legitimate) ID until admin reviews
     // the new one. Only unverified/never-verified users get a direct
     // overwrite, since there's nothing verified yet to protect.
+    // Renamed in spirit: it is any change to the ID, the date included.
     const wentPending = idPhotoChanged && user.idVerified;
 
     if (wentPending) {

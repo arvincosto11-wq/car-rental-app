@@ -151,9 +151,14 @@ export async function alternativeVehicles(booking, { limit = 3 } = {}) {
       discountAmount: priced.discountAmount,
       totalPrice: priced.totalPrice,
       promoLabel: priced.promoLabel || '',
-      // Never negative: a vehicle priced above what they paid is filtered
-      // out above, and a promo could only ever make this larger.
-      refundDifference: Math.max(0, booking.totalPrice - priced.totalPrice),
+      // What the trip now costs less than it did. Usually settled by owing
+      // less at pickup rather than by money moving — a refund on a booking
+      // that still has a balance is two transactions cancelling out.
+      lowerBy: Math.max(0, booking.totalPrice - priced.totalPrice),
+      // Only what they have genuinely overpaid, which is rare: someone who
+      // settled in full and moves to a cheaper car. Holding that would be
+      // keeping money for a vehicle they are not getting.
+      refundDifference: Math.max(0, booking.amountPaid - priced.totalPrice),
     });
   }
 
@@ -386,9 +391,10 @@ async function acceptVehicleOffer(booking, index) {
   booking.totalPrice = choice.totalPrice;
   booking.promoLabel = choice.promoLabel || '';
 
-  // A cheaper replacement gives money back rather than sitting as credit.
-  // Our vehicle failed; they should not be left holding a balance they
-  // never asked for.
+  // A cheaper replacement lowers what the trip costs, which for most
+  // clients simply means less to pay at pickup. Money only moves when they
+  // have already handed over more than the new total — then holding it
+  // would be keeping payment for a vehicle they are not getting.
   let refunded = 0;
   if (choice.refundDifference > 0 && booking.payment === 'paid') {
     const owed = Math.min(choice.refundDifference, booking.amountPaid);
@@ -433,7 +439,11 @@ async function acceptVehicleOffer(booking, index) {
     'Your booking has moved to another vehicle',
     `Your dates are unchanged. ${from ? `${from.brand} ${from.model}` : 'Your original vehicle'} has been `
       + `replaced with ${to ? `${to.brand} ${to.model}` : 'another vehicle'}`
-      + (refunded > 0 ? `, and ${PESO}${refunded.toLocaleString()} has been refunded to you as it costs less.` : '.'),
+      + (refunded > 0
+        ? `, and ${PESO}${refunded.toLocaleString()} has been refunded to you as it costs less.`
+        : choice.lowerBy > 0
+          ? `. It costs ${PESO}${choice.lowerBy.toLocaleString()} less, so that comes off what you owe at pickup.`
+          : '.'),
     '/my-bookings',
     { email: true }
   );

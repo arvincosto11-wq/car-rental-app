@@ -362,12 +362,34 @@ const ManageClients = () => {
                   <span style={s.subCell}>Submitted {new Date(selectedClient.pendingIdSubmittedAt).toLocaleDateString()}</span>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                  {selectedClient.pendingValidIdImage && <img src={selectedClient.pendingValidIdImage} alt="Pending ID front" style={s.idImage} />}
-                  {selectedClient.pendingValidIdImageBack && <img src={selectedClient.pendingValidIdImageBack} alt="Pending ID back" style={s.idImage} />}
+                  {selectedClient.pendingValidIdImage
+                    ? (
+                      <>
+                        <img src={selectedClient.pendingValidIdImage} alt="Pending ID front" style={s.idImage} />
+                        {selectedClient.pendingValidIdImageBack && <img src={selectedClient.pendingValidIdImageBack} alt="Pending ID back" style={s.idImage} />}
+                      </>
+                    ) : (
+                      // Only the date changed, so there is no new photo — and
+                      // approving a date with nothing to read it against is
+                      // just taking the client's word for it, which is the
+                      // whole thing this is meant to stop.
+                      <>
+                        {selectedClient.validIdImage && <img src={selectedClient.validIdImage} alt="ID on file, front" style={s.idImage} />}
+                        {selectedClient.validIdImageBack && <img src={selectedClient.validIdImageBack} alt="ID on file, back" style={s.idImage} />}
+                      </>
+                    )}
                 </div>
+                {!selectedClient.pendingValidIdImage && (
+                  <p style={{ ...s.subCell, marginBottom: '10px' }}>
+                    No new photo — only the expiry date was changed. Check the claimed date against the ID above.
+                  </p>
+                )}
                 {selectedClient.pendingValidIdExpiry && (
                   <p style={{ ...s.profileValue, marginBottom: '10px' }}>
-                    New expiry: {new Date(selectedClient.pendingValidIdExpiry).toLocaleDateString()}
+                    Claimed expiry: {new Date(selectedClient.pendingValidIdExpiry).toLocaleDateString()}
+                    {selectedClient.validIdExpiry
+                      ? ` (currently ${new Date(selectedClient.validIdExpiry).toLocaleDateString()})`
+                      : ''}
                   </p>
                 )}
                 <div style={s.actionRow}>

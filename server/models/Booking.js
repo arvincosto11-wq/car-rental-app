@@ -173,6 +173,7 @@ const bookingSchema = new mongoose.Schema({
       discountAmount: { type: Number, default: 0 },
       totalPrice: { type: Number, default: 0 },
       promoLabel: { type: String, default: '' },
+      lowerBy: { type: Number, default: 0 },
       refundDifference: { type: Number, default: 0 },
     }],
     deadline: { type: Date },

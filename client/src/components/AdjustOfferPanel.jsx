@@ -318,7 +318,9 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
                   <div style={s.optionPrice}>
                     {v.refundDifference > 0
                       ? `₱${v.totalPrice.toLocaleString()} — ₱${v.refundDifference.toLocaleString()} refunded to you`
-                      : `₱${v.totalPrice.toLocaleString()} — same price as your booking`}
+                      : v.lowerBy > 0
+                        ? `₱${v.totalPrice.toLocaleString()} — ₱${v.lowerBy.toLocaleString()} less to pay at pickup`
+                        : `₱${v.totalPrice.toLocaleString()} — same price as your booking`}
                   </div>
                 </div>
               </div>
