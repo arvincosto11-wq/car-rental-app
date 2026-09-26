@@ -113,13 +113,14 @@ const previewRefund = (booking, reason) => {
   if (reason === 'client_requested') {
     return Math.round(booking.amountPaid * (refundPercentage(booking.createdAt) / 100));
   }
-  if (reason === 'breakdown' || reason === 'breakdown_client') {
+  if (reason === 'breakdown' || reason === 'breakdown_client' || reason === 'not_returned') {
     // Days paid for and not had. Same refund whoever broke it — we do not
     // keep money for days nobody used the vehicle — except the day it broke
     // on, which is a day of service only if they were the ones who ended it.
     const total = booking.totalDays || 1;
     const elapsed = (Date.now() - new Date(booking.startDate).getTime()) / 86400000;
-    const raw = elapsed <= 0 ? 0 : (reason === 'breakdown_client' ? Math.ceil(elapsed) : Math.floor(elapsed));
+    const chargesTheDay = reason === 'breakdown_client' || reason === 'not_returned';
+    const raw = elapsed <= 0 ? 0 : (chargesTheDay ? Math.ceil(elapsed) : Math.floor(elapsed));
     const used = Math.min(total, Math.max(0, raw));
     const owedForUsed = Math.round((booking.totalPrice || 0) * (used / total));
     return Math.max(0, Math.min(booking.amountPaid, booking.amountPaid - owedForUsed));
@@ -1534,6 +1535,24 @@ const ManageBookings = () => {
                   </span>
                 </label>
               </>
+            )}
+
+            {/* Last resort, and only once it is genuinely late. The client
+                is told nothing about it: they get the plain cancellation
+                wording, because accusing somebody of keeping a vehicle is
+                not something to automate. */}
+            {isOverdue(cancelTarget) && (
+              <label style={s.cancelOption}>
+                <input type="radio" name="cancel-reason" checked={cancelForm.reason === 'not_returned'}
+                  onChange={() => setCancelForm({ ...cancelForm, reason: 'not_returned' })} />
+                <span>
+                  <strong>Vehicle not returned</strong>
+                  <span style={s.cancelOptionHint}>
+                    Never came back and couldn&apos;t be recovered. Closes the booking with nothing refunded,
+                    since they had the whole trip. Recorded for you only — the client is not told this.
+                  </span>
+                </span>
+              </label>
             )}
 
             {cancelForm.reason === 'breakdown_client' && (

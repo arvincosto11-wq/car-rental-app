@@ -66,7 +66,10 @@ export default function run() {
   // are the deliberate exception in the other direction: they need somebody
   // to have the vehicle, because nothing breaks down mid-trip on a trip
   // that has not started.
-  const beforePickup = CANCEL_REASONS.filter((r) => !r.startsWith('breakdown'));
+  // The reasons that need somebody to have the vehicle: a breakdown
+  // mid-trip, and a vehicle that never came back.
+  const needsCollection = (r) => r.startsWith('breakdown') || r === 'not_returned';
+  const beforePickup = CANCEL_REASONS.filter((r) => !needsCollection(r));
   check('every other reason works before pickup',
     beforePickup.every((r) => reasonUnavailable({ collectedAt: null }, r) === null), true);
   check('and every reason works once collected',
@@ -126,7 +129,10 @@ export default function run() {
     payment: 'paid', amountPaid: 10000, totalPrice: 10000, totalDays: 5,
     startDate: instantFrom('2026-09-25', 7), endDate: instantFrom('2026-09-30', 7), hasPickupTime: true,
   };
-  const onDay = (n, hour = 12) => new Date(`2026-09-${String(24 + n).padStart(2, '0')}T${hour}:00:00+08:00`);
+  // Built by arithmetic rather than by pasting a day number into a string,
+  // which quietly produced "2026-09-33" and an Invalid Date.
+  const onDay = (n, hour = 12) =>
+    new Date(instantFrom('2026-09-24', 0).getTime() + n * 86400000 + hour * 3600000);
 
   check('breaks on day one, ours', refundAmountFor(fiveDays, 'breakdown', onDay(1)), 10000);
   check('breaks on day one, theirs', refundAmountFor(fiveDays, 'breakdown_client', onDay(1)), 8000);
@@ -146,4 +152,19 @@ export default function run() {
   group('a breakdown is only a breakdown once somebody has the vehicle');
   check('refused before pickup', !!reasonUnavailable({ collectedAt: null }, 'breakdown'), true);
   check('allowed once collected', reasonUnavailable({ collectedAt: new Date() }, 'breakdown'), null);
+
+  group('a vehicle that never came back');
+  // They have had the trip and more, so there are no unused days to return.
+  // Worked out rather than hardcoded to zero, so the sum still holds if it
+  // is ever used on a booking cancelled part-way through.
+  check('nothing left to refund', refundAmountFor(fiveDays, 'not_returned', onDay(6)), 0);
+  check('nor once well past the end', refundAmountFor(fiveDays, 'not_returned', onDay(9)), 0);
+  // Same day count as the client-fault breakdown: the day they ended it on
+  // was a day they had.
+  check('counts the current day as used', 
+    refundAmountFor(fiveDays, 'not_returned', onDay(2)), refundAmountFor(fiveDays, 'breakdown_client', onDay(2)));
+
+  group('it cannot be used on a vehicle nobody collected');
+  check('refused before pickup', !!reasonUnavailable({ collectedAt: null }, 'not_returned'), true);
+  check('allowed once collected', reasonUnavailable({ collectedAt: new Date() }, 'not_returned'), null);
 }

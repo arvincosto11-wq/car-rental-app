@@ -111,7 +111,7 @@ const bookingSchema = new mongoose.Schema({
   // any amount, which made the cancel dialog's promise that the reason
   // decides the refund untrue. Kept in the enum so bookings already
   // cancelled that way still load.
-  cancelReason: { type: String, enum: ['vehicle_unavailable', 'client_requested', 'terms_not_met', 'breakdown', 'breakdown_client', 'other', ''], default: '' },
+  cancelReason: { type: String, enum: ['vehicle_unavailable', 'client_requested', 'terms_not_met', 'breakdown', 'breakdown_client', 'not_returned', 'other', ''], default: '' },
   cancelNote: { type: String, default: '' },
   confirmReminderTier: { type: Number, default: 0 },
   refundStatus: { type: String, enum: ['none', 'requested', 'approved', 'declined'], default: 'none' },

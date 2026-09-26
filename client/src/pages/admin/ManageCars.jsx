@@ -69,6 +69,7 @@ const ManageCars = ({ view = 'active' }) => {
   const [blockPanelCarId, setBlockPanelCarId] = useState(null);
   const [offRoadTarget, setOffRoadTarget] = useState(null);
   const [offRoadNote, setOffRoadNote] = useState('');
+  const [offRoadReason, setOffRoadReason] = useState('repairs');
   const [offRoadSubmitting, setOffRoadSubmitting] = useState(false);
   const [offRoadAffected, setOffRoadAffected] = useState(null);
   const [page, setPage] = useState(1);
@@ -115,6 +116,7 @@ const ManageCars = ({ view = 'active' }) => {
   const handleOffRoad = (car) => {
     setOffRoadTarget(car);
     setOffRoadNote('');
+    setOffRoadReason('repairs');
     setOffRoadAffected(null);
   };
 
@@ -125,7 +127,11 @@ const ManageCars = ({ view = 'active' }) => {
   const submitOffRoad = async (confirmCancellations = false) => {
     setOffRoadSubmitting(true);
     try {
-      const res = await api.put(`/cars/${offRoadTarget._id}/off-road`, { note: offRoadNote, confirmCancellations });
+      const res = await api.put(`/cars/${offRoadTarget._id}/off-road`, {
+        note: offRoadNote,
+        reason: offRoadReason,
+        confirmCancellations,
+      });
       setOffRoadTarget(null);
       await fetchCars();
       const { underway = [], offered = 0 } = res.data || {};
@@ -514,6 +520,11 @@ const ManageCars = ({ view = 'active' }) => {
     },
     offRoadTitle: { fontSize: '17px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#111827', marginBottom: '8px' },
     offRoadSub: { fontSize: '13px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#6b7280', margin: '0 0 14px' },
+    offRoadChoices: { display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' },
+    offRoadChoice: {
+      display: 'flex', alignItems: 'center', gap: '9px', fontSize: '13px', cursor: 'pointer',
+      color: isDark ? '#e4e6eb' : '#374151',
+    },
     offRoadInput: {
       width: '100%', padding: '9px 12px', fontSize: '13px', outline: 'none',
       border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px',
@@ -1106,6 +1117,29 @@ const ManageCars = ({ view = 'active' }) => {
               nobody knows yet how long it will take. Anyone already booked is offered the nearest dates we
               can still do, or a full refund.
             </p>
+            {/* What the affected clients read. Neither says why, so nothing
+                about a previous renter reaches anybody. */}
+            <div style={styles.offRoadChoices}>
+              <label style={styles.offRoadChoice}>
+                <input
+                  type="radio"
+                  name="off-road-reason"
+                  checked={offRoadReason === 'repairs'}
+                  onChange={() => setOffRoadReason('repairs')}
+                />
+                <span>Off the road for repairs</span>
+              </label>
+              <label style={styles.offRoadChoice}>
+                <input
+                  type="radio"
+                  name="off-road-reason"
+                  checked={offRoadReason === 'unavailable'}
+                  onChange={() => setOffRoadReason('unavailable')}
+                />
+                <span>No longer available</span>
+              </label>
+            </div>
+
             <input
               style={styles.offRoadInput}
               type="text"

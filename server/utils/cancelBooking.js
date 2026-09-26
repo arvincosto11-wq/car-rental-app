@@ -27,6 +27,13 @@ export const CANCEL_REASONS = [
   // right when we pull a car before a trip and wrong once somebody has had
   // three days of it.
   'breakdown', 'breakdown_client',
+  // A vehicle that never came back and could not be recovered. Recorded so
+  // the business knows what happened to its car — deliberately NOT said to
+  // the client, who gets the plain "cancelled by our team" wording. An
+  // automated message accusing somebody of keeping a vehicle is a thing to
+  // be sure of before sending, and the system cannot be: they might be in
+  // hospital. That conversation belongs to a person.
+  'not_returned',
 ];
 
 // Days paid for and not had. The refund is the same for both breakdown
@@ -71,6 +78,9 @@ export function reasonUnavailable(booking, reason) {
   if ((reason === 'breakdown' || reason === 'breakdown_client') && !booking.collectedAt) {
     return 'This vehicle has not been collected, so nothing broke down mid-trip. Use "Vehicle unavailable" instead.';
   }
+  if (reason === 'not_returned' && !booking.collectedAt) {
+    return 'This vehicle was never collected, so it cannot be unreturned. Use "Vehicle unavailable" instead.';
+  }
   if (reason === 'terms_not_met' && booking.collectedAt) {
     return 'This client already picked the vehicle up, so the booking conditions were met. Choose another reason.';
   }
@@ -98,6 +108,10 @@ export function refundAmountFor(booking, reason, now = new Date()) {
     const onTheDay = phYmd(now) >= phYmd(bookingSpan(booking).start);
     return onTheDay ? 0 : Math.round(booking.amountPaid * (TERMS_NOT_MET_PERCENT / 100));
   }
+  // They have had the vehicle for the whole trip and beyond, so there are
+  // no unused days to give back. Worked out rather than hardcoded to zero,
+  // so a booking cancelled this way mid-trip still returns what it should.
+  if (reason === 'not_returned') return unusedDayRefund(booking, { chargeBrokenDay: true }, now);
   // Our vehicle failed, so the day it failed on is not a day of service.
   if (reason === 'breakdown') return unusedDayRefund(booking, { chargeBrokenDay: false }, now);
   // They had the use of the day they wrecked it on, whatever else is true.

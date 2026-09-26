@@ -382,6 +382,15 @@ router.put('/:id/off-road', protect, adminOnly, async (req, res) => {
       });
     }
 
+    // What the affected clients are told. "Off the road for repairs" was
+    // hardcoded, which is untrue of a vehicle nobody can find — and telling
+    // strangers it is being repaired when it has gone is inventing a story
+    // rather than keeping a confidence. Neither option says why, so nothing
+    // about the previous renter reaches anybody.
+    const cause = req.body.reason === 'unavailable'
+      ? 'the vehicle is no longer available'
+      : 'the vehicle is off the road for repairs';
+
     car.offRoad = { since: new Date(), note: String(req.body.note || '').slice(0, 300) };
     await car.save();
 
@@ -392,12 +401,12 @@ router.put('/:id/off-road', protect, adminOnly, async (req, res) => {
     for (const booking of upcoming) {
       const offered = await openAdjustOffer(booking, {
         reason: 'vehicle_unavailable',
-        cause: 'the vehicle is off the road for repairs',
+        cause,
       });
       if (offered) continue;
       await cancelBookingWithRefund(booking, {
         reason: 'vehicle_unavailable',
-        cause: 'the vehicle is off the road for repairs',
+        cause,
       });
     }
 
@@ -406,7 +415,7 @@ router.put('/:id/off-road', protect, adminOnly, async (req, res) => {
       await notifyUser(
         car.owner,
         'Your vehicle is off the road',
-        `${car.brand} ${car.model} has been marked off the road`
+        `${car.brand} ${car.model} has been taken out of service`
           + `${car.offRoad.note ? `: ${car.offRoad.note}` : '.'} `
           + 'It will not take new bookings until it is marked roadworthy again, and anyone already booked has been offered other dates or a refund.',
         '/consignor',
