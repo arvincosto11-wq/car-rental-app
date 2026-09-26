@@ -394,8 +394,8 @@ const ManageClients = () => {
               <>
                 <h3 style={{ ...s.sectionTitle, marginTop: 0 }}>License Photo</h3>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {selectedClient.licenseImage && <img src={selectedClient.licenseImage} alt="License front" style={s.idImage} />}
-                  {selectedClient.licenseImageBack && <img src={selectedClient.licenseImageBack} alt="License back" style={s.idImage} />}
+                  {selectedClient.licenseImage && <img src={doc('licenseImage')} alt="License front" style={s.idImage} />}
+                  {selectedClient.licenseImageBack && <img src={doc('licenseImageBack')} alt="License back" style={s.idImage} />}
                 </div>
               </>
             )}

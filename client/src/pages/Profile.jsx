@@ -625,9 +625,9 @@ const Profile = () => {
                   <LicensePhotoUpload
                     styles={s}
                     idPrefix="profile-license"
-                    frontPreview={licensePreview || profile.licenseImage}
+                    frontPreview={licensePreview || docPhotos.licenseImage || profile.licenseImage}
                     onFrontChange={(f) => { setLicenseImage(f); setLicensePreview(URL.createObjectURL(f)); }}
-                    backPreview={licenseBackPreview || profile.licenseImageBack}
+                    backPreview={licenseBackPreview || docPhotos.licenseImageBack || profile.licenseImageBack}
                     onBackChange={(f) => { setLicenseBackImage(f); setLicenseBackPreview(URL.createObjectURL(f)); }}
                   />
                 </>
@@ -739,8 +739,8 @@ const Profile = () => {
                   Submitted {new Date(profile.pendingIdSubmittedAt).toLocaleDateString()}, awaiting admin review. Your ID above stays verified and active in the meantime.
                 </p>
                 <div style={{ marginTop: '6px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {profile.pendingValidIdImage && <IdImageThumb src={profile.pendingValidIdImage} alt="Pending ID front" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
-                  {profile.pendingValidIdImageBack && <IdImageThumb src={profile.pendingValidIdImageBack} alt="Pending ID back" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
+                  {profile.pendingValidIdImage && <IdImageThumb src={docPhotos.pendingValidIdImage || profile.pendingValidIdImage} alt="Pending ID front" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
+                  {profile.pendingValidIdImageBack && <IdImageThumb src={docPhotos.pendingValidIdImageBack || profile.pendingValidIdImageBack} alt="Pending ID back" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
                 </div>
               </div>
             )}

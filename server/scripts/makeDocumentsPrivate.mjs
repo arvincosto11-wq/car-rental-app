@@ -38,8 +38,25 @@ const DOCUMENT_FIELDS = [
   ['pendingLicenseImageBack', 'pendingLicenseImageBackFileId'],
 ];
 
+// The live database, only ever passed in for this one job. MONGO_URI on a
+// developer's machine points at their own local MongoDB, and running this
+// against that would report nothing to do while the real documents sit
+// untouched — so the live address gets its own name, and is deleted again
+// once the job is done.
+const uri = process.env.MONGO_URI_LIVE || process.env.MONGO_URI;
+if (!uri) {
+  console.error('No database address. Set MONGO_URI_LIVE to the live one.');
+  process.exit(1);
+}
+
 async function main() {
-  await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 10000, family: 4 });
+  await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000, family: 4 });
+  const local = /localhost|127\.0\.0\.1/.test(mongoose.connection.host);
+  console.log(`Connected to "${mongoose.connection.name}" on ${local ? 'this machine' : 'a hosted server'}.`);
+  if (local && !process.env.MONGO_URI_LIVE) {
+    console.warn('This is your local database, not the live one. Set MONGO_URI_LIVE first.');
+  }
+
   const users = await User.find({}).lean();
 
   const jobs = [];

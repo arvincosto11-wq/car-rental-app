@@ -8,6 +8,7 @@ import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
+import useDocumentPhotos from '../../hooks/useDocumentPhotos';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
 
@@ -41,6 +42,9 @@ const ManageConsignments = () => {
   };
 
   const selected = consignments.find((c) => c._id === selectedId);
+  // The owner's ID is an identity document like any other, so it comes
+  // through the signed route rather than on the plain link it was stored on.
+  const ownerDocs = useDocumentPhotos(selected?.owner?._id);
   const filtered = consignments.filter((c) => filter === 'all' || c.status === filter);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageConsignments = paginate(filtered, page, PAGE_SIZE);
@@ -244,7 +248,7 @@ const ManageConsignments = () => {
               </div>
             </div>
             {selected.owner?.validIdImage && (
-              <img src={selected.owner.validIdImage} alt="Owner ID" style={{ ...s.docImage, marginBottom: '18px' }} />
+              <img src={ownerDocs.validIdImage || selected.owner.validIdImage} alt="Owner ID" style={{ ...s.docImage, marginBottom: '18px' }} />
             )}
 
             <h3 style={s.sectionTitle}>Vehicle Details</h3>
