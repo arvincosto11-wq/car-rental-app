@@ -181,7 +181,10 @@ const Register = () => {
     setValidIdBackPreview(URL.createObjectURL(file));
   };
 
-  const uploadToImageKit = async (file) => {
+  // `isPrivate` for identity documents only. A private file refuses a plain
+  // link and serves only a signed one — which is what every screen that
+  // shows these now asks for.
+  const uploadToImageKit = async (file, { isPrivate = false } = {}) => {
     const authRes = await api.get('/imagekit/public-auth');
     const { token, expire, signature, publicKey } = authRes.data;
     const formData = new FormData();
@@ -191,6 +194,7 @@ const Register = () => {
     formData.append('expire', expire);
     formData.append('signature', signature);
     formData.append('publicKey', publicKey);
+    if (isPrivate) formData.append('isPrivateFile', 'true');
     const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', body: formData });
     const data = await uploadRes.json();
     return { url: data.url, fileId: data.fileId };
@@ -231,19 +235,19 @@ const Register = () => {
 
       let uploaded = { url: '', fileId: '' };
       if (validIdImage) {
-        uploaded = await uploadToImageKit(validIdImage);
+        uploaded = await uploadToImageKit(validIdImage, { isPrivate: true });
       }
       let uploadedBack = { url: '', fileId: '' };
       if (validIdBackImage) {
-        uploadedBack = await uploadToImageKit(validIdBackImage);
+        uploadedBack = await uploadToImageKit(validIdBackImage, { isPrivate: true });
       }
       let uploadedLicense = { url: '', fileId: '' };
       if (licenseImage) {
-        uploadedLicense = await uploadToImageKit(licenseImage);
+        uploadedLicense = await uploadToImageKit(licenseImage, { isPrivate: true });
       }
       let uploadedLicenseBack = { url: '', fileId: '' };
       if (licenseBackImage) {
-        uploadedLicenseBack = await uploadToImageKit(licenseBackImage);
+        uploadedLicenseBack = await uploadToImageKit(licenseBackImage, { isPrivate: true });
       }
 
       const res = await api.post('/auth/register', {

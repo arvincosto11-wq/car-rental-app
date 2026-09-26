@@ -140,7 +140,10 @@ const Profile = () => {
   const idFront = docPhotos.validIdImage || profile?.validIdImage || '';
   const idBack = docPhotos.validIdImageBack || profile?.validIdImageBack || '';
 
-  const uploadToImageKit = async (file) => {
+  // `isPrivate` for identity documents only. A private file refuses a plain
+  // link and serves only a signed one — which is what every screen that
+  // shows these now asks for. Car photographs and avatars go up as before.
+  const uploadToImageKit = async (file, { isPrivate = false } = {}) => {
     const authRes = await api.get('/imagekit/user-auth');
     const { token, expire, signature, publicKey } = authRes.data;
     const formData = new FormData();
@@ -150,6 +153,7 @@ const Profile = () => {
     formData.append('expire', expire);
     formData.append('signature', signature);
     formData.append('publicKey', publicKey);
+    if (isPrivate) formData.append('isPrivateFile', 'true');
     const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', body: formData });
     const data = await uploadRes.json();
     return { url: data.url, fileId: data.fileId };
@@ -186,22 +190,22 @@ const Profile = () => {
       const { licenseExpiry: _dropped, ...rest } = form;
       const payload = { ...rest, validIdType };
       if (validIdImage) {
-        const uploaded = await uploadToImageKit(validIdImage);
+        const uploaded = await uploadToImageKit(validIdImage, { isPrivate: true });
         payload.validIdImage = uploaded.url;
         payload.validIdImageFileId = uploaded.fileId;
       }
       if (validIdBackImage) {
-        const uploadedBack = await uploadToImageKit(validIdBackImage);
+        const uploadedBack = await uploadToImageKit(validIdBackImage, { isPrivate: true });
         payload.validIdImageBack = uploadedBack.url;
         payload.validIdImageBackFileId = uploadedBack.fileId;
       }
       if (licenseImage) {
-        const uploadedLicense = await uploadToImageKit(licenseImage);
+        const uploadedLicense = await uploadToImageKit(licenseImage, { isPrivate: true });
         payload.licenseImage = uploadedLicense.url;
         payload.licenseImageFileId = uploadedLicense.fileId;
       }
       if (licenseBackImage) {
-        const uploadedLicenseBack = await uploadToImageKit(licenseBackImage);
+        const uploadedLicenseBack = await uploadToImageKit(licenseBackImage, { isPrivate: true });
         payload.licenseImageBack = uploadedLicenseBack.url;
         payload.licenseImageBackFileId = uploadedLicenseBack.fileId;
       }
