@@ -57,6 +57,8 @@ router.put('/:id/pending-id/approve', protect, adminOnly, async (req, res) => {
     if (user.pendingValidIdImage) { user.validIdImage = user.pendingValidIdImage; user.validIdImageFileId = user.pendingValidIdImageFileId; }
     if (user.pendingValidIdImageBack) { user.validIdImageBack = user.pendingValidIdImageBack; user.validIdImageBackFileId = user.pendingValidIdImageBackFileId; }
     if (user.pendingValidIdExpiry !== undefined) user.validIdExpiry = user.pendingValidIdExpiry;
+    if (user.pendingLicenseNumber) user.licenseNumber = user.pendingLicenseNumber;
+    if (user.pendingLicenseExpiry) user.licenseExpiry = user.pendingLicenseExpiry;
     user.idVerified = true;
 
     user.pendingValidIdType = '';
@@ -65,6 +67,8 @@ router.put('/:id/pending-id/approve', protect, adminOnly, async (req, res) => {
     user.pendingValidIdImageBack = '';
     user.pendingValidIdImageBackFileId = '';
     user.pendingValidIdExpiry = null;
+    user.pendingLicenseNumber = '';
+    user.pendingLicenseExpiry = null;
     user.pendingIdSubmittedAt = null;
 
     await user.save();
@@ -94,6 +98,8 @@ router.put('/:id/pending-id/reject', protect, adminOnly, async (req, res) => {
     user.pendingValidIdImageBack = '';
     user.pendingValidIdImageBackFileId = '';
     user.pendingValidIdExpiry = null;
+    user.pendingLicenseNumber = '';
+    user.pendingLicenseExpiry = null;
     user.pendingIdSubmittedAt = null;
 
     await user.save();

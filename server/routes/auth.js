@@ -67,8 +67,12 @@ router.put('/me', protect, async (req, res) => {
     // Profile photo — purely cosmetic (avatar in the navbar/admin lists),
     // not gated behind admin review the way the valid ID is.
     if (image) { user.image = image; user.imageFileId = imageFileId || ''; }
-    if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
-    if (licenseExpiry !== undefined) user.licenseExpiry = licenseExpiry;
+    // Held back below for a verified client, the same as the ID. Applied
+    // directly only while there is nothing verified to protect.
+    const ymd = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
+    const licenceChanged =
+      (licenseNumber !== undefined && String(licenseNumber || '') !== String(user.licenseNumber || ''))
+      || (licenseExpiry !== undefined && String(licenseExpiry || '') !== ymd(user.licenseExpiry));
     if (emergencyContactName !== undefined) user.emergencyContactName = emergencyContactName;
     if (emergencyContactNumber !== undefined) user.emergencyContactNumber = emergencyContactNumber;
 
@@ -106,15 +110,21 @@ router.put('/me', protect, async (req, res) => {
     // the new one. Only unverified/never-verified users get a direct
     // overwrite, since there's nothing verified yet to protect.
     // Renamed in spirit: it is any change to the ID, the date included.
-    const wentPending = idPhotoChanged && user.idVerified;
+    const wentPending = (idPhotoChanged || licenceChanged) && user.idVerified;
 
     if (wentPending) {
       if (validIdType) user.pendingValidIdType = validIdType;
       if (validIdImage) { user.pendingValidIdImage = validIdImage; user.pendingValidIdImageFileId = validIdImageFileId || ''; }
       if (validIdImageBack) { user.pendingValidIdImageBack = validIdImageBack; user.pendingValidIdImageBackFileId = validIdImageBackFileId || ''; }
       if (validIdExpiry !== undefined) user.pendingValidIdExpiry = validIdExpiry || null;
+      if (licenceChanged) {
+        if (licenseNumber !== undefined) user.pendingLicenseNumber = licenseNumber || '';
+        if (licenseExpiry !== undefined) user.pendingLicenseExpiry = licenseExpiry || null;
+      }
       user.pendingIdSubmittedAt = new Date();
     } else {
+      if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
+      if (licenseExpiry !== undefined) user.licenseExpiry = licenseExpiry;
       if (validIdExpiry !== undefined) user.validIdExpiry = validIdExpiry || null;
       if (idPhotoChanged) {
         if (validIdType) user.validIdType = validIdType;

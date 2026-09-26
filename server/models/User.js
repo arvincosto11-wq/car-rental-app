@@ -53,6 +53,11 @@ const userSchema = new mongoose.Schema({
   pendingValidIdImageBack: { type: String, default: '' },
   pendingValidIdImageBackFileId: { type: String, default: '' },
   pendingValidIdExpiry: { type: Date },
+  // The licence waits for review too. It is the document that decides
+  // whether somebody may drive at all, and its number and expiry were the
+  // last fields a verified client could still rewrite for themselves.
+  pendingLicenseNumber: { type: String, default: '' },
+  pendingLicenseExpiry: { type: Date },
   pendingIdSubmittedAt: { type: Date },
   isBlocked: { type: Boolean, default: false },
   avgRating: { type: Number, default: 0 },

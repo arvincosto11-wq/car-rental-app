@@ -384,6 +384,18 @@ const ManageClients = () => {
                     No new photo — only the expiry date was changed. Check the claimed date against the ID above.
                   </p>
                 )}
+                {(selectedClient.pendingLicenseNumber || selectedClient.pendingLicenseExpiry) && (
+                  <p style={{ ...s.profileValue, marginBottom: '10px' }}>
+                    Claimed licence:{' '}
+                    {selectedClient.pendingLicenseNumber || selectedClient.licenseNumber || '—'}
+                    {selectedClient.pendingLicenseExpiry
+                      ? `, expiring ${new Date(selectedClient.pendingLicenseExpiry).toLocaleDateString()}`
+                      : ''}
+                    {selectedClient.licenseExpiry
+                      ? ` (currently ${new Date(selectedClient.licenseExpiry).toLocaleDateString()})`
+                      : ''}
+                  </p>
+                )}
                 {selectedClient.pendingValidIdExpiry && (
                   <p style={{ ...s.profileValue, marginBottom: '10px' }}>
                     Claimed expiry: {new Date(selectedClient.pendingValidIdExpiry).toLocaleDateString()}
