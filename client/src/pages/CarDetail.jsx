@@ -788,8 +788,10 @@ const CarDetail = () => {
                 {car?.offRoad?.since && (
                   <div style={s.offRoadBox}>
                     <p style={s.offRoadNote}>
-                      This vehicle is off the road for repairs and isn&apos;t taking bookings at the moment.
-                      Please choose another vehicle, or check back later.
+                      {car.offRoad.reason === 'unavailable'
+                        ? 'This vehicle is no longer available for booking. Please choose another vehicle.'
+                        : "This vehicle is off the road for repairs and isn't taking bookings at the moment. "
+                          + 'Please choose another vehicle, or check back later.'}
                     </p>
                   </div>
                 )}

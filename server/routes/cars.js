@@ -387,11 +387,19 @@ router.put('/:id/off-road', protect, adminOnly, async (req, res) => {
     // strangers it is being repaired when it has gone is inventing a story
     // rather than keeping a confidence. Neither option says why, so nothing
     // about the previous renter reaches anybody.
+    // A noun phrase, because it is dropped into "unavailable due to ___".
+    // Both of these were written as clauses, which produced "unavailable due
+    // to the vehicle is off the road for repairs" — see BLOCK_REASONS, where
+    // every cause is shaped to finish that sentence.
     const cause = req.body.reason === 'unavailable'
-      ? 'the vehicle is no longer available'
-      : 'the vehicle is off the road for repairs';
+      ? 'its withdrawal from service'
+      : 'necessary repairs';
 
-    car.offRoad = { since: new Date(), note: String(req.body.note || '').slice(0, 300) };
+    car.offRoad = {
+      since: new Date(),
+      note: String(req.body.note || '').slice(0, 300),
+      reason: req.body.reason === 'unavailable' ? 'unavailable' : 'repairs',
+    };
     await car.save();
 
     // Everybody whose trip hasn't started is offered another vehicle on the
@@ -450,7 +458,7 @@ router.delete('/:id/off-road', protect, adminOnly, async (req, res) => {
       return res.status(400).json({ message: 'This vehicle is not marked off the road.' });
     }
 
-    car.offRoad = { since: null, note: '' };
+    car.offRoad = { since: null, note: '', reason: '' };
     await car.save();
 
     if (car.owner) {

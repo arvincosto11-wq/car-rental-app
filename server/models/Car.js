@@ -23,6 +23,9 @@ const carSchema = new mongoose.Schema({
   offRoad: {
     since: { type: Date, default: null },
     note: { type: String, default: '' },
+    // Which of the two things this is, so the vehicle's own page can say
+    // the true one. The note beside it stays internal.
+    reason: { type: String, enum: ['repairs', 'unavailable', ''], default: '' },
   },
   // CR (Certificate of Registration) renewal date — optional, since older
   // cars added before this field existed won't have one on file yet. See
