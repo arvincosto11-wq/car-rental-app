@@ -106,7 +106,15 @@ export async function busySpans(carId, {
   return {
     turnaroundHours,
     spans: [
-      ...bookings.map((b) => ({ ...padded(occupiedSpan(b), turnaroundHours), kind: 'booking' })),
+      // Tagged apart from an ordinary booking so the refusal can say which
+      // it is. "Already booked" is true of both and useless for the one
+      // where the honest answer is that the last renter has not brought it
+      // back — a client can pick different dates for the first and can only
+      // be baffled by the second.
+      ...bookings.map((b) => ({
+        ...padded(occupiedSpan(b), turnaroundHours),
+        kind: b.collectedAt && !b.returnedAt && new Date(b.endDate) < new Date() ? 'overdue' : 'booking',
+      })),
       ...blockRanges(car, extraBlocks),
     ],
   };

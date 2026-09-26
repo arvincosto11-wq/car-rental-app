@@ -183,7 +183,9 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({
         message: conflict.kind === 'block'
           ? 'This vehicle is not available during the selected dates. Please choose different dates.'
-          : 'This vehicle is already booked around the selected dates and times. Please choose another slot.',
+          : conflict.kind === 'overdue'
+            ? 'This vehicle has not been returned by its current renter yet, so we cannot promise it for that time. Please choose a later slot or another vehicle.'
+            : 'This vehicle is already booked around the selected dates and times. Please choose another slot.',
       });
     }
 
