@@ -21,12 +21,29 @@
 // Car photographs and avatars are never touched: they are meant to be seen.
 import fs from 'fs';
 import path from 'path';
+import dns from 'dns';
 import mongoose from 'mongoose';
 import ImageKit from 'imagekit';
 import dotenv from 'dotenv';
 import User from '../models/User.js';
 
 dotenv.config();
+
+// A mongodb+srv:// address is found through an SRV lookup, and some home
+// routers answer those with a refusal rather than an answer — the script
+// then dies on DNS before it has done anything. Asked once here, and if the
+// machine's own resolver will not say, a public one is used for the rest of
+// the run. Nothing else about the connection changes.
+async function ensureSrvLookupWorks(address) {
+  const host = (address.match(/@([^/?,]+)/) || [])[1];
+  if (!address.startsWith('mongodb+srv://') || !host) return;
+  try {
+    await dns.promises.resolveSrv(`_mongodb._tcp.${host}`);
+  } catch {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+    console.log('This machine\'s DNS would not resolve the cluster, so a public resolver is being used.');
+  }
+}
 
 const apply = process.argv.includes('--apply');
 const deleteOriginals = process.argv.includes('--delete-originals');
@@ -185,6 +202,7 @@ async function deletePass() {
 }
 
 async function main() {
+  await ensureSrvLookupWorks(uri);
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000, family: 4 });
   const local = /localhost|127\.0\.0\.1/.test(mongoose.connection.host);
   console.log(`Connected to "${mongoose.connection.name}" on ${local ? 'this machine' : 'a hosted server'}.`);
