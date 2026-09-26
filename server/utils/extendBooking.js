@@ -135,6 +135,20 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
   const licence = licenceProblem(client, { bookingType: booking.bookingType, endDate: newEnd }, now);
   if (licence) return { error: licenceMessage(licence) };
 
+  // The ID refuses now too, where it used to warn. That call was made when
+  // the expiry was a date the client typed about their own papers — refusing
+  // somebody over their own guess was harsh. Admin now reads it off the
+  // document, so it is a fact, and a fact worth holding to.
+  const id = idProblem(client, { endDate: newEnd }, now);
+  if (id) {
+    return {
+      error: id.kind === 'expired'
+        ? 'Your valid ID has expired. Please update it in your Profile and wait for it to be checked before extending.'
+        : `Your valid ID expires on ${new Date(id.expiry).toLocaleDateString()}, before this trip would end. `
+          + 'Please update it in your Profile and wait for it to be checked before extending.',
+    };
+  }
+
   const extraDays = Math.max(1, daysBetween(from, newEnd));
   const newTotalDays = booking.totalDays + extraDays;
 
@@ -209,11 +223,6 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
   return {
     ok: true,
     collected,
-    // An ID running out mid-trip warns rather than refuses, as it does at
-    // booking — the terms ask for two at the counter, and stranding somebody
-    // who already has the vehicle would only turn this into an overdue
-    // return instead.
-    idExpiring: idProblem(client, { endDate: newEnd }, now)?.expiry || null,
     // Zero for anybody on time, which is almost everybody.
     lateDays: lateDaysNow,
     lateFeeFull,

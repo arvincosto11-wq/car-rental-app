@@ -270,20 +270,6 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
               <span>{peso(quote.was.totalPrice)}</span>
             </div>
 
-            {/* They can still do something about this from their phone,
-                which is exactly why it is worth saying while they are
-                looking at the dates rather than at the counter. */}
-            {quote.idExpiring && (
-              <div style={s.lateBlock}>
-                <div style={s.lateTitle}>Your ID expires during this trip</div>
-                <div style={s.lateNote}>
-                  It runs out on {new Date(quote.idExpiring).toLocaleDateString()}, before the new return date.
-                  You can still extend, but please update it in your Profile — we ask for valid ID when the
-                  vehicle comes back.
-                </div>
-              </div>
-            )}
-
             {/* Shown whole, then reduced, then charged. A fine that quietly
                 arrives at half price changes nobody's mind — and changing
                 minds is the entire reason for reducing it. */}

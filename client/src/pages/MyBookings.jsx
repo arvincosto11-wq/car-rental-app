@@ -1249,7 +1249,9 @@ const MyBookings = () => {
                         <button className="btn-ghost-rose" style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
                           <ReturnLineIcon /> Request Refund
                         </button>
-                        {booking.rescheduleRequest?.status !== 'pending' && (
+                        {/* Gone once the vehicle is theirs: there are no
+                            dates left to move, only days already spent. */}
+                        {booking.rescheduleRequest?.status !== 'pending' && !booking.collectedAt && (
                           <button className="btn-ghost-amber" style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
                             <CalendarPlusIcon /> Reschedule
                           </button>

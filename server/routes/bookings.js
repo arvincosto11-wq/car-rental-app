@@ -1030,6 +1030,17 @@ router.post('/:id/reschedule', protect, async (req, res) => {
     if (booking.refundStatus !== 'none') {
       return res.status(400).json({ message: 'This booking already has a refund request in progress.' });
     }
+    // Not once they have the vehicle. Rescheduling moves the dates of a trip
+    // they are in the middle of, which is meaningless — and on an overdue
+    // booking it is a way of erasing the lateness, because moving the return
+    // date into the future makes the booking stop being late and the fee
+    // with it. Exactly the loophole extending used to have, with no payment
+    // attached to make it honest.
+    if (booking.collectedAt && !booking.returnedAt) {
+      return res.status(400).json({
+        message: 'You already have this vehicle, so these dates cannot be moved. Use "Keep it longer" to extend, or contact us.',
+      });
+    }
     if (booking.rescheduleRequest?.status === 'pending') {
       return res.status(400).json({ message: 'You already have a pending reschedule request for this booking.' });
     }

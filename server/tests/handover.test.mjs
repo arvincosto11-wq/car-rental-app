@@ -281,4 +281,17 @@ export default function run() {
   // spent in the old one.
   check('only the rest of the trip has to be free', remainingSpan(trip5, day3).start.getTime(), day3.getTime());
   check('and it still ends when the trip does', remainingSpan(trip5, day3).end.getTime(), trip5.endDate.getTime());
+
+  group('an ID now refuses an extension, where it used to warn');
+  // The warning was right while the expiry was a date the client typed
+  // about their own papers. Admin reads it off the document now, so it is a
+  // fact rather than a guess, and worth holding to.
+  const whenNow = new Date('2026-09-26T12:00:00+08:00');
+  const holder = (expiry) => ({ validIdExpiry: expiry });
+  check('outlasts the extension', idProblem(holder(instantFrom('2027-01-01', 7)), { endDate: instantFrom('2026-10-01', 7) }, whenNow), null);
+  check('expires during it', idProblem(holder(instantFrom('2026-09-28', 7)), { endDate: instantFrom('2026-10-01', 7) }, whenNow).kind, 'expires_during');
+  check('already gone', idProblem(holder(instantFrom('2026-09-20', 7)), { endDate: instantFrom('2026-10-01', 7) }, whenNow).kind, 'expired');
+  // Valid for the whole of its expiry day, so one ending on the return date
+  // still covers the trip.
+  check('expires on the last day', idProblem(holder(instantFrom('2026-10-01', 7)), { endDate: instantFrom('2026-10-01', 7) }, whenNow), null);
 }
