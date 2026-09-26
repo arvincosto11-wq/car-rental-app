@@ -2,6 +2,7 @@ import express from 'express';
 import User from '../models/User.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { notifyUser } from '../utils/notify.js';
+import { signedDocumentUrl } from '../utils/documentUrls.js';
 
 const router = express.Router();
 
@@ -12,6 +13,43 @@ router.get('/', protect, adminOnly, async (req, res) => {
       .select('-password')
       .sort({ createdAt: -1 });
     res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Short-lived links to somebody's identity documents.
+//
+// These photographs are passports, national IDs and driving licences. They
+// sat on links that worked for anybody who had them, for ever — a link
+// leaks through browser history, a screenshot, a shared machine, and then
+// it is somebody's identity out in the world with nothing to withdraw.
+//
+// Asking for them here rather than signing whatever URL a caller hands over
+// means the server decides which files a person may see, rather than
+// trusting them to only ask about their own.
+//
+// Works for photographs already stored in the open as well as new private
+// ones, so the screens can move over before the files do.
+router.get('/:id/documents', protect, async (req, res) => {
+  try {
+    const self = req.params.id === req.user.id;
+    if (!self && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    const user = await User.findById(req.params.id).select(
+      'validIdImage validIdImageBack licenseImage licenseImageBack '
+      + 'pendingValidIdImage pendingValidIdImageBack pendingLicenseImage pendingLicenseImageBack'
+    ).lean();
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const fields = [
+      'validIdImage', 'validIdImageBack', 'licenseImage', 'licenseImageBack',
+      'pendingValidIdImage', 'pendingValidIdImageBack', 'pendingLicenseImage', 'pendingLicenseImageBack',
+    ];
+    const out = {};
+    for (const f of fields) out[f] = user[f] ? signedDocumentUrl(user[f]) : '';
+    res.json(out);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

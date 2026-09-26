@@ -12,6 +12,7 @@ import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
 import { VALID_ID_TYPES } from '../data/validIdTypes';
 import api from '../api';
+import useDocumentPhotos from '../hooks/useDocumentPhotos';
 
 // A real check-circle glyph, not a plain "✓" character — matches the
 // hand-drawn inline-SVG icon convention used elsewhere on the site.
@@ -130,6 +131,14 @@ const Profile = () => {
     setEditMode(false);
     setSaveError('');
   };
+
+  // Their own documents, through the same signed route admin uses. Falls
+  // back to whatever the profile already carries while they load.
+  const docPhotos = useDocumentPhotos(profile?._id);
+  // Optional all the way: this runs before the profile has loaded, because
+  // hooks cannot sit behind the early return that waits for it.
+  const idFront = docPhotos.validIdImage || profile?.validIdImage || '';
+  const idBack = docPhotos.validIdImageBack || profile?.validIdImageBack || '';
 
   const uploadToImageKit = async (file) => {
     const authRes = await api.get('/imagekit/user-auth');
@@ -645,9 +654,9 @@ const Profile = () => {
                 idPrefix="profile-valid-id"
                 idType={validIdType}
                 onIdTypeChange={setValidIdType}
-                frontPreview={validIdPreview || profile.validIdImage}
+                frontPreview={validIdPreview || idFront}
                 onFrontChange={(f) => { setValidIdImage(f); setValidIdPreview(URL.createObjectURL(f)); }}
-                backPreview={validIdBackPreview || profile.validIdImageBack}
+                backPreview={validIdBackPreview || idBack}
                 onBackChange={(f) => { setValidIdBackImage(f); setValidIdBackPreview(URL.createObjectURL(f)); }}
                 hideExpiry
                 expiry={validIdExpiry}
@@ -709,7 +718,7 @@ const Profile = () => {
                     {VALID_ID_TYPES.find((t) => t.value === profile.validIdType)?.label || profile.validIdType}
                   </p>
                 )}
-                <IdImageThumb src={profile.validIdImage} alt="Valid ID" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />
+                <IdImageThumb src={idFront} alt="Valid ID" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />
               </div>
             ) : (
               <p style={s.uploadHint}>No valid ID on file yet — add one from Edit Profile above.</p>

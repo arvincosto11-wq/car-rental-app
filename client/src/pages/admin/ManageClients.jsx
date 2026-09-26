@@ -9,6 +9,7 @@ import usePageTitle from '../../hooks/usePageTitle';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import { GOLD, GOLD_DARK } from '../../theme';
 import api from '../../api';
+import useDocumentPhotos from '../../hooks/useDocumentPhotos';
 
 const PAGE_SIZE = 10;
 
@@ -132,6 +133,10 @@ const ManageClients = () => {
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
   const selectedClient = clients.find((c) => c._id === selectedClientId);
+  // Asked for by whose they are. Falls back to what the list already holds
+  // while they load, so nothing blinks out.
+  const docPhotos = useDocumentPhotos(selectedClientId);
+  const doc = (field) => docPhotos[field] || selectedClient?.[field] || '';
   const finishedTrips = selectedClient ? finishedTripsFor(selectedClient._id).length : 0;
   const lateReturns = selectedClient ? lateReturnsFor(selectedClient._id).length : 0;
   const clientModalRef = useModalA11y(() => setSelectedClientId(null), !!selectedClient);
@@ -398,9 +403,9 @@ const ManageClients = () => {
             <h3 style={{ ...s.sectionTitle, marginTop: 0 }}>Valid ID</h3>
             {selectedClient.validIdImage ? (
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <img src={selectedClient.validIdImage} alt="Valid ID front" style={s.idImage} />
+                <img src={doc('validIdImage')} alt="Valid ID front" style={s.idImage} />
                 {selectedClient.validIdImageBack && (
-                  <img src={selectedClient.validIdImageBack} alt="Valid ID back" style={s.idImage} />
+                  <img src={doc('validIdImageBack')} alt="Valid ID back" style={s.idImage} />
                 )}
               </div>
             ) : (
@@ -438,8 +443,8 @@ const ManageClients = () => {
                   {selectedClient.pendingValidIdImage
                     ? (
                       <>
-                        <img src={selectedClient.pendingValidIdImage} alt="Pending ID front" style={s.idImage} />
-                        {selectedClient.pendingValidIdImageBack && <img src={selectedClient.pendingValidIdImageBack} alt="Pending ID back" style={s.idImage} />}
+                        <img src={doc('pendingValidIdImage')} alt="Pending ID front" style={s.idImage} />
+                        {doc('pendingValidIdImageBack') && <img src={doc('pendingValidIdImageBack')} alt="Pending ID back" style={s.idImage} />}
                       </>
                     ) : (
                       // Only the date changed, so there is no new photo — and
@@ -447,8 +452,8 @@ const ManageClients = () => {
                       // just taking the client's word for it, which is the
                       // whole thing this is meant to stop.
                       <>
-                        {selectedClient.validIdImage && <img src={selectedClient.validIdImage} alt="ID on file, front" style={s.idImage} />}
-                        {selectedClient.validIdImageBack && <img src={selectedClient.validIdImageBack} alt="ID on file, back" style={s.idImage} />}
+                        {doc('validIdImage') && <img src={doc('validIdImage')} alt="ID on file, front" style={s.idImage} />}
+                        {doc('validIdImageBack') && <img src={doc('validIdImageBack')} alt="ID on file, back" style={s.idImage} />}
                       </>
                     )}
                 </div>

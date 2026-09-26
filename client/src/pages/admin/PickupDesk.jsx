@@ -42,6 +42,11 @@ const PickupDesk = () => {
   // is of the person standing in front of you, so it starts again each time.
   const [checked, setChecked] = useState({});
   const [working, setWorking] = useState('');
+  // Signed links to each waiting client's ID, keyed by client. Fetched with
+  // everything else rather than inside the card: Card is redefined on every
+  // render of this page, so a hook in there would remount and re-fetch each
+  // time somebody ticked a checkbox.
+  const [docs, setDocs] = useState({});
   // The gauge reading, per booking. Like the tick boxes, it is of the
   // vehicle in front of you, so it starts blank every time.
   const [fuel, setFuel] = useState({});
@@ -55,6 +60,24 @@ const PickupDesk = () => {
       const [b, c] = await Promise.all([api.get('/bookings/all'), api.get('/users')]);
       setBookings(b.data);
       setClients(c.data);
+
+      // Only the clients who actually have a card here, so a desk with two
+      // pickups does not sign every ID in the database.
+      const waitingIds = [...new Set(b.data
+        .filter((x) => x.status === 'confirmed' && x.payment === 'paid' && !x.collectedAt)
+        .map((x) => String(x.user?._id || x.user))
+        .filter(Boolean))];
+      const signed = {};
+      await Promise.all(waitingIds.map(async (uid) => {
+        try {
+          const res = await api.get(`/users/${uid}/documents`);
+          signed[uid] = res.data || {};
+        } catch {
+          // Falls back to whatever the client record already carries.
+          signed[uid] = {};
+        }
+      }));
+      setDocs(signed);
     } catch (err) {
       console.error(err);
       toast.error('Could not load today’s pickups.');
@@ -296,6 +319,9 @@ const PickupDesk = () => {
 
   const Card = ({ booking, late, stale }) => {
     const client = clientFor(booking);
+    const signed = docs[String(client?._id)] || {};
+    const idFront = signed.validIdImage || client?.validIdImage || '';
+    const idBack = signed.validIdImageBack || client?.validIdImageBack || '';
     const remaining = (booking.totalPrice || 0) - (booking.amountPaid || 0);
     const selfDrive = booking.bookingType === 'self-drive';
     const licenceExpired = selfDrive && isExpired(client?.licenseExpiry);
@@ -339,20 +365,20 @@ const PickupDesk = () => {
               </div>
             )}
             <div style={s.idRow}>
-              {client?.validIdImage ? (
+              {idFront ? (
                 <>
                   <img
-                    src={client.validIdImage}
+                    src={idFront}
                     alt="Valid ID front"
                     style={s.idImage}
-                    onClick={() => window.open(client.validIdImage, '_blank', 'noopener')}
+                    onClick={() => window.open(idFront, '_blank', 'noopener')}
                   />
-                  {client.validIdImageBack && (
+                  {idBack && (
                     <img
-                      src={client.validIdImageBack}
+                      src={idBack}
                       alt="Valid ID back"
                       style={s.idImage}
-                      onClick={() => window.open(client.validIdImageBack, '_blank', 'noopener')}
+                      onClick={() => window.open(idBack, '_blank', 'noopener')}
                     />
                   )}
                 </>
