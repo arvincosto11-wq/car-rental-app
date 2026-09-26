@@ -118,7 +118,12 @@ const ManageConsignments = () => {
 
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
     modalContent: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '700px', width: '100%', maxHeight: '85vh', overflow: 'auto', position: 'relative' },
-    closeX: { position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '22px', lineHeight: 1, cursor: 'pointer', color: isDark ? '#b0b3b8' : '#6b7280', padding: '4px' },
+    closeX: {
+      position: 'absolute', top: '14px', right: '14px', zIndex: 1,
+      width: '32px', height: '32px', flexShrink: 0, borderRadius: '50%', border: 'none', cursor: 'pointer',
+      background: isDark ? '#18191a' : '#f3f4f6', color: isDark ? '#b0b3b8' : '#4b5563', fontSize: '14px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+    },
     modalTitle: { fontSize: '20px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     modalSub: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px' },
     sectionTitle: { fontSize: '14px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '10px', marginTop: '20px' },
@@ -222,7 +227,7 @@ const ManageConsignments = () => {
       {selected && (
         <div style={s.modalOverlay}>
           <div style={s.modalContent} ref={detailModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="consignment-modal-title">
-            <button style={s.closeX} onClick={closeModal} aria-label="Close">×</button>
+            <button type="button" className="icon-toggle-btn" style={s.closeX} onClick={closeModal} aria-label="Close">✕</button>
             <h2 id="consignment-modal-title" style={s.modalTitle}>{selected.brand} {selected.model} ({selected.year})</h2>
             <p style={s.modalSub}>
               Submitted by {selected.owner?.name} &middot; <span style={badgeStyle(selected.status)}>{selected.status}</span>
