@@ -780,6 +780,20 @@ const CarDetail = () => {
               <div style={s.bookBody}>
                 {error && <div style={s.error}>{error}</div>}
 
+                {/* First thing in the panel, because it was second thing in
+                    step two — behind a date picker the client can never get
+                    past on a vehicle with no free dates. The notice existed
+                    and was unreachable, which is the same as not existing
+                    while looking like it is handled. */}
+                {car?.offRoad?.since && (
+                  <div style={s.offRoadBox}>
+                    <p style={s.offRoadNote}>
+                      This vehicle is off the road for repairs and isn&apos;t taking bookings at the moment.
+                      Please choose another vehicle, or check back later.
+                    </p>
+                  </div>
+                )}
+
                 <AnimatePresence mode="wait">
                 {step === 1 && (
                   <motion.div key="step1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
@@ -920,18 +934,6 @@ const CarDetail = () => {
                           <Link to="/profile" style={{ color: isDark ? GOLD_DARK : GOLD, fontWeight: '700' }}>Profile</Link>.
                         </span>
                       </p>
-                    )}
-
-                    {/* Otherwise the calendar is simply red from end to
-                        end and the client is left guessing whether they
-                        have done something wrong. */}
-                    {car?.offRoad?.since && (
-                      <div style={s.offRoadBox}>
-                        <p style={s.offRoadNote}>
-                          This vehicle is off the road for repairs and isn&apos;t taking bookings at the moment.
-                          Please choose another vehicle, or check back later.
-                        </p>
-                      </div>
                     )}
 
                     {licenceIssue && (
