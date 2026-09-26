@@ -142,7 +142,7 @@ const ManageCars = ({ view = 'active' }) => {
           + `— settle ${underway.length === 1 ? 'that booking' : 'those bookings'} from Manage Bookings.`);
       } else {
         toast.success(offered
-          ? `Marked off the road. ${offered} upcoming booking${offered === 1 ? '' : 's'} offered other dates or a refund.`
+          ? `Marked off the road. ${offered} upcoming booking${offered === 1 ? '' : 's'} offered another vehicle or a refund.`
           : 'Marked off the road. No bookings were affected.');
       }
     } catch (err) {
@@ -1114,8 +1114,9 @@ const ManageCars = ({ view = 'active' }) => {
             </div>
             <p style={styles.offRoadSub}>
               It stops taking bookings from now until you say it is roadworthy again — no end date, because
-              nobody knows yet how long it will take. Anyone already booked is offered the nearest dates we
-              can still do, or a full refund.
+              nobody knows yet how long it will take. Anyone already booked is offered another vehicle on
+              their own dates, or a full refund if nothing suitable is free. Clients already out in it are
+              left alone.
             </p>
             {/* What the affected clients read. Neither says why, so nothing
                 about a previous renter reaches anybody. */}

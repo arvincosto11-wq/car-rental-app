@@ -394,10 +394,10 @@ router.put('/:id/off-road', protect, adminOnly, async (req, res) => {
     car.offRoad = { since: new Date(), note: String(req.body.note || '').slice(0, 300) };
     await car.save();
 
-    // Everybody whose trip hasn't started gets the same treatment a blocked
-    // range gives them: the nearest dates we can still honour, or a full
-    // refund. Their dates are gone either way — the vehicle is not coming
-    // back in time to be certain of.
+    // Everybody whose trip hasn't started is offered another vehicle on the
+    // dates they already have, or a full refund when nothing suitable is
+    // free. Not other dates: there are none on a vehicle that is off the
+    // road, which is exactly why vehicles had to be offerable at all.
     for (const booking of upcoming) {
       const offered = await openAdjustOffer(booking, {
         reason: 'vehicle_unavailable',
@@ -417,7 +417,7 @@ router.put('/:id/off-road', protect, adminOnly, async (req, res) => {
         'Your vehicle is off the road',
         `${car.brand} ${car.model} has been taken out of service`
           + `${car.offRoad.note ? `: ${car.offRoad.note}` : '.'} `
-          + 'It will not take new bookings until it is marked roadworthy again, and anyone already booked has been offered other dates or a refund.',
+          + 'It will not take new bookings until it is marked roadworthy again, and anyone already booked has been offered another vehicle or a refund.',
         '/consignor',
         { email: true }
       );
