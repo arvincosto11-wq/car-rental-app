@@ -890,6 +890,12 @@ const ManageBookings = () => {
   // so treating people in the order they asked is the easy default rather
   // than something admin has to work out by reading dates.
   const raceFor = (booking) => {
+    // Asked of the booking itself as well as its rivals. competitorsFor only
+    // ever returns live requests, but it was never asked whether THIS one
+    // was still live — so a cancelled booking kept its banding and the row
+    // went on claiming two clients wanted dates it had already lost.
+    if (booking.status !== 'pending' || booking.payment !== 'paid') return null;
+    if (bookingAwaitingDecision(booking)) return null;
     const rivals = competitorsFor(booking);
     if (!rivals.length) return null;
     const earliest = [booking, ...rivals]

@@ -86,7 +86,13 @@ export const UIFeedbackProvider = ({ children }) => {
     confirmOverlay: {
       position: 'fixed',
       inset: 0,
-      background: 'rgba(0,0,0,0.5)',
+      // Heavier than an ordinary modal backdrop, and blurred, because this
+      // one covers a dialog rather than a page: at half opacity the form
+      // behind stayed readable and its buttons sat under the question being
+      // asked about them.
+      background: 'rgba(0,0,0,0.78)',
+      backdropFilter: 'blur(3px)',
+      WebkitBackdropFilter: 'blur(3px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
