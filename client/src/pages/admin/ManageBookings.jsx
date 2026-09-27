@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
@@ -536,8 +536,27 @@ const ManageBookings = () => {
       || `${b.car?.brand} ${b.car?.model}`.toLowerCase().includes(q);
     return matchStatus && matchReschedule && matchSearch;
   });
-  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
-  const pageBookings = paginate(filteredBookings, page, PAGE_SIZE);
+  // Two clients racing for the same vehicle are one decision, so they are
+  // shown together. The urgency sort has no reason to put them side by side
+  // and pagination could otherwise split a pair across two pages.
+  const groupedBookings = (() => {
+    const out = [];
+    const placed = new Set();
+    for (const b of filteredBookings) {
+      if (placed.has(b._id)) continue;
+      out.push(b);
+      placed.add(b._id);
+      for (const rival of competitorsFor(b)) {
+        if (placed.has(rival._id)) continue;
+        if (!filteredBookings.some((f) => f._id === rival._id)) continue;
+        out.push(rival);
+        placed.add(rival._id);
+      }
+    }
+    return out;
+  })();
+  const totalPages = Math.max(1, Math.ceil(groupedBookings.length / PAGE_SIZE));
+  const pageBookings = paginate(groupedBookings, page, PAGE_SIZE);
 
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
@@ -561,6 +580,50 @@ const ManageBookings = () => {
     carCell: { display: 'flex', alignItems: 'center', gap: '10px' },
     clientName: { fontWeight: '600', fontSize: '13px' },
     clientMeta: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    clientCell: { display: 'flex', alignItems: 'flex-start', gap: '10px' },
+    // The same circle Manage Clients uses, so a client looks like the same
+    // person on both screens. Most have no photograph, so the initial is
+    // the normal case rather than the fallback.
+    avatar: (inRace) => ({
+      width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+      background: isDark ? '#3a3b3c' : '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '13px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD,
+      boxShadow: inRace
+        ? `0 0 0 2px ${isDark ? '#242526' : '#fff'}, 0 0 0 4px ${isDark ? GOLD_DARK : GOLD}`
+        : 'none',
+    }),
+    avatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
+    // A tint and a bar down the left edge, so the rows in a race read as
+    // one block rather than two bookings that happen to be adjacent. The
+    // later request is tinted more faintly, which is the whole hierarchy.
+    clashTd: (first) => ({
+      background: isDark
+        ? (first ? GOLD_TINT_DARK : 'rgba(232,161,0,0.07)')
+        : (first ? GOLD_TINT : '#fdf6e3'),
+    }),
+    clashEdge: { boxShadow: `inset 4px 0 0 ${isDark ? GOLD_DARK : GOLD}` },
+    clashBannerTd: {
+      padding: '9px 16px', background: isDark ? GOLD_TINT_DARK : GOLD_TINT,
+      boxShadow: `inset 4px 0 0 ${isDark ? GOLD_DARK : GOLD}`, border: 'none',
+    },
+    clashBanner: {
+      display: 'flex', alignItems: 'center', gap: '9px', flexWrap: 'wrap',
+      fontSize: '11px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase',
+      color: isDark ? GOLD_DARK : '#92400e',
+    },
+    clashDot: {
+      width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0,
+      background: isDark ? GOLD_DARK : GOLD, animation: 'rr-pulse 2s ease-in-out infinite',
+    },
+    clashWhy: {
+      fontWeight: '600', letterSpacing: 0, textTransform: 'none', fontSize: '12px',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    rank: (first) => ({
+      display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '5px',
+      fontSize: '10px', fontWeight: '800', letterSpacing: '0.08em', textTransform: 'uppercase',
+      color: first ? (isDark ? GOLD_DARK : '#92400e') : (isDark ? '#8a8d91' : '#9ca3af'),
+    }),
     carThumb: { width: '44px', height: '32px', background: isDark ? '#3a3b3c' : '#f3f4f6', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 },
     balanceNote: { fontSize: '11px', color: isDark ? GOLD_DARK : GOLD, marginTop: '4px', maxWidth: '160px' },
     promoNote: {
@@ -825,19 +888,19 @@ const ManageBookings = () => {
   // Says plainly that this request is in a race, and who got there first —
   // so treating people in the order they asked is the easy default rather
   // than something admin has to work out by reading dates.
-  const renderCompetingNote = (booking) => {
+  const raceFor = (booking) => {
     const rivals = competitorsFor(booking);
     if (!rivals.length) return null;
     const earliest = [booking, ...rivals]
       .reduce((a, b) => (new Date(a.createdAt) <= new Date(b.createdAt) ? a : b));
-    const thisOneAskedFirst = earliest._id === booking._id;
-    return (
-      <div style={s.competingNote}>
-        {rivals.length + 1} clients want these dates ·{' '}
-        {thisOneAskedFirst ? 'this one asked first' : `${earliest.user?.name || 'another client'} asked first`}
-      </div>
-    );
+    return { rivals, count: rivals.length + 1, askedFirst: earliest._id === booking._id };
   };
+
+  // When somebody asked, so the ordering is a stated fact rather than
+  // something admin has to take on trust.
+  const askedAt = (booking) => (booking.createdAt
+    ? formatMoment(booking.createdAt, true, { month: 'short', day: 'numeric' })
+    : '');
 
   return (
     <AdminLayout activePage="Manage Bookings">
@@ -976,9 +1039,40 @@ const ManageBookings = () => {
           <tbody>
             {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : filteredBookings.length === 0 ? (
               <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280' }}>No bookings match.</td></tr>
-            ) : pageBookings.map((booking) => (
-              <tr key={booking._id}>
-                <td style={s.td}>
+            ) : pageBookings.map((booking, rowIndex) => {
+              const race = raceFor(booking);
+              // The heading belongs to the group, so only the first row of
+              // a race draws it. Rows were reordered above to sit together.
+              const opensRace = race && !(rowIndex > 0
+                && race.rivals.some((r) => r._id === pageBookings[rowIndex - 1]._id));
+              const cellStyle = race
+                ? { ...s.td, ...s.clashTd(race.askedFirst) }
+                : s.td;
+              const firstCellStyle = race ? { ...cellStyle, ...s.clashEdge } : cellStyle;
+              return (
+              <Fragment key={booking._id}>
+              {opensRace && (
+                <tr>
+                  <td colSpan={7} style={s.clashBannerTd}>
+                    <div style={s.clashBanner}>
+                      <span style={s.clashDot} aria-hidden="true" />
+                      <span>{race.count} clients want these dates</span>
+                      <span style={s.clashWhy}>
+                        Confirming one will bump the other &mdash; they keep their money either way.
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              <tr>
+                <td style={firstCellStyle}>
+                  <div style={s.clientCell}>
+                    <div style={s.avatar(!!race)}>
+                      {booking.user?.image
+                        ? <img src={booking.user.image} alt="" style={s.avatarImg} />
+                        : (booking.user?.name?.charAt(0).toUpperCase() || '?')}
+                    </div>
+                    <div>
                   <div style={s.clientName}>
                     {booking.user?.name || 'Unknown'}
                     {booking.user?.ratingCount > 0 && booking.user.avgRating < LOW_RATING_THRESHOLD && (
@@ -989,6 +1083,12 @@ const ManageBookings = () => {
                   </div>
                   <div style={s.clientMeta}>{booking.user?.email}</div>
                   <div style={s.clientMeta}>ID: {booking.user?._id?.slice(-6) || '—'}</div>
+                  {race && (
+                    <div style={s.rank(race.askedFirst)}>
+                      {race.askedFirst ? 'Asked first' : 'Asked later'}
+                      {askedAt(booking) ? ` · ${askedAt(booking)}` : ''}
+                    </div>
+                  )}
                   {/* Asked before you accept, while it can still be fixed.
                       A licence that runs out mid-trip is fine on the day
                       they booked and useless on the day they drive. */}
@@ -1004,8 +1104,10 @@ const ManageBookings = () => {
                       <span style={s.clientMeta}>{booking.user.avgRating.toFixed(1)} ({booking.user.ratingCount})</span>
                     </div>
                   )}
+                    </div>
+                  </div>
                 </td>
-                <td style={s.td}>
+                <td style={cellStyle}>
                   <div style={s.carCell}>
                     <div style={s.carThumb}>
                       {booking.car?.image && <img src={booking.car.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
@@ -1021,7 +1123,7 @@ const ManageBookings = () => {
                     </div>
                   </div>
                 </td>
-                <td style={s.td}>
+                <td style={cellStyle}>
                   {formatMoment(booking.startDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })} to {formatMoment(booking.endDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
                   {booking.extensions?.length > 0 && (
                     <div style={s.extendedNote}>
@@ -1034,7 +1136,7 @@ const ManageBookings = () => {
                     </div>
                   )}
                 </td>
-                <td style={s.td}>
+                <td style={cellStyle}>
                   ₱{booking.totalPrice}
                   {booking.discountAmount > 0 && (
                     <div style={s.promoNote}>
@@ -1047,7 +1149,7 @@ const ManageBookings = () => {
                     </div>
                   )}
                 </td>
-                <td style={s.td}>
+                <td style={cellStyle}>
                   {booking.refundStatus === 'requested' && (
                     <div style={{ marginBottom: booking.rescheduleRequest?.status === 'pending' ? '10px' : 0 }}>
                       <div style={{ fontSize: '12px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '2px' }}>
@@ -1081,7 +1183,7 @@ const ManageBookings = () => {
                     <span style={{ color: isDark ? '#8a8d91' : '#9ca3af', fontSize: '12px' }}>—</span>
                   )}
                 </td>
-                <td style={s.td}>
+                <td style={cellStyle}>
                   {booking.refundStatus === 'requested' ? (
                     <div>
                       <span style={{ fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic' }}>
@@ -1284,17 +1386,18 @@ const ManageBookings = () => {
                           Awaiting GCash payment
                         </div>
                       )}
-                      {renderCompetingNote(booking)}
                     </div>
                   )}
                 </td>
-                <td style={s.td}>
+                <td style={cellStyle}>
                   <button type="button" style={s.detailsBtn} onClick={() => setDetailsBookingId(booking._id)}>
                     View Details
                   </button>
                 </td>
               </tr>
-            ))}
+              </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -1268,3 +1268,13 @@ button.seg-tab:not(:disabled):hover {
   .booking-confirm-seal,
   .booking-confirm-spin { animation: none; }
 }
+
+/* The marker on a booking two clients are competing for. Slow and small on
+   purpose: it is a queue that needs a decision, not an error. */
+@keyframes rr-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*="rr-pulse"] { animation: none !important; }
+}

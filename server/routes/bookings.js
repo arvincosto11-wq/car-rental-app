@@ -302,7 +302,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
     await expireAdjustOffers();
     const bookings = await Booking.find()
       .populate('car')
-      .populate('user', 'name email avgRating ratingCount licenseExpiry validIdExpiry licenseNumber')
+      .populate('user', 'name email image avgRating ratingCount licenseExpiry validIdExpiry licenseNumber')
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'admin' }));
   } catch (err) {
