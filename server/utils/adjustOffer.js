@@ -2,6 +2,7 @@ import Booking from '../models/Booking.js';
 import Car from '../models/Car.js';
 import LongRentalDiscount from '../models/LongRentalDiscount.js';
 import { computeBookingPrice } from './promo.js';
+import { registrationProblem } from './registration.js';
 import { cancelBookingWithRefund } from './cancelBooking.js';
 import { createGcashCheckout, paymongoFetch, paymentSources, refundOnePayment } from './paymongo.js';
 import { notifyUser, notifyAdmins } from './notify.js';
@@ -139,6 +140,9 @@ export async function alternativeVehicles(booking, { limit = 3 } = {}) {
     // bookings plus blocks plus turnaround, and that lives in one place.
     const { spans } = await busySpans(car._id, { car });
     if (spans.some((b) => overlaps(span, b))) continue;
+    // Offering a vehicle whose papers have run out would replace one car
+    // they cannot have with another.
+    if (registrationProblem(car, { endDate: span.end })) continue;
 
     const priced = computeBookingPrice(car, booking.totalDays, span.start, span.end, rules);
     free.push({
@@ -382,6 +386,12 @@ async function acceptVehicleOffer(booking, index) {
   const { spans } = await busySpans(choice.car, { excludeBookingId: booking._id });
   if (spans.some((b) => overlaps(span, b))) {
     return { ok: false, message: 'That vehicle has just been taken. Please choose another, or the refund.' };
+  }
+  // An offer can sit for a day, and a registration can run out inside that
+  // window. Checked against the record rather than trusted from the list.
+  const chosenCar = await Car.findById(choice.car).select('registrationExpiry').lean();
+  if (registrationProblem(chosenCar, { endDate: span.end })) {
+    return { ok: false, message: 'That vehicle is no longer available for these dates. Please choose another, or the refund.' };
   }
 
   const previousCar = booking.car;

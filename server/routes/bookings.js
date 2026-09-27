@@ -700,6 +700,14 @@ router.put('/:id/move-vehicle', protect, adminOnly, async (req, res) => {
     if (target.offRoad?.since) {
       return res.status(400).json({ message: 'That vehicle is off the road.' });
     }
+    const targetPapers = registrationProblem(target, { endDate: remainingSpan(booking).end });
+    if (targetPapers) {
+      return res.status(400).json({
+        message: targetPapers.kind === 'expired'
+          ? "That vehicle's registration has expired, so it cannot be sent out."
+          : "That vehicle's registration runs out before this booking ends.",
+      });
+    }
 
     // Asked again here, not trusted from the list the screen was drawn with.
     const wanted = remainingSpan(booking);

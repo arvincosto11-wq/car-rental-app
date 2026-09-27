@@ -1,4 +1,5 @@
 import Car from '../models/Car.js';
+import { registrationProblem } from './registration.js';
 import { busySpans, bookingSpan, overlaps } from './availability.js';
 
 // Changing the vehicle on a booking that is already running.
@@ -70,6 +71,9 @@ export async function vehiclesForSwap(booking, { now = new Date() } = {}) {
   for (const car of candidates) {
     const { spans } = await busySpans(car._id, { car });
     if (spans.some((b) => overlaps(wanted, b))) continue;
+    // Same reason as the offer list: a vehicle whose registration has run
+    // out cannot go out, so it is not a way of rescuing a booking.
+    if (registrationProblem(car, { endDate: wanted.end })) continue;
     free.push({
       id: String(car._id),
       brand: car.brand,
