@@ -119,6 +119,24 @@ export async function notifyUpcomingReturns({ userId = null } = {}) {
 // that starts on Thursday.
 export const COLLISION_HOURS = 12;
 
+// How close a waiting booking has to be before it is worth ringing anybody
+// about. Pulled out of the query it used to live inside so the rule can be
+// checked with made-up dates rather than a database: a window expressed
+// only as a Mongo filter cannot be tested, and this one had never been
+// exercised at all.
+export function collisionDeadline(now = new Date()) {
+  return new Date(now.getTime() + COLLISION_HOURS * 60 * 60 * 1000);
+}
+
+// Whether the next booking on an overdue vehicle is close enough to warn
+// about. The deadline is inclusive: a pickup exactly twelve hours out is
+// still worth a call, because the vehicle is already late and nothing says
+// it will be back in eleven.
+export function wouldCollide({ nextStartsAt, now = new Date() } = {}) {
+  if (!nextStartsAt) return false;
+  return new Date(nextStartsAt).getTime() <= collisionDeadline(now).getTime();
+}
+
 // An overdue vehicle with somebody waiting for it.
 //
 // The blocking we do stops NEW bookings being made on a car that is out. It
@@ -144,10 +162,12 @@ export async function warnOfCollidingBookings({ now = new Date() } = {}) {
       car: booking.car?._id || booking.car,
       _id: { $ne: booking._id },
       status: { $in: ['pending', 'confirmed'] },
-      startDate: { $gte: booking.endDate, $lte: new Date(now.getTime() + COLLISION_HOURS * 60 * 60 * 1000) },
+      startDate: { $gte: booking.endDate },
       delayWarnedOn: { $ne: today },
     }).sort({ startDate: 1 }).populate('user', 'name');
-    if (!next) continue;
+    // The query finds the next one due on this vehicle; whether it is close
+    // enough to be worth a call is decided in one place, above.
+    if (!next || !wouldCollide({ nextStartsAt: next.startDate, now })) continue;
 
     const car = booking.car ? `${booking.car.brand} ${booking.car.model}` : 'A vehicle';
     next.delayWarnedOn = today;

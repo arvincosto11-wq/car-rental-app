@@ -1,7 +1,7 @@
 import { suite, group, check } from './harness.mjs';
 import { hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom } from '../utils/phTime.js';
-import { isOverdue, daysOverdue, daysLate, lateFeeFor, isDueSoon, carriedLateFee } from '../utils/overdueReturns.js';
+import { isOverdue, daysOverdue, daysLate, lateFeeFor, isDueSoon, carriedLateFee, wouldCollide, collisionDeadline, COLLISION_HOURS } from '../utils/overdueReturns.js';
 import { occupiedSpan } from '../utils/availability.js';
 import { splitDays, repriceForSwap, remainingSpan } from '../utils/moveVehicle.js';
 import { fuelShortfall, fuelShortfallLabel, isFuelLevel, fuelLabel } from '../utils/fuel.js';
@@ -228,6 +228,30 @@ export default function run() {
   check('already overdue is not due soon', isDueSoon({ ...running, endDate: instantFrom('2026-09-24', 17) }, noon25), false);
   check('never collected gets no reminder', isDueSoon({ ...running, collectedAt: null }, noon25), false);
   check('already back gets no reminder', isDueSoon({ ...running, returnedAt: noon25 }, noon25), false);
+
+  group('somebody is waiting for a vehicle that has not come back');
+  // Blocking stops NEW bookings on a car that is out. It does nothing about
+  // the ones already in the calendar, so the next client turns up to a
+  // vehicle that is not there. This is the rule that decides whether that
+  // is close enough to be worth ringing two people about.
+  check('twelve hours is the window', COLLISION_HOURS, 12);
+  check('the deadline is twelve hours out', collisionDeadline(noon25).toISOString(), new Date('2026-09-26T00:00:00+08:00').toISOString());
+
+  // Midnight tonight in Legazpi is exactly twelve hours from noon, and the
+  // edge counts: the vehicle is already late, and nothing says it will be
+  // back in eleven hours rather than thirteen.
+  check('a pickup exactly twelve hours out still counts', wouldCollide({ nextStartsAt: instantFrom('2026-09-26', 0), now: noon25 }), true);
+  check('a pickup this evening counts', wouldCollide({ nextStartsAt: instantFrom('2026-09-25', 17), now: noon25 }), true);
+  // 7am tomorrow is nineteen hours off. There is a night in between, which
+  // is usually enough for a late vehicle to come back on its own.
+  check('tomorrow morning is too far off to alarm anybody', wouldCollide({ nextStartsAt: instantFrom('2026-09-26', 7), now: noon25 }), false);
+  check('next week is nothing to do with it', wouldCollide({ nextStartsAt: instantFrom('2026-10-02', 7), now: noon25 }), false);
+  // A vehicle nobody else is waiting for is still overdue; it is just not
+  // this sweep's problem.
+  check('nobody waiting is not a collision', wouldCollide({ nextStartsAt: null, now: noon25 }), false);
+  check('a missing argument is not a collision', wouldCollide(), false);
+  // The sweep reads dates off records, where they may be strings.
+  check('a date read back as text still counts', wouldCollide({ nextStartsAt: instantFrom('2026-09-25', 17).toISOString(), now: noon25 }), true);
 
   group('extending settles the lateness instead of erasing it');
   // Extending moves the return date, and the days somebody was already late
