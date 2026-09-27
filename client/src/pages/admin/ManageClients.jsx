@@ -69,6 +69,16 @@ const ManageClients = () => {
   };
 
   const handleBlock = async (id, currentStatus) => {
+    const ok = await confirm(
+      currentStatus
+        ? 'Unblock this client? They will be able to make bookings again.'
+        : 'Block this client? They will not be able to make any booking until you unblock them. '
+          + 'Bookings they already have are not affected.',
+      currentStatus
+        ? { confirmLabel: 'Unblock', cancelLabel: 'Leave blocked' }
+        : { confirmLabel: 'Block client', cancelLabel: 'Cancel', danger: true }
+    );
+    if (!ok) return;
     try {
       await api.put(`/users/${id}/block`, { blocked: !currentStatus });
       fetchData();

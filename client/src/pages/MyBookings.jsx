@@ -401,6 +401,12 @@ const MyBookings = () => {
       setRefundError('Please select a reason for your refund request.');
       return;
     }
+    const ok = await confirm(
+      'Send this cancellation request to our team? Your booking is held until they answer, '
+      + 'and how much comes back depends on how long ago you booked, so asking again later may be worth less.',
+      { confirmLabel: 'Send request', cancelLabel: 'Keep my booking', danger: true }
+    );
+    if (!ok) return;
     setSubmitting(true);
     setRefundError('');
     try {
@@ -471,6 +477,12 @@ const MyBookings = () => {
     // part of it was — refusing a client who had correctly picked one of
     // the hours still free on it. The hour list below the calendar is the
     // real answer now, and the server checks it again regardless.
+    const ok = await confirm(
+      'Send these dates to our team to approve? Your booking stays on its current dates until they do, '
+      + 'and you can only have one request open at a time.',
+      { confirmLabel: 'Send request', cancelLabel: 'Go back' }
+    );
+    if (!ok) return;
     setRescheduleSubmitting(true);
     setRescheduleError('');
     try {

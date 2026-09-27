@@ -17,7 +17,7 @@ const PAGE_SIZE = 10;
 const ManageConsignments = () => {
   usePageTitle('Manage Consignments');
   const { isDark } = useTheme();
-  const { toast } = useUIFeedback();
+  const { toast, confirm } = useUIFeedback();
   const { refetch: refetchPendingCounts } = useAdminPendingCounts();
   const [consignments, setConsignments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +78,11 @@ const ManageConsignments = () => {
 
   const handleDecline = async (id) => {
     if (!declineReason.trim()) return;
+    const ok = await confirm(
+      'Decline this consignment? The owner is told, and your reason is sent to them, so make sure it reads the way you want.',
+      { confirmLabel: 'Decline it', cancelLabel: 'Go back', danger: true }
+    );
+    if (!ok) return;
     setWorking(true);
     try {
       await api.put(`/consignments/${id}`, { decision: 'declined', adminNotes: declineReason });

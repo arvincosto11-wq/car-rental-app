@@ -51,7 +51,7 @@ export const upcomingBlockCount = (blockedDates) =>
   splitBlockedDates(blockedDates).current.filter((b) => b.status !== 'declined').length;
 
 const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
-  const { toast } = useUIFeedback();
+  const { toast, confirm } = useUIFeedback();
   const isAdmin = role === 'admin';
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -146,6 +146,12 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
   };
 
   const remove = async (blockId) => {
+    const ok = await confirm(
+      'Remove this block? Those dates go back on sale straight away, and whatever the vehicle was off the road for '
+      + 'is no longer recorded against them.',
+      { confirmLabel: 'Remove block', cancelLabel: 'Keep it', danger: true }
+    );
+    if (!ok) return;
     try {
       const res = await api.delete(`/cars/${car._id}/blocked-dates/${blockId}`);
       onCarUpdated(res.data);

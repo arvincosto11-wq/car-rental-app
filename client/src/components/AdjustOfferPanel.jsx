@@ -4,6 +4,7 @@ import AvailabilityCalendar from './AvailabilityCalendar';
 import { timeLeftLabel, offerReasonText, MIN_NOTICE_HOURS } from '../utils/offerWindow';
 import { formatMoment, phHour, phYmd, instantFrom, addDays, phDayStart, pickupHours, formatHour } from '../utils/phTime';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
+import { useUIFeedback } from '../context/UIFeedbackContext';
 
 // Shown on a booking whose dates can no longer be honoured, in place of
 // simply telling the client it was cancelled. The choice is theirs: one of
@@ -103,6 +104,24 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
   const customEnd = customStart && hour !== null
     ? phYmd(addDays(instantFrom(customStart, hour), booking.totalDays))
     : '';
+
+  const { confirm } = useUIFeedback();
+
+  // Asked before the booking changes hands. Taking another vehicle closes
+  // the offer, so the dates, the refund and the other vehicles all go with
+  // it — and an upgrade sends them to GCash for real money.
+  const takeVehicle = async (v, i) => {
+    const upgrade = v.extraDue > 0;
+    const ok = await confirm(
+      upgrade
+        ? `Move this booking to the ${v.brand} ${v.model}? You'll be sent to GCash to pay ₱${v.extraDue.toLocaleString()} now, `
+          + 'and nothing changes until that payment goes through.'
+        : `Move this booking to the ${v.brand} ${v.model}, keeping your dates? This closes the other choices on this offer.`,
+      { confirmLabel: upgrade ? `Pay ₱${v.extraDue.toLocaleString()}` : 'Take this vehicle', cancelLabel: 'Go back' }
+    );
+    if (!ok) return;
+    await decide(upgrade ? 'topup' : 'accept', { vehicleIndex: i });
+  };
 
   const decide = async (decision, payload) => {
     const result = await onDecide(decision, payload);
@@ -350,7 +369,7 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
                 type="button"
                 style={s.takeBtn}
                 disabled={busy}
-                onClick={() => decide(v.extraDue > 0 ? 'topup' : 'accept', { vehicleIndex: i })}
+                onClick={() => takeVehicle(v, i)}
               >
                 {v.extraDue > 0 ? `Pay ₱${v.extraDue.toLocaleString()}` : 'Take this vehicle'}
               </button>

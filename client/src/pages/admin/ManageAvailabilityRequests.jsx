@@ -11,7 +11,7 @@ import api from '../../api';
 const ManageAvailabilityRequests = () => {
   usePageTitle('Availability Requests');
   const { isDark } = useTheme();
-  const { toast } = useUIFeedback();
+  const { toast, confirm } = useUIFeedback();
   const { refetch: refetchPendingCounts } = useAdminPendingCounts();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +76,11 @@ const ManageAvailabilityRequests = () => {
   };
 
   const handleDecline = async () => {
+    const ok = await confirm(
+      'Decline this request? The owner is told, and your reason is sent to them, so make sure it reads the way you want.',
+      { confirmLabel: 'Decline it', cancelLabel: 'Go back', danger: true }
+    );
+    if (!ok) return;
     setWorking(true);
     try {
       await api.put(`/cars/${declineModalId}/availability-request`, { decision: 'declined', adminNotes: declineReason });
