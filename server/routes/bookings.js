@@ -1359,6 +1359,10 @@ router.put('/:id/adjust', protect, async (req, res) => {
       // says whether that difference joins their pickup balance or has to
       // be paid now, through the top-up route below.
       if (result.needsPriceConfirmation) return res.status(409).json(result);
+      // A dearer vehicle is never moved onto without the difference being
+      // paid first, so this sends them to the top-up route rather than
+      // asking them to agree to a figure.
+      if (result.needsTopUp) return res.status(409).json(result);
       if (!result.ok) return res.status(400).json({ message: result.message });
       return res.json(result.booking);
     }
@@ -1393,6 +1397,7 @@ router.post('/:id/adjust/top-up', protect, async (req, res) => {
       optionIndex: req.body.optionIndex,
       startDate: req.body.startDate,
       pickupHour: req.body.pickupHour,
+      vehicleIndex: req.body.vehicleIndex,
     });
     if (!result.ok) return res.status(400).json({ message: result.message });
     return res.json({ checkoutUrl: result.checkoutUrl });

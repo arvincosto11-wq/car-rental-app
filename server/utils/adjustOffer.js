@@ -46,6 +46,16 @@ const CLIENT_URL = process.env.CLIENT_URL || 'https://rent-a-ride-albay.vercel.a
 // to join and has to be collected before the dates move.
 const settledInFull = (booking) => booking.payment === 'paid' && booking.amountPaid >= booking.totalPrice;
 
+// The share of a booking taken up front. Mirrors the 20% in POST /bookings;
+// if that ever moves, this moves with it.
+const DOWNPAYMENT_RATE = 0.20;
+
+// What a client must pay now to move onto a vehicle that costs more.
+export const extraDueFor = (booking, newTotal) => {
+  const owedNow = settledInFull(booking) ? newTotal : Math.ceil(newTotal * DOWNPAYMENT_RATE);
+  return Math.max(0, owedNow - (booking.amountPaid || 0));
+};
+
 const when = (d) => new Date(d).toLocaleString('en-US', {
   timeZone: 'Asia/Manila', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
 });
@@ -114,9 +124,13 @@ async function priceOptions(car, booking, ranges) {
 // — which is the worst outcome available to anybody: they lose the trip, the
 // business loses the revenue, and nine other vehicles sit on the forecourt.
 //
-// Only same price or cheaper is offered, and a cheaper one refunds the
-// difference. Our vehicle failed, so nobody is asked to pay more because of
-// it, and nothing has to be negotiated through a notification.
+// A cheaper one refunds the difference, and nobody is ever obliged to pay
+// more: the same-price and cheaper vehicles are offered first and cost them
+// nothing. A dearer one is offered too, because being bumped onto a scooter
+// when they wanted a car is a poor answer when the Corolla is sitting free
+// — but it is theirs to choose and theirs to pay for, by GCash, before the
+// booking moves. Being bumped is something that happened to them; choosing
+// to upgrade is not.
 export async function alternativeVehicles(booking, { limit = 3 } = {}) {
   const original = await Car.findById(booking.car).select('pricePerDay').lean();
   if (!original) return [];
@@ -130,7 +144,6 @@ export async function alternativeVehicles(booking, { limit = 3 } = {}) {
     isAvailable: true,
     archived: { $ne: true },
     'offRoad.since': null,
-    pricePerDay: { $lte: original.pricePerDay },
     availableBookingTypes: booking.bookingType,
   }).lean();
 
@@ -158,6 +171,12 @@ export async function alternativeVehicles(booking, { limit = 3 } = {}) {
       // What the trip now costs less than it did. Usually settled by owing
       // less at pickup rather than by money moving — a refund on a booking
       // that still has a balance is two transactions cancelling out.
+      // What they must send before a dearer vehicle is theirs. On a
+      // downpayment booking that is the difference in DOWNPAYMENT, not in
+      // the whole trip — the rest still joins what they owe at pickup. A
+      // client who already settled in full has no pickup balance left for
+      // it to join, so they pay the whole difference.
+      extraDue: extraDueFor(booking, priced.totalPrice),
       lowerBy: Math.max(0, booking.totalPrice - priced.totalPrice),
       // Only what they have genuinely overpaid, which is rare: someone who
       // settled in full and moves to a cheaper car. Holding that would be
@@ -166,9 +185,13 @@ export async function alternativeVehicles(booking, { limit = 3 } = {}) {
     });
   }
 
-  // Closest to what they chose first. Somebody who booked the Fortuner wants
-  // the next thing like it, not the cheapest scooter on the lot.
-  free.sort((a, b) => b.pricePerDay - a.pricePerDay);
+  // Everything that costs them nothing comes first, closest in price to what
+  // they chose — somebody who booked the Fortuner wants the next thing like
+  // it, not the cheapest scooter on the lot. The vehicles that would cost
+  // more follow, cheapest upgrade first, so the three the panel leads with
+  // are still three they can simply take.
+  free.sort((a, b) => (a.extraDue > 0) - (b.extraDue > 0)
+    || (a.extraDue > 0 ? a.pricePerDay - b.pricePerDay : b.pricePerDay - a.pricePerDay));
   // All of them, not the best three. The panel leads with three and offers
   // the rest behind a link: cutting the list here meant vehicles that
   // genuinely fitted were never offered at all, and the client's only other
@@ -398,6 +421,18 @@ async function acceptVehicleOffer(booking, index) {
     return { ok: false, message: 'That vehicle is no longer available for these dates. Please choose another, or the refund.' };
   }
 
+  // A dearer vehicle is theirs once the difference is in, and not before.
+  // The client is sent to GCash by startTopUp; this is the guard that stops
+  // the swap happening any other way.
+  if (choice.extraDue > 0) {
+    return {
+      ok: false,
+      needsTopUp: true,
+      extraDue: choice.extraDue,
+      message: `That vehicle costs more than your booking. Pay ₱${choice.extraDue.toLocaleString()} by GCash to take it.`,
+    };
+  }
+
   const previousCar = booking.car;
   booking.car = choice.car;
   booking.subtotal = choice.subtotal;
@@ -477,6 +512,13 @@ async function acceptVehicleOffer(booking, index) {
 // chosen dates on the booking. They do not move until confirmTopUp sees the
 // payment land, so backing out of GCash changes nothing.
 export async function startTopUp(booking, choice) {
+  // A vehicle upgrade rather than dates that cost more. Same machinery —
+  // money first, booking afterwards — but what is parked on the booking is
+  // a car rather than a span, and confirmTopUp tells them apart by that.
+  if (choice?.vehicleIndex !== undefined && choice.vehicleIndex !== null) {
+    return startVehicleTopUp(booking, Number(choice.vehicleIndex));
+  }
+
   const { option, error } = await resolveOption(booking, choice);
   if (error) return { ok: false, message: error };
 
@@ -502,6 +544,101 @@ export async function startTopUp(booking, choice) {
   booking.adjustOffer.topUp = { checkoutSessionId: id, amount: extra, startedAt: new Date(), option };
   await booking.save();
   return { ok: true, checkoutUrl };
+}
+
+// The same as above for a dearer replacement vehicle. Nothing about the
+// booking moves until confirmTopUp sees the money land, so backing out of
+// GCash leaves them exactly where they were, with the offer still open.
+async function startVehicleTopUp(booking, index) {
+  const choice = booking.adjustOffer?.vehicleOptions?.[index];
+  if (!choice) return { ok: false, message: 'That vehicle is no longer available. Please refresh and try again.' };
+  if (!(choice.extraDue > 0)) {
+    return { ok: false, message: 'There is nothing extra to pay for that vehicle.' };
+  }
+
+  // Asked again at the last moment, exactly as taking a free one is: the
+  // offer may have been sitting for a day.
+  const span = bookingSpan(booking);
+  const { spans } = await busySpans(choice.car, { excludeBookingId: booking._id });
+  if (spans.some((b) => overlaps(span, b))) {
+    return { ok: false, message: 'That vehicle has just been taken. Please choose another, or the refund.' };
+  }
+  const chosenCar = await Car.findById(choice.car).select('brand model registrationExpiry').lean();
+  if (!chosenCar || registrationProblem(chosenCar, { endDate: span.end })) {
+    return { ok: false, message: 'That vehicle is no longer available for these dates. Please choose another, or the refund.' };
+  }
+
+  const { id, checkoutUrl } = await createGcashCheckout({
+    amount: choice.extraDue,
+    name: `${chosenCar.brand} ${chosenCar.model} — upgrade`,
+    description: `Booking ${booking._id} vehicle change`,
+    reference: `${booking._id}-vtopup-${Date.now()}`,
+    metadata: { bookingId: booking._id.toString(), kind: 'adjust-top-up' },
+    successUrl: `${CLIENT_URL}/my-bookings?topup=success&bookingId=${booking._id}`,
+    cancelUrl: `${CLIENT_URL}/my-bookings?topup=cancelled&bookingId=${booking._id}`,
+  });
+
+  booking.adjustOffer.topUp = {
+    checkoutSessionId: id,
+    amount: choice.extraDue,
+    startedAt: new Date(),
+    option: {
+      car: choice.car,
+      subtotal: choice.subtotal,
+      discountAmount: choice.discountAmount,
+      totalPrice: choice.totalPrice,
+      promoLabel: choice.promoLabel || '',
+    },
+  };
+  await booking.save();
+  return { ok: true, checkoutUrl };
+}
+
+// The booking moves onto the dearer vehicle, once its difference is paid.
+// Kept apart from acceptVehicleOffer because none of that function's second
+// half applies: an upgrade never refunds anything, and the client needs to
+// be told what they now owe at pickup rather than what came off it.
+async function applyVehicleTopUp(booking, option) {
+  const span = bookingSpan(booking);
+  const { spans } = await busySpans(option.car, { excludeBookingId: booking._id });
+  if (spans.some((b) => overlaps(span, b))) {
+    return { ok: false, message: 'That vehicle was taken while your payment was going through. Your money is safe — choose another vehicle, other dates, or the refund.' };
+  }
+
+  const previousCar = booking.car;
+  booking.car = option.car;
+  booking.subtotal = option.subtotal;
+  booking.discountAmount = option.discountAmount;
+  booking.totalPrice = option.totalPrice;
+  booking.promoLabel = option.promoLabel || '';
+  booking.adjustOffer.status = 'accepted';
+  booking.adjustOffer.resolvedAt = new Date();
+  await booking.save();
+
+  const [from, to] = await Promise.all([
+    Car.findById(previousCar).select('brand model').lean(),
+    Car.findById(option.car).select('brand model').lean(),
+  ]);
+  const owedAtPickup = Math.max(0, booking.totalPrice - booking.amountPaid);
+
+  await notifyUser(
+    booking.user,
+    'Your booking has moved to another vehicle',
+    `Your dates are unchanged. ${from ? `${from.brand} ${from.model}` : 'Your original vehicle'} has been `
+      + `replaced with ${to ? `${to.brand} ${to.model}` : 'another vehicle'}, and your payment has been received. `
+      + (owedAtPickup > 0
+        ? `${PESO}${owedAtPickup.toLocaleString()} is due at pickup.`
+        : 'Nothing further is due.'),
+    '/my-bookings',
+    { email: true }
+  );
+  await notifyAdmins(
+    'A client upgraded to another vehicle',
+    `${to ? `${to.brand} ${to.model}` : 'Another vehicle'} now covers a booking that was on `
+      + `${from ? `${from.brand} ${from.model}` : 'a vehicle taken off the road'}. The difference was paid by GCash.`,
+    '/admin/manage-bookings'
+  );
+  return { ok: true, booking };
 }
 
 // Back from GCash. PayMongo is asked what actually happened rather than the
@@ -539,15 +676,19 @@ export async function confirmTopUp(booking) {
   booking.amountPaid += topUp.amount;
   clearTopUp(booking);
 
-  const result = await applyOption(booking, option, { paidUpfront: true });
+  // A parked car means the payment was for an upgrade, not for dates.
+  const result = option.car
+    ? await applyVehicleTopUp(booking, option)
+    : await applyOption(booking, option, { paidUpfront: true });
   if (!result.ok) {
     // Their money is in and the dates are not. The payment stays recorded,
     // so taking the refund now returns it along with the rest — but admin
     // needs to know a client is sitting in this state.
     await booking.save();
     await notifyAdmins(
-      'Top-up taken but dates unavailable',
-      `A client paid \u20b1${topUp.amount.toLocaleString()} to move a booking and the dates went before it landed. `
+      option.car ? 'Top-up taken but the vehicle went' : 'Top-up taken but dates unavailable',
+      `A client paid \u20b1${topUp.amount.toLocaleString()} to move a booking and `
+        + `${option.car ? 'the vehicle was taken' : 'the dates went'} before it landed. `
         + 'Their offer is still open, and the amount comes back with any refund they take.',
       '/admin/manage-bookings'
     );

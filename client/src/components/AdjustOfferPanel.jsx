@@ -138,6 +138,10 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
       textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#6b7280', margin: '14px 0 6px',
     },
     vehicleRow: { display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 },
+    upgradeNote: {
+      fontSize: '11px', lineHeight: 1.45, marginTop: '3px',
+      color: isDark ? '#8a8d91' : '#6b7280',
+    },
     vehicleThumb: {
       width: '54px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0,
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
@@ -324,21 +328,31 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
                 <div>
                   <div style={s.optionDates}>{v.brand} {v.model}</div>
                   <div style={s.optionPrice}>
-                    {v.refundDifference > 0
-                      ? `₱${v.totalPrice.toLocaleString()} — ₱${v.refundDifference.toLocaleString()} refunded to you`
-                      : v.lowerBy > 0
-                        ? `₱${v.totalPrice.toLocaleString()} — ₱${v.lowerBy.toLocaleString()} less to pay at pickup`
-                        : `₱${v.totalPrice.toLocaleString()} — same price as your booking`}
+                    {v.extraDue > 0
+                      ? `₱${v.totalPrice.toLocaleString()} — ₱${v.extraDue.toLocaleString()} to pay now by GCash`
+                      : v.refundDifference > 0
+                        ? `₱${v.totalPrice.toLocaleString()} — ₱${v.refundDifference.toLocaleString()} refunded to you`
+                        : v.lowerBy > 0
+                          ? `₱${v.totalPrice.toLocaleString()} — ₱${v.lowerBy.toLocaleString()} less to pay at pickup`
+                          : `₱${v.totalPrice.toLocaleString()} — same price as your booking`}
                   </div>
+                  {v.extraDue > 0 && (
+                    <div style={s.upgradeNote}>
+                      Costs more than your booking. The rest is due at pickup as usual.
+                    </div>
+                  )}
                 </div>
               </div>
+              {/* A dearer vehicle goes straight to GCash rather than being
+                  offered and then refused: the booking only moves once the
+                  difference has landed. */}
               <button
                 type="button"
                 style={s.takeBtn}
                 disabled={busy}
-                onClick={() => decide('accept', { vehicleIndex: i })}
+                onClick={() => decide(v.extraDue > 0 ? 'topup' : 'accept', { vehicleIndex: i })}
               >
-                Take this vehicle
+                {v.extraDue > 0 ? `Pay ₱${v.extraDue.toLocaleString()}` : 'Take this vehicle'}
               </button>
             </div>
           ))}

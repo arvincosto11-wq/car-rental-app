@@ -175,6 +175,10 @@ const bookingSchema = new mongoose.Schema({
       promoLabel: { type: String, default: '' },
       lowerBy: { type: Number, default: 0 },
       refundDifference: { type: Number, default: 0 },
+      // A dearer replacement is allowed, but only once the difference is
+      // paid: what they must send by GCash before the swap goes through.
+      // Zero on anything the same price or cheaper, which is most of them.
+      extraDue: { type: Number, default: 0 },
     }],
     deadline: { type: Date },
     offeredAt: { type: Date },
@@ -188,6 +192,9 @@ const bookingSchema = new mongoose.Schema({
       amount: { type: Number, default: 0 },
       startedAt: { type: Date },
       option: {
+        // Set when the payment in flight is for a dearer VEHICLE rather
+        // than dates that cost more. The two are told apart by this alone.
+        car: { type: mongoose.Schema.Types.ObjectId, ref: 'Car' },
         startDate: { type: Date },
         endDate: { type: Date },
         subtotal: { type: Number, default: 0 },

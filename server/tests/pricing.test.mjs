@@ -1,5 +1,6 @@
 import { suite, group, check, checkRefused } from './harness.mjs';
 import { promoCoversRange, promoHasEnded, computeBookingPrice, validatePromo } from '../utils/promo.js';
+import { extraDueFor } from '../utils/adjustOffer.js';
 import { instantFrom } from '../utils/phTime.js';
 
 // A promo running Sep 20–25, stored the way a date picker stores it.
@@ -107,4 +108,25 @@ export default function run() {
   checkRefused('a fixed amount above a day\'s rate is refused', validatePromo({ label: 'Sale', type: 'amount', value: 2500, startDate: '2026-09-20', endDate: '2026-09-25' }, car), 'less than one day');
   checkRefused('an unnamed promo is refused', validatePromo({ label: '', type: 'percent', value: 10, startDate: '2026-09-20', endDate: '2026-09-25' }, car), 'name');
   checkRefused('ending before it starts is refused', validatePromo({ label: 'Sale', type: 'percent', value: 10, startDate: '2026-09-25', endDate: '2026-09-20' }, car), 'cannot end');
+
+  group('what a bumped client pays to take a dearer vehicle');
+  // Being bumped is something that happened to them; choosing to upgrade is
+  // not — so the difference is paid before the booking moves, by GCash.
+  const onDeposit = { payment: 'paid', amountPaid: 300, totalPrice: 1500 };
+  const paidInFull = { payment: 'paid', amountPaid: 1500, totalPrice: 1500 };
+
+  // A deposit booking pays the difference in DEPOSIT, not in the whole
+  // trip: 20% of 2,000 is 400, and 300 is already in.
+  check('deposit booking moving up', extraDueFor(onDeposit, 2000), 100);
+  check('deposit booking, same price', extraDueFor(onDeposit, 1500), 0);
+  check('deposit booking, cheaper', extraDueFor(onDeposit, 1299), 0);
+  // Rounded up, the same way the booking route takes a deposit.
+  check('deposit rounds up, never down', extraDueFor({ ...onDeposit, amountPaid: 0 }, 1499), 300);
+
+  // Settled in full has no pickup balance for the rest to join, so the
+  // whole difference is due.
+  check('paid in full moving up', extraDueFor(paidInFull, 2000), 500);
+  check('paid in full, same price', extraDueFor(paidInFull, 1500), 0);
+  check('paid in full, cheaper is never negative', extraDueFor(paidInFull, 1299), 0);
+
 }
