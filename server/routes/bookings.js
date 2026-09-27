@@ -12,6 +12,7 @@ import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { openAdjustOffer, acceptAdjustOffer, startTopUp, confirmTopUp, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
 import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS, reasonUnavailable } from '../utils/cancelBooking.js';
 import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js';
+import { registrationProblem, registrationMessage } from '../utils/registration.js';
 import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
 import { notifyOverdueReturns, notifyUpcomingReturns, warnOfCollidingBookings, isOverdue, lateFeeFor } from '../utils/overdueReturns.js';
@@ -178,6 +179,14 @@ router.post('/', protect, async (req, res) => {
     // pending requests from other clients don't, so multiple people can
     // request the same dates and the first one an admin confirms wins (the
     // others get auto-refunded, see PUT /:id below).
+    // The vehicle's own papers have to outlast the trip, the same way the
+    // driver's licence does. It is the renter who gets stopped holding a CR
+    // that ran out while they had the car.
+    const registration = registrationProblem(car, { endDate: requestedEnd });
+    if (registration) {
+      return res.status(400).json({ message: registrationMessage(registration) });
+    }
+
     const conflict = await findConflict(carId, requestedSpan.start, requestedSpan.end);
     if (conflict) {
       return res.status(400).json({
@@ -364,6 +373,19 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 
       const car = await Car.findById(booking.car);
       if (!car) return res.status(404).json({ message: 'Car not found' });
+
+      // A request made while the papers were still good can reach this
+      // point after they have run out. Refused rather than cancelled: the
+      // dates may be fine once the CR is renewed, and admin is standing
+      // right here and can renew the date in Manage Cars.
+      const registration = registrationProblem(car, { endDate: bookingSpan(booking).end });
+      if (registration) {
+        return res.status(400).json({
+          message: registration.kind === 'expired'
+            ? "This vehicle's registration has expired, so it cannot be sent out. Renew the expiry date in Manage Cars, or move this booking to another vehicle."
+            : `This vehicle's registration runs out on ${new Date(registration.expiry).toLocaleDateString()}, before this booking ends. Renew the expiry date in Manage Cars, or move this booking to another vehicle.`,
+        });
+      }
 
       // Re-check for a conflicting CONFIRMED booking right before committing —
       // this is the actual guard against double-booking now that availability

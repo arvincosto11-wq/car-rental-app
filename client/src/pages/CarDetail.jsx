@@ -15,6 +15,7 @@ import PromoBadge from '../components/PromoBadge';
 import useLongRentalRules from '../hooks/useLongRentalRules';
 import { bestLongRentalRule, longRentalDiscountOn, rulesForCar } from '../utils/longRental';
 import { instantFrom, phDayStart, pickupHours, formatHour, formatPhDate, formatMoment, SHORT_NOTICE_HOURS } from '../utils/phTime';
+import { registrationLapsed } from '../utils/registration';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
@@ -847,6 +848,19 @@ const CarDetail = () => {
                         ? 'This vehicle is no longer available for booking. Please choose another vehicle.'
                         : "This vehicle is off the road for repairs and isn't taking bookings at the moment. "
                           + 'Please choose another vehicle, or check back later.'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Same box on purpose: to whoever is reading, an expired
+                    registration and a vehicle off the road are the same
+                    fact — this car cannot go out. Why is our business. */}
+                {!car?.offRoad?.since && registrationLapsed(car) && (
+                  <div style={s.offRoadBox}>
+                    <p style={s.offRoadNote}>
+                      This vehicle is off the road while its registration is renewed, so it
+                      isn&apos;t taking bookings at the moment. Please choose another vehicle,
+                      or check back later.
                     </p>
                   </div>
                 )}

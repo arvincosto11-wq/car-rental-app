@@ -10,6 +10,7 @@ import PromoBadge from '../components/PromoBadge';
 import PromoConfetti from '../components/PromoConfetti';
 import useLongRentalRules from '../hooks/useLongRentalRules';
 import { rulesForCar } from '../utils/longRental';
+import { registrationLapsed } from '../utils/registration';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK } from '../theme';
@@ -643,15 +644,24 @@ const Cars = () => {
                   {/* Promo leads the stack: the deal is what we want seen
                       first, the availability status is the supporting fact. */}
                   <PromoBadge promo={car.promo} isDark={isDark} />
-                  <span style={{
-                    ...styles.availBadge,
-                    background: 'rgba(0,0,0,0.65)',
-                    color: car.isAvailable === false ? '#fca5a5' : '#86efac',
-                    border: `1px solid ${car.isAvailable === false ? 'rgba(248,113,113,0.4)' : 'rgba(134,239,172,0.4)'}`,
-                  }}>
-                    <span style={styles.availDot} />
-                    {car.isAvailable === false ? 'Not Listed' : 'Bookable'}
-                  </span>
+                  {(() => {
+                    // A vehicle whose papers have run out cannot go out,
+                    // whatever the listing flag says — so it reads as
+                    // unavailable rather than bookable.
+                    const lapsed = registrationLapsed(car);
+                    const unbookable = car.isAvailable === false || lapsed;
+                    return (
+                      <span style={{
+                        ...styles.availBadge,
+                        background: 'rgba(0,0,0,0.65)',
+                        color: unbookable ? '#fca5a5' : '#86efac',
+                        border: `1px solid ${unbookable ? 'rgba(248,113,113,0.4)' : 'rgba(134,239,172,0.4)'}`,
+                      }}>
+                        <span style={styles.availDot} />
+                        {lapsed ? 'Not Available' : (car.isAvailable === false ? 'Not Listed' : 'Bookable')}
+                      </span>
+                    );
+                  })()}
                   {(() => {
                     // Shortest-trip rule only — the card is a teaser; the
                     // full tiers are on the car's own page.

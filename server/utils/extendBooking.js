@@ -7,6 +7,7 @@ import { busySpans, bookingSpan, padded, overlaps } from './availability.js';
 import { recordActivity } from './priority.js';
 import User from '../models/User.js';
 import { licenceProblem, licenceMessage, idProblem } from './documents.js';
+import { registrationProblem } from './registration.js';
 import { daysLate, carriedLateFee } from './overdueReturns.js';
 import {
   instantFrom, phYmd, phHour, addDays, daysBetween, turnaroundHoursFor, formatMoment,
@@ -93,8 +94,24 @@ export async function latestPossibleEnd(booking, now = new Date()) {
   // exists so the calendar has an end, and must never be reported as though
   // somebody else had the vehicle from that date — which would be a plain
   // untruth dressed up as a limit.
-  const constrained = ahead.length > 0;
-  const hardStop = constrained ? ahead[0] : addDays(now, MAX_LOOKAHEAD_DAYS).getTime();
+  // The vehicle's registration is a hard stop like any booking ahead: it
+  // stops being rentable on the day the CR runs out, whoever is holding it.
+  // Applied here rather than at the point of paying, so the calendar never
+  // offers a day it would then refuse.
+  const car = await Car.findById(booking.car).select('registrationExpiry').lean();
+  const papersRunOut = car?.registrationExpiry
+    ? instantFrom(phYmd(addDays(car.registrationExpiry, 1)), 0).getTime()
+    : null;
+
+  const nextBooked = ahead.length > 0 ? ahead[0] : null;
+  // "Constrained" means somebody else has it after that, which is what the
+  // client is told. Papers running out is a different fact and must not be
+  // reported as though another client had the vehicle.
+  const constrained = nextBooked !== null;
+  const lookahead = addDays(now, MAX_LOOKAHEAD_DAYS).getTime();
+  const hardStop = Math.min(
+    ...[nextBooked, papersRunOut, lookahead].filter((t) => t !== null),
+  );
 
   // The return always lands on the pickup hour, so the answer is a day, not
   // a moment: the last day whose return still clears whatever is next.

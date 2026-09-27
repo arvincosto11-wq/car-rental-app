@@ -2,6 +2,7 @@ import { suite, group, check } from './harness.mjs';
 import { hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom } from '../utils/phTime.js';
 import { isOverdue, daysOverdue, daysLate, lateFeeFor, isDueSoon, carriedLateFee, wouldCollide, collisionDeadline, COLLISION_HOURS } from '../utils/overdueReturns.js';
+import { registrationProblem, registrationLapsed } from '../utils/registration.js';
 import { occupiedSpan } from '../utils/availability.js';
 import { splitDays, repriceForSwap, remainingSpan } from '../utils/moveVehicle.js';
 import { fuelShortfall, fuelShortfallLabel, isFuelLevel, fuelLabel } from '../utils/fuel.js';
@@ -228,6 +229,32 @@ export default function run() {
   check('already overdue is not due soon', isDueSoon({ ...running, endDate: instantFrom('2026-09-24', 17) }, noon25), false);
   check('never collected gets no reminder', isDueSoon({ ...running, collectedAt: null }, noon25), false);
   check('already back gets no reminder', isDueSoon({ ...running, returnedAt: noon25 }, noon25), false);
+
+  group("the vehicle's own papers have to outlast the trip");
+  // Asked of the car for the same reason it is asked of the licence: it is
+  // the renter who gets stopped, holding a CR that ran out while they had
+  // the vehicle.
+  const regTrip = { endDate: instantFrom('2026-09-30', 17) };
+  const regToday = new Date('2026-09-25T12:00:00+08:00');
+
+  check('good well past the trip', registrationProblem({ registrationExpiry: instantFrom('2026-12-01', 0) }, regTrip, regToday), null);
+  // Valid for the whole of its expiry day, so a trip ending that day is
+  // fine. Comparing instants instead of Legazpi days would fail this.
+  check('runs out on the last day of the trip', registrationProblem({ registrationExpiry: instantFrom('2026-09-30', 0) }, regTrip, regToday), null);
+  check('runs out the day before it ends', registrationProblem({ registrationExpiry: instantFrom('2026-09-29', 0) }, regTrip, regToday).kind, 'expires_during');
+  check('already run out', registrationProblem({ registrationExpiry: instantFrom('2026-09-20', 0) }, regTrip, regToday).kind, 'expired');
+  check('runs out today, still good today', registrationProblem({ registrationExpiry: instantFrom('2026-09-25', 0) }, {}, regToday), null);
+
+  // Vehicles added before the field existed have none on file. Taking a
+  // third of the fleet off the road over missing paperwork rather than
+  // expired paperwork would be worse than the problem being fixed.
+  check('no expiry recorded is not a problem', registrationProblem({}, regTrip, regToday), null);
+  check('no vehicle at all is not a problem', registrationProblem(null, regTrip, regToday), null);
+
+  // The badge has no trip to measure against, so it asks only about today.
+  check('badge: lapsed', registrationLapsed({ registrationExpiry: instantFrom('2026-09-24', 0) }, regToday), true);
+  check('badge: good today', registrationLapsed({ registrationExpiry: instantFrom('2026-09-25', 0) }, regToday), false);
+  check('badge: nothing on file', registrationLapsed({}, regToday), false);
 
   group('somebody is waiting for a vehicle that has not come back');
   // Blocking stops NEW bookings on a car that is out. It does nothing about
