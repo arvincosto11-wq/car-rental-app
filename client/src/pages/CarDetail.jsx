@@ -16,6 +16,7 @@ import useLongRentalRules from '../hooks/useLongRentalRules';
 import { bestLongRentalRule, longRentalDiscountOn, rulesForCar } from '../utils/longRental';
 import { instantFrom, phDayStart, pickupHours, formatHour, formatPhDate, formatMoment, SHORT_NOTICE_HOURS } from '../utils/phTime';
 import { registrationLapsed } from '../utils/registration';
+import { isOverdue, daysOverdue } from '../utils/overdue';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
@@ -101,6 +102,11 @@ const CarDetail = () => {
   // discount is worked out on the whole length.
   const [ownBooking, setOwnBooking] = useState(null);
   const [showExtendHint, setShowExtendHint] = useState(false);
+  // A vehicle of ours they still have, past its return time — on any car,
+  // not just this one. The server refuses the booking either way; saying so
+  // here means they find out before choosing dates and a booking type
+  // rather than at the moment they go to pay.
+  const [overdueBooking, setOverdueBooking] = useState(null);
   const BOOKING_STEPS = [
     { label: 'Select Dates', desc: 'Choose your pickup and return dates' },
     { label: 'Type & Payment', desc: 'Choose how you drive and pay' },
@@ -182,6 +188,7 @@ const CarDetail = () => {
           && ['pending', 'confirmed'].includes(b.status)
           && !b.returnedAt);
         setOwnBooking(mine || null);
+        setOverdueBooking((res.data || []).find(isOverdue) || null);
       } catch (err) {
         // Only used to offer a better route, so failing quietly is right:
         // the client can still book exactly as they could before.
@@ -352,6 +359,9 @@ const CarDetail = () => {
     setError('');
     // Said once, and never a wall: booking these dates separately may be
     // exactly what they meant.
+    // Nothing to gain from opening the wizard: the booking would be refused
+    // at the end of it.
+    if (overdueBooking) return;
     if (ownBooking && !showExtendHint) {
       setShowExtendHint(true);
       return;
@@ -1311,7 +1321,23 @@ const CarDetail = () => {
               <div style={s.error}>This vehicle isn't currently listed for booking. Check back later or browse other cars.
               </div>)}
 
-            {car.isAvailable !== false && (
+            {car.isAvailable !== false && overdueBooking && (
+              <div style={s.offRoadBox}>
+                <p style={s.offRoadNote}>
+                  {overdueBooking.car?.brand
+                    ? `Your ${overdueBooking.car.brand} ${overdueBooking.car.model}`
+                    : 'A vehicle you booked'} is {daysOverdue(overdueBooking)} day
+                  {daysOverdue(overdueBooking) === 1 ? '' : 's'} overdue and hasn&apos;t been returned yet,
+                  so you can&apos;t book another vehicle until it&apos;s back.
+                </p>
+                <p style={{ ...s.offRoadNote, fontWeight: '500', marginTop: '8px' }}>
+                  Need it for longer? Use <strong>Keep It Longer</strong> on that booking instead.
+                </p>
+                <Link to="/my-bookings" style={s.licenseLink}>Go to My Bookings</Link>
+              </div>
+            )}
+
+            {car.isAvailable !== false && !overdueBooking && (
               <>
                 <p style={s.fieldHint}>Pick your dates, choose a booking type, and confirm — takes about a minute.</p>
                 <FlowButton text="Book Now" onClick={openBookingModal} style={{ width: '100%' }} />
