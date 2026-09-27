@@ -135,6 +135,33 @@ const Profile = () => {
   // Their own documents, through the same signed route admin uses. Falls
   // back to whatever the profile already carries while they load.
   const docPhotos = useDocumentPhotos(profile?._id);
+  // A vehicle owner's OR and CR, one group per consigned vehicle. Kept on
+  // this page rather than the dashboard because they are paperwork about
+  // the account, not something anybody acts on while managing a listing.
+  const [ownedPapers, setOwnedPapers] = useState([]);
+
+  useEffect(() => {
+    // Only a vehicle owner has any. Nothing to clear on the way out: the
+    // list starts empty and only a consignor ever fills it.
+    if (profile?.role !== 'consignor') return undefined;
+    let live = true;
+    (async () => {
+      try {
+        const res = await api.get('/consignments/my');
+        const groups = await Promise.all(res.data.map(async (c) => {
+          // One vehicle's papers failing must not empty the whole list.
+          const links = await api.get(`/consignments/${c._id}/papers`)
+            .then((r) => r.data)
+            .catch(() => ({}));
+          return { id: c._id, vehicle: `${c.brand} ${c.model}`, plate: c.plateNumber, ...links };
+        }));
+        if (live) setOwnedPapers(groups.filter((g) => g.orImage || g.crImage));
+      } catch {
+        if (live) setOwnedPapers([]);
+      }
+    })();
+    return () => { live = false; };
+  }, [profile?.role, profile?._id]);
   // Optional all the way: this runs before the profile has loaded, because
   // hooks cannot sit behind the early return that waits for it.
   const idFront = docPhotos.validIdImage || profile?.validIdImage || '';
@@ -362,6 +389,12 @@ const Profile = () => {
       border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
     },
     idThumb: { width: '100%', maxWidth: '260px', height: '130px', objectFit: 'cover', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, marginTop: '8px' },
+    paperGroup: { marginTop: '16px' },
+    paperVehicle: { fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    paperPlate: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px' },
+    paperRow: { marginTop: '8px', display: 'flex', gap: '10px', flexWrap: 'wrap' },
+    paperItem: { display: 'flex', flexDirection: 'column' },
+    paperCaption: { fontSize: '10px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '5px' },
     field: { marginBottom: '14px' },
     readOnlyValue: {
       margin: 0, padding: '10px 0 0', fontSize: '13px',
@@ -749,11 +782,44 @@ const Profile = () => {
               <div style={{ marginTop: '16px' }}>
                 <span style={s.profileLabel}>License Photo</span>
                 <div style={{ marginTop: '6px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {profile.licenseImage && <IdImageThumb src={profile.licenseImage} alt="License front" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
-                  {profile.licenseImageBack && <IdImageThumb src={profile.licenseImageBack} alt="License back" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
+                  {profile.licenseImage && <IdImageThumb src={docPhotos.licenseImage || profile.licenseImage} alt="License front" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
+                  {profile.licenseImageBack && <IdImageThumb src={docPhotos.licenseImageBack || profile.licenseImageBack} alt="License back" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {profile?.role === 'consignor' && ownedPapers.length > 0 && (
+          <div style={{ ...s.profileCard, marginTop: '20px' }}>
+            <div style={s.sectionTitleRow}>
+              <span style={s.accentBar(isDark ? GOLD_DARK : GOLD)} />
+              <div style={s.sectionTitle}>Ownership Papers</div>
+            </div>
+            <p style={s.subtitle}>
+              The OR and CR you submitted for each vehicle. Only you and our team can open these.
+            </p>
+            {ownedPapers.map((group) => (
+              <div key={group.id} style={s.paperGroup}>
+                <div style={s.paperVehicle}>{group.vehicle}</div>
+                <div style={s.paperPlate}>{group.plate}</div>
+                <div style={s.paperRow}>
+                  {[['orImage', 'OR'], ['crImage', 'CR']].map(([field, caption]) => (
+                    group[field] ? (
+                      <div key={field} style={s.paperItem}>
+                        <IdImageThumb
+                          src={group[field]}
+                          alt={`${caption} for ${group.vehicle}`}
+                          thumbStyle={s.idThumb}
+                          overlayStyle={s.idThumbOverlay}
+                        />
+                        <span style={s.paperCaption}>{caption}</span>
+                      </div>
+                    ) : null
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
