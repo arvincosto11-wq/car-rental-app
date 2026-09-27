@@ -15,7 +15,7 @@ import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js'
 import { registrationProblem, registrationMessage } from '../utils/registration.js';
 import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
-import { notifyOverdueReturns, notifyUpcomingReturns, warnOfCollidingBookings, isOverdue, lateFeeFor } from '../utils/overdueReturns.js';
+import { notifyOverdueReturns, notifyUpcomingReturns, warnOfCollidingBookings, isOverdue, daysOverdue, lateFeeFor } from '../utils/overdueReturns.js';
 import { isFuelLevel } from '../utils/fuel.js';
 import { licenceProblem, licenceMessage } from '../utils/documents.js';
 import { byUrgency } from '../utils/priority.js';
@@ -126,6 +126,28 @@ router.post('/', protect, async (req, res) => {
     const currentUser = await User.findById(req.user.id);
     if (currentUser?.isBlocked) {
       return res.status(403).json({ message: 'Your account has been blocked from making bookings. Please contact support.' });
+    }
+
+    // Somebody still holding a vehicle past its return time does not get
+    // handed a second one. Being late is not the point — the point is that
+    // the first car is not back, so returning it clears this immediately
+    // and nothing has to be lifted by hand.
+    //
+    // Narrowed by query and then decided by isOverdue, rather than spelling
+    // the rule out twice: the panel, the chase and this must agree on who
+    // is overdue, and two descriptions of one rule have drifted here before.
+    const outstanding = await Booking.find({
+      user: req.user.id, status: 'confirmed', collectedAt: { $ne: null }, returnedAt: null,
+    }).populate('car', 'brand model');
+    const stillOut = outstanding.find((b) => isOverdue(b));
+    if (stillOut) {
+      const late = daysOverdue(stillOut);
+      const which = stillOut.car ? `${stillOut.car.brand} ${stillOut.car.model}` : 'A vehicle';
+      return res.status(400).json({
+        message: `${which} from your earlier booking is ${late} day${late === 1 ? '' : 's'} overdue and has not been returned yet. `
+          + 'Please return it first, and you can book again straight away. '
+          + 'If you need the vehicle for longer, use Keep It Longer on that booking instead.',
+      });
     }
 
     const car = await Car.findById(carId);
