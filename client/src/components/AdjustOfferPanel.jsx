@@ -58,6 +58,14 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
   const gold = isDark ? GOLD_DARK : GOLD;
   const options = offer?.options || [];
   const vehicleOptions = offer?.vehicleOptions || [];
+  // Three to decide from, the rest a click away. A long list of near
+  // identical cars is harder to choose from than three, but cutting it
+  // short server-side meant vehicles that genuinely fitted were never
+  // offered and a refund was the only other answer.
+  const VEHICLES_SHOWN = 3;
+  const [allVehicles, setAllVehicles] = useState(false);
+  const shownVehicles = allVehicles ? vehicleOptions : vehicleOptions.slice(0, VEHICLES_SHOWN);
+  const moreVehicles = vehicleOptions.length - shownVehicles.length;
   const refundable = booking.payment === 'paid' ? booking.amountPaid : 0;
   const anyCostsMore = options.some((o) => o.totalPrice > booking.totalPrice);
 
@@ -309,7 +317,7 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
           <span style={s.listLabel}>
             Other vehicles free on your dates — nothing else changes
           </span>
-          {vehicleOptions.map((v, i) => (
+          {shownVehicles.map((v, i) => (
             <div key={v.car || i} style={s.option}>
               <div style={s.vehicleRow}>
                 {v.image && <img src={v.image} alt="" style={s.vehicleThumb} />}
@@ -334,6 +342,12 @@ const AdjustOfferPanel = ({ booking, isDark, onDecide, busy }) => {
               </button>
             </div>
           ))}
+          {moreVehicles > 0 && (
+            <button type="button" style={s.ownRow} onClick={() => setAllVehicles(true)}>
+              <span>Show the other {moreVehicles} vehicle{moreVehicles === 1 ? '' : 's'} free on your dates</span>
+              <span style={s.ownRowHint} aria-hidden="true">›</span>
+            </button>
+          )}
         </>
       )}
 

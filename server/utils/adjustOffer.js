@@ -169,7 +169,11 @@ export async function alternativeVehicles(booking, { limit = 3 } = {}) {
   // Closest to what they chose first. Somebody who booked the Fortuner wants
   // the next thing like it, not the cheapest scooter on the lot.
   free.sort((a, b) => b.pricePerDay - a.pricePerDay);
-  return free.slice(0, limit);
+  // All of them, not the best three. The panel leads with three and offers
+  // the rest behind a link: cutting the list here meant vehicles that
+  // genuinely fitted were never offered at all, and the client's only other
+  // answer was a refund.
+  return limit === null ? free : free.slice(0, limit);
 }
 
 // The same search openAdjustOffer runs, without saving anything — so the
@@ -200,7 +204,7 @@ export async function openAdjustOffer(booking, { reason, cause = '', extra = [] 
   // worth making when the car itself is the thing that has gone — there are
   // no free dates on a vehicle that is off the road.
   const vehicleOptions = hasEnoughNotice(booking.startDate, now)
-    ? await alternativeVehicles(booking)
+    ? await alternativeVehicles(booking, { limit: null })
     : [];
   if (!ranges.length && !vehicleOptions.length) return false;
 
