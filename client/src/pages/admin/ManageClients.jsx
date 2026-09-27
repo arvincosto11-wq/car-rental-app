@@ -196,9 +196,13 @@ const ManageClients = () => {
     modalShell: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', maxWidth: '600px', width: '100%', maxHeight: '85vh', position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
     modalBody: { padding: '24px', overflowY: 'auto', flex: 1, minHeight: 0 },
     closeX: {
-      position: 'absolute', top: '14px', right: '14px', zIndex: 1,
-      width: '32px', height: '32px', flexShrink: 0, borderRadius: '50%', border: 'none', cursor: 'pointer',
-      background: isDark ? '#18191a' : '#f3f4f6', color: isDark ? '#b0b3b8' : '#4b5563', fontSize: '14px',
+      position: 'absolute', top: '14px', right: '14px', zIndex: 2,
+      width: '34px', height: '34px', flexShrink: 0, borderRadius: '50%', cursor: 'pointer',
+      border: `1px solid ${isDark ? '#4a4b4c' : '#d1d5db'}`,
+      background: isDark ? '#3a3b3c' : '#e5e7eb',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+      fontSize: '15px', fontWeight: '700', lineHeight: 1,
+      boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.45)' : '0 2px 8px rgba(0,0,0,0.18)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
     },
     modalTitle: { fontSize: '20px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
@@ -223,7 +227,6 @@ const ManageClients = () => {
     historyTable: { width: '100%', borderCollapse: 'collapse', fontSize: '12px' },
     historyTh: { textAlign: 'left', padding: '8px 10px', color: isDark ? '#b0b3b8' : '#6b7280', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
     historyTd: { padding: '8px 10px', color: isDark ? '#e4e6eb' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
-    closeBtn: { marginTop: '18px', padding: '10px 24px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', width: '100%' },
     empty: { fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', padding: '12px 0' },
     pendingTag: {
       background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fbbf24' : '#92400e',
@@ -572,9 +575,6 @@ const ManageClients = () => {
               </div>
             )}
 
-            <button style={s.closeBtn} onClick={() => setSelectedClientId(null)}>
-              Close
-            </button>
             </div>
           </div>
         </div>
