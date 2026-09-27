@@ -8,7 +8,7 @@ import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
-import useDocumentPhotos from '../../hooks/useDocumentPhotos';
+import useDocumentPhotos, { useConsignmentPapers } from '../../hooks/useDocumentPhotos';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
 
@@ -45,6 +45,9 @@ const ManageConsignments = () => {
   // The owner's ID is an identity document like any other, so it comes
   // through the signed route rather than on the plain link it was stored on.
   const ownerDocs = useDocumentPhotos(selected?.owner?._id);
+  // The OR and CR carry the owner's name and address, so they come
+  // through the signed route like any other document.
+  const papers = useConsignmentPapers(selected?._id);
   const filtered = consignments.filter((c) => filter === 'all' || c.status === filter);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageConsignments = paginate(filtered, page, PAGE_SIZE);
@@ -310,11 +313,11 @@ const ManageConsignments = () => {
             <div style={s.docGrid}>
               <div>
                 <div style={s.docLabel}>OR (Official Receipt)</div>
-                {selected.orImage ? <img src={selected.orImage} alt="OR" style={s.docImage} /> : <p style={s.empty}>Not provided</p>}
+                {selected.orImage ? <img src={papers.orImage || selected.orImage} alt="OR" style={s.docImage} /> : <p style={s.empty}>Not provided</p>}
               </div>
               <div>
                 <div style={s.docLabel}>CR (Certificate of Registration)</div>
-                {selected.crImage ? <img src={selected.crImage} alt="CR" style={s.docImage} /> : <p style={s.empty}>Not provided</p>}
+                {selected.crImage ? <img src={papers.crImage || selected.crImage} alt="CR" style={s.docImage} /> : <p style={s.empty}>Not provided</p>}
               </div>
             </div>
 

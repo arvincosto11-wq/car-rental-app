@@ -36,6 +36,11 @@ const ConsignorDashboard = () => {
   const { notifications, markReadByLinkPrefix } = useNotifications();
   const navigate = useNavigate();
   const [consignments, setConsignments] = useState([]);
+  // Signed links to each application's OR and CR, keyed by consignment.
+  // Fetched here rather than per card: the cards re-render on every
+  // toggle, and asking for a fresh link each time would be one request
+  // per card per keystroke.
+  const [papers, setPapers] = useState({});
   const [blockPanelCarId, setBlockPanelCarId] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +69,18 @@ const ConsignorDashboard = () => {
     try {
       const res = await api.get('/consignments/my');
       setConsignments(res.data);
+
+      const entries = await Promise.all(res.data.map(async (c) => {
+        // One application failing to hand back its papers must not empty
+        // the dashboard, so each is caught on its own.
+        try {
+          const papersRes = await api.get(`/consignments/${c._id}/papers`);
+          return [c._id, papersRes.data];
+        } catch {
+          return [c._id, {}];
+        }
+      }));
+      setPapers(Object.fromEntries(entries));
     } catch (err) {
       console.error(err);
     } finally {
@@ -230,6 +247,12 @@ const ConsignorDashboard = () => {
       color: isDark ? GOLD_DARK : GOLD,
     },
     promoSection: { marginTop: '14px' },
+    papersSection: { marginTop: '14px', paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
+    papersLabel: { fontSize: '12px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#374151', marginBottom: '4px' },
+    papersHint: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '8px' },
+    papersRow: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
+    paperThumb: { width: '96px', height: '68px', objectFit: 'cover', borderRadius: '6px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, cursor: 'zoom-in' },
+    paperCaption: { fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '4px' },
     promoNote: {
       fontSize: '11px', fontWeight: '600', marginTop: '6px',
       color: isDark ? '#8a8d91' : '#9ca3af',
@@ -372,6 +395,27 @@ const ConsignorDashboard = () => {
                 <div style={s.price}>Suggested price: ₱{c.suggestedPricePerDay}/day</div>
                 {c.status === 'declined' && c.adminNotes && (
                   <div style={s.notesBox}>Reason: {c.adminNotes}</div>
+                )}
+                {(papers[c._id]?.orImage || papers[c._id]?.crImage) && (
+                  <div style={s.papersSection}>
+                    <div style={s.papersLabel}>Ownership Papers</div>
+                    <p style={s.papersHint}>Only you and our team can open these.</p>
+                    <div style={s.papersRow}>
+                      {[['orImage', 'OR'], ['crImage', 'CR']].map(([field, caption]) => (
+                        papers[c._id]?.[field] ? (
+                          <div key={field}>
+                            <img
+                              src={papers[c._id][field]}
+                              alt={`${caption} for ${c.brand} ${c.model}`}
+                              style={s.paperThumb}
+                              onClick={() => window.open(papers[c._id][field], '_blank', 'noopener')}
+                            />
+                            <div style={s.paperCaption}>{caption}</div>
+                          </div>
+                        ) : null
+                      ))}
+                    </div>
+                  </div>
                 )}
                 {c.status === 'approved' && c.linkedCar && (
                   <>

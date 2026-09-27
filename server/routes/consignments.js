@@ -7,6 +7,7 @@ import Consignment from '../models/Consignment.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { registerLimiter } from '../middleware/rateLimit.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
+import { signedDocumentUrl } from '../utils/documentUrls.js';
 
 const router = express.Router();
 
@@ -121,6 +122,35 @@ router.get('/my', protect, consignorOnly, async (req, res) => {
       .populate('linkedCar')
       .sort({ createdAt: -1 });
     res.json(consignments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Short-lived links to a vehicle's ownership papers.
+//
+// The OR and CR are not identity documents, but a CR carries the owner's
+// full name and address alongside the plate, engine and chassis numbers —
+// between them, enough to argue somebody else owns the vehicle. They were
+// sitting on links that worked for anybody who had them, for ever.
+//
+// Admin reviews them; the owner is entitled to see their own back. Nobody
+// else, which is why the file is asked for by which consignment it belongs
+// to rather than by URL.
+router.get('/:id/papers', protect, async (req, res) => {
+  try {
+    const consignment = await Consignment.findById(req.params.id).select('owner orImage crImage').lean();
+    if (!consignment) return res.status(404).json({ message: 'Consignment not found' });
+
+    const owns = String(consignment.owner) === req.user.id;
+    if (!owns && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    res.json({
+      orImage: consignment.orImage ? signedDocumentUrl(consignment.orImage) : '',
+      crImage: consignment.crImage ? signedDocumentUrl(consignment.crImage) : '',
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

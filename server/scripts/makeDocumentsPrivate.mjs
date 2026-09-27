@@ -26,6 +26,7 @@ import mongoose from 'mongoose';
 import ImageKit from 'imagekit';
 import dotenv from 'dotenv';
 import User from '../models/User.js';
+import Consignment from '../models/Consignment.js';
 
 dotenv.config();
 
@@ -69,40 +70,59 @@ if (!uri) {
   process.exit(1);
 }
 
-// Only the fields holding somebody's identity.
-const DOCUMENT_FIELDS = [
-  'validIdImage', 'validIdImageBack',
-  'licenseImage', 'licenseImageBack',
-  'pendingValidIdImage', 'pendingValidIdImageBack',
-  'pendingLicenseImage', 'pendingLicenseImageBack',
+// The records that hold a document somebody would mind being seen, and the
+// fields on each. Clients' identity photographs, and the ownership papers
+// on a consignment — a CR names the owner and their address alongside the
+// plate, engine and chassis numbers. Vehicle photographs on the same
+// consignment are left out on purpose: they are the listing.
+const SOURCES = [
+  {
+    name: 'user',
+    model: User,
+    label: (doc) => doc.name || doc.email,
+    fields: [
+      'validIdImage', 'validIdImageBack',
+      'licenseImage', 'licenseImageBack',
+      'pendingValidIdImage', 'pendingValidIdImageBack',
+      'pendingLicenseImage', 'pendingLicenseImageBack',
+    ],
+  },
+  {
+    name: 'consignment',
+    model: Consignment,
+    label: (doc) => `${doc.brand} ${doc.model} (${doc.plateNumber})`,
+    fields: ['orImage', 'crImage'],
+  },
 ];
+
+const modelFor = (name) => (SOURCES.find((s) => s.name === name) || SOURCES[0]).model;
 
 const readJournal = () => (fs.existsSync(JOURNAL) ? JSON.parse(fs.readFileSync(JOURNAL, 'utf8')) : []);
 
 async function movePass() {
-  const users = await User.find({}).lean();
-
   const jobs = [];
-  for (const user of users) {
-    const who = user.name || user.email;
-    for (const field of DOCUMENT_FIELDS) {
-      const url = user[field];
-      if (!url) continue;
-      const fileId = user[`${field}FileId`];
-      if (!fileId) {
-        // Without a stored fileId there is no way to ask ImageKit what this
-        // file is, or to remove it afterwards. Named rather than skipped
-        // quietly: somebody has to know it is still sitting in the open.
-        console.warn(`! ${who}: ${field} has no stored fileId, left alone`);
-        continue;
+  for (const source of SOURCES) {
+    for (const doc of await source.model.find({}).lean()) {
+      const who = source.label(doc);
+      for (const field of source.fields) {
+        const url = doc[field];
+        if (!url) continue;
+        const fileId = doc[`${field}FileId`];
+        if (!fileId) {
+          // Without a stored fileId there is no way to ask ImageKit what
+          // this file is, or to remove it afterwards. Named rather than
+          // skipped quietly: somebody has to know it is still in the open.
+          console.warn(`! ${who}: ${field} has no stored fileId, left alone`);
+          continue;
+        }
+        const details = await imagekit.getFileDetails(fileId).catch(() => null);
+        if (!details) {
+          console.warn(`! ${who}: ${field} is not in ImageKit any more, left alone`);
+          continue;
+        }
+        if (details.isPrivateFile) continue;
+        jobs.push({ collection: source.name, recordId: String(doc._id), who, field, fileId, url, details });
       }
-      const details = await imagekit.getFileDetails(fileId).catch(() => null);
-      if (!details) {
-        console.warn(`! ${who}: ${field} is not in ImageKit any more, left alone`);
-        continue;
-      }
-      if (details.isPrivateFile) continue;
-      jobs.push({ userId: String(user._id), who, field, fileId, url, details });
     }
   }
 
@@ -142,14 +162,15 @@ async function movePass() {
         throw new Error(`copy behaved wrongly (plain ${plain}, signed ${signed})`);
       }
 
-      await User.updateOne(
-        { _id: j.userId },
+      await modelFor(j.collection).updateOne(
+        { _id: j.recordId },
         { $set: { [j.field]: uploaded.url, [`${j.field}FileId`]: uploaded.fileId } },
       );
 
       journal.push({
         who: j.who,
-        userId: j.userId,
+        collection: j.collection,
+        recordId: j.recordId,
         field: j.field,
         oldFileId: j.fileId,
         oldUrl: j.url,
@@ -185,7 +206,7 @@ async function deletePass() {
     // Refuse to delete anything a record still points at. The move pass
     // should have replaced it; if it did not, this is the last place that
     // would notice before the file is gone for good.
-    const stillUsed = await User.findOne({ [`${entry.field}FileId`]: entry.oldFileId }).lean();
+    const stillUsed = await modelFor(entry.collection).findOne({ [`${entry.field}FileId`]: entry.oldFileId }).lean();
     if (stillUsed) {
       console.error(`  SKIPPED ${entry.oldName}: a record still points at it`);
       continue;

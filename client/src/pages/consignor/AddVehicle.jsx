@@ -93,7 +93,11 @@ const AddVehicle = () => {
 
   const goToStep2Next = () => { if (validateStep1()) setStep(2); };
 
-  const uploadToImageKit = async (file) => {
+  // isPrivate is decided here and nowhere else: ImageKit fixes it at upload
+  // and its update API silently ignores any later attempt to change it.
+  // Ownership papers go up private; vehicle photographs are meant to be
+  // seen and stay as they are.
+  const uploadToImageKit = async (file, { isPrivate = false } = {}) => {
     const authRes = await api.get('/imagekit/user-auth');
     const { token, expire, signature, publicKey } = authRes.data;
     const formData = new FormData();
@@ -103,6 +107,7 @@ const AddVehicle = () => {
     formData.append('expire', expire);
     formData.append('signature', signature);
     formData.append('publicKey', publicKey);
+    if (isPrivate) formData.append('isPrivateFile', 'true');
     const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', body: formData });
     const data = await uploadRes.json();
     return { url: data.url, fileId: data.fileId };
@@ -140,8 +145,8 @@ const AddVehicle = () => {
 
     setLoading(true);
     try {
-      const uploadedOr = await uploadToImageKit(orImage);
-      const uploadedCr = await uploadToImageKit(crImage);
+      const uploadedOr = await uploadToImageKit(orImage, { isPrivate: true });
+      const uploadedCr = await uploadToImageKit(crImage, { isPrivate: true });
       const uploadedPhotos = [];
       for (const file of vehiclePhotos) {
         const uploaded = await uploadToImageKit(file);
