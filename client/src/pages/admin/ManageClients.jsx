@@ -190,6 +190,11 @@ const ManageClients = () => {
     viewBtn: { padding: '5px 12px', fontSize: '12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', background: 'none', color: isDark ? '#e4e6eb' : '#1a1a1a', cursor: 'pointer' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
     modalContent: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '600px', width: '100%', maxHeight: '85vh', overflow: 'auto', position: 'relative' },
+    // The card and the scrolling area used to be the same element, so the
+    // close button — positioned against the card — scrolled away with the
+    // content. Splitting them keeps it against the card, which never moves.
+    modalShell: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', maxWidth: '600px', width: '100%', maxHeight: '85vh', position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+    modalBody: { padding: '24px', overflowY: 'auto', flex: 1, minHeight: 0 },
     closeX: {
       position: 'absolute', top: '14px', right: '14px', zIndex: 1,
       width: '32px', height: '32px', flexShrink: 0, borderRadius: '50%', border: 'none', cursor: 'pointer',
@@ -316,8 +321,9 @@ const ManageClients = () => {
 
       {selectedClient && (
         <div style={s.modalOverlay}>
-          <div style={s.modalContent} ref={clientModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="client-modal-title">
+          <div style={s.modalShell} ref={clientModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="client-modal-title">
             <button type="button" className="icon-toggle-btn" style={s.closeX} onClick={() => setSelectedClientId(null)} aria-label="Close">✕</button>
+            <div style={s.modalBody}>
             <h2 id="client-modal-title" style={s.modalTitle}>{selectedClient.name}</h2>
             <p style={s.modalSub}>{selectedClient.email}</p>
 
@@ -569,6 +575,7 @@ const ManageClients = () => {
             <button style={s.closeBtn} onClick={() => setSelectedClientId(null)}>
               Close
             </button>
+            </div>
           </div>
         </div>
       )}
