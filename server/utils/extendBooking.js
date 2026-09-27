@@ -1,4 +1,5 @@
 import Car from '../models/Car.js';
+import Booking from '../models/Booking.js';
 import LongRentalDiscount from '../models/LongRentalDiscount.js';
 import { computeBookingPrice } from './promo.js';
 import { createGcashCheckout, paymongoFetch, refundOnePayment } from './paymongo.js';
@@ -90,10 +91,6 @@ export async function latestPossibleEnd(booking, now = new Date()) {
     .filter((t) => t > own.end.getTime())
     .sort((a, b) => a - b);
 
-  // Nothing ahead means nothing is in the way. The lookahead below only
-  // exists so the calendar has an end, and must never be reported as though
-  // somebody else had the vehicle from that date — which would be a plain
-  // untruth dressed up as a limit.
   // The vehicle's registration is a hard stop like any booking ahead: it
   // stops being rentable on the day the CR runs out, whoever is holding it.
   // Applied here rather than at the point of paying, so the calendar never
@@ -103,10 +100,27 @@ export async function latestPossibleEnd(booking, now = new Date()) {
     ? instantFrom(phYmd(addDays(car.registrationExpiry, 1)), 0).getTime()
     : null;
 
+  // A pending booking does not block strangers — two clients are allowed to
+  // want the same dates, and confirming one settles it. But it must block
+  // the person who made it: nobody can be in two places, and growing a
+  // booking over your own pending one means that when admin confirms this
+  // booking, the other is bumped and told somebody else won the dates. Its
+  // owner did.
+  const ownPending = await Booking.find({
+    car: booking.car, user: booking.user, _id: { $ne: booking._id }, status: 'pending',
+  }).select('startDate endDate hasPickupTime').lean();
+  for (const other of ownPending) {
+    const start = padded(bookingSpan(other), turnaroundHours).start.getTime();
+    if (start > own.end.getTime()) ahead.push(start);
+  }
+  ahead.sort((a, b) => a - b);
+
   const nextBooked = ahead.length > 0 ? ahead[0] : null;
-  // "Constrained" means somebody else has it after that, which is what the
-  // client is told. Papers running out is a different fact and must not be
-  // reported as though another client had the vehicle.
+  // "Constrained" means something is genuinely ahead of this booking, which
+  // is what the client is told. The lookahead below is only there so the
+  // calendar has an end, and must never be reported as though somebody had
+  // the vehicle from that date — a plain untruth dressed up as a limit.
+  // Papers running out is a different fact again and is not reported here.
   const constrained = nextBooked !== null;
   const lookahead = addDays(now, MAX_LOOKAHEAD_DAYS).getTime();
   const hardStop = Math.min(
