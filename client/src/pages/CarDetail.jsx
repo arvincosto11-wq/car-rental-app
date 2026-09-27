@@ -14,7 +14,7 @@ import PromoConfetti from '../components/PromoConfetti';
 import PromoBadge from '../components/PromoBadge';
 import useLongRentalRules from '../hooks/useLongRentalRules';
 import { bestLongRentalRule, longRentalDiscountOn, rulesForCar } from '../utils/longRental';
-import { instantFrom, phDayStart, pickupHours, formatHour, formatPhDate, SHORT_NOTICE_HOURS } from '../utils/phTime';
+import { instantFrom, phDayStart, pickupHours, formatHour, formatPhDate, formatMoment, SHORT_NOTICE_HOURS } from '../utils/phTime';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
@@ -94,6 +94,12 @@ const CarDetail = () => {
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  // A booking of their own on THIS vehicle that has not finished. Someone
+  // adding days to a trip they already have should extend it rather than
+  // start a second one: extending keeps it as one trip, and a long-rental
+  // discount is worked out on the whole length.
+  const [ownBooking, setOwnBooking] = useState(null);
+  const [showExtendHint, setShowExtendHint] = useState(false);
   const BOOKING_STEPS = [
     { label: 'Select Dates', desc: 'Choose your pickup and return dates' },
     { label: 'Type & Payment', desc: 'Choose how you drive and pay' },
@@ -103,6 +109,7 @@ const CarDetail = () => {
   const termsModalRef = useModalA11y(() => setShowTerms(false), showTerms);
   const refundNoticeModalRef = useModalA11y(() => setShowRefundNotice(false), showRefundNotice);
   const bookingModalRef = useModalA11y(() => setShowBookingModal(false), showBookingModal);
+  const extendHintModalRef = useModalA11y(() => setShowExtendHint(false), showExtendHint);
 
   useEffect(() => {
     setActivePhotoIndex(0);
@@ -166,7 +173,22 @@ const CarDetail = () => {
       }
     };
     fetchProfile();
-  }, [user]);
+
+    const fetchOwnBooking = async () => {
+      try {
+        const res = await api.get('/bookings/my');
+        const mine = (res.data || []).find((b) => String(b.car?._id || b.car) === String(id)
+          && ['pending', 'confirmed'].includes(b.status)
+          && !b.returnedAt);
+        setOwnBooking(mine || null);
+      } catch (err) {
+        // Only used to offer a better route, so failing quietly is right:
+        // the client can still book exactly as they could before.
+        console.error(err);
+      }
+    };
+    fetchOwnBooking();
+  }, [user, id]);
 
   // Self-drive is only bookable once admin has verified the client's ID —
   // having a license number/expiry and an uploaded ID photo on file isn't
@@ -327,6 +349,12 @@ const CarDetail = () => {
   const openBookingModal = () => {
     if (!user) return navigate('/login');
     setError('');
+    // Said once, and never a wall: booking these dates separately may be
+    // exactly what they meant.
+    if (ownBooking && !showExtendHint) {
+      setShowExtendHint(true);
+      return;
+    }
     setShowBookingModal(true);
   };
 
@@ -694,6 +722,33 @@ const CarDetail = () => {
       {/* Refund Notice Modal — opens from step 3 of the Booking Modal, so it
           needs a higher z-index to sit above it instead of behind it. */}
       <AnimatePresence>
+      {showExtendHint && (
+        <motion.div style={{ ...s.modal, zIndex: 1001 }} {...backdropMotion}>
+          <motion.div style={s.modalContent} {...modalMotion} ref={extendHintModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="extend-hint-title">
+            <h2 id="extend-hint-title" style={s.modalTitle}>You already have this vehicle booked</h2>
+            <div style={s.modalText}>
+              <p>
+                Your booking for {formatMoment(ownBooking.startDate, ownBooking.hasPickupTime, { month: 'long', day: 'numeric' })}
+                {' '}to {formatMoment(ownBooking.endDate, ownBooking.hasPickupTime, { month: 'long', day: 'numeric' })} has not finished yet.
+              </p>
+              <p style={{ marginTop: '10px' }}>
+                To add days to it, use <strong>Keep It Longer</strong> in My Bookings. That keeps everything
+                as one trip, and a longer trip may reach a long-rental discount &mdash; which a second
+                separate booking would not.
+              </p>
+            </div>
+            <div style={s.refundNoticeActions}>
+              <button style={s.refundNoticeCancel} onClick={() => { setShowExtendHint(false); setShowBookingModal(true); }}>
+                Book separate dates
+              </button>
+              <button style={s.refundNoticeConfirm} onClick={() => navigate('/my-bookings')}>
+                Keep It Longer
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
       {showRefundNotice && (
         <motion.div style={{ ...s.modal, zIndex: 1001 }} {...backdropMotion}>
           <motion.div style={s.modalContent} {...modalMotion} ref={refundNoticeModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-notice-title">
