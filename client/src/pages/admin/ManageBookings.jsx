@@ -899,8 +899,15 @@ const ManageBookings = () => {
 
   // When somebody asked, so the ordering is a stated fact rather than
   // something admin has to take on trust.
+  //
+  // Not formatMoment: that renders whole hours, which is right for a pickup
+  // time and wrong here. Two requests half a minute apart both printed
+  // "10:00 PM", so the row claimed one asked first and then showed two
+  // identical times — the one thing this label exists to let somebody check.
   const askedAt = (booking) => (booking.createdAt
-    ? formatMoment(booking.createdAt, true, { month: 'short', day: 'numeric' })
+    ? new Date(booking.createdAt).toLocaleString('en-US', {
+      timeZone: 'Asia/Manila', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    })
     : '');
 
   return (
