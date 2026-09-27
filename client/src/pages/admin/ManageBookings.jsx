@@ -10,6 +10,7 @@ import { SkeletonTableRows } from '../../components/Skeleton';
 import Pagination from '../../components/Pagination';
 import StatusDropdown from '../../components/StatusDropdown';
 import { paginate } from '../../utils/paginate';
+import { vehicleOutOfService } from '../../utils/blockedDates';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import usePageTitle from '../../hooks/usePageTitle';
@@ -1276,13 +1277,20 @@ const ManageBookings = () => {
                           was never accepted. Quieter than No-Show on purpose
                           — No-Show forfeits everything and shouldn't be the
                           calmer-looking of the two. */}
-                      <button
-                        style={s.moveBtn}
-                        onClick={() => openMove(booking)}
-                        title="Put this booking on a different vehicle, keeping its dates."
-                      >
-                        Move vehicle
-                      </button>
+                      {/* Only when the vehicle is actually out of service:
+                          off the road, or inside an approved block such as
+                          repairs. Moving somebody off a working vehicle is
+                          not an everyday action, and a button offering it on
+                          every confirmed row invited exactly that. */}
+                      {vehicleOutOfService(booking) && (
+                        <button
+                          style={s.moveBtn}
+                          onClick={() => openMove(booking)}
+                          title="This vehicle is out of service. Put the booking on a different one, keeping its dates."
+                        >
+                          Move vehicle
+                        </button>
+                      )}
                       <button
                         style={s.cancelRowBtn}
                         onClick={() => handleStatus(booking._id, 'cancelled')}
