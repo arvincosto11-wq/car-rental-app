@@ -10,12 +10,14 @@ import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import { GOLD, GOLD_DARK } from '../../theme';
 import api from '../../api';
 import useDocumentPhotos from '../../hooks/useDocumentPhotos';
+import { useUIFeedback } from '../../context/UIFeedbackContext';
 
 const PAGE_SIZE = 10;
 
 const ManageClients = () => {
   usePageTitle('Manage Clients');
   const { isDark } = useTheme();
+  const { confirm } = useUIFeedback();
   const { refetch: refetchPendingCounts } = useAdminPendingCounts();
   const [clients, setClients] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -44,7 +46,19 @@ const ManageClients = () => {
     }
   };
 
+  // Asked first, because both directions change what somebody can do and
+  // neither is obvious from the button alone. Unverifying is the one that
+  // takes something away, so it is the one marked as destructive.
   const handleVerify = async (id, currentStatus) => {
+    const ok = await confirm(
+      currentStatus
+        ? "Un-verify this client's ID? They will not be able to make a booking until it is verified again."
+        : "Mark this client's ID as verified? They will be able to book straight away.",
+      currentStatus
+        ? { confirmLabel: 'Un-verify', cancelLabel: 'Keep verified', danger: true }
+        : { confirmLabel: 'Verify', cancelLabel: 'Not yet' }
+    );
+    if (!ok) return;
     try {
       await api.put(`/users/${id}/verify`, { verified: !currentStatus });
       fetchData();
