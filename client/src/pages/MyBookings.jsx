@@ -806,7 +806,7 @@ const MyBookings = () => {
     // Centred rather than top-aligned: the pickup box is the taller of the
     // two, and level text either side of it reads as one panel.
     detailsRow: {
-      display: 'flex', gap: '18px', flexWrap: 'nowrap', alignItems: 'center',
+      display: 'flex', gap: '18px', flexWrap: 'nowrap', alignItems: 'flex-start',
       justifyContent: 'space-between',
     },
     // Ambient glow color follows the booking's own status — confirmed

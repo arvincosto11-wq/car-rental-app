@@ -1309,3 +1309,18 @@ button.seg-tab:not(:disabled):hover {
   align-items: flex-end !important;
   text-align: right !important;
 }
+
+/* The details and the pickup/return panel sit side by side on a wide card
+   and must not in a 620px drawer — nowrap kept them in one line and
+   squeezed "Toyota Avanza · 2024 · Van" into a column a few characters
+   wide while the panel took the rest. */
+.in-drawer .booking-trip-row {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 14px !important;
+}
+/* The heading shares the top of the drawer with the round close button,
+   so it stops short of it rather than running underneath. */
+.in-drawer .booking-grid > .grid-cell:nth-child(2) > div:first-child {
+  padding-right: 46px;
+}
