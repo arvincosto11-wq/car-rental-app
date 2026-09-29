@@ -1279,48 +1279,51 @@ button.seg-tab:not(:disabled):hover {
   [style*="rr-pulse"] { animation: none !important; }
 }
 
-/* The booking card now also lives inside the My Bookings detail drawer,
-   which is 620px wide however wide the window is. The phone rule above
-   collapses this grid by VIEWPORT, which a drawer on a desktop never
-   triggers, so the card kept its 170px image column and an auto-sized
-   price column and squeezed the details between them.
-   Collapsing it entirely went too far the other way: the drawer has room
-   for the photograph beside the details, and only the price and the
-   actions need a row of their own. */
+/* The booking card lives only in the My Bookings drawer now, and the drawer
+   lays its top out as the design does: the photograph, the booking's
+   heading and details, and the total, across one row — then the pickup and
+   return panel full width beneath all three, then the actions.
+   In the markup that panel sits two levels down, inside the details column.
+   Rather than move the JSX, the two wrappers step out of the way with
+   `display: contents`, which lets their children take part in this grid
+   directly and be placed where the design puts them. */
 .in-drawer .booking-grid {
-  grid-template-columns: 150px minmax(0, 1fr) !important;
-  column-gap: 18px !important;
-  row-gap: 18px !important;
-  padding-top: 6px;
+  display: grid !important;
+  grid-template-columns: 168px minmax(0, 1fr) auto !important;
+  column-gap: 24px !important;
+  row-gap: 12px !important;
 }
-.in-drawer .grid-cell {
-  grid-column: 1 / -1 !important;
-  grid-row: auto !important;
-}
-.in-drawer .booking-grid > .grid-cell:first-child {
+.in-drawer .booking-grid > .grid-cell:first-child {          /* the photograph */
   grid-column: 1 !important;
+  grid-row: 1 / span 2 !important;
 }
-.in-drawer .booking-grid > .grid-cell:nth-child(2) {
+.in-drawer .booking-grid > .grid-cell:nth-child(2) {          /* details column */
+  display: contents !important;
+}
+.in-drawer .booking-trip-row {                                /* details + panel */
+  display: contents !important;
+}
+/* Heading and badges. Stops short of the round close button in the corner. */
+.in-drawer .booking-grid > .grid-cell:nth-child(2) > div:first-child {
   grid-column: 2 !important;
+  grid-row: 1 !important;
+  padding-right: 46px;
 }
-/* Right-aligned under both, as drawn — the total is a summary of the card
-   above it rather than another column beside it. */
-.in-drawer .booking-card-price {
+.in-drawer .booking-trip-row > div:first-child {              /* vehicle + dates */
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+}
+.in-drawer .booking-trip-row > div:nth-child(2) {             /* pickup + return */
+  grid-column: 1 / -1 !important;
+  grid-row: 3 !important;
+}
+.in-drawer .booking-card-price {                              /* the total */
+  grid-column: 3 !important;
+  grid-row: 1 / span 2 !important;
   align-items: flex-end !important;
   text-align: right !important;
 }
-
-/* The details and the pickup/return panel sit side by side on a wide card
-   and must not in a 620px drawer — nowrap kept them in one line and
-   squeezed "Toyota Avanza · 2024 · Van" into a column a few characters
-   wide while the panel took the rest. */
-.in-drawer .booking-trip-row {
-  flex-direction: column !important;
-  align-items: stretch !important;
-  gap: 14px !important;
-}
-/* The heading shares the top of the drawer with the round close button,
-   so it stops short of it rather than running underneath. */
-.in-drawer .booking-grid > .grid-cell:nth-child(2) > div:first-child {
-  padding-right: 46px;
+.in-drawer .booking-grid > .grid-cell:last-child {            /* the actions */
+  grid-column: 1 / -1 !important;
+  grid-row: 4 !important;
 }

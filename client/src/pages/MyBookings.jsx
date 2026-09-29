@@ -989,15 +989,20 @@ const MyBookings = () => {
     // reads as its own box within the card rather than a colored alert.
     // Sits inside detailsRow now, alongside the date/model text, so it
     // naturally starts at the same Y — no marginTop hack needed.
+    // Full width beneath the heading rather than a narrow column beside it,
+    // and its lines laid out across the panel instead of down one edge.
     pickupPanel: {
-      flex: '1 1 260px', minWidth: 0, maxWidth: '340px',
-      fontSize: '12px', lineHeight: '1.5', padding: '14px 16px', borderRadius: '12px',
-      background: isDark ? '#38393b' : '#ffffff',
-      border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
+      minWidth: 0,
+      display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+      gap: '10px 24px',
+      fontSize: '12px', lineHeight: '1.5', padding: '16px 18px', borderRadius: '14px',
+      background: isDark ? '#1e1f20' : '#f8f9fa',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e3e5e8'}`,
     },
     pickupLine: { display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', color: isDark ? '#86efac' : '#166534', fontWeight: '700' },
     returnLine: { display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', color: isDark ? '#b0b3b8' : '#6b7280', fontWeight: '700', marginTop: '6px' },
-    driverNote: { marginTop: '8px', fontStyle: 'italic', fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
+    driverNote: { marginTop: '8px', fontStyle: 'italic', fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', gridColumn: '1 / -1',
+    },
     // actionsIndent sits in topSection's own grid now (see actionsCell),
     // so it's exactly as wide as the details row above it — no separate
     // grid, no guessed indent number.
@@ -1119,7 +1124,7 @@ const MyBookings = () => {
     },
     extendedNote: {
       fontSize: '11px', fontWeight: '700', lineHeight: 1.4, marginTop: '4px',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: isDark ? GOLD_DARK : GOLD, gridColumn: '1 / -1',
     },
     badgeActionNeeded: {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
