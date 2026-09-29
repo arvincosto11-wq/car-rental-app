@@ -84,13 +84,6 @@ const CalendarLineIcon = (props) => <LineIcon {...props}><rect x="3" y="4" width
 const PinLineIcon = (props) => <LineIcon {...props}><path d="M12 21s7-6.4 7-12a7 7 0 0 0-14 0c0 5.6 7 12 7 12z" /><circle cx="12" cy="9" r="2.5" /></LineIcon>;
 const ReturnLineIcon = (props) => <LineIcon {...props}><path d="M3 12a9 9 0 1 0 3-6.7" /><polyline points="3 4 3 9 8 9" /></LineIcon>;
 const TagLineIcon = (props) => <LineIcon {...props}><path d="M20.6 12.6L12.6 20.6a2 2 0 0 1-2.8 0l-6.4-6.4a2 2 0 0 1 0-2.8L11.4 3.4A2 2 0 0 1 12.8 3H19a2 2 0 0 1 2 2v6.2a2 2 0 0 1-.4 1.4z" /><circle cx="16" cy="8" r="1.3" /></LineIcon>;
-// Solid, not stroked: this one is a filled shape, so it does not go
-// through LineIcon.
-const StarIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" />
-  </svg>
-);
 // Action-button icons. stroke="currentColor" (from LineIcon) means each
 // one picks up its own button's color — no per-icon color rules needed.
 const CalendarPlusIcon = (props) => <LineIcon {...props}><rect x="3" y="4" width="18" height="17" rx="3" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="12" y1="13" x2="12" y2="17" /><line x1="10" y1="15" x2="14" y2="15" /></LineIcon>;
@@ -618,26 +611,19 @@ const MyBookings = () => {
     container: { maxWidth: '1100px', margin: '0 auto', padding: '32px' },
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
     title: {
-      fontFamily: "'Oswald', 'Arial Narrow', sans-serif",
-      fontSize: 'clamp(36px, 4.4vw, 52px)', fontWeight: '600', lineHeight: 1,
-      letterSpacing: '0.01em',
-      textTransform: 'uppercase', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '10px',
+      fontSize: 'clamp(26px, 3.4vw, 36px)', fontWeight: '900', letterSpacing: '-0.01em',
+      textTransform: 'uppercase', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px',
     },
     subtitle: { fontSize: '14px', fontStyle: 'italic', color: isDark ? GOLD_DARK : GOLD, marginBottom: '24px' },
     rateBookingsBtn: {
-      display: 'flex', alignItems: 'center', gap: '10px',
-      height: '44px', padding: '0 8px 0 18px',
-      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-      border: 'none', borderRadius: '999px', fontSize: '13px', fontWeight: '800', cursor: 'pointer',
+      display: 'flex', alignItems: 'center', gap: '8px',
+      padding: '10px 18px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+      border: 'none', borderRadius: '999px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
       whiteSpace: 'nowrap',
     },
-    // The count reads as a disc punched out of the pill rather than a
-    // darker patch on it, which is what a flat black tint looked like.
     rateBookingsBadge: {
-      background: ON_GOLD, color: isDark ? GOLD_DARK : GOLD,
-      fontSize: '12px', fontWeight: '800',
-      borderRadius: '99px', minWidth: '28px', height: '28px',
-      display: 'grid', placeItems: 'center',
+      background: 'rgba(0,0,0,0.2)', color: ON_GOLD, fontSize: '11px', fontWeight: '700',
+      borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
     },
     statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '28px' },
     statCard: {
@@ -650,18 +636,17 @@ const MyBookings = () => {
     }),
     statLabel: { fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '4px' },
     statNum: { fontSize: '26px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    statusTabRow: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px' },
+    statusTabRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' },
     statusTab: (active) => ({
       display: 'flex', alignItems: 'center', gap: '6px',
-      height: '34px', padding: '0 13px', borderRadius: '999px',
-      fontSize: '12.5px', fontWeight: '700',
+      padding: '8px 16px', borderRadius: '999px', fontSize: '13px', fontWeight: '600',
       border: active ? 'none' : `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       background: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#242526' : '#fff'),
       color: active ? ON_GOLD : (isDark ? '#e4e6eb' : '#374151'),
       cursor: 'pointer', whiteSpace: 'nowrap',
     }),
     statusTabCount: (active) => ({
-      fontWeight: '600', opacity: active ? 0.85 : 0.7,
+      fontSize: '12px', fontWeight: '600', opacity: active ? 0.85 : 0.6,
     }),
     statusTabDot: { width: '7px', height: '7px', borderRadius: '50%', background: '#dc2626', flexShrink: 0 },
     empty: { textAlign: 'center', padding: '48px', color: isDark ? '#b0b3b8' : '#6b7280' },
@@ -1138,24 +1123,13 @@ const MyBookings = () => {
       border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
     },
     chargeNote: (settled) => ({
-      margin: '10px 0 0', padding: '10px 14px', borderRadius: '12px',
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      gap: '12px', flexWrap: 'wrap',
-      fontSize: '12.5px', fontWeight: '600', lineHeight: 1.5,
+      margin: '10px 0 0', padding: '9px 12px', borderRadius: '10px',
+      fontSize: '12px', fontWeight: '600', lineHeight: 1.5,
       background: settled
-        ? (isDark ? '#1e1f20' : '#f8f9fa')
+        ? (isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb')
         : (isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2'),
-      color: settled ? (isDark ? '#b0b3b8' : '#4b5563') : (isDark ? '#f87171' : '#b91c1c'),
-      border: `1px solid ${settled ? (isDark ? '#3a3b3c' : '#e3e5e8') : (isDark ? 'rgba(248,113,113,0.38)' : '#fecaca')}`,
-    }),
-    // Takes its colour from the row it sits in, so a settled charge reads
-    // grey throughout and an outstanding one red throughout.
-    chargeText: { flex: '1 1 300px' },
-    chargePill: (settled) => ({
-      fontSize: '10px', fontWeight: '800', letterSpacing: '0.08em',
-      textTransform: 'uppercase', padding: '4px 10px', borderRadius: '99px',
-      whiteSpace: 'nowrap',
-      border: `1px solid ${settled ? (isDark ? '#3a3b3c' : '#e3e5e8') : (isDark ? 'rgba(248,113,113,0.38)' : '#fecaca')}`,
+      color: settled ? (isDark ? '#b0b3b8' : '#6b7280') : (isDark ? '#f87171' : '#991b1b'),
+      border: `1px solid ${settled ? (isDark ? '#3a3b3c' : '#f3f4f6') : (isDark ? 'rgba(248,113,113,0.3)' : '#fecaca')}`,
     }),
     lateFeeNote: {
       margin: '10px 0 0', padding: '10px 12px', borderRadius: '10px',
@@ -1538,39 +1512,27 @@ const MyBookings = () => {
                 something is genuinely outstanding. */}
             {booking.status === 'completed' && booking.condition?.damageCharge > 0 && (
               <div style={styles.chargeNote(!!booking.condition.damageCollectedAt)}>
-                <span style={styles.chargeText}>
-                  Damage recorded on return
-                  {booking.condition.atReturn?.note ? `: ${booking.condition.atReturn.note}` : ''}
-                  {' '}— ₱{booking.condition.damageCharge.toLocaleString()} damage charge.
-                </span>
-                <span style={styles.chargePill(!!booking.condition.damageCollectedAt)}>
-                  {booking.condition.damageCollectedAt ? 'Settled' : 'Not yet settled'}
-                </span>
+                Damage recorded on return
+                {booking.condition.atReturn?.note ? `: ${booking.condition.atReturn.note}` : ''}
+                {' '}— ₱{booking.condition.damageCharge.toLocaleString()} damage charge.
+                {booking.condition.damageCollectedAt ? ' Settled.' : ' Not yet settled.'}
               </div>
             )}
             {booking.status === 'completed' && booking.fuel?.charge > 0 && (
               <div style={styles.chargeNote(!!booking.fuel.collectedAt)}>
-                <span style={styles.chargeText}>
-                  {fuelShortfallLabel(booking)
-                    ? `Returned ${fuelShortfallLabel(booking)} short of the fuel it went out with`
-                    : 'Refuelled after this return'}
-                  {' '}— ₱{booking.fuel.charge.toLocaleString()} refuelling charge.
-                </span>
-                <span style={styles.chargePill(!!booking.fuel.collectedAt)}>
-                  {booking.fuel.collectedAt ? 'Settled' : 'Not yet settled'}
-                </span>
+                {fuelShortfallLabel(booking)
+                  ? `Returned ${fuelShortfallLabel(booking)} short of the fuel it went out with`
+                  : 'Refuelled after this return'}
+                {' '}— ₱{booking.fuel.charge.toLocaleString()} refuelling charge.
+                {booking.fuel.collectedAt ? ' Settled.' : ' Not yet settled.'}
               </div>
             )}
             {booking.status === 'completed' && booking.lateFee?.days > 0 && (
               <div style={styles.chargeNote(!!booking.lateFee.collectedAt)}>
-                <span style={styles.chargeText}>
-                  Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late
-                  {' '}— ₱{booking.lateFee.amount.toLocaleString()} late fee, one day&apos;s rental rate per day
-                  of delay.
-                </span>
-                <span style={styles.chargePill(!!booking.lateFee.collectedAt)}>
-                  {booking.lateFee.collectedAt ? 'Settled' : 'Not yet settled'}
-                </span>
+                Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late
+                {' '}— ₱{booking.lateFee.amount.toLocaleString()} late fee, one day&apos;s rental rate per day
+                of delay.
+                {booking.lateFee.collectedAt ? ' Settled.' : ' Not yet settled.'}
               </div>
             )}
             {booking.status === 'completed' && (
@@ -1636,7 +1598,7 @@ const MyBookings = () => {
         </div>
         {!loading && unratedCount > 0 && (
           <button style={styles.rateBookingsBtn} onClick={() => navigate('/my-bookings/rate')}>
-            <StarIcon /> Rate My Bookings
+            ⭐ Rate My Bookings
             <span style={styles.rateBookingsBadge}>{unratedCount}</span>
           </button>
         )}
