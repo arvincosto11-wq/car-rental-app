@@ -14,8 +14,9 @@ import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import AdjustOfferPanel from '../components/AdjustOfferPanel';
 import ExtendBookingModal from '../components/ExtendBookingModal';
 import { paginate } from '../utils/paginate';
-import { bookingAwaitingDecision } from '../utils/offerWindow';
+import { bookingAwaitingDecision, timeLeftLabel } from '../utils/offerWindow';
 import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays } from '../utils/phTime';
+import { daysOverdue } from '../utils/overdue';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK } from '../theme';
@@ -37,6 +38,9 @@ const agoLabel = (at) => {
 // where it sits rather than by jumping the queue.
 // Out past its return, right now. Mirrors the server's rule; this only
 // decides what the client is shown on their own booking.
+// Rows name the day only; the hour belongs in the drawer beside the rest.
+const DATE_ONLY = { month: 'short', day: 'numeric', year: 'numeric' };
+
 const isStillOut = (b) => b.status === 'confirmed' && !!b.collectedAt && !b.returnedAt
   && new Date(b.endDate) < new Date();
 const daysOut = (b) => Math.max(1, Math.ceil((Date.now() - new Date(b.endDate).getTime()) / 86400000));
@@ -153,6 +157,9 @@ const MyBookings = () => {
   const [offerBusyId, setOfferBusyId] = useState('');
   const [withdrawingId, setWithdrawingId] = useState('');
   const [extendBookingId, setExtendBookingId] = useState(null);
+  // Which booking's full record is open. Everything the card used to show
+  // lives in there now, so the list can stay one line per booking.
+  const [drawerBookingId, setDrawerBookingId] = useState(null);
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -541,6 +548,45 @@ const MyBookings = () => {
 
   const ratingBooking = bookings.find((b) => b._id === ratingModalId);
 
+  // Why this booking wants the client, in one line, or null. First match
+  // wins: what is urgent outranks what is merely unfinished, and a settled
+  // booking says nothing at all rather than repeating its own status.
+  //
+  // Derived, never stored — every input is already on the booking.
+  const attentionLine = (b) => {
+    if (bookingAwaitingDecision(b)) return { tone: 'gold', text: timeLeftLabel(b.adjustOffer?.deadline) };
+    if (isStillOut(b)) {
+      const late = daysOverdue(b);
+      return { tone: 'red', text: `Overdue · ${late} day${late === 1 ? '' : 's'}` };
+    }
+    if (isDueSoon(b)) return { tone: 'gold', text: `Due back ${formatMoment(b.endDate, b.hasPickupTime)}` };
+    if (b.payment === 'gcash_pending' && b.status !== 'cancelled') return { tone: 'muted', text: 'GCash payment not finished' };
+    if (b.refundStatus === 'requested') return { tone: 'muted', text: 'Refund waiting for approval' };
+    if (b.rescheduleRequest?.status === 'pending') return { tone: 'muted', text: 'Reschedule waiting for approval' };
+    if (b.rescheduleRequest?.status === 'declined') return { tone: 'red', text: 'Reschedule declined — see note' };
+    if (b.refundStatus === 'declined') return { tone: 'red', text: 'Refund declined' };
+    const owed = [
+      b.condition?.damageCharge > 0 && !b.condition?.damageCollectedAt,
+      b.fuel?.charge > 0 && !b.fuel?.collectedAt,
+      b.lateFee?.days > 0 && !b.lateFee?.collectedAt,
+    ].filter(Boolean).length;
+    if (owed > 0) return { tone: 'red', text: `${owed} charge${owed === 1 ? '' : 's'} not yet settled` };
+    if (b.status === 'completed' && !b.carRating?.ratedAt) return { tone: 'gold', text: 'Not rated yet' };
+    if (b.refundStatus === 'approved') return { tone: 'blue', text: `Refunded ₱${(b.refundAmount || 0).toLocaleString()}` };
+    return null;
+  };
+
+  // Anything that wants the client now, whatever tab they are looking at.
+  // A booking three days overdue should not be hidden behind "Upcoming".
+  const needsAttention = bookings.filter((b) => bookingAwaitingDecision(b) || isStillOut(b) || isDueSoon(b)
+    || (b.payment === 'gcash_pending' && b.status !== 'cancelled'));
+
+  const drawerBooking = bookings.find((b) => b._id === drawerBookingId);
+  // Numbered by its place in the whole list, not the page, so the number in
+  // the drawer matches the row that opened it however they got there.
+  const drawerNumber = drawerBooking ? bookings.indexOf(drawerBooking) + 1 : 0;
+  const drawerRef = useModalA11y(() => setDrawerBookingId(null), !!drawerBooking);
+
   const totalSpent = bookings.reduce((sum, b) => sum + b.totalPrice, 0);
   const confirmedCount = bookings.filter((b) => b.status === 'confirmed').length;
   const unratedCount = bookings.filter((b) => b.status === 'completed' && !b.carRating?.ratedAt).length;
@@ -615,6 +661,95 @@ const MyBookings = () => {
       cursor: 'pointer',
     },
     list: { display: 'flex', flexDirection: 'column', gap: '16px' },
+
+    // One line per booking. The detail it used to carry is a click away, so
+    // twenty-six bookings fit on a screen instead of three.
+    rowList: { display: 'flex', flexDirection: 'column', gap: '10px' },
+    row: (faded) => ({
+      display: 'flex', alignItems: 'center', gap: '14px', width: '100%', textAlign: 'left',
+      padding: '13px 16px', borderRadius: '14px', cursor: 'pointer',
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e3e5e8'}`,
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+      opacity: faded ? 0.72 : 1,
+    }),
+    rowThumb: {
+      width: '54px', height: '42px', borderRadius: '9px', flexShrink: 0, overflow: 'hidden',
+      background: isDark ? '#1e1f20' : '#f8f9fa',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e3e5e8'}`,
+      display: 'grid', placeItems: 'center',
+    },
+    rowThumbImg: { width: '100%', height: '100%', objectFit: 'cover' },
+    rowThumbEmpty: { fontSize: '14px', color: isDark ? '#8a8d91' : '#6b7280' },
+    rowMain: { display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0, flex: 1 },
+    rowTitle: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
+    rowCar: { fontSize: '14px', fontWeight: '800' },
+    rowDates: { fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280', fontVariantNumeric: 'tabular-nums' },
+    // The one line saying why this booking wants them. Colour carries the
+    // same meaning it does everywhere else: red owes or is late, gold needs
+    // a decision, blue is only telling them something.
+    rowNote: (tone) => ({
+      display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px',
+      fontSize: '12px', fontWeight: '700',
+      color: tone === 'red' ? (isDark ? '#f87171' : '#b91c1c')
+        : tone === 'gold' ? (isDark ? GOLD_DARK : '#7c4a03')
+          : tone === 'blue' ? (isDark ? '#93c5fd' : '#1e40af')
+            : (isDark ? '#b0b3b8' : '#4b5563'),
+    }),
+    rowDot: (tone) => ({
+      width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
+      background: tone === 'red' ? (isDark ? '#f87171' : '#b91c1c')
+        : tone === 'gold' ? (isDark ? GOLD_DARK : GOLD)
+          : tone === 'blue' ? (isDark ? '#93c5fd' : '#1e40af')
+            : (isDark ? '#8a8d91' : '#9ca3af'),
+    }),
+    rowTotal: { fontSize: '15px', fontWeight: '800', flexShrink: 0, fontVariantNumeric: 'tabular-nums' },
+
+    // Above the tabs and outside the filter on purpose: a vehicle three days
+    // overdue must not be reachable only by first choosing the right tab.
+    attnWrap: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' },
+    attnGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' },
+    attnCard: (tone) => ({
+      display: 'flex', flexDirection: 'column', gap: '8px', padding: '18px', borderRadius: '18px',
+      background: tone === 'red' ? (isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2')
+        : (isDark ? GOLD_TINT_DARK : GOLD_TINT),
+      border: `1px solid ${tone === 'red' ? (isDark ? 'rgba(248,113,113,0.38)' : '#fecaca') : (isDark ? 'rgba(232,161,0,0.42)' : '#edd693')}`,
+    }),
+    attnKicker: (tone) => ({
+      fontSize: '10px', fontWeight: '800', letterSpacing: '0.14em', textTransform: 'uppercase',
+      color: tone === 'red' ? (isDark ? '#f87171' : '#b91c1c') : (isDark ? GOLD_DARK : '#7c4a03'),
+    }),
+    attnHead: (tone) => ({
+      fontSize: '15px', fontWeight: '800',
+      color: tone === 'red' ? (isDark ? '#f87171' : '#b91c1c') : (isDark ? '#e4e6eb' : '#1a1a1a'),
+    }),
+    attnBody: { fontSize: '12.5px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#4b5563', margin: 0 },
+    attnActions: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '2px' },
+
+    // A panel rather than a page: the list stays where it was, so closing it
+    // returns them to the same place in the same scroll position.
+    drawerScrim: {
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: isDark ? 'rgba(12,12,13,0.66)' : 'rgba(24,25,26,0.45)',
+    },
+    drawer: {
+      position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 1001,
+      width: 'min(620px, 100vw)', overflowY: 'auto',
+      background: isDark ? '#242526' : '#fff',
+      borderLeft: `1px solid ${isDark ? '#3a3b3c' : '#e3e5e8'}`,
+      padding: '28px',
+      boxSizing: 'border-box',
+    },
+    drawerClose: {
+      position: 'absolute', top: '18px', right: '18px', zIndex: 2,
+      width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', padding: 0,
+      border: `1px solid ${isDark ? '#4a4b4c' : '#d1d5db'}`,
+      background: isDark ? '#3a3b3c' : '#e5e7eb',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+      fontSize: '15px', fontWeight: '700', lineHeight: 1,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.45)' : '0 2px 8px rgba(0,0,0,0.18)',
+    },
     card: {
       display: 'flex',
       flexDirection: 'column',
@@ -851,6 +986,20 @@ const MyBookings = () => {
       display: 'flex', gap: '10px', flexWrap: 'wrap',
       paddingTop: '14px', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`,
     },
+    // Same shape as the card's own actions, so the strip does not introduce
+    // a third kind of button to the page.
+    primaryBtn: {
+      display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px',
+      fontSize: '12px', fontWeight: '800', letterSpacing: '0.08em', textTransform: 'uppercase',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+      border: 'none', borderRadius: '999px', cursor: 'pointer',
+    },
+    ghostBtn: {
+      display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px',
+      fontSize: '12px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase',
+      background: 'transparent', color: isDark ? '#b0b3b8' : '#4b5563',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e3e5e8'}`, borderRadius: '999px', cursor: 'pointer',
+    },
     rescheduleBtn: {
       display: 'inline-flex',
       alignItems: 'center',
@@ -1071,6 +1220,334 @@ const MyBookings = () => {
     },
   };
 
+
+  // The whole of the old booking card, unchanged. It used to be the list
+  // item; it is now what the drawer shows. A row can therefore stay a row,
+  // and not one of these states had to be rewritten to move them.
+  const bookingDetail = (booking, number) => (
+    <>
+          <div className="booking-grid" style={styles.topSection}>
+            <div className="grid-cell" style={{ ...styles.imgWrap, ...styles.imgWrapCell }}>
+              {booking.car?.image ? (
+                <img src={booking.car.image} alt="" style={styles.img} />
+              ) : (
+                <div style={styles.noImg}>No Image</div>
+              )}
+            </div>
+
+            <div className="grid-cell" style={styles.middleCol}>
+              <div style={styles.topRow}>
+                <span style={styles.bookingNum}>Booking #{number}</span>
+                <span style={getStatusStyle(booking.status)}>
+                  {booking.status}
+                </span>
+                {booking.refundStatus && booking.refundStatus !== 'none' && (
+                  <span style={getRefundBadgeStyle(booking.refundStatus)}>
+                    {getRefundBadgeText(booking.refundStatus)}
+                  </span>
+                )}
+                {booking.rescheduleRequest?.status === 'pending' && (
+                  <span style={styles.badgeReschedulePending}>Reschedule Requested</span>
+                )}
+                {booking.rescheduleRequest?.status === 'declined' && (
+                  <span style={styles.badgeRescheduleDeclined}>Reschedule Declined</span>
+                )}
+                {booking.payment === 'gcash_pending' && booking.status !== 'cancelled' && (
+                  <span style={styles.badgeRefundRequested}>GCash Pending</span>
+                )}
+                {bookingAwaitingDecision(booking) && (
+                  <span style={styles.badgeActionNeeded}>Action Needed</span>
+                )}
+              </div>
+
+              <div className="booking-trip-row" style={styles.detailsRow}>
+                <div style={styles.info}>
+                  <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
+                    <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                    {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
+                  </div>
+                  <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
+                    <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                    <span style={styles.carSub}>
+                      {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
+                    </span>
+                  </div>
+                </div>
+
+                {(booking.status === 'confirmed' || booking.status === 'pending') && (
+                  <div style={styles.pickupPanel}>
+                    <div style={styles.pickupLine}>
+                      <PinLineIcon /> Pickup: {formatMoment(booking.startDate, booking.hasPickupTime)}
+                    </div>
+                    <div style={styles.returnLine}>
+                      <ReturnLineIcon /> Return: {formatMoment(booking.endDate, booking.hasPickupTime)}
+                    </div>
+                    {/* What it was before they made it longer. A booking
+                        that now runs a week reads very differently from
+                        one booked as a week, and the price says so. */}
+                    {booking.extensions?.length > 0 && (
+                      <div style={styles.extendedNote}>
+                        Extended from {formatMoment(booking.extensions[0].previousEndDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
+                        {booking.extensions.length > 1 ? ` · ${booking.extensions.length} extensions` : ''}
+                      </div>
+                    )}
+                    <div style={styles.driverNote}>
+                      {booking.bookingType === 'self-drive'
+                        ? "Bring a valid ID and your driver's license to pick up the vehicle."
+                        : 'Your driver will meet you at the pickup location.'}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="booking-card-price grid-cell" style={{ ...styles.priceCol, ...styles.priceColCell }}>
+              <span style={styles.priceLabel}>Total Price</span>
+              <div style={styles.priceDetails}>
+                <span style={styles.price}>₱{booking.totalPrice.toLocaleString()}</span>
+                {booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
+                  <div style={styles.paymentPanel}>
+                    <div style={styles.paidAmount}>₱{booking.amountPaid.toLocaleString()} Paid</div>
+                    <div style={styles.balanceDue}>
+                      Bring ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} at pickup
+                    </div>
+                  </div>
+                )}
+                <span style={styles.bookedOn}>
+                  Booked on {new Date(booking.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid-cell" style={styles.actionsCell}>
+            {/* Nothing has been paid on a booking still showing "Retry
+                GCash Payment", so there is nothing to refund — and admin
+                never sees an unpaid booking, so a reschedule request on
+                one would sit forever with nobody able to answer it. */}
+            {(booking.status === 'pending' || booking.status === 'confirmed') &&
+              booking.payment === 'paid' &&
+              !bookingAwaitingDecision(booking) &&
+              (!booking.refundStatus || booking.refundStatus === 'none') && (
+                  <div style={styles.actionsIndent}>
+                    <button className="btn-ghost-rose" style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
+                      <ReturnLineIcon /> Request Refund
+                    </button>
+                    {/* Gone once the vehicle is theirs: there are no
+                        dates left to move, only days already spent. */}
+                    {booking.rescheduleRequest?.status !== 'pending' && !booking.collectedAt && (
+                      <button className="btn-ghost-amber" style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
+                        <CalendarPlusIcon /> Reschedule
+                      </button>
+                    )}
+                    {/* While there is still a booking to lengthen, and
+                        while somebody is late with the vehicle — which
+                        this used to call "somebody else's conversation"
+                        and hide the button for. It is the same client,
+                        sitting in the same car, and extending is the one
+                        cooperative thing available to them. */}
+                    {booking.payment === 'paid'
+                      && (new Date(booking.endDate) > new Date() || isStillOut(booking)) && (
+                      <button className="btn-ghost-amber" style={styles.rescheduleBtn} onClick={() => setExtendBookingId(booking._id)}>
+                        <CalendarPlusIcon /> Keep it longer
+                      </button>
+                    )}
+                  </div>
+            )}
+            {(booking.refundStatus === 'requested' || booking.rescheduleRequest?.status === 'pending')
+              && booking.status !== 'cancelled' && (
+                <div style={styles.actionsIndent}>
+                  {booking.refundStatus === 'requested' && (
+                    <button
+                      className="btn-ghost-amber"
+                      style={styles.rescheduleBtn}
+                      disabled={withdrawingId === booking._id}
+                      onClick={() => withdrawRequest(booking, 'refund')}
+                    >
+                      <ReturnLineIcon /> Cancel refund request
+                    </button>
+                  )}
+                  {booking.rescheduleRequest?.status === 'pending' && (
+                    <button
+                      className="btn-ghost-amber"
+                      style={styles.rescheduleBtn}
+                      disabled={withdrawingId === booking._id}
+                      onClick={() => withdrawRequest(booking, 'reschedule')}
+                    >
+                      <CalendarPlusIcon /> Cancel reschedule request
+                    </button>
+                  )}
+                </div>
+            )}
+            {(booking.status === 'pending' || booking.status === 'confirmed') &&
+              booking.payment !== 'paid' &&
+              booking.refundStatus !== 'requested' && (
+                  <div style={styles.actionsIndent}>
+                    <button
+                      className="btn-solid-gold"
+                      style={styles.bookAgainBtn}
+                      onClick={() => handleRetryPayment(booking._id)}
+                      disabled={retryingPaymentId === booking._id}
+                    >
+                      {retryingPaymentId === booking._id ? 'Redirecting...' : 'Retry GCash Payment'}
+                    </button>
+                  </div>
+            )}
+            {/* They should not have to hear it from us first. The sum
+                is the clause, not a figure somebody chose. */}
+            {/* What actually happened, not only what it cost. Everything
+                here was already recorded and the client was shown none
+                of it, so they heard from us only when something came
+                with a bill — which makes a charge feel like an ambush
+                rather than a line in an account they can already see. */}
+            {freshActivity(booking) && (
+              <div style={styles.activityNote}>{freshActivity(booking)}</div>
+            )}
+            {/* The chase, where they would actually look for it. It was
+                reaching them by email and in the notification bell, and
+                the one place it was missing is the booking it is about. */}
+            {isDueSoon(booking) && (
+              <div style={styles.dueSoonBanner}>
+                Due back {formatMoment(booking.endDate, booking.hasPickupTime)}. Returning on time avoids
+                a late fee of one day&apos;s rental for every day it is late — and if you need it longer,
+                you can extend below.
+              </div>
+            )}
+            {isStillOut(booking) && (
+              <div style={styles.overdueBanner}>
+                This vehicle is overdue. It was due back on{' '}
+                {formatMoment(booking.endDate, booking.hasPickupTime)}, {daysOut(booking)} day
+                {daysOut(booking) === 1 ? '' : 's'} ago. Please return it as soon as you can, or contact us
+                if something has gone wrong — our terms charge a late fee for every day it is late.
+              </div>
+            )}
+            {booking.collectedAt && (
+              <div style={styles.tripRecord}>
+                {/* Said plainly: these two times are a record somebody made at
+                    the counter, not the clock's opinion of when the trip ran. */}
+                <span style={styles.statLabel}>Recorded by staff</span>
+                <span>
+                  <strong>Picked up</strong> {formatMoment(booking.collectedAt, true)}
+                  {booking.fuel?.atPickup !== null && booking.fuel?.atPickup !== undefined
+                    ? ` — fuel at ${fuelLabel(booking.fuel.atPickup)}`
+                    : ''}
+                </span>
+                {booking.returnedAt && (
+                  <span>
+                    <strong>Returned</strong> {formatMoment(booking.returnedAt, true)}
+                    {booking.fuel?.atReturn !== null && booking.fuel?.atReturn !== undefined
+                      ? ` — fuel at ${fuelLabel(booking.fuel.atReturn)}`
+                      : ''}
+                  </span>
+                )}
+                {booking.condition?.atPickup?.photos?.length > 0 && (
+                  <span style={styles.tripPhotosRow}>
+                    {booking.condition.atPickup.photos.map((url, i) => (
+                      <img
+                        key={url}
+                        src={url}
+                        alt={`Vehicle at pickup ${i + 1}`}
+                        style={styles.tripPhoto}
+                        onClick={() => window.open(url, '_blank', 'noopener')}
+                      />
+                    ))}
+                    {(booking.condition?.atReturn?.photos || []).map((url, i) => (
+                      <img
+                        key={url}
+                        src={url}
+                        alt={`Vehicle at return ${i + 1}`}
+                        style={styles.tripPhoto}
+                        onClick={() => window.open(url, '_blank', 'noopener')}
+                      />
+                    ))}
+                  </span>
+                )}
+              </div>
+            )}
+            {/* A record, not a demand. All three of these are found with
+                the client standing at the counter, so telling them here
+                is telling them something they were just told — and
+                "please settle it" is plainly wrong if they paid on the
+                spot and nobody has pressed Collect yet. Red only while
+                something is genuinely outstanding. */}
+            {booking.status === 'completed' && booking.condition?.damageCharge > 0 && (
+              <div style={styles.chargeNote(!!booking.condition.damageCollectedAt)}>
+                Damage recorded on return
+                {booking.condition.atReturn?.note ? `: ${booking.condition.atReturn.note}` : ''}
+                {' '}— ₱{booking.condition.damageCharge.toLocaleString()} damage charge.
+                {booking.condition.damageCollectedAt ? ' Settled.' : ' Not yet settled.'}
+              </div>
+            )}
+            {booking.status === 'completed' && booking.fuel?.charge > 0 && (
+              <div style={styles.chargeNote(!!booking.fuel.collectedAt)}>
+                {fuelShortfallLabel(booking)
+                  ? `Returned ${fuelShortfallLabel(booking)} short of the fuel it went out with`
+                  : 'Refuelled after this return'}
+                {' '}— ₱{booking.fuel.charge.toLocaleString()} refuelling charge.
+                {booking.fuel.collectedAt ? ' Settled.' : ' Not yet settled.'}
+              </div>
+            )}
+            {booking.status === 'completed' && booking.lateFee?.days > 0 && (
+              <div style={styles.chargeNote(!!booking.lateFee.collectedAt)}>
+                Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late
+                {' '}— ₱{booking.lateFee.amount.toLocaleString()} late fee, one day&apos;s rental rate per day
+                of delay.
+                {booking.lateFee.collectedAt ? ' Settled.' : ' Not yet settled.'}
+              </div>
+            )}
+            {booking.status === 'completed' && (
+                <div style={{ ...styles.actionsIndent, alignItems: 'center' }}>
+                  <button className="btn-solid-gold" style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
+                    <RepeatIcon /> Book Again
+                  </button>
+                  {booking.carRating?.ratedAt && (
+                    <>
+                      <button className="btn-ghost-amber" style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>
+                        <PencilIcon /> Edit Rating
+                      </button>
+                      <div style={styles.ratingSummary}>
+                        <StarRating value={booking.carRating.overall} size={14} readOnly />
+                        <span style={styles.ratingScore}>{booking.carRating.overall.toFixed(1)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+            )}
+            {booking.discountAmount > 0 && (
+              <span style={styles.promoSaved}>
+                <span>{booking.promoLabel || 'Promo'} · saved ₱{booking.discountAmount.toLocaleString()}</span>
+                <span style={styles.promoSavedWas}>₱{booking.subtotal.toLocaleString()}</span>
+              </span>
+            )}
+            </div>
+          </div>
+
+          {bookingAwaitingDecision(booking) && (
+            <AdjustOfferPanel
+              booking={booking}
+              isDark={isDark}
+              busy={offerBusyId === booking._id}
+              onDecide={(decision, payload) => handleOfferDecision(booking, decision, payload)}
+            />
+          )}
+
+          {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved' || booking.refundStatus === 'declined') && (
+            <div style={styles.refundNoteBox(booking.refundStatus)}>
+              <span style={styles.refundNoteLabel(booking.refundStatus)}>
+                {booking.refundStatus === 'requested' ? 'Refund Requested: ' : booking.refundStatus === 'approved' ? 'Refund Confirmed: ' : 'Refund Declined: '}
+              </span>
+              ₱{booking.refundAmount?.toLocaleString() ?? 0}
+              {booking.refundReason ? ` — Reason: ${booking.refundReason}` : ''}
+              {booking.paymongoRefundId ? ` — Ref: ${booking.paymongoRefundId}` : ''}
+            </div>
+          )}
+          {booking.rescheduleRequest?.status === 'declined' && booking.rescheduleRequest.adminNotes && (
+            <p style={styles.plainNote}>Reschedule declined: {booking.rescheduleRequest.adminNotes}</p>
+          )}
+          {booking.payment === 'paid' && booking.paymongoPaymentId && (
+            <div style={styles.refNote}><TagLineIcon size={11} /> REF: {booking.paymongoPaymentId}</div>
+          )}
+    </>
+  );
   return (
     <div style={styles.container}>
       <div style={styles.headerRow}>
@@ -1112,6 +1589,51 @@ const MyBookings = () => {
         </div>
       )}
 
+      {!loading && needsAttention.length > 0 && (
+        <div style={styles.attnWrap}>
+          <span style={styles.statLabel}>Needs your attention</span>
+          <div style={styles.attnGrid}>
+            {needsAttention.map((b) => {
+              const decision = bookingAwaitingDecision(b);
+              const out = isStillOut(b);
+              const late = out ? daysOverdue(b) : 0;
+              const tone = out ? 'red' : 'gold';
+              const kicker = decision ? 'Action needed' : out ? 'Overdue' : isDueSoon(b) ? 'Due back soon' : 'Payment';
+              const head = decision ? timeLeftLabel(b.adjustOffer?.deadline)
+                : out ? `${late} day${late === 1 ? '' : 's'} late`
+                  : isDueSoon(b) ? formatMoment(b.endDate, b.hasPickupTime)
+                    : 'GCash not finished';
+              const body = decision
+                ? 'Take another vehicle, other dates, or a full refund.'
+                : out
+                  ? `It was due back ${formatMoment(b.endDate, b.hasPickupTime)}. The late fee is one day's rental for every day it is late.`
+                  : isDueSoon(b)
+                    ? 'Returning on time avoids a late fee. If you need it longer, you can extend.'
+                    : 'Your payment did not go through, so this booking is not held yet.';
+              return (
+                <div key={b._id} style={styles.attnCard(tone)}>
+                  <span style={styles.attnKicker(tone)}>{kicker}</span>
+                  <span style={styles.attnHead(tone)}>{head}</span>
+                  <p style={styles.attnBody}>{b.car?.brand} {b.car?.model} &mdash; {body}</p>
+                  <div style={styles.attnActions}>
+                    {decision ? (
+                      <button type="button" style={styles.primaryBtn} onClick={() => setDrawerBookingId(b._id)}>Choose an option</button>
+                    ) : b.payment === 'gcash_pending' ? (
+                      <button type="button" style={styles.primaryBtn} disabled={retryingPaymentId === b._id} onClick={() => handleRetryPayment(b._id)}>
+                        {retryingPaymentId === b._id ? 'Redirecting…' : 'Retry GCash Payment'}
+                      </button>
+                    ) : (
+                      <button type="button" style={styles.primaryBtn} onClick={() => setExtendBookingId(b._id)}>Keep it longer</button>
+                    )}
+                    <button type="button" style={styles.ghostBtn} onClick={() => setDrawerBookingId(b._id)}>Details</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {!loading && bookings.length > 0 && (
         <div style={styles.statusTabRow} role="tablist" aria-label="Filter by status">
           {statusTabs.map((tab) => {
@@ -1148,333 +1670,70 @@ const MyBookings = () => {
           <p>No {statusTabs.find((t) => t.value === statusFilter)?.label.toLowerCase()} bookings.</p>
         </div>
       ) : (
-        <div style={styles.list}>
-          {pageBookings.map((booking, i) => (
-            <div
-              key={booking._id}
-              className={`booking-card${booking.status === 'cancelled' ? ' booking-card-cancelled' : ''}`}
-              style={{ ...styles.card, ...styles.cardGlow(booking.status) }}
-            >
-              <div className="booking-grid" style={styles.topSection}>
-                <div className="grid-cell" style={{ ...styles.imgWrap, ...styles.imgWrapCell }}>
-                  {booking.car?.image ? (
-                    <img src={booking.car.image} alt="" style={styles.img} />
-                  ) : (
-                    <div style={styles.noImg}>No Image</div>
+        <div style={styles.rowList}>
+          {pageBookings.map((booking, i) => {
+            const number = (page - 1) * PAGE_SIZE + i + 1;
+            const note = attentionLine(booking);
+            return (
+              <button
+                key={booking._id}
+                type="button"
+                className="booking-row"
+                style={styles.row(booking.status === 'cancelled')}
+                onClick={() => setDrawerBookingId(booking._id)}
+                aria-label={`Booking ${number}, ${booking.car?.brand || ''} ${booking.car?.model || ''}`}
+              >
+                <span style={styles.rowThumb}>
+                  {booking.car?.image
+                    ? <img src={booking.car.image} alt="" style={styles.rowThumbImg} />
+                    : <span style={styles.rowThumbEmpty}>—</span>}
+                </span>
+                <span style={styles.rowMain}>
+                  <span style={styles.rowTitle}>
+                    <span style={styles.rowCar}>{booking.car?.brand} {booking.car?.model}</span>
+                    <span style={getStatusStyle(booking.status)}>{booking.status}</span>
+                  </span>
+                  <span style={styles.rowDates}>
+                    #{number} &middot; {formatMoment(booking.startDate, booking.hasPickupTime, DATE_ONLY)}
+                    {' → '}
+                    {formatMoment(booking.endDate, booking.hasPickupTime, DATE_ONLY)}
+                  </span>
+                  {note && (
+                    <span style={styles.rowNote(note.tone)}>
+                      <span style={styles.rowDot(note.tone)} />{note.text}
+                    </span>
                   )}
-                </div>
-
-                <div className="grid-cell" style={styles.middleCol}>
-                  <div style={styles.topRow}>
-                    <span style={styles.bookingNum}>Booking #{(page - 1) * PAGE_SIZE + i + 1}</span>
-                    <span style={getStatusStyle(booking.status)}>
-                      {booking.status}
-                    </span>
-                    {booking.refundStatus && booking.refundStatus !== 'none' && (
-                      <span style={getRefundBadgeStyle(booking.refundStatus)}>
-                        {getRefundBadgeText(booking.refundStatus)}
-                      </span>
-                    )}
-                    {booking.rescheduleRequest?.status === 'pending' && (
-                      <span style={styles.badgeReschedulePending}>Reschedule Requested</span>
-                    )}
-                    {booking.rescheduleRequest?.status === 'declined' && (
-                      <span style={styles.badgeRescheduleDeclined}>Reschedule Declined</span>
-                    )}
-                    {booking.payment === 'gcash_pending' && booking.status !== 'cancelled' && (
-                      <span style={styles.badgeRefundRequested}>GCash Pending</span>
-                    )}
-                    {bookingAwaitingDecision(booking) && (
-                      <span style={styles.badgeActionNeeded}>Action Needed</span>
-                    )}
-                  </div>
-
-                  <div className="booking-trip-row" style={styles.detailsRow}>
-                    <div style={styles.info}>
-                      <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
-                        <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                        {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
-                      </div>
-                      <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
-                        <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                        <span style={styles.carSub}>
-                          {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
-                        </span>
-                      </div>
-                    </div>
-
-                    {(booking.status === 'confirmed' || booking.status === 'pending') && (
-                      <div style={styles.pickupPanel}>
-                        <div style={styles.pickupLine}>
-                          <PinLineIcon /> Pickup: {formatMoment(booking.startDate, booking.hasPickupTime)}
-                        </div>
-                        <div style={styles.returnLine}>
-                          <ReturnLineIcon /> Return: {formatMoment(booking.endDate, booking.hasPickupTime)}
-                        </div>
-                        {/* What it was before they made it longer. A booking
-                            that now runs a week reads very differently from
-                            one booked as a week, and the price says so. */}
-                        {booking.extensions?.length > 0 && (
-                          <div style={styles.extendedNote}>
-                            Extended from {formatMoment(booking.extensions[0].previousEndDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
-                            {booking.extensions.length > 1 ? ` · ${booking.extensions.length} extensions` : ''}
-                          </div>
-                        )}
-                        <div style={styles.driverNote}>
-                          {booking.bookingType === 'self-drive'
-                            ? "Bring a valid ID and your driver's license to pick up the vehicle."
-                            : 'Your driver will meet you at the pickup location.'}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="booking-card-price grid-cell" style={{ ...styles.priceCol, ...styles.priceColCell }}>
-                  <span style={styles.priceLabel}>Total Price</span>
-                  <div style={styles.priceDetails}>
-                    <span style={styles.price}>₱{booking.totalPrice.toLocaleString()}</span>
-                    {booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
-                      <div style={styles.paymentPanel}>
-                        <div style={styles.paidAmount}>₱{booking.amountPaid.toLocaleString()} Paid</div>
-                        <div style={styles.balanceDue}>
-                          Bring ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} at pickup
-                        </div>
-                      </div>
-                    )}
-                    <span style={styles.bookedOn}>
-                      Booked on {new Date(booking.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid-cell" style={styles.actionsCell}>
-                {/* Nothing has been paid on a booking still showing "Retry
-                    GCash Payment", so there is nothing to refund — and admin
-                    never sees an unpaid booking, so a reschedule request on
-                    one would sit forever with nobody able to answer it. */}
-                {(booking.status === 'pending' || booking.status === 'confirmed') &&
-                  booking.payment === 'paid' &&
-                  !bookingAwaitingDecision(booking) &&
-                  (!booking.refundStatus || booking.refundStatus === 'none') && (
-                      <div style={styles.actionsIndent}>
-                        <button className="btn-ghost-rose" style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
-                          <ReturnLineIcon /> Request Refund
-                        </button>
-                        {/* Gone once the vehicle is theirs: there are no
-                            dates left to move, only days already spent. */}
-                        {booking.rescheduleRequest?.status !== 'pending' && !booking.collectedAt && (
-                          <button className="btn-ghost-amber" style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
-                            <CalendarPlusIcon /> Reschedule
-                          </button>
-                        )}
-                        {/* While there is still a booking to lengthen, and
-                            while somebody is late with the vehicle — which
-                            this used to call "somebody else's conversation"
-                            and hide the button for. It is the same client,
-                            sitting in the same car, and extending is the one
-                            cooperative thing available to them. */}
-                        {booking.payment === 'paid'
-                          && (new Date(booking.endDate) > new Date() || isStillOut(booking)) && (
-                          <button className="btn-ghost-amber" style={styles.rescheduleBtn} onClick={() => setExtendBookingId(booking._id)}>
-                            <CalendarPlusIcon /> Keep it longer
-                          </button>
-                        )}
-                      </div>
-                )}
-                {(booking.refundStatus === 'requested' || booking.rescheduleRequest?.status === 'pending')
-                  && booking.status !== 'cancelled' && (
-                    <div style={styles.actionsIndent}>
-                      {booking.refundStatus === 'requested' && (
-                        <button
-                          className="btn-ghost-amber"
-                          style={styles.rescheduleBtn}
-                          disabled={withdrawingId === booking._id}
-                          onClick={() => withdrawRequest(booking, 'refund')}
-                        >
-                          <ReturnLineIcon /> Cancel refund request
-                        </button>
-                      )}
-                      {booking.rescheduleRequest?.status === 'pending' && (
-                        <button
-                          className="btn-ghost-amber"
-                          style={styles.rescheduleBtn}
-                          disabled={withdrawingId === booking._id}
-                          onClick={() => withdrawRequest(booking, 'reschedule')}
-                        >
-                          <CalendarPlusIcon /> Cancel reschedule request
-                        </button>
-                      )}
-                    </div>
-                )}
-                {(booking.status === 'pending' || booking.status === 'confirmed') &&
-                  booking.payment !== 'paid' &&
-                  booking.refundStatus !== 'requested' && (
-                      <div style={styles.actionsIndent}>
-                        <button
-                          className="btn-solid-gold"
-                          style={styles.bookAgainBtn}
-                          onClick={() => handleRetryPayment(booking._id)}
-                          disabled={retryingPaymentId === booking._id}
-                        >
-                          {retryingPaymentId === booking._id ? 'Redirecting...' : 'Retry GCash Payment'}
-                        </button>
-                      </div>
-                )}
-                {/* They should not have to hear it from us first. The sum
-                    is the clause, not a figure somebody chose. */}
-                {/* What actually happened, not only what it cost. Everything
-                    here was already recorded and the client was shown none
-                    of it, so they heard from us only when something came
-                    with a bill — which makes a charge feel like an ambush
-                    rather than a line in an account they can already see. */}
-                {freshActivity(booking) && (
-                  <div style={styles.activityNote}>{freshActivity(booking)}</div>
-                )}
-                {/* The chase, where they would actually look for it. It was
-                    reaching them by email and in the notification bell, and
-                    the one place it was missing is the booking it is about. */}
-                {isDueSoon(booking) && (
-                  <div style={styles.dueSoonBanner}>
-                    Due back {formatMoment(booking.endDate, booking.hasPickupTime)}. Returning on time avoids
-                    a late fee of one day&apos;s rental for every day it is late — and if you need it longer,
-                    you can extend below.
-                  </div>
-                )}
-                {isStillOut(booking) && (
-                  <div style={styles.overdueBanner}>
-                    This vehicle is overdue. It was due back on{' '}
-                    {formatMoment(booking.endDate, booking.hasPickupTime)}, {daysOut(booking)} day
-                    {daysOut(booking) === 1 ? '' : 's'} ago. Please return it as soon as you can, or contact us
-                    if something has gone wrong — our terms charge a late fee for every day it is late.
-                  </div>
-                )}
-                {booking.collectedAt && (
-                  <div style={styles.tripRecord}>
-                    <span>
-                      <strong>Picked up</strong> {formatMoment(booking.collectedAt, true)}
-                      {booking.fuel?.atPickup !== null && booking.fuel?.atPickup !== undefined
-                        ? ` — fuel at ${fuelLabel(booking.fuel.atPickup)}`
-                        : ''}
-                    </span>
-                    {booking.returnedAt && (
-                      <span>
-                        <strong>Returned</strong> {formatMoment(booking.returnedAt, true)}
-                        {booking.fuel?.atReturn !== null && booking.fuel?.atReturn !== undefined
-                          ? ` — fuel at ${fuelLabel(booking.fuel.atReturn)}`
-                          : ''}
-                      </span>
-                    )}
-                    {booking.condition?.atPickup?.photos?.length > 0 && (
-                      <span style={styles.tripPhotosRow}>
-                        {booking.condition.atPickup.photos.map((url, i) => (
-                          <img
-                            key={url}
-                            src={url}
-                            alt={`Vehicle at pickup ${i + 1}`}
-                            style={styles.tripPhoto}
-                            onClick={() => window.open(url, '_blank', 'noopener')}
-                          />
-                        ))}
-                        {(booking.condition?.atReturn?.photos || []).map((url, i) => (
-                          <img
-                            key={url}
-                            src={url}
-                            alt={`Vehicle at return ${i + 1}`}
-                            style={styles.tripPhoto}
-                            onClick={() => window.open(url, '_blank', 'noopener')}
-                          />
-                        ))}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {/* A record, not a demand. All three of these are found with
-                    the client standing at the counter, so telling them here
-                    is telling them something they were just told — and
-                    "please settle it" is plainly wrong if they paid on the
-                    spot and nobody has pressed Collect yet. Red only while
-                    something is genuinely outstanding. */}
-                {booking.status === 'completed' && booking.condition?.damageCharge > 0 && (
-                  <div style={styles.chargeNote(!!booking.condition.damageCollectedAt)}>
-                    Damage recorded on return
-                    {booking.condition.atReturn?.note ? `: ${booking.condition.atReturn.note}` : ''}
-                    {' '}— ₱{booking.condition.damageCharge.toLocaleString()} damage charge.
-                    {booking.condition.damageCollectedAt ? ' Settled.' : ' Not yet settled.'}
-                  </div>
-                )}
-                {booking.status === 'completed' && booking.fuel?.charge > 0 && (
-                  <div style={styles.chargeNote(!!booking.fuel.collectedAt)}>
-                    {fuelShortfallLabel(booking)
-                      ? `Returned ${fuelShortfallLabel(booking)} short of the fuel it went out with`
-                      : 'Refuelled after this return'}
-                    {' '}— ₱{booking.fuel.charge.toLocaleString()} refuelling charge.
-                    {booking.fuel.collectedAt ? ' Settled.' : ' Not yet settled.'}
-                  </div>
-                )}
-                {booking.status === 'completed' && booking.lateFee?.days > 0 && (
-                  <div style={styles.chargeNote(!!booking.lateFee.collectedAt)}>
-                    Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late
-                    {' '}— ₱{booking.lateFee.amount.toLocaleString()} late fee, one day&apos;s rental rate per day
-                    of delay.
-                    {booking.lateFee.collectedAt ? ' Settled.' : ' Not yet settled.'}
-                  </div>
-                )}
-                {booking.status === 'completed' && (
-                    <div style={{ ...styles.actionsIndent, alignItems: 'center' }}>
-                      <button className="btn-solid-gold" style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
-                        <RepeatIcon /> Book Again
-                      </button>
-                      {booking.carRating?.ratedAt && (
-                        <>
-                          <button className="btn-ghost-amber" style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>
-                            <PencilIcon /> Edit Rating
-                          </button>
-                          <div style={styles.ratingSummary}>
-                            <StarRating value={booking.carRating.overall} size={14} readOnly />
-                            <span style={styles.ratingScore}>{booking.carRating.overall.toFixed(1)}</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                )}
-                {booking.discountAmount > 0 && (
-                  <span style={styles.promoSaved}>
-                    <span>{booking.promoLabel || 'Promo'} · saved ₱{booking.discountAmount.toLocaleString()}</span>
-                    <span style={styles.promoSavedWas}>₱{booking.subtotal.toLocaleString()}</span>
-                  </span>
-                )}
-                </div>
-              </div>
-
-              {bookingAwaitingDecision(booking) && (
-                <AdjustOfferPanel
-                  booking={booking}
-                  isDark={isDark}
-                  busy={offerBusyId === booking._id}
-                  onDecide={(decision, payload) => handleOfferDecision(booking, decision, payload)}
-                />
-              )}
-
-              {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved' || booking.refundStatus === 'declined') && (
-                <div style={styles.refundNoteBox(booking.refundStatus)}>
-                  <span style={styles.refundNoteLabel(booking.refundStatus)}>
-                    {booking.refundStatus === 'requested' ? 'Refund Requested: ' : booking.refundStatus === 'approved' ? 'Refund Confirmed: ' : 'Refund Declined: '}
-                  </span>
-                  ₱{booking.refundAmount?.toLocaleString() ?? 0}
-                  {booking.refundReason ? ` — Reason: ${booking.refundReason}` : ''}
-                  {booking.paymongoRefundId ? ` — Ref: ${booking.paymongoRefundId}` : ''}
-                </div>
-              )}
-              {booking.rescheduleRequest?.status === 'declined' && booking.rescheduleRequest.adminNotes && (
-                <p style={styles.plainNote}>Reschedule declined: {booking.rescheduleRequest.adminNotes}</p>
-              )}
-              {booking.payment === 'paid' && booking.paymongoPaymentId && (
-                <div style={styles.refNote}><TagLineIcon size={11} /> REF: {booking.paymongoPaymentId}</div>
-              )}
-            </div>
-          ))}
+                </span>
+                <span style={styles.rowTotal}>&#8369;{booking.totalPrice.toLocaleString()}</span>
+              </button>
+            );
+          })}
         </div>
+      )}
+
+      {drawerBooking && (
+        <>
+          <div style={styles.drawerScrim} onClick={() => setDrawerBookingId(null)} aria-hidden="true" />
+          <div
+            style={styles.drawer}
+            ref={drawerRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Booking ${drawerNumber}`}
+          >
+            <button
+              type="button"
+              className="icon-toggle-btn"
+              style={styles.drawerClose}
+              onClick={() => setDrawerBookingId(null)}
+              aria-label="Close"
+            >
+              ✕
+            </button>
+            {bookingDetail(drawerBooking, drawerNumber)}
+          </div>
+        </>
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} isDark={isDark} />
