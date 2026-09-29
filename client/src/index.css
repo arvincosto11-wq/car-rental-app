@@ -1303,11 +1303,10 @@ button.seg-tab:not(:disabled):hover {
 .in-drawer .booking-trip-row {                                /* details + panel */
   display: contents !important;
 }
-/* Heading and badges. Stops short of the round close button in the corner. */
+/* Heading and badges. */
 .in-drawer .booking-grid > .grid-cell:nth-child(2) > div:first-child {
   grid-column: 2 !important;
   grid-row: 1 !important;
-  padding-right: 46px;
 }
 .in-drawer .booking-trip-row > div:first-child {              /* vehicle + dates */
   grid-column: 2 !important;
@@ -1326,4 +1325,15 @@ button.seg-tab:not(:disabled):hover {
 .in-drawer .booking-grid > .grid-cell:last-child {            /* the actions */
   grid-column: 1 / -1 !important;
   grid-row: 4 !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 14px !important;
+}
+/* Each of those blocks carried its own 10px top margin, from the days when
+   they followed one another directly. The gap above spaces them now, and
+   the two together left an uneven 24px. */
+.in-drawer .booking-grid > .grid-cell:last-child > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }

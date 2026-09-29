@@ -777,7 +777,7 @@ const MyBookings = () => {
       boxSizing: 'border-box',
     },
     drawerClose: {
-      position: 'absolute', top: '18px', right: '18px', zIndex: 2,
+      alignSelf: 'flex-end', flexShrink: 0,
       width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', padding: 0,
       border: `1px solid ${isDark ? '#4a4b4c' : '#d1d5db'}`,
       background: isDark ? '#3a3b3c' : '#e5e7eb',
@@ -888,8 +888,8 @@ const MyBookings = () => {
       flex: '1 1 auto', minWidth: 0, overflowWrap: 'anywhere',
       display: 'flex', flexDirection: 'column', gap: '7px',
     },
-    topRow: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px', flexWrap: 'wrap' },
-    bookingNum: { fontSize: '19px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.02em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    topRow: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
+    bookingNum: { fontSize: '17px', fontWeight: '800', marginRight: '4px', textTransform: 'uppercase', letterSpacing: '0.02em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     // Every badge below shares this shape/type treatment — only the color
     // trio (bg/text/border) changes per status. Dark mode uses a
     // translucent tint + matching border (a "glowing chip" look) instead
