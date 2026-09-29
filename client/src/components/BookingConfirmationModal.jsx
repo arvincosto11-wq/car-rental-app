@@ -1,5 +1,6 @@
 import useModalA11y from '../hooks/useModalA11y';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
+import LAYERS from '../layers';
 import { phHour, formatHour } from '../utils/phTime';
 
 // Shown when a customer comes back from GCash. It replaced a toast, which
@@ -72,7 +73,7 @@ const BookingConfirmationModal = ({ booking, status, isDark, onClose, onCheckAga
 
   const s = {
     overlay: {
-      position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.55)',
+      position: 'fixed', inset: 0, zIndex: LAYERS.modal, background: 'rgba(0,0,0,0.55)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', overflowY: 'auto',
     },
     shell: {

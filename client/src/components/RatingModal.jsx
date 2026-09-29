@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../api';
 import StarRating from './StarRating';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import LAYERS from '../layers';
 import useModalA11y from '../hooks/useModalA11y';
 
 // Shared "rate your experience" modal, used by both the My Bookings list
@@ -84,7 +85,7 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
     modalOverlay: {
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       background: 'rgba(0,0,0,0.5)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+      alignItems: 'center', justifyContent: 'center', zIndex: LAYERS.modal,
     },
     modalContent: {
       background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px',

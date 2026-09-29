@@ -4,6 +4,7 @@ import AvailabilityCalendar from './AvailabilityCalendar';
 import { formatMoment, phYmd, instantFrom, phHour } from '../utils/phTime';
 import useModalA11y from '../hooks/useModalA11y';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import LAYERS from '../layers';
 
 // Making a booking longer, and showing what that costs before a peso moves.
 //
@@ -104,7 +105,7 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
   const gold = isDark ? GOLD_DARK : GOLD;
   const s = {
     overlay: {
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000,
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: LAYERS.modal,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
     },
     card: {

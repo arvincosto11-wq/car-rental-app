@@ -20,11 +20,22 @@ import { daysOverdue } from '../utils/overdue';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK } from '../theme';
+import LAYERS from '../layers';
 import { fuelShortfallLabel, fuelLabel } from '../utils/fuel';
 
 // How long a change is worth pointing out. After a day it is history, and a
 // list covered in badges says nothing at all.
 const ACTIVITY_WINDOW_HOURS = 24;
+
+// A late fee can be two charges added together: the days late as things
+// finally stood, at the full daily rate, plus any days the client was
+// already late when they extended, which the server carries over at half
+// rate. Only the totals are stored, so the full-rate half is what is left
+// after taking the carried half away.
+const lateFeeSplit = (booking) => ({
+  freshDays: (booking.lateFee?.days || 0) - (booking.lateFee?.carriedDays || 0),
+  freshAmount: (booking.lateFee?.amount || 0) - (booking.lateFee?.carriedAmount || 0),
+});
 
 const agoLabel = (at) => {
   const mins = Math.round((Date.now() - new Date(at).getTime()) / 60000);
@@ -764,11 +775,11 @@ const MyBookings = () => {
     // A panel rather than a page: the list stays where it was, so closing it
     // returns them to the same place in the same scroll position.
     drawerScrim: {
-      position: 'fixed', inset: 0, zIndex: 1000,
+      position: 'fixed', inset: 0, zIndex: LAYERS.drawerScrim,
       background: isDark ? 'rgba(12,12,13,0.66)' : 'rgba(24,25,26,0.45)',
     },
     drawer: {
-      position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 1001,
+      position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: LAYERS.drawer,
       width: 'min(620px, 100vw)', overflowY: 'auto',
       display: 'flex', flexDirection: 'column', gap: '18px',
       background: isDark ? '#242526' : '#fff',
@@ -1229,7 +1240,7 @@ const MyBookings = () => {
     modalOverlay: {
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       background: 'rgba(0,0,0,0.5)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+      alignItems: 'center', justifyContent: 'center', zIndex: LAYERS.modal,
     },
     modalContent: {
       background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px',
@@ -1530,8 +1541,24 @@ const MyBookings = () => {
             {booking.status === 'completed' && booking.lateFee?.days > 0 && (
               <div style={styles.chargeNote(!!booking.lateFee.collectedAt)}>
                 Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late
-                {' '}— ₱{booking.lateFee.amount.toLocaleString()} late fee, one day&apos;s rental rate per day
-                of delay.
+                {' '}— ₱{booking.lateFee.amount.toLocaleString()} late fee.
+                {/* A day carried over from an extension is charged at half
+                    rate, so on those bookings the total is NOT the day count
+                    times the daily rate — and saying only "one day's rental
+                    rate per day of delay" made the figure look miscalculated
+                    to anyone who checked it. Spell the two parts out. */}
+                {booking.lateFee.carriedDays > 0 ? (
+                  <>
+                    {' '}{lateFeeSplit(booking).freshDays} day
+                    {lateFeeSplit(booking).freshDays === 1 ? '' : 's'} at one day&apos;s rental rate each
+                    {' '}(₱{lateFeeSplit(booking).freshAmount.toLocaleString()}), plus
+                    {' '}{booking.lateFee.carriedDays} day
+                    {booking.lateFee.carriedDays === 1 ? '' : 's'} carried from your extension at half
+                    rate (₱{(booking.lateFee.carriedAmount || 0).toLocaleString()}).
+                  </>
+                ) : (
+                  <> One day&apos;s rental rate per day of delay.</>
+                )}
                 {booking.lateFee.collectedAt ? ' Settled.' : ' Not yet settled.'}
               </div>
             )}
