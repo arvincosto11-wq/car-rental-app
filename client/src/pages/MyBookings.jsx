@@ -675,15 +675,29 @@ const MyBookings = () => {
     }),
     rowThumb: {
       width: '54px', height: '42px', borderRadius: '9px', flexShrink: 0, overflow: 'hidden',
-      background: isDark ? '#1e1f20' : '#f8f9fa',
+      background: isDark
+        ? 'radial-gradient(120% 82% at 50% 10%, #2c2d30 0%, #141517 100%)'
+        : 'radial-gradient(120% 82% at 50% 10%, #f3f4f6 0%, #e2e4e8 100%)',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e3e5e8'}`,
       display: 'grid', placeItems: 'center',
     },
-    rowThumbImg: { width: '100%', height: '100%', objectFit: 'cover' },
+    rowThumbImg: { width: '100%', height: '100%', objectFit: 'contain' },
     rowThumbEmpty: { fontSize: '14px', color: isDark ? '#8a8d91' : '#6b7280' },
     rowMain: { display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0, flex: 1 },
     rowTitle: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
     rowCar: { fontSize: '14px', fontWeight: '800' },
+    rowBadge: (status) => {
+      const [bg, fg, bd] = {
+        pending: [isDark ? '#303132' : '#f1f2f4', isDark ? '#b0b3b8' : '#4b5563', isDark ? '#3a3b3c' : '#e3e5e8'],
+        confirmed: [isDark ? GOLD_TINT_DARK : GOLD_TINT, isDark ? GOLD_DARK : '#7c4a03', isDark ? 'rgba(232,161,0,0.42)' : '#edd693'],
+        completed: [isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe', isDark ? '#93c5fd' : '#1e40af', isDark ? 'rgba(37,99,235,0.4)' : '#bfdbfe'],
+        cancelled: [isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2', isDark ? '#f87171' : '#b91c1c', isDark ? 'rgba(248,113,113,0.38)' : '#fecaca'],
+      }[status] || [isDark ? '#303132' : '#f1f2f4', isDark ? '#b0b3b8' : '#4b5563', isDark ? '#3a3b3c' : '#e3e5e8'];
+      return {
+        fontSize: '9.5px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase',
+        padding: '3px 8px', borderRadius: '999px', background: bg, color: fg, border: `1px solid ${bd}`,
+      };
+    },
     rowDates: { fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280', fontVariantNumeric: 'tabular-nums' },
     // The one line saying why this booking wants them. Colour carries the
     // same meaning it does everywhere else: red owes or is late, gold needs
@@ -756,6 +770,7 @@ const MyBookings = () => {
     drawer: {
       position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 1001,
       width: 'min(620px, 100vw)', overflowY: 'auto',
+      display: 'flex', flexDirection: 'column', gap: '18px',
       background: isDark ? '#242526' : '#fff',
       borderLeft: `1px solid ${isDark ? '#3a3b3c' : '#e3e5e8'}`,
       padding: '28px',
@@ -1735,12 +1750,12 @@ const MyBookings = () => {
                 <span style={styles.rowMain}>
                   <span style={styles.rowTitle}>
                     <span style={styles.rowCar}>{booking.car?.brand} {booking.car?.model}</span>
-                    <span style={getStatusStyle(booking.status)}>{booking.status}</span>
+                    <span style={styles.rowBadge(booking.status)}>{booking.status}</span>
                   </span>
                   <span style={styles.rowDates}>
-                    #{number} &middot; {formatMoment(booking.startDate, booking.hasPickupTime, DATE_ONLY)}
+                    #{number} &middot; {formatMoment(booking.startDate, false, DATE_ONLY)}
                     {' → '}
-                    {formatMoment(booking.endDate, booking.hasPickupTime, DATE_ONLY)}
+                    {formatMoment(booking.endDate, false, DATE_ONLY)}
                   </span>
                   {note && (
                     <span style={styles.rowNote(note.tone)}>
