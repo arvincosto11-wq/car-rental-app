@@ -707,24 +707,45 @@ const MyBookings = () => {
 
     // Above the tabs and outside the filter on purpose: a vehicle three days
     // overdue must not be reachable only by first choosing the right tab.
-    attnWrap: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' },
+    attnWrap: { display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' },
+    attnHeadRow: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '12px' },
+    attnCount: { fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280' },
     attnGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' },
+    // Four kinds of urgency, four borders. Overdue is the only one that gets
+    // red — the rest want an answer, not an apology.
     attnCard: (tone) => ({
-      display: 'flex', flexDirection: 'column', gap: '8px', padding: '18px', borderRadius: '18px',
-      background: tone === 'red' ? (isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2')
-        : (isDark ? GOLD_TINT_DARK : GOLD_TINT),
-      border: `1px solid ${tone === 'red' ? (isDark ? 'rgba(248,113,113,0.38)' : '#fecaca') : (isDark ? 'rgba(232,161,0,0.42)' : '#edd693')}`,
+      display: 'flex', flexDirection: 'column', gap: '10px', padding: '18px', borderRadius: '18px',
+      background: tone === 'red' ? (isDark ? 'rgba(248,113,113,0.10)' : '#fef2f2')
+        : tone === 'muted' ? (isDark ? '#242526' : '#fff')
+          : (isDark ? GOLD_TINT_DARK : GOLD_TINT),
+      border: `1px solid ${tone === 'red' ? (isDark ? 'rgba(248,113,113,0.45)' : '#fecaca')
+        : tone === 'muted' ? (isDark ? '#3a3b3c' : '#e3e5e8')
+          : (isDark ? 'rgba(232,161,0,0.45)' : '#edd693')}`,
     }),
+    attnTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' },
+    // A pill rather than bare text: it is the first thing read on the card
+    // and it has to say which of the four this is at a glance.
     attnKicker: (tone) => ({
-      fontSize: '10px', fontWeight: '800', letterSpacing: '0.14em', textTransform: 'uppercase',
-      color: tone === 'red' ? (isDark ? '#f87171' : '#b91c1c') : (isDark ? GOLD_DARK : '#7c4a03'),
+      display: 'inline-block', padding: '4px 11px', borderRadius: '999px',
+      fontSize: '10px', fontWeight: '800', letterSpacing: '0.1em', textTransform: 'uppercase',
+      background: tone === 'solid' ? (isDark ? GOLD_DARK : GOLD)
+        : tone === 'red' ? (isDark ? 'rgba(248,113,113,0.16)' : '#fee2e2')
+          : tone === 'muted' ? (isDark ? '#3a3b3c' : '#f1f2f4')
+            : (isDark ? 'rgba(232,161,0,0.18)' : '#faedc7'),
+      color: tone === 'solid' ? ON_GOLD
+        : tone === 'red' ? (isDark ? '#f87171' : '#b91c1c')
+          : tone === 'muted' ? (isDark ? '#b0b3b8' : '#4b5563')
+            : (isDark ? GOLD_DARK : '#7c4a03'),
+      border: tone === 'red' ? `1px solid ${isDark ? 'rgba(248,113,113,0.4)' : '#fecaca'}` : 'none',
     }),
+    attnNum: { fontSize: '12px', fontWeight: '700', color: isDark ? '#8a8d91' : '#9ca3af' },
     attnHead: (tone) => ({
-      fontSize: '15px', fontWeight: '800',
+      fontSize: '20px', fontWeight: '800', lineHeight: 1.15,
       color: tone === 'red' ? (isDark ? '#f87171' : '#b91c1c') : (isDark ? '#e4e6eb' : '#1a1a1a'),
     }),
-    attnBody: { fontSize: '12.5px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#4b5563', margin: 0 },
-    attnActions: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '2px' },
+    attnCar: { fontSize: '12.5px', fontWeight: '700', color: isDark ? '#b0b3b8' : '#4b5563', marginTop: '-4px' },
+    attnBody: { fontSize: '12.5px', lineHeight: 1.55, color: isDark ? '#8a8d91' : '#6b7280', margin: 0 },
+    attnActions: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' },
 
     // A panel rather than a page: the list stays where it was, so closing it
     // returns them to the same place in the same scroll position.
@@ -988,17 +1009,19 @@ const MyBookings = () => {
     },
     // Same shape as the card's own actions, so the strip does not introduce
     // a third kind of button to the page.
+    // Sentence case and square-ish on purpose: uppercase with letter-spacing
+    // made these wide enough to wrap onto two lines inside a 240px card.
     primaryBtn: {
-      display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px',
-      fontSize: '12px', fontWeight: '800', letterSpacing: '0.08em', textTransform: 'uppercase',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px',
+      fontSize: '13px', fontWeight: '800',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-      border: 'none', borderRadius: '999px', cursor: 'pointer',
+      border: 'none', borderRadius: '10px', cursor: 'pointer', whiteSpace: 'nowrap',
     },
     ghostBtn: {
-      display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px',
-      fontSize: '12px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase',
-      background: 'transparent', color: isDark ? '#b0b3b8' : '#4b5563',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e3e5e8'}`, borderRadius: '999px', cursor: 'pointer',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px',
+      fontSize: '13px', fontWeight: '700',
+      background: 'transparent', color: isDark ? '#e4e6eb' : '#1a1a1a',
+      border: `1px solid ${isDark ? '#4a4b4c' : '#d1d5db'}`, borderRadius: '10px', cursor: 'pointer', whiteSpace: 'nowrap',
     },
     rescheduleBtn: {
       display: 'inline-flex',
@@ -1591,30 +1614,48 @@ const MyBookings = () => {
 
       {!loading && needsAttention.length > 0 && (
         <div style={styles.attnWrap}>
-          <span style={styles.statLabel}>Needs your attention</span>
+          <div style={styles.attnHeadRow}>
+            <span style={styles.statLabel}>Needs your attention</span>
+            <span style={styles.attnCount}>
+              {needsAttention.length} booking{needsAttention.length === 1 ? '' : 's'}
+            </span>
+          </div>
           <div style={styles.attnGrid}>
             {needsAttention.map((b) => {
               const decision = bookingAwaitingDecision(b);
               const out = isStillOut(b);
+              const soon = isDueSoon(b);
               const late = out ? daysOverdue(b) : 0;
-              const tone = out ? 'red' : 'gold';
-              const kicker = decision ? 'Action needed' : out ? 'Overdue' : isDueSoon(b) ? 'Due back soon' : 'Payment';
+              // The card's colour, and the pill's, are not always the same:
+              // "Action needed" is the only one that fills, because it is the
+              // only one with a deadline running against the client.
+              const card = out ? 'red' : decision || soon ? 'gold' : 'muted';
+              const pill = decision ? 'solid' : out ? 'red' : soon ? 'gold' : 'muted';
+              const kicker = decision ? 'Action needed' : out ? 'Overdue' : soon ? 'Due back soon' : 'Payment';
               const head = decision ? timeLeftLabel(b.adjustOffer?.deadline)
                 : out ? `${late} day${late === 1 ? '' : 's'} late`
-                  : isDueSoon(b) ? formatMoment(b.endDate, b.hasPickupTime)
+                  : soon ? formatMoment(b.endDate, b.hasPickupTime)
                     : 'GCash not finished';
               const body = decision
-                ? 'Take another vehicle, other dates, or a full refund.'
+                ? 'Another reservation was confirmed for your dates. Take another vehicle, other dates, or a full refund.'
                 : out
                   ? `It was due back ${formatMoment(b.endDate, b.hasPickupTime)}. The late fee is one day's rental for every day it is late.`
-                  : isDueSoon(b)
-                    ? 'Returning on time avoids a late fee. If you need it longer, you can extend.'
-                    : 'Your payment did not go through, so this booking is not held yet.';
+                  : soon
+                    ? 'Return on time to avoid a late fee, or extend now if you need it longer.'
+                    : 'Nothing was charged. Your booking is saved and holds these dates for now.';
               return (
-                <div key={b._id} style={styles.attnCard(tone)}>
-                  <span style={styles.attnKicker(tone)}>{kicker}</span>
-                  <span style={styles.attnHead(tone)}>{head}</span>
-                  <p style={styles.attnBody}>{b.car?.brand} {b.car?.model} &mdash; {body}</p>
+                <div key={b._id} style={styles.attnCard(card)}>
+                  <div style={styles.attnTop}>
+                    <span style={styles.attnKicker(pill)}>{kicker}</span>
+                    <span style={styles.attnNum}>#{bookings.indexOf(b) + 1}</span>
+                  </div>
+                  <span style={styles.attnHead(card)}>{head}</span>
+                  <span style={styles.attnCar}>
+                    {b.car?.brand} {b.car?.model} &middot;{' '}
+                    {formatMoment(b.startDate, b.hasPickupTime, DATE_ONLY)} to{' '}
+                    {formatMoment(b.endDate, b.hasPickupTime, DATE_ONLY)}
+                  </span>
+                  <p style={styles.attnBody}>{body}</p>
                   <div style={styles.attnActions}>
                     {decision ? (
                       <button type="button" style={styles.primaryBtn} onClick={() => setDrawerBookingId(b._id)}>Choose an option</button>
