@@ -1715,6 +1715,7 @@ const MyBookings = () => {
         <>
           <div style={styles.drawerScrim} onClick={() => setDrawerBookingId(null)} aria-hidden="true" />
           <div
+            className="in-drawer"
             style={styles.drawer}
             ref={drawerRef}
             tabIndex={-1}

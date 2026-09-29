@@ -1278,3 +1278,28 @@ button.seg-tab:not(:disabled):hover {
 @media (prefers-reduced-motion: reduce) {
   [style*="rr-pulse"] { animation: none !important; }
 }
+
+/* The booking card now also lives inside the My Bookings detail drawer,
+   which is 620px wide however wide the window is. The phone rule above
+   collapses this grid by VIEWPORT, which a drawer on a desktop never
+   triggers — so the card kept its 170px image column and an auto price
+   column, and squeezed the details between them until "Toyota Corolla"
+   wrapped one letter per line. Same collapse, asked for by where the card
+   is rather than by how big the screen is. */
+.in-drawer .booking-grid {
+  grid-template-columns: 1fr !important;
+  column-gap: 0 !important;
+}
+.in-drawer .grid-cell {
+  grid-column: 1 !important;
+  grid-row: auto !important;
+}
+.in-drawer .booking-card-price {
+  align-items: flex-start !important;
+  text-align: left !important;
+  margin-top: 8px;
+}
+/* Keeps the top row clear of the round close button in the corner. */
+.in-drawer .booking-grid {
+  padding-top: 6px;
+}
