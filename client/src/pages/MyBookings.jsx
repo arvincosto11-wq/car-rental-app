@@ -871,9 +871,7 @@ const MyBookings = () => {
     },
     info: {
       flex: '1 1 auto', minWidth: 0, overflowWrap: 'anywhere',
-      background: isDark ? '#38393b' : '#ffffff',
-      border: `1px solid ${isDark ? '#454647' : '#e5e7eb'}`,
-      borderRadius: '12px', padding: '14px 16px',
+      display: 'flex', flexDirection: 'column', gap: '7px',
     },
     topRow: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px', flexWrap: 'wrap' },
     bookingNum: { fontSize: '19px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.02em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
@@ -1163,7 +1161,7 @@ const MyBookings = () => {
     },
     priceCol: {
       textAlign: 'right',
-      minWidth: '140px',
+      minWidth: 0,
       flex: '0 0 auto',
       display: 'flex',
       flexDirection: 'column',
@@ -1285,15 +1283,15 @@ const MyBookings = () => {
 
               <div className="booking-trip-row" style={styles.detailsRow}>
                 <div style={styles.info}>
-                  <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
-                    <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                    {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
-                  </div>
                   <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
                     <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
                     <span style={styles.carSub}>
                       {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
                     </span>
+                  </div>
+                  <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
+                    <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                    {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
                   </div>
                 </div>
 

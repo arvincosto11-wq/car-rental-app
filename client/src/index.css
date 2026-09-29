@@ -1282,24 +1282,30 @@ button.seg-tab:not(:disabled):hover {
 /* The booking card now also lives inside the My Bookings detail drawer,
    which is 620px wide however wide the window is. The phone rule above
    collapses this grid by VIEWPORT, which a drawer on a desktop never
-   triggers — so the card kept its 170px image column and an auto price
-   column, and squeezed the details between them until "Toyota Corolla"
-   wrapped one letter per line. Same collapse, asked for by where the card
-   is rather than by how big the screen is. */
+   triggers, so the card kept its 170px image column and an auto-sized
+   price column and squeezed the details between them.
+   Collapsing it entirely went too far the other way: the drawer has room
+   for the photograph beside the details, and only the price and the
+   actions need a row of their own. */
 .in-drawer .booking-grid {
-  grid-template-columns: 1fr !important;
-  column-gap: 0 !important;
+  grid-template-columns: 150px minmax(0, 1fr) !important;
+  column-gap: 18px !important;
+  row-gap: 18px !important;
+  padding-top: 6px;
 }
 .in-drawer .grid-cell {
-  grid-column: 1 !important;
+  grid-column: 1 / -1 !important;
   grid-row: auto !important;
 }
-.in-drawer .booking-card-price {
-  align-items: flex-start !important;
-  text-align: left !important;
-  margin-top: 8px;
+.in-drawer .booking-grid > .grid-cell:first-child {
+  grid-column: 1 !important;
 }
-/* Keeps the top row clear of the round close button in the corner. */
-.in-drawer .booking-grid {
-  padding-top: 6px;
+.in-drawer .booking-grid > .grid-cell:nth-child(2) {
+  grid-column: 2 !important;
+}
+/* Right-aligned under both, as drawn — the total is a summary of the card
+   above it rather than another column beside it. */
+.in-drawer .booking-card-price {
+  align-items: flex-end !important;
+  text-align: right !important;
 }
