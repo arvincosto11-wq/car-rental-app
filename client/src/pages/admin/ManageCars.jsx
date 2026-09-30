@@ -7,7 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
-import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../../theme';
+import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD, goldInk} from '../../theme';
 import usePageTitle from '../../hooks/usePageTitle';
 import useModalA11y from '../../hooks/useModalA11y';
 import ColorPicker from '../../components/ColorPicker';
@@ -608,7 +608,7 @@ const ManageCars = ({ view = 'active' }) => {
       padding: '3px 9px', borderRadius: '999px', whiteSpace: 'nowrap', alignSelf: 'flex-start',
       background: isDark ? GOLD_TINT_DARK : GOLD_TINT,
       border: `1px solid ${isDark ? 'rgba(232,161,0,0.35)' : 'rgba(184,121,10,0.35)'}`,
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
     },
     searchWrap: { position: 'relative', maxWidth: '420px', marginBottom: '22px' },
     searchIcon: {

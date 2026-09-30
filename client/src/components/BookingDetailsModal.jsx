@@ -1,5 +1,5 @@
 import useModalA11y from '../hooks/useModalA11y';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 
 // Everything about a booking that's reference material rather than
 // something admin needs to scan or act on every time — payment/refund
@@ -27,7 +27,7 @@ const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance }) => 
     label: { color: isDark ? '#b0b3b8' : '#6b7280', flexShrink: 0 },
     value: { color: isDark ? '#e4e6eb' : '#1a1a1a', textAlign: 'right', wordBreak: 'break-word' },
     mono: { fontFamily: 'monospace', fontSize: '11px' },
-    discount: { color: isDark ? GOLD_DARK : GOLD, fontWeight: '700' },
+    discount: { color: goldInk(isDark), fontWeight: '700' },
     collectBtn: {
       display: 'block', width: '100%', marginTop: '10px', padding: '8px 12px', fontSize: '13px', border: 'none', borderRadius: '8px',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '600',

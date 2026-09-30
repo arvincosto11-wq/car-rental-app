@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../../theme';
 import { useNotifications } from '../../context/NotificationContext';
 import { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
 import PromoBadge from '../../components/PromoBadge';
@@ -177,7 +177,7 @@ const ConsignorDashboard = () => {
     perCarTop: { display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px', gap: '10px' },
     perCarName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     perCarCount: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginLeft: '6px', fontWeight: '400' },
-    perCarAmount: { fontSize: '13px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, whiteSpace: 'nowrap' },
+    perCarAmount: { fontSize: '13px', fontWeight: '700', color: goldInk(isDark), whiteSpace: 'nowrap' },
     perCarBarTrack: { height: '6px', borderRadius: '4px', background: isDark ? '#3a3b3c' : '#f3f4f6', overflow: 'hidden' },
     perCarBarFill: (pct) => ({ height: '100%', width: `${pct}%`, borderRadius: '4px', background: isDark ? GOLD_DARK : GOLD }),
     periodToggleRow: { display: 'flex', gap: '8px' },
@@ -227,7 +227,7 @@ const ConsignorDashboard = () => {
     // why the number here is higher than what the customer actually paid.
     promoCovered: {
       fontSize: '11px', fontWeight: '700', marginTop: '3px', maxWidth: '190px',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
     },
     promoSection: { marginTop: '14px' },
     promoNote: {
@@ -258,7 +258,7 @@ const ConsignorDashboard = () => {
     },
     carCell: { display: 'flex', alignItems: 'center', gap: '10px' },
     tripLine: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '4px', lineHeight: 1.45 },
-    tripOut: { fontSize: '11px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, marginTop: '3px' },
+    tripOut: { fontSize: '11px', fontWeight: '700', color: goldInk(isDark), marginTop: '3px' },
     tripLate: { fontSize: '11px', fontWeight: '700', color: isDark ? '#f87171' : '#b91c1c', marginTop: '3px', lineHeight: 1.45 },
     tripPhotos: { display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '6px' },
     tripPhoto: {

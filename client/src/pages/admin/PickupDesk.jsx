@@ -7,7 +7,7 @@ import { formatMoment } from '../../utils/phTime';
 import { FUEL_STEPS, fuelLabel } from '../../utils/fuel';
 import ConditionPhotos from '../../components/ConditionPhotos';
 import { idTypeLabel } from '../../data/validIdTypes';
-import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK } from '../../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk} from '../../theme';
 import api from '../../api';
 
 // The counter, as its own job.
@@ -232,7 +232,7 @@ const PickupDesk = () => {
     },
     who: { fontSize: '16px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#111827' },
     what: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '2px' },
-    when: { fontSize: '13px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD, textAlign: 'right' },
+    when: { fontSize: '13px', fontWeight: '700', color: goldInk(isDark), textAlign: 'right' },
     whenNote: { fontSize: '11px', fontWeight: '500', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '2px' },
     body: {
       display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
@@ -306,7 +306,7 @@ const PickupDesk = () => {
     link: {
       padding: '9px 14px', fontSize: '12px', fontWeight: '700', borderRadius: '9px', cursor: 'pointer',
       border: `1px solid ${isDark ? GOLD_DARK : GOLD}`, background: 'transparent',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
     },
     hint: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
     doneRow: {

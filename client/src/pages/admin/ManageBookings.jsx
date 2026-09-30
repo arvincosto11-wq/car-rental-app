@@ -11,7 +11,7 @@ import Pagination from '../../components/Pagination';
 import StatusDropdown from '../../components/StatusDropdown';
 import { paginate } from '../../utils/paginate';
 import { vehicleOutOfService } from '../../utils/blockedDates';
-import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK } from '../../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk} from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
@@ -588,7 +588,7 @@ const ManageBookings = () => {
     avatar: (inRace) => ({
       width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
       background: isDark ? '#3a3b3c' : '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '13px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD,
+      fontSize: '13px', fontWeight: '700', color: goldInk(isDark),
       boxShadow: inRace
         ? `0 0 0 2px ${isDark ? '#242526' : '#fff'}, 0 0 0 4px ${isDark ? GOLD_DARK : GOLD}`
         : 'none',
@@ -626,14 +626,14 @@ const ManageBookings = () => {
       color: first ? (isDark ? GOLD_DARK : '#92400e') : (isDark ? '#8a8d91' : '#9ca3af'),
     }),
     carThumb: { width: '44px', height: '32px', background: isDark ? '#3a3b3c' : '#f3f4f6', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 },
-    balanceNote: { fontSize: '11px', color: isDark ? GOLD_DARK : GOLD, marginTop: '4px', maxWidth: '160px' },
+    balanceNote: { fontSize: '11px', color: goldInk(isDark), marginTop: '4px', maxWidth: '160px' },
     promoNote: {
-      fontSize: '11px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD,
+      fontSize: '11px', fontWeight: '700', color: goldInk(isDark),
       marginTop: '4px', maxWidth: '160px',
     },
     rentalLengthNote: {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase',
-      color: isDark ? GOLD_DARK : GOLD, marginTop: '4px',
+      color: goldInk(isDark), marginTop: '4px',
     },
     confirmed: {
       display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -697,12 +697,12 @@ const ManageBookings = () => {
     },
     feeBtn: {
       padding: '4px 10px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', cursor: 'pointer',
-      border: `1px solid ${isDark ? GOLD_DARK : GOLD}`, background: 'transparent', color: isDark ? GOLD_DARK : GOLD,
+      border: `1px solid ${isDark ? GOLD_DARK : GOLD}`, background: 'transparent', color: goldInk(isDark),
     },
     feeSettled: { fontSize: '11px', fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
     activityNote: {
       fontSize: '11px', fontWeight: '700', lineHeight: 1.4, marginTop: '4px',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
     },
     docWarn: {
       fontSize: '11px', fontWeight: '700', lineHeight: 1.4, marginTop: '4px', maxWidth: '190px',
@@ -844,7 +844,7 @@ const ManageBookings = () => {
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280',
     },
-    cancelAmount: { fontSize: '16px', fontWeight: '800', color: isDark ? GOLD_DARK : GOLD },
+    cancelAmount: { fontSize: '16px', fontWeight: '800', color: goldInk(isDark) },
     cancelOfPaid: { fontSize: '12px', color: isDark ? '#8a8d91' : '#9ca3af' },
     cancelConfirmBtn: {
       flex: 1, padding: '10px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',

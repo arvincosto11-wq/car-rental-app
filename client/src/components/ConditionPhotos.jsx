@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import api from '../api';
-import { GOLD, GOLD_DARK } from '../theme';
+import { GOLD, GOLD_DARK, goldInk} from '../theme';
 
 // The walkaround, at either end of a rental.
 //
@@ -83,7 +83,7 @@ const ConditionPhotos = ({ id, label, photos, onChange, isDark, disabled }) => {
       background: isDark ? '#f87171' : '#dc2626', color: '#fff', fontSize: '13px', fontWeight: '700',
     },
     error: { fontSize: '11px', fontWeight: '700', color: isDark ? '#f87171' : '#dc2626', marginTop: '6px' },
-    count: { fontSize: '11px', color: isDark ? GOLD_DARK : GOLD, fontWeight: '700', marginTop: '6px' },
+    count: { fontSize: '11px', color: goldInk(isDark), fontWeight: '700', marginTop: '6px' },
   };
 
   return (

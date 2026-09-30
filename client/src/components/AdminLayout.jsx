@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD, goldInk} from '../theme';
 import NotificationBell from './NotificationBell';
 import { MenuCloseIcon } from './AnimatedStateIcons';
 import useAdminPendingCounts from '../hooks/useAdminPendingCounts';
@@ -63,7 +63,7 @@ const AdminLayout = ({ children, activePage }) => {
       color: isDark ? '#6b7280' : '#9ca3af', padding: '0 14px', marginBottom: '6px',
     },
     sideItem: { display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 14px', borderRadius: '10px', fontSize: '13px', color: isDark ? '#b0b3b8' : '#4b5563', textDecoration: 'none' },
-    sideItemActive: { background: isDark ? GOLD_TINT_DARK : GOLD_TINT, color: isDark ? GOLD_DARK : GOLD, fontWeight: '600' },
+    sideItemActive: { background: isDark ? GOLD_TINT_DARK : GOLD_TINT, color: goldInk(isDark), fontWeight: '600' },
     sideItemLabel: { flex: 1 },
     sideDot: { width: '8px', height: '8px', borderRadius: '50%', background: '#dc2626', flexShrink: 0 },
   };

@@ -6,7 +6,7 @@ import Skeleton from '../../components/Skeleton';
 import { useTheme } from '../../context/ThemeContext';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../../theme';
 import api from '../../api';
 import { formatMoment } from '../../utils/phTime';
 
@@ -118,7 +118,7 @@ const BookingsCalendar = () => {
       background: isDark ? '#18191a' : '#f9fafb', color: isDark ? '#e2e8f0' : '#374151',
       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
     }),
-    moreBtn: { fontSize: '10px', background: 'none', border: 'none', color: isDark ? GOLD_DARK : GOLD, cursor: 'pointer', fontWeight: '700', textAlign: 'left', padding: 0 },
+    moreBtn: { fontSize: '10px', background: 'none', border: 'none', color: goldInk(isDark), cursor: 'pointer', fontWeight: '700', textAlign: 'left', padding: 0 },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
     modalContent: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '480px', width: '100%', maxHeight: '80vh', overflow: 'auto' },
     modalTitle: { fontSize: '17px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '14px' },

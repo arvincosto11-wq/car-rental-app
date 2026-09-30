@@ -7,7 +7,7 @@ import { paginate } from '../../utils/paginate';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
-import { GOLD, GOLD_DARK } from '../../theme';
+import { GOLD, GOLD_DARK, goldInk} from '../../theme';
 import api from '../../api';
 import useDocumentPhotos from '../../hooks/useDocumentPhotos';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
@@ -179,7 +179,7 @@ const ManageClients = () => {
     clientAvatar: {
       width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
       background: isDark ? '#3a3b3c' : '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '13px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD,
+      fontSize: '13px', fontWeight: '700', color: goldInk(isDark),
     },
     verified: {
       background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
