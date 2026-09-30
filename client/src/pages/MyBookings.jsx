@@ -19,7 +19,7 @@ import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays
 import { daysOverdue } from '../utils/overdue';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
-import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK } from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk } from '../theme';
 import LAYERS from '../layers';
 import { fuelShortfallLabel, fuelLabel } from '../utils/fuel';
 
@@ -625,7 +625,7 @@ const MyBookings = () => {
       fontSize: 'clamp(26px, 3.4vw, 36px)', fontWeight: '900', letterSpacing: '-0.01em',
       textTransform: 'uppercase', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px',
     },
-    subtitle: { fontSize: '14px', fontStyle: 'italic', color: isDark ? GOLD_DARK : GOLD, marginBottom: '24px' },
+    subtitle: { fontSize: '14px', fontStyle: 'italic', color: goldInk(isDark), marginBottom: '24px' },
     rateBookingsBtn: {
       display: 'flex', alignItems: 'center', gap: '8px',
       padding: '10px 18px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
@@ -1062,7 +1062,7 @@ const MyBookings = () => {
       letterSpacing: '0.08em',
       textTransform: 'uppercase',
       background: 'transparent',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
       border: `1px solid ${isDark ? 'rgba(232,161,0,0.45)' : 'rgba(184,121,10,0.45)'}`,
       borderRadius: '999px',
       cursor: 'pointer',
@@ -1104,7 +1104,7 @@ const MyBookings = () => {
     },
     activityNote: {
       fontSize: '11.5px', fontWeight: '700', lineHeight: 1.4, marginTop: '10px',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
     },
     tripRecord: {
       display: 'flex', flexDirection: 'column', gap: '4px',
@@ -1150,7 +1150,7 @@ const MyBookings = () => {
     },
     extendedNote: {
       fontSize: '11px', fontWeight: '700', lineHeight: 1.4, marginTop: '4px',
-      color: isDark ? GOLD_DARK : GOLD, gridColumn: '1 / -1',
+      color: goldInk(isDark), gridColumn: '1 / -1',
     },
     badgeActionNeeded: {
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
@@ -1185,7 +1185,7 @@ const MyBookings = () => {
       letterSpacing: '0.08em',
       textTransform: 'uppercase',
       background: 'transparent',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
       border: `1px solid ${isDark ? 'rgba(232,161,0,0.45)' : 'rgba(184,121,10,0.45)'}`,
       borderRadius: '999px',
       cursor: 'pointer',
@@ -1209,7 +1209,7 @@ const MyBookings = () => {
     promoSaved: {
       display: 'inline-flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap',
       fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
       // Stays on the right even on a card that has no action buttons.
       marginLeft: 'auto',
     },
@@ -1231,7 +1231,7 @@ const MyBookings = () => {
     },
     paidAmount: {
       fontSize: '10px', fontWeight: '800', letterSpacing: '0.03em', textTransform: 'uppercase',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
     },
     balanceDue: {
       fontSize: '10px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '3px',
@@ -1315,14 +1315,18 @@ const MyBookings = () => {
               <div className="booking-trip-row" style={styles.detailsRow}>
                 <div style={styles.info}>
                   <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
-                    <CarLineIcon color={isDark ? GOLD_DARK : GOLD} />
+                    <CarLineIcon color={goldInk(isDark)} />
                     <span style={styles.carSub}>
                       {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
                     </span>
                   </div>
                   <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
-                    <CalendarLineIcon color={isDark ? GOLD_DARK : GOLD} />
-                    {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
+                    <CalendarLineIcon color={goldInk(isDark)} />
+                    {/* The same shape as the row that opened this drawer.
+                        Raw toLocaleDateString gave "9/30/2026 To 10/1/2026"
+                        directly above a row reading "Sep 30, 2026 → Oct 1,
+                        2026", which looked like two different bookings. */}
+                    {formatMoment(booking.startDate, false, DATE_ONLY)} → {formatMoment(booking.endDate, false, DATE_ONLY)}
                   </div>
                 </div>
 
@@ -1366,7 +1370,7 @@ const MyBookings = () => {
                   </div>
                 )}
                 <span style={styles.bookedOn}>
-                  Booked on {new Date(booking.createdAt).toLocaleDateString()}
+                  Booked on {formatMoment(booking.createdAt, false, DATE_ONLY)}
                 </span>
               </div>
             </div>
@@ -1634,7 +1638,7 @@ const MyBookings = () => {
       {!loading && bookings.length > 0 && (
         <div className="responsive-row-3" style={styles.statsRow}>
           <div style={styles.statCard}>
-            <div style={styles.statIconBadge(isDark ? 'rgba(232,161,0,0.15)' : '#faedc7', isDark ? GOLD_DARK : GOLD)}><BookingsIcon /></div>
+            <div style={styles.statIconBadge(isDark ? 'rgba(232,161,0,0.15)' : '#faedc7', goldInk(isDark))}><BookingsIcon /></div>
             <div>
               <div style={styles.statLabel}>Total Bookings</div>
               <div style={styles.statNum}>{bookings.length}</div>
