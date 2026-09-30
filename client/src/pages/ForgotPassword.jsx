@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 import PasswordInput from '../components/PasswordInput';
 import OtpInput from '../components/OtpInput';
 import AuthBrandPanel from '../components/AuthBrandPanel';
@@ -124,7 +124,7 @@ const ForgotPassword = () => {
       border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginTop: '8px',
     },
     footer: { textAlign: 'center', fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '20px' },
-    footerLink: { color: isDark ? GOLD_DARK : GOLD, textDecoration: 'none', fontWeight: '500' },
+    footerLink: { color: goldInk(isDark), textDecoration: 'none', fontWeight: '500' },
   };
 
   return (
@@ -166,7 +166,7 @@ const ForgotPassword = () => {
               <label style={styles.label} htmlFor="fp-code">Verification Code</label>
               <OtpInput value={code} onChange={setCode} isDark={isDark} />
             </div>
-            <button type="button" className="text-link-btn" style={{ background: 'none', border: 'none', padding: 0, marginBottom: '16px', font: 'inherit', color: isDark ? GOLD_DARK : GOLD, cursor: resendCooldown > 0 ? 'default' : 'pointer' }}
+            <button type="button" className="text-link-btn" style={{ background: 'none', border: 'none', padding: 0, marginBottom: '16px', font: 'inherit', color: goldInk(isDark), cursor: resendCooldown > 0 ? 'default' : 'pointer' }}
               onClick={handleResendCode} disabled={loading || resendCooldown > 0}>
               {loading ? 'Resending...' : resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Didn't get it? Resend code"}
             </button>

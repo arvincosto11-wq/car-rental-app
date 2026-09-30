@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../data/vehicleBrands';
-import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD, goldInk} from '../theme';
 import LocationAddressFields from '../components/LocationAddressFields';
 import PasswordInput from '../components/PasswordInput';
 import BookingSteps from '../components/BookingSteps';
@@ -371,7 +371,7 @@ const ConsignmentRegister = () => {
       borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer',
     },
     footer: { textAlign: 'center', fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '20px' },
-    footerLink: { color: isDark ? GOLD_DARK : GOLD, textDecoration: 'none', fontWeight: '500' },
+    footerLink: { color: goldInk(isDark), textDecoration: 'none', fontWeight: '500' },
     fieldError: { fontSize: '11px', color: isDark ? '#fca5a5' : '#dc2626', marginTop: '4px' },
   };
 

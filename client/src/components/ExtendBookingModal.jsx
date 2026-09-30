@@ -3,7 +3,7 @@ import api from '../api';
 import AvailabilityCalendar from './AvailabilityCalendar';
 import { formatMoment, phYmd, instantFrom, phHour } from '../utils/phTime';
 import useModalA11y from '../hooks/useModalA11y';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 import LAYERS from '../layers';
 
 // Making a booking longer, and showing what that costs before a peso moves.
@@ -128,7 +128,7 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
     },
     limitNote: {
       fontSize: '11.5px', lineHeight: 1.5, marginTop: '10px',
-      color: isDark ? GOLD_DARK : GOLD, fontWeight: '600',
+      color: goldInk(isDark), fontWeight: '600',
     },
     error: {
       padding: '9px 11px', borderRadius: '8px', margin: '12px 0 0',

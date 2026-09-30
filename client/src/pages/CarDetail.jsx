@@ -20,7 +20,7 @@ import { isOverdue, daysOverdue } from '../utils/overdue';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
-import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD, goldInk} from '../theme';
 import { isPromoVisible, promoOffer, promoDateRange, promoCoversRange, promoDiscountOn } from '../utils/promo';
 import api from '../api';
 import { licenceProblem, licenceMessage } from '../utils/documents';
@@ -455,11 +455,11 @@ const CarDetail = () => {
     promoBadge: { marginBottom: '10px' },
     longRentalNote: {
       display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '6px',
-      fontSize: '12px', fontWeight: '700', color: isDark ? GOLD_DARK : GOLD,
+      fontSize: '12px', fontWeight: '700', color: goldInk(isDark),
     },
     promoNudge: {
       marginTop: '10px', fontSize: '12px', fontWeight: '600',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
     },
     timeBlock: { marginTop: '18px' },
     timeRow: { display: 'flex', flexWrap: 'wrap', gap: '7px' },
@@ -479,12 +479,12 @@ const CarDetail = () => {
       fontSize: '11.5px', lineHeight: 1.45, fontWeight: '600',
       background: isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.09)',
       border: `1px solid ${isDark ? 'rgba(232,161,0,0.38)' : 'rgba(184,121,10,0.32)'}`,
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
     },
     breakdownRow: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px' },
     breakdownTotal: { display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, paddingTop: '8px', marginTop: '8px' },
     termsRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '14px', fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    termsLink: { color: isDark ? GOLD_DARK : GOLD, cursor: 'pointer', textDecoration: 'underline' },
+    termsLink: { color: goldInk(isDark), cursor: 'pointer', textDecoration: 'underline' },
     error: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' },
     noCC: { textAlign: 'center', fontSize: '12px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '8px' },
     // ---- booking modal shell: sidebar + content, its own scroll ----
@@ -517,7 +517,7 @@ const CarDetail = () => {
     sidePromoHead: {
       display: 'flex', alignItems: 'center', gap: '7px',
       fontSize: '10px', fontWeight: '800', letterSpacing: '0.14em', textTransform: 'uppercase',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
     },
     sidePromoText: { margin: '6px 0 0', fontSize: '12px', lineHeight: 1.5, color: isDark ? '#b0b3b8' : '#4b5563' },
     bookMain: { display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 },
@@ -561,7 +561,7 @@ const CarDetail = () => {
     pillAction: {
       background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0,
       fontSize: '12px', fontWeight: '800', letterSpacing: '0.08em', textTransform: 'uppercase',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
     },
     sectionLabel: {
       fontSize: '10px', fontWeight: '800', letterSpacing: '0.16em', textTransform: 'uppercase',
@@ -1012,7 +1012,7 @@ const CarDetail = () => {
                         <span>
                           Self drive needs a <strong style={s.noteStrong}>valid ID and driver&apos;s licence</strong>, verified by our
                           team beforehand — manage these in your{' '}
-                          <Link to="/profile" style={{ color: isDark ? GOLD_DARK : GOLD, fontWeight: '700' }}>Profile</Link>.
+                          <Link to="/profile" style={{ color: goldInk(isDark), fontWeight: '700' }}>Profile</Link>.
                         </span>
                       </p>
                     )}
@@ -1066,7 +1066,7 @@ const CarDetail = () => {
                         <span>₱{subtotal.toLocaleString()}</span>
                       </div>
                       {discountAmount > 0 && (
-                        <div style={{ ...s.breakdownRow, color: isDark ? GOLD_DARK : GOLD, fontWeight: '700' }}>
+                        <div style={{ ...s.breakdownRow, color: goldInk(isDark), fontWeight: '700' }}>
                           <span>
                             {usingLongRental
                               ? `Long-rental discount (${longRentalRule.minDays}+ days, ${longRentalRule.percent}% off)`
@@ -1152,7 +1152,7 @@ const CarDetail = () => {
                       <span style={s.gcashBadge}><span style={s.gcashDot} /> GCash via PayMongo</span>
                       <p style={s.payPanelText}>
                         You&apos;ll be redirected to PayMongo to pay{' '}
-                        <strong style={{ color: isDark ? GOLD_DARK : GOLD }}>₱{amountToPay.toLocaleString()}</strong> with GCash.
+                        <strong style={{ color: goldInk(isDark) }}>₱{amountToPay.toLocaleString()}</strong> with GCash.
                         Payment is handled by PayMongo — your GCash details never reach us.
                       </p>
                       <div style={s.termsRow}>
@@ -1185,7 +1185,7 @@ const CarDetail = () => {
                     </span>
                     <span style={{ marginLeft: '18px' }}>
                       <span style={s.footKey}>Estimated price</span>
-                      <span style={{ ...s.footValue, color: isDark ? GOLD_DARK : GOLD }}>
+                      <span style={{ ...s.footValue, color: goldInk(isDark) }}>
                         {totalDays > 0 ? `₱${totalPrice.toLocaleString()}` : '—'}
                       </span>
                     </span>

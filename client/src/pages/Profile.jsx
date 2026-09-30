@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 import Skeleton from '../components/Skeleton';
 import PasswordInput from '../components/PasswordInput';
 import OtpInput from '../components/OtpInput';
@@ -334,7 +334,7 @@ const Profile = () => {
       fontSize: 'clamp(26px, 3.4vw, 34px)', fontWeight: '900', letterSpacing: '-0.01em',
       textTransform: 'uppercase', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px',
     },
-    subtitle: { fontSize: '14px', fontStyle: 'italic', color: isDark ? GOLD_DARK : GOLD, marginBottom: '24px' },
+    subtitle: { fontSize: '14px', fontStyle: 'italic', color: goldInk(isDark), marginBottom: '24px' },
     profileCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '20px', padding: '24px' },
     sectionDivider: { border: 'none', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, margin: '20px 0' },
     profileHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' },
@@ -461,7 +461,7 @@ const Profile = () => {
       opacity: 0, transition: 'opacity 0.15s',
     },
     helpFooter: { textAlign: 'center', marginTop: '28px', fontSize: '13px', color: isDark ? '#8a8d91' : '#6b7280' },
-    helpLink: { color: isDark ? GOLD_DARK : GOLD, fontWeight: '600', textDecoration: 'none' },
+    helpLink: { color: goldInk(isDark), fontWeight: '600', textDecoration: 'none' },
   };
 
   const memberSince = profile?.createdAt
@@ -866,7 +866,7 @@ const Profile = () => {
                 <label style={s.label} htmlFor="pw-code">Verification Code</label>
                 <OtpInput value={pwCode} onChange={setPwCode} isDark={isDark} />
               </div>
-              <button type="button" className="text-link-btn" style={{ background: 'none', border: 'none', padding: 0, marginBottom: '14px', font: 'inherit', color: isDark ? GOLD_DARK : GOLD, cursor: pwResendCooldown > 0 ? 'default' : 'pointer' }}
+              <button type="button" className="text-link-btn" style={{ background: 'none', border: 'none', padding: 0, marginBottom: '14px', font: 'inherit', color: goldInk(isDark), cursor: pwResendCooldown > 0 ? 'default' : 'pointer' }}
                 onClick={handleResendPasswordCode} disabled={pwSaving || pwResendCooldown > 0}>
                 {pwSaving ? 'Resending...' : pwResendCooldown > 0 ? `Resend code in ${pwResendCooldown}s` : "Didn't get it? Resend code"}
               </button>

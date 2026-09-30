@@ -5,7 +5,7 @@ import { useUIFeedback } from '../context/UIFeedbackContext';
 import StarRating from '../components/StarRating';
 import StackedCarCarousel from '../components/StackedCarCarousel';
 import Footer from '../components/Footer';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 import usePageTitle from '../hooks/usePageTitle';
 import api from '../api';
 
@@ -234,7 +234,7 @@ const Home = () => {
     // the only one that earns the brand colour.
     trustRating: {
       display: 'inline-flex', alignItems: 'center', gap: '5px',
-      fontWeight: '800', color: isDark ? GOLD_DARK : GOLD,
+      fontWeight: '800', color: goldInk(isDark),
     },
     section: {
       padding: '48px 32px',
@@ -413,7 +413,7 @@ const Home = () => {
       fontSize: '13px',
       fontWeight: '700',
       letterSpacing: '0.03em',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
       marginBottom: '6px',
     },
     aboutHeading: {

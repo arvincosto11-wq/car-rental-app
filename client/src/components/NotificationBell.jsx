@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../context/NotificationContext';
 import { AnimatedNotificationIcon } from './AnimatedStateIcons';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 
 const DROPDOWN_LIMIT = 8;
 
@@ -75,7 +75,7 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
       borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`,
     },
     headerTitle: { fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    markAllBtn: { background: 'none', border: 'none', color: isDark ? GOLD_DARK : GOLD, fontSize: '11px', cursor: 'pointer', fontWeight: '600' },
+    markAllBtn: { background: 'none', border: 'none', color: goldInk(isDark), fontSize: '11px', cursor: 'pointer', fontWeight: '600' },
     item: (read) => ({
       display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none',
       borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`, cursor: 'pointer',
@@ -93,7 +93,7 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
     empty: { padding: '24px 14px', textAlign: 'center', fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
     viewAllBtn: {
       display: 'block', width: '100%', textAlign: 'center', padding: '10px', border: 'none', background: 'none',
-      color: isDark ? GOLD_DARK : GOLD, fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+      color: goldInk(isDark), fontSize: '12px', fontWeight: '700', cursor: 'pointer',
     },
   };
 

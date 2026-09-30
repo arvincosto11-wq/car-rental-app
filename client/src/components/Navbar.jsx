@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNotifications } from '../context/NotificationContext';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 import NotificationBell from './NotificationBell';
 import { MenuCloseIcon } from './AnimatedStateIcons';
 import api from '../api';
@@ -395,7 +395,7 @@ const Navbar = () => {
         ) : (
           <>
             <Link to="/login" onClick={() => setMobileOpen(false)} style={mobileLinkStyle}>Log In</Link>
-            <Link to="/cars" onClick={() => setMobileOpen(false)} style={{ ...mobileLinkStyle, color: isDark ? GOLD_DARK : GOLD, fontWeight: '600' }}>Reserve Now</Link>
+            <Link to="/cars" onClick={() => setMobileOpen(false)} style={{ ...mobileLinkStyle, color: goldInk(isDark), fontWeight: '600' }}>Reserve Now</Link>
           </>
         )}
       </div>

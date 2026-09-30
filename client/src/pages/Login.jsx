@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 import PasswordInput from '../components/PasswordInput';
 import AuthBrandPanel from '../components/AuthBrandPanel';
 import usePageTitle from '../hooks/usePageTitle';
@@ -133,7 +133,7 @@ const Login = () => {
       marginTop: '20px',
     },
     footerLink: {
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
       textDecoration: 'none',
       fontWeight: '500',
     },

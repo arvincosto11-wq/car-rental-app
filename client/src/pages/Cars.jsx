@@ -13,7 +13,7 @@ import { rulesForCar } from '../utils/longRental';
 import { registrationLapsed } from '../utils/registration';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
-import { GOLD, GOLD_DARK } from '../theme';
+import { GOLD, GOLD_DARK, goldInk} from '../theme';
 import { isPromoVisible } from '../utils/promo';
 
 // Small feature-row icons — same hand-drawn inline-SVG approach used
@@ -148,7 +148,7 @@ const Cars = () => {
       fontSize: 'clamp(24px, 3.2vw, 32px)', fontWeight: '900', letterSpacing: '-0.01em',
       textTransform: 'uppercase', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px',
     },
-    subtitle: { fontSize: '14px', fontStyle: 'italic', color: isDark ? GOLD_DARK : GOLD, marginBottom: '24px' },
+    subtitle: { fontSize: '14px', fontStyle: 'italic', color: goldInk(isDark), marginBottom: '24px' },
     // The filters used to float loose above the grid; collecting them into
     // one panel is what makes the row read as designed rather than assembled.
     toolbelt: {
@@ -228,7 +228,7 @@ const Cars = () => {
     },
     resultsCount: {
       fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em', textTransform: 'uppercase',
-      color: isDark ? GOLD_DARK : GOLD, marginBottom: '14px',
+      color: goldInk(isDark), marginBottom: '14px',
     },
     skeletonCard: {
       background: isDark ? '#242526' : '#fff',
@@ -440,7 +440,7 @@ const Cars = () => {
     clearDatesBtn: {
       background: 'none',
       border: 'none',
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
       fontSize: '12px',
       fontWeight: '700',
       cursor: 'pointer',

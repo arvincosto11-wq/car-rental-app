@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 import api from '../api';
 import LocationAddressFields from '../components/LocationAddressFields';
 import PasswordInput from '../components/PasswordInput';
@@ -443,7 +443,7 @@ const Register = () => {
       marginTop: '20px',
     },
     footerLink: {
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
       textDecoration: 'none',
       fontWeight: '500',
     },
