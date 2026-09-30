@@ -15,7 +15,7 @@ import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js'
 import { registrationProblem, registrationMessage } from '../utils/registration.js';
 import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
-import { notifyOverdueReturns, notifyUpcomingReturns, warnOfCollidingBookings, isOverdue, daysOverdue, lateFeeFor } from '../utils/overdueReturns.js';
+import { notifyOverdueReturns, notifyUpcomingReturns, warnOfCollidingBookings, isOverdue, daysOverdue, lateFeeRecord } from '../utils/overdueReturns.js';
 import { isFuelLevel } from '../utils/fuel.js';
 import { licenceProblem, licenceMessage } from '../utils/documents.js';
 import { byUrgency } from '../utils/priority.js';
@@ -550,8 +550,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       }
 
       const carForFee = await Car.findById(booking.car).select('pricePerDay').lean();
-      const fee = lateFeeFor(booking, carForFee?.pricePerDay);
-      booking.lateFee = { days: fee.days, amount: fee.amount, collectedAt: null };
+      booking.lateFee = lateFeeRecord(booking, carForFee?.pricePerDay);
     }
 
     // Cancelling used to just flip the status and notify — no refund record,

@@ -39,6 +39,25 @@ export function lateFeeFor(booking, pricePerDay) {
   };
 }
 
+// The whole record to store when a vehicle comes back, carried fields and
+// all. It exists because writing `{ days, amount, collectedAt }` straight
+// from lateFeeFor looked complete and was not: those two carried fields are
+// what lateFeeFor READS, so dropping them erased the explanation of the
+// figure and made a second run produce a smaller one. Building the record
+// in one place means the inputs cannot be thrown away by the thing that
+// used them.
+export function lateFeeRecord(booking, pricePerDay) {
+  const fee = lateFeeFor(booking, pricePerDay);
+  return {
+    days: fee.days,
+    amount: fee.amount,
+    // A bigger fee than the one settled at extension time is owed again.
+    collectedAt: null,
+    carriedDays: booking?.lateFee?.carriedDays || 0,
+    carriedAmount: booking?.lateFee?.carriedAmount || 0,
+  };
+}
+
 // How far ahead of the return a client is warned. A day is enough to change
 // somebody's plans and not so far that they forget again before it matters.
 export const DUE_SOON_HOURS = 24;

@@ -1,7 +1,7 @@
 import { suite, group, check } from './harness.mjs';
 import { hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom } from '../utils/phTime.js';
-import { isOverdue, daysOverdue, daysLate, lateFeeFor, isDueSoon, carriedLateFee, wouldCollide, collisionDeadline, COLLISION_HOURS } from '../utils/overdueReturns.js';
+import { isOverdue, daysOverdue, daysLate, lateFeeFor, lateFeeRecord, isDueSoon, carriedLateFee, wouldCollide, collisionDeadline, COLLISION_HOURS } from '../utils/overdueReturns.js';
 import { registrationProblem, registrationLapsed } from '../utils/registration.js';
 import { occupiedSpan } from '../utils/availability.js';
 import { splitDays, repriceForSwap, remainingSpan } from '../utils/moveVehicle.js';
@@ -303,6 +303,27 @@ export default function run() {
   const lateTwice = { ...after, returnedAt: instantFrom('2026-10-01', 7) };
   check('new lateness stacks on the carried', lateFeeFor(lateTwice, RATE2).days, 3);
   check('at full rate for the new days', lateFeeFor(lateTwice, RATE2).amount, 1500 + RATE2);
+
+  group('the record a return writes down');
+  // The totals were always right; what got stored was not. Writing
+  // { days, amount } alone dropped the two carried fields that lateFeeFor
+  // had just read, so the record no longer explained its own figure — and
+  // recomputing it billed less. Found on booking #15: 3 days and P3,248,
+  // over a note reading "one day's rental rate per day of delay".
+  const stored = lateFeeRecord(lateTwice, RATE2);
+  check('keeps the days already settled', stored.carriedDays, 2);
+  check('and what was paid for them', stored.carriedAmount, 1500);
+  check('while owing the full total again', stored.amount, 1500 + RATE2);
+  check('which is not the day count times the rate', stored.days * RATE2 === stored.amount, false);
+  // The one that cost money: returned, flipped back to fix something,
+  // returned again. The second pass used to read carriedDays 0.
+  const reRun = lateFeeRecord({ ...lateTwice, lateFee: stored }, RATE2);
+  check('re-marking a return changes no days', reRun.days, stored.days);
+  check('and takes not a peso off the bill', reRun.amount, stored.amount);
+
+  const noExtension = lateFeeRecord(back(instantFrom('2026-09-25', 7)), RATE);
+  check('nothing carried when nobody extended', noExtension.carriedDays, 0);
+  check('and the plain case is unchanged', noExtension.amount, 7500);
 
   group('moving a running booking onto another vehicle');
   // Settled on the phone with somebody at a roadside, then recorded. The
