@@ -113,7 +113,14 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
 
   const grid = buildGrid(cursor.getFullYear(), cursor.getMonth());
 
-  const partDays = grid.filter((c) => c.inMonth && !isPast(c.date) && dayInfo(c.date).state === 'part');
+  // Every split day ON THE GRID, not only the ones belonging to the month
+  // named at the top. The days either side are drawn, and they are pickable
+  // — that was the point of drawing them, so a trip from the 30th to the 1st
+  // needs no trip through Next. They were getting the diagonal without the
+  // legend entry that explains it, and picking one produced no note about
+  // its hours: the two things that stop the pattern being the only
+  // explanation of itself were the two things that skipped them.
+  const partDays = grid.filter((c) => !isPast(c.date) && dayInfo(c.date).state === 'part');
   const hasPartDay = partDays.length > 0;
   // Spells out the hours for the day the client has actually picked; falls
   // back to naming the split days in view, so the diagonal is never the only
@@ -122,7 +129,7 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
   const partNote = pickedPart
     ? `${pickedPart.date.toLocaleDateString()} — ${dayInfo(pickedPart.date).label}.`
     : hasPartDay
-      ? `${partDays.length === 1 ? 'One day is' : `${partDays.length} days are`} only part-free this month — the split days. Tap one to see its hours.`
+      ? `${partDays.length === 1 ? 'One day is' : `${partDays.length} days are`} only part-free on this calendar — the split days. Tap one to see its hours.`
       : '';
 
   const s = {
