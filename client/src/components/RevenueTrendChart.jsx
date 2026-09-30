@@ -23,16 +23,43 @@ const formatShort = (n) => (n >= 1000 ? `${Math.round(n / 1000)}k` : `${Math.rou
 // enough for any small labeled series — e.g. booking counts). No legend
 // needed (one series - the card title already says what's plotted); the
 // last bar gets a direct label, the rest are reachable via hover/focus.
-const RevenueTrendChart = ({ data, isDark, barColor, barColorHover, formatValue, title }) => {
+//
+// `detailed` turns on the richer treatment the admin dashboard asks for:
+// a tighter scale, a value over every bar, older bars dimmed so the current
+// one reads first, and an average line. It is opt-in because this component
+// also draws "Busiest Day of the Week" on Analytics, where the values are
+// booking counts rather than pesos and the last bar is a Saturday rather
+// than a month in progress — the rich version would state four things there
+// that are not true. Everything below defaults to the original behaviour,
+// so that page renders exactly as it did.
+const RevenueTrendChart = ({
+  data,
+  isDark,
+  barColor,
+  barColorHover,
+  formatValue,
+  title,
+  detailed = false,
+  // Compact form used for the axis ticks and, in detailed mode, the label
+  // over each bar. Kept separate from formatValue, which is the full figure
+  // the tooltip shows.
+  formatCompact,
+  // Second line under the last bar, e.g. "to date". Only drawn in detailed
+  // mode, and only when given.
+  currentLabel = '',
+  // Shown in place of an empty grid when every value is zero.
+  emptyMessage = '',
+}) => {
   const [active, setActive] = useState(null);
   const format = formatValue || ((v) => `₱${v.toLocaleString()}`);
+  const compact = formatCompact || formatShort;
 
-  const width = 600;
-  const height = 200;
-  const padLeft = 46;
+  const width = detailed ? 740 : 600;
+  const height = detailed ? 236 : 200;
+  const padLeft = detailed ? 52 : 46;
   const padRight = 8;
-  const padTop = 16;
-  const padBottom = 26;
+  const padTop = detailed ? 22 : 16;
+  const padBottom = detailed ? 34 : 26;
   const chartW = width - padLeft - padRight;
   const chartH = height - padTop - padBottom;
 
@@ -43,28 +70,74 @@ const RevenueTrendChart = ({ data, isDark, barColor, barColorHover, formatValue,
   // bars, so it looked fine and complained four times in the console.
   const values = data.map((d) => (Number.isFinite(Number(d.value)) ? Number(d.value) : 0));
   const maxValue = Math.max(...values, 0);
-  const scaleMax = niceMax(maxValue);
+
+  // Four equal steps chosen from a quarter of the peak, rather than one
+  // rounded ceiling. niceMax(64,900) is 100,000, which leaves the tallest
+  // bar at two thirds of the plot with dead space above it; four steps of
+  // 20,000 top out at 80,000 and the same bar fills four fifths. niceMax
+  // never rounds down, so the top is always at least the peak.
+  const step = detailed ? niceMax(maxValue / 4) : 0;
+  const scaleMax = detailed ? step * 4 : niceMax(maxValue);
   const gridColor = isDark ? '#3a3b3c' : '#e5e7eb';
   const axisTextColor = isDark ? '#8a8d91' : '#9ca3af';
   const labelColor = isDark ? '#e4e6eb' : '#1a1a1a';
+  const mutedLabelColor = isDark ? '#b0b3b8' : '#4b5563';
 
   const bandWidth = chartW / data.length;
-  const barWidth = Math.min(24, bandWidth - 10);
-  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((f) => scaleMax * f);
+  const barWidth = Math.min(detailed ? 44 : 24, bandWidth - 10);
+  const gridLines = detailed
+    ? [0, 1, 2, 3, 4].map((i) => step * i)
+    : [0, 0.25, 0.5, 0.75, 1].map((f) => scaleMax * f);
+
+  const isEmpty = maxValue === 0;
+  const average = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+  const showAverage = detailed && !isEmpty;
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }} role="img" aria-label={title || 'Monthly revenue for the last 6 months'}>
       {gridLines.map((g, i) => {
-        const y = padTop + chartH - (g / scaleMax) * chartH;
+        const y = padTop + chartH - (scaleMax > 0 ? (g / scaleMax) * chartH : 0);
         return (
           <g key={i}>
             <line x1={padLeft} x2={width - padRight} y1={y} y2={y} stroke={gridColor} strokeWidth={1} />
-            <text x={padLeft - 8} y={y + 3} textAnchor="end" fontSize="9" fill={axisTextColor}>{formatShort(g)}</text>
+            {/* An empty detailed chart keeps its gridlines but drops the
+                numbers — a column of ₱0 ₱0 ₱0 said nothing and read as a
+                fault. The pill below says it plainly instead. */}
+            {!(detailed && isEmpty) && (
+              <text x={padLeft - 8} y={y + 3} textAnchor="end" fontSize={detailed ? '10' : '9'} fill={axisTextColor}>
+                {detailed ? compact(g) : formatShort(g)}
+              </text>
+            )}
           </g>
         );
       })}
 
-      {data.map((d, i) => {
+      {showAverage && (
+        <line
+          x1={padLeft}
+          x2={width - padRight}
+          y1={padTop + chartH - (average / scaleMax) * chartH}
+          y2={padTop + chartH - (average / scaleMax) * chartH}
+          stroke={axisTextColor}
+          strokeWidth={1.5}
+          strokeDasharray="5 4"
+        />
+      )}
+
+      {detailed && isEmpty && emptyMessage && (
+        <g>
+          <rect
+            x={padLeft + (chartW - 300) / 2} y={padTop + chartH / 2 - 15}
+            width="300" height="30" rx="8"
+            fill={isDark ? '#242526' : '#ffffff'} stroke={gridColor} strokeWidth={1}
+          />
+          <text x={padLeft + chartW / 2} y={padTop + chartH / 2 + 4} textAnchor="middle" fontSize="12" fill={mutedLabelColor}>
+            {emptyMessage}
+          </text>
+        </g>
+      )}
+
+      {!(detailed && isEmpty) && data.map((d, i) => {
         const value = values[i];
         const barHeight = scaleMax > 0 ? Math.max((value / scaleMax) * chartH, value > 0 ? 2 : 0) : 0;
         const x = padLeft + i * bandWidth + (bandWidth - barWidth) / 2;
@@ -85,12 +158,41 @@ const RevenueTrendChart = ({ data, isDark, barColor, barColorHover, formatValue,
             onBlur={() => setActive(null)}
           >
             <rect x={padLeft + i * bandWidth} y={padTop} width={bandWidth} height={chartH} fill="transparent" />
-            <path d={roundedTopBar(x, y, barWidth, barHeight, 4)} fill={isActive ? barColorHover : barColor} />
-            <text x={x + barWidth / 2} y={height - padBottom + 14} textAnchor="middle" fontSize="10" fill={axisTextColor}>{d.label}</text>
+            <path
+              d={roundedTopBar(x, y, barWidth, barHeight, detailed ? 5 : 4)}
+              fill={isActive ? barColorHover : barColor}
+              /* Older months step back so the one still being earned reads
+                 first. Hovering brings any of them fully forward. */
+              opacity={detailed && !isLast && !isActive ? 0.55 : 1}
+            />
+            <text
+              x={x + barWidth / 2}
+              y={height - padBottom + 14}
+              textAnchor="middle"
+              fontSize={detailed ? '11' : '10'}
+              fontWeight={detailed && isLast ? '700' : '400'}
+              fill={detailed && isLast ? labelColor : axisTextColor}
+            >
+              {d.label}
+            </text>
+            {detailed && isLast && currentLabel && (
+              <text x={x + barWidth / 2} y={height - padBottom + 26} textAnchor="middle" fontSize="10" fill={axisTextColor}>
+                {currentLabel}
+              </text>
+            )}
 
-            {isLast && !isActive && (
-              <text x={x + barWidth / 2} y={y - 8} textAnchor="middle" fontSize="11" fontWeight="700" fill={labelColor}>
-                {format(d.value)}
+            {/* Every bar carries its figure in detailed mode; otherwise only
+                the last one does and the rest are found by hovering. */}
+            {((detailed && !isActive) || (isLast && !isActive && !detailed)) && (
+              <text
+                x={x + barWidth / 2}
+                y={y - (detailed ? 6 : 8)}
+                textAnchor="middle"
+                fontSize="11"
+                fontWeight={detailed ? (isLast ? '700' : '500') : '700'}
+                fill={detailed && !isLast ? mutedLabelColor : labelColor}
+              >
+                {detailed ? compact(d.value) : format(d.value)}
               </text>
             )}
 
