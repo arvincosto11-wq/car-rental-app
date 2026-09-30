@@ -152,6 +152,25 @@ button.icon-toggle-btn:not(:disabled):active {
   box-shadow: none;
 }
 
+/* The calendar's month arrows. Same reasoning as .icon-toggle-btn above —
+   the page-wide lift and shadow are sized for a call to action, and on a
+   32px circle beside a month name they read as a wobble. They answer by
+   picking up the accent instead. */
+button.cal-nav-btn:not(:disabled) {
+  transition: border-color 0.15s, color 0.15s;
+}
+button.cal-nav-btn:not(:disabled):hover,
+button.cal-nav-btn:not(:disabled):active {
+  filter: none;
+  box-shadow: none;
+  transform: none;
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  button.cal-nav-btn:not(:disabled) { transition: none; }
+}
+
 /* Plain text styled as a clickable link (e.g. "Resend code") — the lift +
    shadow above is sized for solid CTA buttons and looks like a stray box
    floating behind bare text here. An underline reads as "link" instead. */

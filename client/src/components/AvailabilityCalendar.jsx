@@ -1,6 +1,14 @@
 import { useState } from 'react';
-import { GOLD, GOLD_DARK } from '../theme';
+import { GOLD, GOLD_DARK, goldInk } from '../theme';
 import { instantFrom, phDayStart, phYmd, pickupHours, formatHour, CLOSE_HOUR } from '../utils/phTime';
+
+// Drawn rather than typed, so they sit where they are put at the size they
+// are given, instead of wherever the font's ‹ › happen to fall.
+const Chevron = ({ dir }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points={dir === 'left' ? '15 6 9 12 15 18' : '9 6 15 12 9 18'} />
+  </svg>
+);
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTH_LABELS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -118,16 +126,37 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
       : '';
 
   const s = {
-    wrap: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', padding: '14px' },
-    navRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' },
-    navBtn: { background: 'none', border: 'none', fontSize: '16px', color: isDark ? '#b0b3b8' : '#6b7280', cursor: 'pointer', padding: '2px 8px' },
-    monthLabel: { fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px' },
-    weekday: { textAlign: 'center', fontSize: '10px', fontWeight: '700', color: isDark ? '#8a8d91' : '#9ca3af', padding: '2px 0' },
+    // One column with a gap, rather than each block carrying its own
+    // marginTop — the notes below used to add their own 10px on top of
+    // whatever preceded them, which made the spacing depend on which
+    // optional blocks happened to be showing.
+    wrap: {
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      borderRadius: '14px', padding: '16px',
+      display: 'flex', flexDirection: 'column', gap: '12px',
+    },
+    navRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' },
+    // A target rather than a character. As bare ‹ › glyphs these were about
+    // 8px of hit area sitting in 16px of nothing, and they read as
+    // punctuation beside the month rather than as the way to move.
+    navBtn: {
+      width: '32px', height: '32px', borderRadius: '99px', padding: 0,
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      background: 'transparent', color: isDark ? '#b0b3b8' : '#6b7280',
+      cursor: 'pointer', display: 'grid', placeItems: 'center',
+    },
+    monthLabel: { fontSize: '14px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '4px' },
+    weekday: {
+      textAlign: 'center', fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em',
+      color: isDark ? '#8a8d91' : '#9ca3af', padding: '2px 0 4px',
+    },
     day: (inMonth, booked, selected, past, clickable, onPromo, part) => ({
       position: 'relative',
-      aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '11px', borderRadius: '6px',
+      aspectRatio: '1', minHeight: '30px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '12px', borderRadius: '8px',
       fontWeight: selected || onPromo ? '700' : '500',
       // Faded to show they belong to another month, but not so faint that a
       // day you can actually take reads as disabled.
@@ -160,9 +189,9 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
       cursor: clickable ? 'pointer' : 'default',
       pointerEvents: clickable ? 'auto' : 'none',
     }),
-    legendRow: { display: 'flex', gap: '14px', marginTop: '10px', flexWrap: 'wrap' },
-    legendItem: { display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    legendDot: (bg) => ({ width: '9px', height: '9px', borderRadius: '3px', background: bg, flexShrink: 0 }),
+    legendRow: { display: 'flex', gap: '14px', flexWrap: 'wrap' },
+    legendItem: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    legendDot: (bg) => ({ width: '10px', height: '10px', borderRadius: '3px', background: bg, flexShrink: 0 }),
     // Runs the full width of the cell and sits flush on its bottom edge, so
     // consecutive promo days read as one gold band under the range rather
     // than a row of unrelated ticks. The availability fill and the selection
@@ -185,31 +214,31 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
       color: isDark ? '#ffcf63' : '#b8790a',
     },
     legendPart: {
-      width: '9px', height: '9px', borderRadius: '3px', flexShrink: 0,
+      width: '10px', height: '10px', borderRadius: '3px', flexShrink: 0,
       background: isDark
         ? 'linear-gradient(135deg, rgba(220,38,38,0.45) 0 48%, rgba(22,163,74,0.4) 52% 100%)'
         : 'linear-gradient(135deg, #fecaca 0 48%, #bbf7d0 52% 100%)',
     },
     partNote: {
-      display: 'flex', alignItems: 'center', gap: '7px',
-      marginTop: '10px', padding: '8px 11px', borderRadius: '9px',
-      fontSize: '11px', fontWeight: '700', lineHeight: 1.35,
+      display: 'flex', alignItems: 'center', gap: '8px',
+      padding: '9px 12px', borderRadius: '10px',
+      fontSize: '11.5px', fontWeight: '700', lineHeight: 1.4,
       background: isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.09)',
       border: `1px solid ${isDark ? 'rgba(232,161,0,0.38)' : 'rgba(184,121,10,0.32)'}`,
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
     },
     legendBar: {
-      width: '9px', height: '9px', borderRadius: '3px', flexShrink: 0,
+      width: '10px', height: '10px', borderRadius: '3px', flexShrink: 0,
       background: isDark ? 'rgba(232,161,0,0.45)' : '#fdf0cf',
       boxShadow: `inset 0 0 0 1px ${isDark ? 'rgba(232,161,0,0.7)' : 'rgba(184,121,10,0.45)'}`,
     },
     promoNote: {
-      display: 'flex', alignItems: 'center', gap: '7px',
-      marginTop: '10px', padding: '8px 11px', borderRadius: '9px',
-      fontSize: '11px', fontWeight: '700', lineHeight: 1.35,
+      display: 'flex', alignItems: 'center', gap: '8px',
+      padding: '9px 12px', borderRadius: '10px',
+      fontSize: '11.5px', fontWeight: '700', lineHeight: 1.4,
       background: isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.09)',
       border: `1px solid ${isDark ? 'rgba(232,161,0,0.38)' : 'rgba(184,121,10,0.32)'}`,
-      color: isDark ? GOLD_DARK : GOLD,
+      color: goldInk(isDark),
     },
     promoNoteIcon: { flexShrink: 0 },
   };
@@ -217,9 +246,9 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
   return (
     <div style={s.wrap}>
       <div style={s.navRow}>
-        <button type="button" style={s.navBtn} aria-label="Previous month" onClick={() => setCursor((p) => new Date(p.getFullYear(), p.getMonth() - 1, 1))}>‹</button>
+        <button type="button" className="cal-nav-btn" style={s.navBtn} aria-label="Previous month" onClick={() => setCursor((p) => new Date(p.getFullYear(), p.getMonth() - 1, 1))}><Chevron dir="left" /></button>
         <span style={s.monthLabel}>{MONTH_LABELS[cursor.getMonth()]} {cursor.getFullYear()}</span>
-        <button type="button" style={s.navBtn} aria-label="Next month" onClick={() => setCursor((p) => new Date(p.getFullYear(), p.getMonth() + 1, 1))}>›</button>
+        <button type="button" className="cal-nav-btn" style={s.navBtn} aria-label="Next month" onClick={() => setCursor((p) => new Date(p.getFullYear(), p.getMonth() + 1, 1))}><Chevron dir="right" /></button>
       </div>
       <div style={s.grid}>
         {WEEKDAY_LABELS.map((wd, i) => <div key={i} style={s.weekday}>{wd}</div>)}
