@@ -71,6 +71,13 @@ const carSchema = new mongoose.Schema({
     speed: { type: Number },
     ignitionOn: { type: Boolean },
     updatedAt: { type: Date, default: null },
+    // How long it has been sitting still. A tracker reports a speed, never
+    // a duration, so the stop has to be remembered here — and separately,
+    // how much of that time we were actually watching, since we only poll
+    // while somebody has the GPS page open. See utils/dwell.js.
+    lastMovedAt: { type: Date, default: null },
+    lastSeenAt: { type: Date, default: null },
+    observedSince: { type: Date, default: null },
   },
   // Links this car to a physical GPS tracker's device ID on the AIKA
   // platform (the "ID Number" shown in their app/web dashboard, e.g.

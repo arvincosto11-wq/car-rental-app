@@ -5,6 +5,7 @@ import Booking from '../models/Booking.js';
 import { protect, adminOnly, consignorOnly, adminOrConsignor } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { fetchAikaGps } from '../utils/aikaGps.js';
+import { trackDwell } from '../utils/dwell.js';
 import { validatePromo } from '../utils/promo.js';
 import { cancelBookingWithRefund, refundAmountFor, isUnderway } from '../utils/cancelBooking.js';
 import { BLOCK_REASON_CODES, causeFor, blockLabelFor } from '../utils/blockReasons.js';
@@ -714,7 +715,11 @@ router.get('/gps-fleet', protect, adminOrConsignor, async (req, res) => {
           // own "no data" sentinel) — leave the car's existing gps (mock
           // or last known good fix) alone rather than overwrite it.
           if (live) {
-            car.gps = live;
+            // Keep the stop clock going across this reading before the new
+            // one overwrites the old — trackDwell needs the previous
+            // lastSeenAt to tell a normal 30-second gap from a stretch
+            // where nobody was watching at all. See utils/dwell.js.
+            car.gps = { ...live, ...trackDwell(car.gps, live) };
             await car.save();
             console.log(`AIKA: got a real fix for car ${car._id} — lat ${live.lat}, lng ${live.lng}.`);
           } else {

@@ -98,10 +98,31 @@ async function aikaGetTracking(apiAddress, sessionKey, deviceId, model) {
   };
 }
 
+// One login per tracker, reused until it goes stale.
+//
+// This used to log in on every single fetch, which was fine while the GPS
+// page pulled once per page load. It now polls every 30 seconds while
+// somebody has it open, so that same habit would mean three outgoing
+// requests per tracker per poll — discovery, login, then the actual
+// position — against a platform with no published rate limit and no
+// obligation to tolerate us. The session is the part worth keeping.
+//
+// Deliberately in memory rather than the database: it is a cache, losing
+// it costs one extra login, and a restart SHOULD throw it away. Keyed by
+// serial so two trackers never share a session.
+const sessions = new Map();
+const SESSION_TTL_MS = 10 * 60 * 1000;
+
+async function session(loginSerial, password) {
+  const cached = sessions.get(loginSerial);
+  if (cached && Date.now() < cached.expiresAt) return cached.value;
+  const value = await aikaLogin(loginSerial, password);
+  sessions.set(loginSerial, { value, expiresAt: Date.now() + SESSION_TTL_MS });
+  return value;
+}
+
 // Full login -> location round trip, returned in the same shape Car.gps
 // already uses (see models/Car.js) so the caller can drop it straight in.
-// No session caching — this is a low-traffic admin/consignor dashboard,
-// not worth the complexity yet.
 //
 // Returns null (not an error) when the device hasn't gotten a real fix
 // yet — it reports its own "no data" sentinel as lat/lng exactly -1, -1
@@ -110,8 +131,18 @@ async function aikaGetTracking(apiAddress, sessionKey, deviceId, model) {
 // pin on the map instead of just leaving the car on its last known
 // (or placeholder) position until a real fix comes in.
 export async function fetchAikaGps(loginSerial, password) {
-  const { apiAddress, sessionKey, internalDeviceId, model } = await aikaLogin(loginSerial, password);
-  const tracking = await aikaGetTracking(apiAddress, sessionKey, internalDeviceId, model);
+  let { apiAddress, sessionKey, internalDeviceId, model } = await session(loginSerial, password);
+  let tracking;
+  try {
+    tracking = await aikaGetTracking(apiAddress, sessionKey, internalDeviceId, model);
+  } catch (err) {
+    // A session key the platform has since expired fails here, not at
+    // login, and would otherwise keep failing until the TTL ran out. One
+    // forced re-login costs a request; getting this wrong costs the map.
+    sessions.delete(loginSerial);
+    ({ apiAddress, sessionKey, internalDeviceId, model } = await session(loginSerial, password));
+    tracking = await aikaGetTracking(apiAddress, sessionKey, internalDeviceId, model);
+  }
   if (tracking.lat === -1 && tracking.lng === -1) return null;
   return {
     lat: tracking.lat,
