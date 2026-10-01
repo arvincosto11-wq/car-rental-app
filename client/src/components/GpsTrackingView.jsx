@@ -31,22 +31,32 @@ const timeAgo = (dateStr) => {
 // A plain colored-dot divIcon instead of Leaflet's default marker — sidesteps
 // the well-known bundler issue where Leaflet's default icon image paths
 // don't resolve under Vite, and lets the pin color communicate status
-// (gold = selected, blue = currently rented, gray = available). Whether
-// the tracker itself is real vs. a placeholder is a separate concern,
-// covered by the popup text and the list's own badge instead.
+// (gold = selected, blue = currently rented, gray = available).
+//
+// Filled vs. hollow is the first thing to read, and it was missing: with
+// one real tracker among twelve placeholders, every pin looked the same, so
+// the one vehicle actually out there was invisible among the twelve that
+// were never anywhere. A placeholder is now drawn hollow and a little
+// smaller — present enough to click, obviously not a reading.
 //
 // An engine left running gets an amber halo on top of whatever the pin
 // already says. It is the one state on this map somebody might want to act
-// on straight away, and finding it by reading nine cards defeats the point
+// on straight away, and finding it by reading every card defeats the point
 // of having a map.
-const pinIcon = (color, idling) => L.divIcon({
-  className: '',
-  html: `<div style="width:18px;height:18px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:${
-    idling ? '0 0 0 4px rgba(217,119,6,0.4),' : ''
-  }0 1px 4px rgba(0,0,0,0.4);"></div>`,
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-});
+const pinIcon = ({ color, idling, mock }) => {
+  const size = mock ? 14 : 18;
+  const body = mock
+    ? `background:#fff;border:2px solid ${color};opacity:0.85;box-shadow:0 1px 3px rgba(0,0,0,0.25);`
+    : `background:${color};border:3px solid #fff;box-shadow:${
+      idling ? '0 0 0 4px rgba(217,119,6,0.4),' : ''
+    }0 1px 4px rgba(0,0,0,0.4);`;
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;${body}"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+};
 
 // Shared by the admin and consignor GPS Tracking pages — data scope (all
 // cars vs. just the consignor's own) is handled server-side by GET
@@ -117,13 +127,20 @@ const GpsTrackingView = () => {
   const anyMock = cars.some((c) => c.gps?.isMock);
   const isMoving = (car) => dwellState(car.gps).state === 'moving';
   const isIdling = (car) => dwellState(car.gps).state === 'idling';
+  // A parked vehicle is in neither of the other two counts, so with one
+  // tracker on a parked car both of them read zero and the page looks dead
+  // while working perfectly. This is the chip that answers "is anything
+  // actually reporting".
+  const isTracked = (car) => !car.gps?.isMock;
   const movingCount = cars.filter(isMoving).length;
   const idlingCount = cars.filter(isIdling).length;
+  const trackedCount = cars.filter(isTracked).length;
 
   const q = search.trim().toLowerCase();
   const filteredCars = cars.filter((car) => {
     if (filter === 'moving' && !isMoving(car)) return false;
     if (filter === 'idling' && !isIdling(car)) return false;
+    if (filter === 'tracked' && !isTracked(car)) return false;
     if (!q) return true;
     return `${car.brand} ${car.model} ${car.plateNumber || ''}`.toLowerCase().includes(q);
   });
@@ -131,6 +148,7 @@ const GpsTrackingView = () => {
   const emptyMessage = () => {
     if (filter === 'moving') return 'No vehicles are on the road right now.';
     if (filter === 'idling') return 'Nothing is sitting with its engine running.';
+    if (filter === 'tracked') return 'No vehicle has a GPS tracker connected yet.';
     return `No vehicles match "${search}".`;
   };
 
@@ -239,6 +257,9 @@ const GpsTrackingView = () => {
           <button type="button" style={s.chip(filter === 'idling')} aria-pressed={filter === 'idling'} onClick={() => setFilter('idling')}>
             Idling <span style={s.chipCount}>{idlingCount}</span>
           </button>
+          <button type="button" style={s.chip(filter === 'tracked')} aria-pressed={filter === 'tracked'} onClick={() => setFilter('tracked')}>
+            Tracked <span style={s.chipCount}>{trackedCount}</span>
+          </button>
           <button type="button" style={s.chip(filter === 'all')} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
             All vehicles <span style={s.chipCount}>{cars.length}</span>
           </button>
@@ -251,7 +272,7 @@ const GpsTrackingView = () => {
 
       {anyMock && (
         <div style={s.notice}>
-          Some vehicles don't have a physical GPS tracker connected yet — their pin shows a placeholder demo location until one reports in.
+          Some vehicles don't have a physical GPS tracker connected yet — their pin is drawn hollow, on a placeholder demo location, until one reports in.
         </div>
       )}
       <div className="gps-layout" style={s.layout}>
@@ -267,10 +288,13 @@ const GpsTrackingView = () => {
                 <Marker
                   key={car._id}
                   position={[car.gps.lat, car.gps.lng]}
-                  icon={pinIcon(
-                    selectedId === car._id ? (isDark ? GOLD_DARK : GOLD) : (car.isRented ? '#2563eb' : '#9ca3af'),
-                    d.state === 'idling',
-                  )}
+                  icon={pinIcon({
+                    color: selectedId === car._id
+                      ? (isDark ? GOLD_DARK : GOLD)
+                      : (car.isRented && !car.gps.isMock ? '#2563eb' : '#9ca3af'),
+                    idling: d.state === 'idling',
+                    mock: car.gps.isMock,
+                  })}
                   eventHandlers={{ click: () => setSelectedId(car._id) }}
                 >
                   <Popup>
