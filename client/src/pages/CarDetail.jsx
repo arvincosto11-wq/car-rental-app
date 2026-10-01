@@ -15,6 +15,7 @@ import PromoBadge from '../components/PromoBadge';
 import useLongRentalRules from '../hooks/useLongRentalRules';
 import { bestLongRentalRule, longRentalDiscountOn, rulesForCar } from '../utils/longRental';
 import { instantFrom, phDayStart, pickupHours, formatHour, formatPhDate, formatMoment, SHORT_NOTICE_HOURS } from '../utils/phTime';
+import RefundNoticeLine from '../components/RefundNoticeLine';
 import { registrationLapsed } from '../utils/registration';
 import { isOverdue, daysOverdue } from '../utils/overdue';
 import useModalA11y from '../hooks/useModalA11y';
@@ -279,8 +280,11 @@ const CarDetail = () => {
   // around the whole flow instead of appearing only at the last step.
   const atTime = pickupHour === null ? '' : ` at ${formatHour(pickupHour)}`;
 
-  const shortNotice = pickupHour !== null && startDate
-    && instantFrom(startDate, pickupHour).getTime() - now < SHORT_NOTICE_HOURS * 60 * 60 * 1000;
+  // The exact moment this booking would start, which is what the refund
+  // bands are measured from. Null until both a day and a workable hour exist.
+  const pickupAt = pickupHour !== null && startDate ? instantFrom(startDate, pickupHour) : null;
+
+  const shortNotice = pickupAt && pickupAt.getTime() - now < SHORT_NOTICE_HOURS * 60 * 60 * 1000;
 
   // Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
   // the wrong day in timezones ahead of UTC, like PH).
@@ -634,7 +638,6 @@ const CarDetail = () => {
     modalText: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#4b5563', lineHeight: '1.8' },
     // Tighter than the paragraphs around it: the 1.8 that gives prose room
     // to breathe leaves three short lines floating apart.
-    policyList: { margin: '6px 0 0', paddingLeft: '20px', lineHeight: 1.6 },
     closeBtn: { marginTop: '16px', padding: '10px 24px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', width: '100%' },
     refundNoticeActions: { display: 'flex', gap: '10px', marginTop: '20px' },
     refundNoticeCancel: { flex: 1, padding: '10px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
@@ -768,19 +771,7 @@ const CarDetail = () => {
           <motion.div style={s.modalContent} {...modalMotion} ref={refundNoticeModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-notice-title">
             <h2 id="refund-notice-title" style={s.modalTitle}>Before You Confirm</h2>
             <div style={s.modalText}>
-              {/* Three numbers in a row of prose is a sentence nobody
-                  finishes. Stacked, each line answers one question: if I
-                  cancel then, what do I get? */}
-              <p>⚠️ <strong>Refund Policy:</strong> what you get back depends on how much notice you give.</p>
-              <ul style={s.policyList}>
-                <li><strong>3 or more days</strong> before pickup — everything back</li>
-                <li><strong>1 to 3 days</strong> before — half back</li>
-                <li><strong>Under 24 hours</strong> before — nothing back</li>
-              </ul>
-              <p style={{ marginTop: '10px' }}>
-                Wrong date or wrong vehicle? Cancel within an hour of booking and you get the whole
-                ₱{amountToPay.toLocaleString()} back, as long as pickup is still more than 2 hours away.
-              </p>
+              <RefundNoticeLine pickupAt={pickupAt} amount={amountToPay} />
               <p style={{ marginTop: '10px' }}>
                 ⛽ <strong>Fuel Policy:</strong> Please return the vehicle with the same fuel level it had at pickup, or the difference will be charged to you.
               </p>

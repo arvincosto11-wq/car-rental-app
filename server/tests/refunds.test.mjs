@@ -2,6 +2,7 @@ import { suite, group, check } from './harness.mjs';
 import { refundPercentage, refundAmountFor, isUnderway, reasonUnavailable, CANCEL_REASONS, unusedDayRefund } from '../utils/cancelBooking.js';
 import { paymentSources } from '../utils/paymongo.js';
 import { instantFrom } from '../utils/phTime.js';
+import { noticeBand, refundOutcome } from '../utils/refundPolicy.js';
 
 const hoursAgo = (n, now) => new Date(now.getTime() - n * 60 * 60 * 1000);
 const hoursAhead = (n, now) => new Date(now.getTime() + n * 60 * 60 * 1000);
@@ -207,4 +208,32 @@ export default function run() {
   group('it cannot be used on a vehicle nobody collected');
   check('refused before pickup', !!reasonUnavailable({ collectedAt: null }, 'not_returned'), true);
   check('allowed once collected', reasonUnavailable({ collectedAt: new Date() }, 'not_returned'), null);
+
+  group('the band a pickup falls in, before the booking exists');
+  // The whole reason this helper exists: asked through refundOutcome with
+  // createdAt = now, every prospective booking answers "mistake, 100%",
+  // which hides the band that applies a minute after paying. These two
+  // must disagree, or the confirm screen is quoting the wrong rule.
+  const soon = { createdAt: now, startDate: hoursAhead(5, now) };
+  check('refundOutcome calls a fresh same-day booking a mistake', refundOutcome(soon, now).basis, 'mistake');
+  check('noticeBand calls the same pickup unrefundable', noticeBand(soon.startDate, now).band, 'mistakeOnly');
+
+  check('a month out', noticeBand(hoursAhead(24 * 30, now), now).band, 'full');
+  check('exactly three days', noticeBand(hoursAhead(72, now), now).band, 'full');
+  check('an hour inside three days', noticeBand(hoursAhead(71, now), now).band, 'half');
+  check('exactly one day', noticeBand(hoursAhead(24, now), now).band, 'half');
+  check('an hour inside one day', noticeBand(hoursAhead(23, now), now).band, 'mistakeOnly');
+  // Past this line even the undo is gone, so the wording promises nothing.
+  check('exactly two hours out', noticeBand(hoursAhead(2, now), now).band, 'none');
+  check('an hour before pickup', noticeBand(hoursAhead(1, now), now).band, 'none');
+  check('pickup already passed', noticeBand(hoursAhead(-3, now), now).band, 'none');
+  // No dates picked yet: the panel falls back to stating the rule, so this
+  // must not read as a band with a deadline attached.
+  check('no pickup at all', noticeBand(null, now).band, 'unknown');
+
+  // Each band agrees with what the client would actually be paid once the
+  // mistake window has closed, which is the promise the wording makes.
+  check('full band pays everything', refundPercentage(settled(24 * 30), now), 100);
+  check('half band pays half', refundPercentage(settled(48), now), 50);
+  check('mistakeOnly band pays nothing on notice', refundPercentage(settled(5), now), 0);
 }

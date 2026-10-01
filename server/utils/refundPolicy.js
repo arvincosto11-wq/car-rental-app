@@ -65,3 +65,20 @@ export function refundOutcome(booking, now = new Date()) {
 }
 
 export const refundPercentage = (booking, now = new Date()) => refundOutcome(booking, now).percent;
+
+// Which notice band a pickup falls in, for a booking that does not exist yet.
+//
+// refundOutcome needs a createdAt, and on the confirm screen the only honest
+// value for that is "now" — which makes every prospective booking look like
+// the mistake window and hides the band that actually applies a minute after
+// paying. This answers the narrower question the confirm wording needs:
+// given this pickup, what does notice alone decide?
+export function noticeBand(pickupAt, now = new Date()) {
+  if (!pickupAt) return { band: 'unknown', noticeHours: 0 };
+  const noticeHours = hoursBetween(now, pickupAt);
+  if (noticeHours >= FULL_REFUND_NOTICE_HOURS) return { band: 'full', noticeHours };
+  if (noticeHours >= HALF_REFUND_NOTICE_HOURS) return { band: 'half', noticeHours };
+  // Nothing back on notice alone, but the mistake window is still reachable.
+  if (noticeHours > MISTAKE_MIN_NOTICE_HOURS) return { band: 'mistakeOnly', noticeHours };
+  return { band: 'none', noticeHours };
+}
