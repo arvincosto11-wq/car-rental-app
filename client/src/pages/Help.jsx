@@ -12,7 +12,7 @@ const FAQS = [
   },
   {
     q: 'What is the cancellation and refund policy?',
-    a: 'You can request a refund on any pending or confirmed booking from My Bookings, up until the vehicle is picked up. The amount depends on how much notice you give before pickup: 3 or more days before for a full refund, 1 to 3 days before for 50%, and less than 24 hours before for no refund. If you booked by mistake, cancelling within an hour of booking is a full refund, as long as pickup is more than 2 hours away. An admin needs to approve the request before it\'s finalized.',
+    a: 'You can request a refund on any pending or confirmed booking from My Bookings, up until the vehicle is picked up. What you get back depends on how much notice you give. Cancel 3 or more days before pickup and you get everything back; 1 to 3 days before, half; under 24 hours before, nothing. If you booked the wrong date or the wrong vehicle, cancelling within an hour of booking returns everything, as long as pickup is still more than 2 hours away. An admin needs to approve the request before it\'s finalized.',
   },
   {
     q: 'Can Rent-A-Ride Albay cancel my booking?',

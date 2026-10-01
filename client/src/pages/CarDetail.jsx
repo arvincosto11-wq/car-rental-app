@@ -632,6 +632,9 @@ const CarDetail = () => {
     modalContent: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '500px', width: '90%', maxHeight: '80vh', overflow: 'auto' },
     modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '16px' },
     modalText: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#4b5563', lineHeight: '1.8' },
+    // Tighter than the paragraphs around it: the 1.8 that gives prose room
+    // to breathe leaves three short lines floating apart.
+    policyList: { margin: '6px 0 0', paddingLeft: '20px', lineHeight: 1.6 },
     closeBtn: { marginTop: '16px', padding: '10px 24px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', width: '100%' },
     refundNoticeActions: { display: 'flex', gap: '10px', marginTop: '20px' },
     refundNoticeCancel: { flex: 1, padding: '10px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
@@ -693,7 +696,7 @@ const CarDetail = () => {
               <p>A minimum of 20% downpayment is required to confirm your booking. The remaining balance must be paid upon vehicle pickup.</p>
               <br/>
               <p><strong>2. Cancellation Policy</strong></p>
-              <p>Refund amount depends on how much notice you give before pickup: cancel 3 or more days before pickup for a full refund, between 1 and 3 days before for a 50% refund, or less than 24 hours before for no refund. Booked by mistake? Cancelling within an hour of booking is a full refund, as long as pickup is more than 2 hours away.</p>
+              <p>What you get back depends on how much notice you give. Cancel 3 or more days before pickup and you get everything back; 1 to 3 days before, half; under 24 hours before, nothing. If you booked the wrong date or the wrong vehicle, cancelling within an hour of booking returns everything, as long as pickup is still more than 2 hours away.</p>
               <br/>
               <p><strong>3. No-Show Policy</strong></p>
               <p>If you do not pick up the vehicle for a confirmed booking, it will be cancelled and whatever amount you already paid (downpayment or full payment) is forfeited as a no-show fee — no refund. Use the reschedule option below if your plans change instead of simply not showing up.</p>
@@ -765,9 +768,18 @@ const CarDetail = () => {
           <motion.div style={s.modalContent} {...modalMotion} ref={refundNoticeModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-notice-title">
             <h2 id="refund-notice-title" style={s.modalTitle}>Before You Confirm</h2>
             <div style={s.modalText}>
-              <p>⚠️ <strong>Refund Policy:</strong> Cancel 3 or more days before pickup for a full refund, between 1 and 3 days before for a 50% refund, and less than 24 hours before for no refund.</p>
+              {/* Three numbers in a row of prose is a sentence nobody
+                  finishes. Stacked, each line answers one question: if I
+                  cancel then, what do I get? */}
+              <p>⚠️ <strong>Refund Policy:</strong> what you get back depends on how much notice you give.</p>
+              <ul style={s.policyList}>
+                <li><strong>3 or more days</strong> before pickup — everything back</li>
+                <li><strong>1 to 3 days</strong> before — half back</li>
+                <li><strong>Under 24 hours</strong> before — nothing back</li>
+              </ul>
               <p style={{ marginTop: '10px' }}>
-                Booked by mistake? Cancelling within an hour of booking is a full refund of ₱{amountToPay.toLocaleString()}, as long as pickup is more than 2 hours away.
+                Wrong date or wrong vehicle? Cancel within an hour of booking and you get the whole
+                ₱{amountToPay.toLocaleString()} back, as long as pickup is still more than 2 hours away.
               </p>
               <p style={{ marginTop: '10px' }}>
                 ⛽ <strong>Fuel Policy:</strong> Please return the vehicle with the same fuel level it had at pickup, or the difference will be charged to you.
