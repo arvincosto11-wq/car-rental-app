@@ -10,7 +10,7 @@ import { refundBookingPayment } from '../utils/paymongo.js';
 import { computeBookingPrice } from '../utils/promo.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { openAdjustOffer, acceptAdjustOffer, startTopUp, confirmTopUp, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
-import { cancelBookingWithRefund, getRefundPercentage, CANCEL_REASONS, reasonUnavailable } from '../utils/cancelBooking.js';
+import { cancelBookingWithRefund, refundPercentage, CANCEL_REASONS, reasonUnavailable } from '../utils/cancelBooking.js';
 import { busySpans, firstConflict, bookingSpan } from '../utils/availability.js';
 import { registrationProblem, registrationMessage } from '../utils/registration.js';
 import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
@@ -937,7 +937,7 @@ router.post('/:id/refund', protect, async (req, res) => {
       return res.status(400).json({ message: 'A refund request already exists for this booking.' });
     }
 
-    const percentage = getRefundPercentage(booking.createdAt);
+    const percentage = refundPercentage(booking);
     booking.refundStatus = 'requested';
     booking.refundReason = reason;
     booking.refundAmount = Math.round(booking.amountPaid * (percentage / 100));

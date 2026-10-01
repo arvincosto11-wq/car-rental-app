@@ -4,16 +4,14 @@ import { notifyUser, notifyAdmins } from './notify.js';
 import { vehicleUnavailableMessage, formatTripDates } from './blockReasons.js';
 import { bookingSpan } from './availability.js';
 import { phYmd } from './phTime.js';
+import { refundPercentage } from './refundPolicy.js';
 
-// Tiered on how long ago the booking was MADE, not on the pickup date.
-// Lives here rather than in routes/bookings.js so the admin cancel path and
-// the client's own refund request can't drift into different policies.
-export function getRefundPercentage(createdAt, now = new Date()) {
-  const hoursSinceBooking = (now.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
-  if (hoursSinceBooking <= 12) return 100;
-  if (hoursSinceBooking <= 24) return 50;
-  return 0;
-}
+// The policy itself lives in refundPolicy.js, which has no imports so the
+// client can hold an identical copy — the figure the client is shown before
+// requesting and the figure the server writes have to be the same one.
+// Re-exported here because the admin cancel path and the refund button both
+// reached for it at this address.
+export { refundPercentage, refundOutcome } from './refundPolicy.js';
 
 // What a cancellation can be, and nothing else. 'other' used to be here
 // with a free-typed amount, which made the dialog's own promise — that the
@@ -102,7 +100,7 @@ export function refundAmountFor(booking, reason, now = new Date()) {
   if (booking.payment !== 'paid' || booking.amountPaid <= 0) return 0;
   if (reason === 'vehicle_unavailable') return booking.amountPaid;
   if (reason === 'client_requested') {
-    return Math.round(booking.amountPaid * (getRefundPercentage(booking.createdAt, now) / 100));
+    return Math.round(booking.amountPaid * (refundPercentage(booking, now) / 100));
   }
   if (reason === 'terms_not_met') {
     const onTheDay = phYmd(now) >= phYmd(bookingSpan(booking).start);

@@ -693,7 +693,7 @@ const CarDetail = () => {
               <p>A minimum of 20% downpayment is required to confirm your booking. The remaining balance must be paid upon vehicle pickup.</p>
               <br/>
               <p><strong>2. Cancellation Policy</strong></p>
-              <p>Refund amount depends on how long ago you made the booking, not your pickup date: cancel within 12 hours of booking for a full refund, within 12 to 24 hours for a 50% refund, or after 24 hours for no refund.</p>
+              <p>Refund amount depends on how much notice you give before pickup: cancel 3 or more days before pickup for a full refund, between 1 and 3 days before for a 50% refund, or less than 24 hours before for no refund. Booked by mistake? Cancelling within an hour of booking is a full refund, as long as pickup is more than 2 hours away.</p>
               <br/>
               <p><strong>3. No-Show Policy</strong></p>
               <p>If you do not pick up the vehicle for a confirmed booking, it will be cancelled and whatever amount you already paid (downpayment or full payment) is forfeited as a no-show fee — no refund. Use the reschedule option below if your plans change instead of simply not showing up.</p>
@@ -765,9 +765,9 @@ const CarDetail = () => {
           <motion.div style={s.modalContent} {...modalMotion} ref={refundNoticeModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-notice-title">
             <h2 id="refund-notice-title" style={s.modalTitle}>Before You Confirm</h2>
             <div style={s.modalText}>
-              <p>⚠️ <strong>Refund Policy:</strong> Cancellations made within 12 hours of booking are eligible for a full refund. Cancellations made 12–24 hours after booking are eligible for a 50% refund. No refund is issued after 24 hours.</p>
+              <p>⚠️ <strong>Refund Policy:</strong> Cancel 3 or more days before pickup for a full refund, between 1 and 3 days before for a 50% refund, and less than 24 hours before for no refund.</p>
               <p style={{ marginTop: '10px' }}>
-                Since you are booking now, cancelling within the next 12 hours will entitle you to a full refund of ₱{amountToPay.toLocaleString()}.
+                Booked by mistake? Cancelling within an hour of booking is a full refund of ₱{amountToPay.toLocaleString()}, as long as pickup is more than 2 hours away.
               </p>
               <p style={{ marginTop: '10px' }}>
                 ⛽ <strong>Fuel Policy:</strong> Please return the vehicle with the same fuel level it had at pickup, or the difference will be charged to you.

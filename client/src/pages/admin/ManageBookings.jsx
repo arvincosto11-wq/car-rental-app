@@ -252,8 +252,8 @@ const ManageBookings = () => {
       const ok = await confirm(
         refund > 0
           ? `This client paid ${peso(paid)} and will get ${peso(refund)} back under the refund policy, `
-            + `measured from when they booked. Cancelling can't be undone.`
-          : `This booking is more than 24 hours old, so under the refund policy this client gets nothing `
+            + `measured by how much notice they are giving before pickup. Cancelling can't be undone.`
+          : `Pickup is less than 24 hours away, so under the refund policy this client gets nothing `
             + `back of the ${peso(paid)} they paid. Cancelling can't be undone.`,
         { confirmLabel: 'Yes, cancel the booking', cancelLabel: 'Go back' }
       );

@@ -1,28 +1,68 @@
 import { suite, group, check } from './harness.mjs';
-import { getRefundPercentage, refundAmountFor, isUnderway, reasonUnavailable, CANCEL_REASONS, unusedDayRefund } from '../utils/cancelBooking.js';
+import { refundPercentage, refundAmountFor, isUnderway, reasonUnavailable, CANCEL_REASONS, unusedDayRefund } from '../utils/cancelBooking.js';
 import { paymentSources } from '../utils/paymongo.js';
 import { instantFrom } from '../utils/phTime.js';
 
 const hoursAgo = (n, now) => new Date(now.getTime() - n * 60 * 60 * 1000);
+const hoursAhead = (n, now) => new Date(now.getTime() + n * 60 * 60 * 1000);
 const now = new Date('2026-09-22T12:00:00+08:00');
 
+// Ten days out by default, so a fixture that says nothing about its pickup
+// is comfortably inside the full-refund tier and the groups below are only
+// testing the thing they name.
 const paid = (over = {}) => ({
   payment: 'paid',
   amountPaid: 2000,
   createdAt: hoursAgo(1, now),
+  startDate: hoursAhead(24 * 10, now),
   ...over,
+});
+
+// A booking made long enough ago that the mistake window has closed, so the
+// tiers are what is being measured.
+const settled = (noticeHours) => ({
+  createdAt: hoursAgo(48, now),
+  startDate: hoursAhead(noticeHours, now),
 });
 
 export default function run() {
   suite('Refunds');
 
-  group('the tiers, measured from when the booking was made');
-  check('within 12 hours', getRefundPercentage(hoursAgo(1, now), now), 100);
-  check('at 12 hours', getRefundPercentage(hoursAgo(12, now), now), 100);
-  check('at 13 hours', getRefundPercentage(hoursAgo(13, now), now), 50);
-  check('at 24 hours', getRefundPercentage(hoursAgo(24, now), now), 50);
-  check('after 24 hours', getRefundPercentage(hoursAgo(25, now), now), 0);
-  check('a week later', getRefundPercentage(hoursAgo(24 * 7, now), now), 0);
+  group('the tiers, measured by notice before pickup');
+  check('a week out', refundPercentage(settled(24 * 7), now), 100);
+  check('exactly three days', refundPercentage(settled(72), now), 100);
+  check('an hour inside three days', refundPercentage(settled(71), now), 50);
+  check('two days', refundPercentage(settled(48), now), 50);
+  check('exactly one day', refundPercentage(settled(24), now), 50);
+  check('an hour inside one day', refundPercentage(settled(23), now), 0);
+  check('an hour before pickup', refundPercentage(settled(1), now), 0);
+  check('pickup already passed', refundPercentage(settled(-2), now), 0);
+
+  group('what the old rule got backwards');
+  // It tiered on how long ago the booking was MADE, so these two came out
+  // the wrong way round: eight weeks' notice returned nothing because the
+  // booking was old, and five minutes' notice returned everything because
+  // it was fresh.
+  check('booked a month ago, cancelled eight weeks before the trip',
+    refundPercentage({ createdAt: hoursAgo(24 * 30, now), startDate: hoursAhead(24 * 56, now) }, now), 100);
+  check('booked this morning, cancelled five minutes before pickup',
+    refundPercentage({ createdAt: hoursAgo(4, now), startDate: hoursAhead(1 / 12, now) }, now), 0);
+
+  group('the mistake window: the wrong date, the wrong vehicle, booked twice');
+  const fresh = (sinceBooked, noticeHours) => ({
+    createdAt: hoursAgo(sinceBooked, now),
+    startDate: hoursAhead(noticeHours, now),
+  });
+  check('undone half an hour later', refundPercentage(fresh(0.5, 5), now), 100);
+  check('at exactly an hour', refundPercentage(fresh(1, 5), now), 100);
+  // Past the window, five hours' notice is just five hours' notice.
+  check('an hour and a half later', refundPercentage(fresh(1.5, 5), now), 0);
+  // The undo must not become the old hole wearing a different hat: a full
+  // refund for minutes of notice on a booking that starts almost at once.
+  check('not on a booking starting within two hours', refundPercentage(fresh(0.1, 1.5), now), 0);
+  check('but yes at just over two hours', refundPercentage(fresh(0.1, 2.5), now), 100);
+  // And it never has to: a fresh booking far out already qualifies.
+  check('a fresh booking far out needs no window', refundPercentage(fresh(0.1, 24 * 9), now), 100);
 
   group('why it was cancelled decides what comes back');
   // The business pulled the vehicle, so the tiers — which exist to price a
@@ -33,9 +73,9 @@ export default function run() {
   group('a client changing their mind gets the normal policy');
   // Deliberately the same tiers as the in-app refund button, so nobody past
   // the window can get a full refund just by messaging admin instead.
-  check('within 12 hours', refundAmountFor(paid(), 'client_requested', now), 2000);
-  check('within 24 hours', refundAmountFor(paid({ createdAt: hoursAgo(20, now) }), 'client_requested', now), 1000);
-  check('after 24 hours', refundAmountFor(paid({ createdAt: hoursAgo(30, now) }), 'client_requested', now), 0);
+  check('plenty of notice', refundAmountFor(paid(), 'client_requested', now), 2000);
+  check('two days out', refundAmountFor(paid({ ...settled(48) }), 'client_requested', now), 1000);
+  check('on the day', refundAmountFor(paid({ ...settled(6) }), 'client_requested', now), 0);
 
   group('terms not met: half back, or nothing once the day arrives');
   // The deduction is the day itself. Before it, the vehicle can still be let

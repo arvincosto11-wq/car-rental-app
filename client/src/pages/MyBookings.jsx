@@ -17,6 +17,7 @@ import { paginate } from '../utils/paginate';
 import { bookingAwaitingDecision, timeLeftLabel } from '../utils/offerWindow';
 import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays } from '../utils/phTime';
 import { daysOverdue } from '../utils/overdue';
+import { refundOutcome } from '../utils/refundPolicy';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk } from '../theme';
@@ -100,16 +101,6 @@ const TagLineIcon = (props) => <LineIcon {...props}><path d="M20.6 12.6L12.6 20.
 const CalendarPlusIcon = (props) => <LineIcon {...props}><rect x="3" y="4" width="18" height="17" rx="3" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="12" y1="13" x2="12" y2="17" /><line x1="10" y1="15" x2="14" y2="15" /></LineIcon>;
 const RepeatIcon = (props) => <LineIcon {...props}><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></LineIcon>;
 const PencilIcon = (props) => <LineIcon {...props}><path d="M17 3l4 4-11 11H6v-4z" /><line x1="14" y1="6" x2="18" y2="10" /></LineIcon>;
-
-// Mirrors getRefundPercentage in server/routes/bookings.js (based on time
-// since the booking was made, not the pickup date) — this is only a preview
-// shown before submitting; the server locks in the real amount at request time.
-const getRefundPercentage = (createdAt, now = new Date()) => {
-  const hoursSinceBooking = (now.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
-  if (hoursSinceBooking <= 12) return 100;
-  if (hoursSinceBooking <= 24) return 50;
-  return 0;
-};
 
 // Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
 // the wrong day in timezones ahead of UTC, like PH).
@@ -546,8 +537,10 @@ const MyBookings = () => {
     : null;
 
   const activeBooking = bookings.find((b) => b._id === refundModalId);
-  const refundPercentage = activeBooking ? getRefundPercentage(activeBooking.createdAt) : 0;
-  const refundAmount = activeBooking ? Math.round(activeBooking.amountPaid * (refundPercentage / 100)) : 0;
+  // Only a preview of what the request will be worth; the server works the
+  // figure out again when it arrives, from the same shared rule.
+  const refund = activeBooking ? refundOutcome(activeBooking) : { percent: 0, basis: 'none' };
+  const refundAmount = activeBooking ? Math.round(activeBooking.amountPaid * (refund.percent / 100)) : 0;
   const refundModalRef = useModalA11y(closeRefundModal, !!(refundModalId && activeBooking));
 
   const openRatingModal = (booking) => setRatingModalId(booking._id);
@@ -1856,12 +1849,14 @@ const MyBookings = () => {
             <h2 id="refund-modal-title" style={styles.modalTitle}>Request a Refund</h2>
 
             <div style={styles.warningBox}>
-              {refundPercentage === 100 ? (
-                <>✅ You booked less than 12 hours ago, so this qualifies for a <strong>full refund</strong>.</>
-              ) : refundPercentage === 50 ? (
-                <>⚠️ It's been 12–24 hours since you booked, so this qualifies for a <strong>50% refund</strong> only.</>
+              {refund.basis === 'mistake' ? (
+                <>✅ You booked this less than an hour ago, so this qualifies for a <strong>full refund</strong>.</>
+              ) : refund.basis === 'full' ? (
+                <>✅ Your pickup is more than 3 days away, so this qualifies for a <strong>full refund</strong>.</>
+              ) : refund.basis === 'half' ? (
+                <>⚠️ Your pickup is less than 3 days away, so this qualifies for a <strong>50% refund</strong> only.</>
               ) : (
-                <>⚠️ It's been more than 24 hours since you booked, so this booking is <strong>not eligible for a refund</strong>.</>
+                <>⚠️ Your pickup is less than 24 hours away, so this booking is <strong>not eligible for a refund</strong>.</>
               )}
               {' '}You paid ₱{activeBooking.amountPaid}, so you would receive approximately ₱{refundAmount} back if approved.
             </div>
