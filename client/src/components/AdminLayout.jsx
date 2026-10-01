@@ -24,6 +24,7 @@ const BookingsIcon = () => <NavIcon><rect x="3" y="4" width="18" height="17" rx=
 const ClientsIcon = () => <NavIcon><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><circle cx="17.5" cy="9" r="2.3" /><path d="M15.5 14.3c2.3.5 3.8 2.6 3.8 5.7" /></NavIcon>;
 const ConsignmentsIcon = () => <NavIcon><path d="M3 12l3-7h12l3 7" /><path d="M3 12v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6" /><path d="M3 12h5l1 3h6l1-3h5" /></NavIcon>;
 const AvailabilityIcon = () => <NavIcon><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" /></NavIcon>;
+const DeliveryIcon = () => <NavIcon><path d="M3 16V7h11v9" /><path d="M14 10h4l3 3v3h-7" /><circle cx="7" cy="17" r="2" /><circle cx="17" cy="17" r="2" /></NavIcon>;
 const ReviewsIcon = () => <NavIcon><polygon points="12 2 15 9 22 9.5 16.5 14.3 18.3 21 12 17.2 5.7 21 7.5 14.3 2 9.5 9 9" /></NavIcon>;
 const AccountIcon = () => <NavIcon><circle cx="12" cy="8" r="4" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></NavIcon>;
 const PickupIcon = () => <NavIcon><path d="M15 7h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2" /><rect x="9" y="3" width="6" height="5" rx="1.5" /><polyline points="9 13 11 15 15 11" /></NavIcon>;
@@ -91,6 +92,7 @@ const AdminLayout = ({ children, activePage }) => {
         { to: '/admin/manage-consignments', label: 'Manage Consignments', Icon: ConsignmentsIcon },
         { to: '/admin/manage-reviews', label: 'Manage Reviews', Icon: ReviewsIcon },
         { to: '/admin/expiring-documents', label: 'Expiring Documents', Icon: ExpiringDocsIcon },
+        { to: '/admin/delivery', label: 'Delivery', Icon: DeliveryIcon },
       ],
     },
     {

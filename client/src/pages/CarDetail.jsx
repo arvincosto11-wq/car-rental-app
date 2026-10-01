@@ -16,6 +16,8 @@ import useLongRentalRules from '../hooks/useLongRentalRules';
 import { bestLongRentalRule, longRentalDiscountOn, rulesForCar } from '../utils/longRental';
 import { instantFrom, phDayStart, pickupHours, formatHour, formatPhDate, formatMoment, SHORT_NOTICE_HOURS } from '../utils/phTime';
 import RefundNoticeLine from '../components/RefundNoticeLine';
+import PlacePicker from '../components/PlacePicker';
+import { deliveryQuote } from '../utils/delivery';
 import { registrationLapsed } from '../utils/registration';
 import { isOverdue, daysOverdue } from '../utils/overdue';
 import useModalA11y from '../hooks/useModalA11y';
@@ -96,6 +98,14 @@ const CarDetail = () => {
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
+  // Where the vehicle is handed over and taken back. Null means our own
+  // base, which is the ordinary booking and costs nothing.
+  const [pickupPlace, setPickupPlace] = useState(null);
+  const [returnPlace, setReturnPlace] = useState(null);
+  // Most people hand back where they collected, so that is the default and
+  // the second map only appears for the people who don't.
+  const [returnSame, setReturnSame] = useState(true);
+  const [deliverySettings, setDeliverySettings] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
   // A booking of their own on THIS vehicle that has not finished. Someone
   // adding days to a trip they already have should extend it rather than
@@ -231,8 +241,24 @@ const CarDetail = () => {
   const discountAmount = Math.max(promoAmount, longRentalAmount);
   // The shortest-trip rule, for the "Book 7+ days, save 10%" line.
   const firstLongRentalRule = car ? rulesForCar(longRentalRules, car._id)[0] : null;
-  const totalPrice = subtotal - discountAmount;
+  const vehiclePrice = subtotal - discountAmount;
+  // Mirrors the server: the fee sits outside the discount, because a promo
+  // is the owner discounting their vehicle, not paying for the drive out.
+  const effectiveReturnPlace = returnSame ? pickupPlace : returnPlace;
+  const delivery = deliveryQuote(pickupPlace, effectiveReturnPlace, deliverySettings);
+  const deliveryFee = delivery.fee;
+  const deliveryBlocked = !delivery.ok;
+  const totalPrice = vehiclePrice + deliveryFee;
   const downPayment = Math.ceil(totalPrice * 0.20);
+
+  // The rates and the base pin, so the quote can be shown while choosing
+  // rather than only after submitting. The server recomputes the fee from
+  // the coordinates regardless — this is for the customer's eyes.
+  useEffect(() => {
+    api.get('/settings/delivery')
+      .then((res) => setDeliverySettings(res.data))
+      .catch(() => setDeliverySettings(null));
+  }, []);
 
   // Fire the burst on the transition INTO qualifying, not on every render
   // while it still qualifies — otherwise changing the payment type or
@@ -386,6 +412,11 @@ const CarDetail = () => {
         amountPaid: amountToPay,
         totalPrice,
         bookingType,
+        // Coordinates and the client's own words for the place. The fee is
+        // deliberately not sent: the server works it out, and a fee that
+        // arrived from a browser is a request to be charged less.
+        pickupPlace,
+        returnPlace: effectiveReturnPlace,
         paymentMethod: 'gcash',
       });
 
@@ -583,6 +614,10 @@ const CarDetail = () => {
     choiceTitle: (active) => ({ fontSize: '13.5px', fontWeight: '700', color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a') }),
     choiceSub: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
     choiceAmount: (active) => ({ fontSize: '17px', fontWeight: '800', letterSpacing: '-0.01em', color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a') }),
+    sameRow: {
+      display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px',
+      fontSize: '13px', color: isDark ? '#b0b3b8' : '#4b5563', cursor: 'pointer',
+    },
     noteRow: {
       display: 'flex', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap',
       fontSize: '11.5px', lineHeight: 1.5, color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '12px',
@@ -1027,6 +1062,40 @@ const CarDetail = () => {
                       </div>
                     )}
 
+                    {deliverySettings?.enabled && (
+                      <>
+                        <div style={s.sectionLabel} id="cd-pickup-place-label">Pickup</div>
+                        <PlacePicker
+                          label="Where to collect the vehicle"
+                          describedBy="cd-pickup-quote"
+                          value={pickupPlace}
+                          onChange={setPickupPlace}
+                          settings={deliverySettings}
+                          isDark={isDark}
+                        />
+
+                        <div style={s.sectionLabel}>Return</div>
+                        <label style={s.sameRow}>
+                          <input
+                            type="checkbox"
+                            checked={returnSame}
+                            onChange={(e) => setReturnSame(e.target.checked)}
+                          />
+                          <span>Bring it back to the same place</span>
+                        </label>
+                        {!returnSame && (
+                          <PlacePicker
+                            label="Where to hand the vehicle back"
+                            describedBy="cd-return-quote"
+                            value={returnPlace}
+                            onChange={setReturnPlace}
+                            settings={deliverySettings}
+                            isDark={isDark}
+                          />
+                        )}
+                      </>
+                    )}
+
                     {selfDriveBlocked && (
                       <div style={s.licenseBox}>
                         <p style={s.licenseNote}>
@@ -1078,6 +1147,18 @@ const CarDetail = () => {
                           <span>−₱{discountAmount.toLocaleString()}</span>
                         </div>
                       )}
+                      {delivery.pickup.fee > 0 && (
+                        <div style={s.breakdownRow}>
+                          <span>Delivery to you ({delivery.pickup.km} km)</span>
+                          <span>₱{delivery.pickup.fee.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {delivery.return.fee > 0 && (
+                        <div style={s.breakdownRow}>
+                          <span>Collection from you ({delivery.return.km} km)</span>
+                          <span>₱{delivery.return.fee.toLocaleString()}</span>
+                        </div>
+                      )}
                       {paymentType === 'downpayment' && (
                         <div style={s.breakdownRow}>
                           <span>Remaining balance</span>
@@ -1099,6 +1180,21 @@ const CarDetail = () => {
 
                 {step === 3 && (
                   <motion.div key="step3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
+                    {deliveryFee > 0 && (
+                      <div style={s.selectedPill}>
+                        <span style={s.pillLeft}>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={s.pillLabel}>Handover</span>
+                            <span style={s.pillValue}>
+                              {pickupPlace?.label || 'Pinned on the map'}
+                              {!returnSame && ` → ${effectiveReturnPlace?.label || 'pinned on the map'}`}
+                              {' · '}₱{deliveryFee.toLocaleString()}
+                            </span>
+                          </span>
+                        </span>
+                        <button type="button" style={s.pillAction} onClick={() => goToStep(2)}>Edit</button>
+                      </div>
+                    )}
                     <div className="booking-summary-grid" style={s.summaryGrid}>
                       <div style={s.summaryBox}>
                         <span style={s.summaryKey}>Vehicle</span>
@@ -1203,7 +1299,10 @@ const CarDetail = () => {
                   <>
                     <button style={s.backStepBtn} onClick={() => goToStep(1)}>Back</button>
                     <span style={s.footPush}>
-                      <button style={s.nextBtn} onClick={goToConfirmNext}>Continue →</button>
+                      {/* A place we don't serve stops the booking here, where
+                          the map is still on screen to change it — not at
+                          the payment screen, and certainly not after. */}
+                      <button style={s.nextBtn} onClick={goToConfirmNext} disabled={deliveryBlocked}>Continue →</button>
                     </span>
                   </>
                 )}

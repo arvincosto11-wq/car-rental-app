@@ -38,8 +38,14 @@ export const splitDays = (booking, now = new Date()) => {
 // being charged for the days they used.
 export const repriceForSwap = (booking, newPricePerDay, now = new Date()) => {
   const { total, used, left } = splitDays(booking, now);
-  const soldRate = (booking.totalPrice || 0) / total;
-  const newTotal = Math.round(soldRate * used) + Math.round((Number(newPricePerDay) || 0) * left);
+  // The delivery fee is held out of the day rate and added back whole. It
+  // paid for driving to where the client is, which happened once and does
+  // not change because a different vehicle is finishing the trip — spread
+  // across the days it would be partly re-charged, and a swap on day one
+  // would hand most of it back.
+  const delivery = booking.deliveryFee || 0;
+  const soldRate = ((booking.totalPrice || 0) - delivery) / total;
+  const newTotal = Math.round(soldRate * used) + Math.round((Number(newPricePerDay) || 0) * left) + delivery;
   return {
     used,
     left,

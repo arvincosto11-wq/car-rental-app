@@ -226,6 +226,12 @@ const PickupDesk = () => {
       background: isDark ? '#242526' : '#fff', borderRadius: '16px', marginBottom: '14px',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, overflow: 'hidden',
     },
+    deliveryNote: {
+      margin: '0 0 12px', padding: '10px 12px', borderRadius: '8px', fontSize: '12px', lineHeight: 1.7,
+      background: isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.08)',
+      border: `1px solid ${isDark ? '#5a4a1a' : '#f3d98b'}`,
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
     cardHead: {
       display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px',
       padding: '16px 18px', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`, flexWrap: 'wrap',
@@ -348,6 +354,28 @@ const PickupDesk = () => {
             </div>
           </div>
         </div>
+
+        {/* Where this one is going, when it is not going to the counter.
+            Shown on the card itself rather than behind a click: whoever
+            works this desk needs to know a vehicle is being driven out
+            before they start getting it ready, not after. */}
+        {(booking.pickupPlace?.lat != null || booking.returnPlace?.lat != null) && (
+          <div style={s.deliveryNote}>
+            {booking.pickupPlace?.lat != null && (
+              <div>
+                <strong>Deliver to:</strong> {booking.pickupPlace.label || 'pinned on the map'}
+                {' · '}{booking.pickupPlace.km} km
+              </div>
+            )}
+            {booking.returnPlace?.lat != null && (
+              <div>
+                <strong>Collect from:</strong> {booking.returnPlace.label || 'pinned on the map'}
+                {' · '}{booking.returnPlace.km} km
+              </div>
+            )}
+            {booking.deliveryFee > 0 && <div>Charged ₱{booking.deliveryFee.toLocaleString()} on this booking.</div>}
+          </div>
+        )}
 
         <div className="responsive-row-2" style={s.body}>
           <div>

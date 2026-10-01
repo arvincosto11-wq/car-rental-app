@@ -8,6 +8,8 @@ import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { refundBookingPayment } from '../utils/paymongo.js';
 import { computeBookingPrice } from '../utils/promo.js';
+import Settings from '../models/Settings.js';
+import { deliveryQuote, deliveryRefusal, isPoint } from '../utils/delivery.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { openAdjustOffer, acceptAdjustOffer, startTopUp, confirmTopUp, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
 import { cancelBookingWithRefund, refundPercentage, CANCEL_REASONS, reasonUnavailable } from '../utils/cancelBooking.js';
@@ -121,7 +123,7 @@ async function findConflict(carId, start, end, statuses = ['confirmed'], exclude
 // Create booking
 router.post('/', protect, async (req, res) => {
     try {
-    const { carId, startDate, endDate, paymentType, bookingType, paymentMethod } = req.body;
+    const { carId, startDate, endDate, paymentType, bookingType, paymentMethod, pickupPlace, returnPlace } = req.body;
 
     const currentUser = await User.findById(req.user.id);
     if (currentUser?.isBlocked) {
@@ -264,10 +266,38 @@ router.post('/', protect, async (req, res) => {
     // Long-rental rules are read fresh at booking time, so an "all vehicles"
     // rule also covers cars added after it was created.
     const longRentalRules = await LongRentalDiscount.find({ active: true }).lean();
-    const { subtotal, discountAmount, totalPrice: computedTotalPrice, promoLabel } =
+    const { subtotal, discountAmount, totalPrice: vehiclePrice, promoLabel } =
       computeBookingPrice(car, totalDays, start, end, longRentalRules);
+
+    // Delivery is quoted here from the coordinates alone. Anything else the
+    // browser sent about a place — a distance, a fee — is ignored: those are
+    // the two numbers worth tampering with, and a quote the client supplies
+    // is not a quote, it is a request to be charged less.
+    const settings = await Settings.current();
+    const pickupPoint = isPoint(pickupPlace) ? { lat: pickupPlace.lat, lng: pickupPlace.lng } : null;
+    const returnPoint = isPoint(returnPlace) ? { lat: returnPlace.lat, lng: returnPlace.lng } : null;
+    const quote = deliveryQuote(pickupPoint, returnPoint, settings);
+    if (!quote.ok) {
+      return res.status(400).json({ message: deliveryRefusal(quote.reason, settings) });
+    }
+
+    // The fee sits OUTSIDE the discount. A promo is the owner discounting
+    // their own vehicle; it is not them paying for somebody's petrol to
+    // Tabaco, and a percentage promo would quietly do exactly that.
+    const computedTotalPrice = vehiclePrice + quote.fee;
     const validPaymentType = paymentType === 'full' ? 'full' : 'downpayment';
     const computedAmountPaid = validPaymentType === 'full' ? computedTotalPrice : Math.ceil(computedTotalPrice * 0.20);
+
+    // A label is the client's own words for where they are; it is shown
+    // back to them and to whoever drives out there, so it is trimmed and
+    // capped rather than trusted at whatever length it arrived.
+    const place = (sent, point, leg) => ({
+      label: String(sent?.label || '').trim().slice(0, 120),
+      lat: point ? point.lat : null,
+      lng: point ? point.lng : null,
+      km: leg.km,
+      fee: leg.fee,
+    });
 
     const booking = await Booking.create({
       user: req.user.id,
@@ -283,6 +313,9 @@ router.post('/', protect, async (req, res) => {
       amountPaid: computedAmountPaid,
       paymentType: validPaymentType,
       bookingType: bookingType || 'with-driver',
+      pickupPlace: place(pickupPlace, pickupPoint, quote.pickup),
+      returnPlace: place(returnPlace, returnPoint, quote.return),
+      deliveryFee: quote.fee,
       payment: paymentMethod === 'gcash' ? 'gcash_pending' : (validPaymentType === 'full' ? 'paid' : 'offline')
     });
 

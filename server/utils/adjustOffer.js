@@ -99,18 +99,24 @@ async function priceOptions(car, booking, ranges) {
     totalPrice: booking.totalPrice,
     promoLabel: booking.promoLabel || '',
   };
+  // Moving dates does not move where the client is, so the delivery fee
+  // rides along untouched. It has to come out of the comparison too: a
+  // vehicle price weighed against a total that includes delivery would read
+  // as cheaper every time and quietly honour the old price forever.
+  const delivery = booking.deliveryFee || 0;
+  const vehicleWas = (booking.totalPrice || 0) - delivery;
   return ranges.map((range) => {
     const priced = computeBookingPrice(car, booking.totalDays, range.startDate, range.endDate, rules);
     // Cheaper than the trip they already agreed to — only possible if a promo
     // appeared after they booked. Honour the original price rather than
     // create a refund out of a date change.
-    return priced.totalPrice < booking.totalPrice
+    return priced.totalPrice < vehicleWas
       ? { ...range, ...paidFor }
       : {
         ...range,
         subtotal: priced.subtotal,
         discountAmount: priced.discountAmount,
-        totalPrice: priced.totalPrice,
+        totalPrice: priced.totalPrice + delivery,
         promoLabel: priced.promoLabel,
       };
   });
@@ -166,7 +172,9 @@ export async function alternativeVehicles(booking, { limit = 3 } = {}) {
       pricePerDay: car.pricePerDay,
       subtotal: priced.subtotal,
       discountAmount: priced.discountAmount,
-      totalPrice: priced.totalPrice,
+      // Same vehicle swap, same place: the delivery already quoted stays on
+      // the bill rather than vanishing because a different car is going.
+      totalPrice: priced.totalPrice + (booking.deliveryFee || 0),
       promoLabel: priced.promoLabel || '',
       // What the trip now costs less than it did. Usually settled by owing
       // less at pickup rather than by money moving — a refund on a booking

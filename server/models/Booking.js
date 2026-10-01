@@ -26,6 +26,32 @@ const bookingSchema = new mongoose.Schema({
   amountPaid: { type: Number, required: true },
   paymentType: { type: String, enum: ['downpayment', 'full'], default: 'downpayment' },
   bookingType: { type: String, enum: ['self-drive', 'with-driver'], default: 'with-driver' },
+  // Where the vehicle is handed over, and where it is taken back. A place
+  // with no coordinates means our own base — the ordinary booking, which
+  // costs nothing and must never read as missing data.
+  //
+  // The distance and the fee are copied here rather than recomputed later,
+  // for the same reason the promo is: admin can move the base pin or change
+  // the rate tomorrow, and this receipt must not change with it. See
+  // utils/delivery.js.
+  pickupPlace: {
+    label: { type: String, default: '' },
+    lat: { type: Number, default: null },
+    lng: { type: Number, default: null },
+    km: { type: Number, default: 0 },
+    fee: { type: Number, default: 0 },
+  },
+  returnPlace: {
+    label: { type: String, default: '' },
+    lat: { type: Number, default: null },
+    lng: { type: Number, default: null },
+    km: { type: Number, default: 0 },
+    fee: { type: Number, default: 0 },
+  },
+  // Both legs together. Part of totalPrice, but kept separately so the
+  // receipt can show it and so repricing the VEHICLE (a swap, an adjusted
+  // offer) can put it back afterwards instead of silently dropping it.
+  deliveryFee: { type: Number, default: 0 },
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'pending' },
   // When the keys actually changed hands, recorded by admin at the counter.
   // Before this existed the system inferred it from the clock — "the pickup
