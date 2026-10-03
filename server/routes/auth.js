@@ -62,7 +62,7 @@ router.put('/me', protect, async (req, res) => {
   try {
     const {
       name, phone, address, birthDate,
-      licenseNumber, licenseExpiry,
+      licenseExpiry,
       emergencyContactName, emergencyContactNumber,
       image, imageFileId
     } = req.body;
@@ -85,7 +85,6 @@ router.put('/me', protect, async (req, res) => {
       user.birthDate = birthDate;
     }
 
-    if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
     if (licenseExpiry !== undefined) user.licenseExpiry = licenseExpiry || null;
 
     await user.save();
@@ -374,7 +373,7 @@ router.post('/register', registerLimiter, async (req, res) => {
   try {
     const {
       name, email, password, birthDate, phone, address,
-      licenseNumber, licenseExpiry,
+      licenseExpiry,
       emergencyContactName, emergencyContactNumber
     } = req.body;
 
@@ -406,7 +405,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     const user = await User.create({
       name, email, password: hashed, birthDate,
       phone, address,
-      licenseNumber, licenseExpiry,
+      licenseExpiry,
       emergencyContactName, emergencyContactNumber
     });
 

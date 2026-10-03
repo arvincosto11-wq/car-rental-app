@@ -146,7 +146,7 @@ export default function run() {
   // a trip their licence expires halfway through and find out at the counter
   // — where nobody can renew anything.
   const today = new Date('2026-09-25T10:00:00+08:00');
-  const driver = (expiry) => ({ licenseNumber: 'N02-19-004417', licenseExpiry: expiry });
+  const driver = (expiry) => ({ licenseExpiry: expiry });
   const trip = (endYmd) => ({ bookingType: 'self-drive', endDate: instantFrom(endYmd, 7) });
 
   check('valid past the return', licenceProblem(driver(instantFrom('2027-01-01', 7)), trip('2026-09-28'), today), null);

@@ -366,8 +366,10 @@ const PickupDesk = () => {
             {selfDrive && (
               <div style={s.field}>
                 <span style={s.fieldLabel}>Licence: </span>
-                {client?.licenseNumber || 'none on file'}
-                {client?.licenseExpiry ? ` · expires ${new Date(client.licenseExpiry).toLocaleDateString()}` : ''}
+                {client?.licenseExpiry
+                  ? `expires ${new Date(client.licenseExpiry).toLocaleDateString()}`
+                  : 'no expiry on file'}
+                {' — check the card itself'}
               </div>
             )}
             {/* No photographs to compare against any more — the documents

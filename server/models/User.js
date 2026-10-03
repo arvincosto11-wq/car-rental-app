@@ -31,10 +31,11 @@ const userSchema = new mongoose.Schema({
   // counter, against the person holding them. That was always the check
   // doing the work.
   //
-  // The licence stays, because driving a vehicle you do not hold a licence
-  // for is a different kind of problem from a lapsed ID — and the self-drive
-  // gate needs a date to compare against.
-  licenseNumber: { type: String, default: '' },
+  // What remains of the licence is its expiry, and only that. The number
+  // went the way of the ID for the same reason: it identifies a person and a
+  // date does not, and the card itself is read at the counter. The date is
+  // here because the self-drive gate needs something to compare a trip
+  // against, and because a renewal reminder is worth sending.
   licenseExpiry: { type: Date },
   licenseExpiryNotifiedAt: { type: Date },
   emergencyContactName: { type: String, default: '' },

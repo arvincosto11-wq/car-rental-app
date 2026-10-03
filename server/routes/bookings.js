@@ -385,7 +385,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
       // position with every booking that mentions it — 664 KB to render a
       // name, a photo and a plate.
       .populate('car', 'brand model year category image plateNumber pricePerDay owner')
-      .populate('user', 'name email image avgRating ratingCount licenseExpiry licenseNumber')
+      .populate('user', 'name email image avgRating ratingCount licenseExpiry')
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'admin' }));
   } catch (err) {

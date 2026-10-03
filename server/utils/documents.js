@@ -19,9 +19,14 @@ const outlasts = (expiry, until) => ymdOf(expiry) >= ymdOf(until);
 
 // Why this client can't take this booking on their own licence, or null.
 // With-driver bookings never ask: it isn't their licence doing the driving.
+//
+// Only the expiry is asked for. The licence number used to be required too,
+// and it was the one piece of it worth stealing — a date is not. The licence
+// itself is read at the counter, where the number is on the card in front of
+// whoever is checking it.
 export function licenceProblem(user, { bookingType, endDate }, now = new Date()) {
   if (bookingType !== 'self-drive') return null;
-  if (!user?.licenseNumber || !user?.licenseExpiry) return { kind: 'missing' };
+  if (!user?.licenseExpiry) return { kind: 'missing' };
   const expiry = new Date(user.licenseExpiry);
   if (!outlasts(expiry, now)) return { kind: 'expired', expiry };
   if (!outlasts(expiry, endDate)) return { kind: 'expires_during', expiry };
@@ -33,7 +38,7 @@ export function licenceProblem(user, { bookingType, endDate }, now = new Date())
 export function licenceMessage(problem) {
   if (!problem) return '';
   if (problem.kind === 'missing') {
-    return "A driver's licence is required to book self-drive. Please add it in your Profile, or book with a driver instead.";
+    return "Self-drive needs your driver's licence expiry date. Please add it in your Profile, or book with a driver instead.";
   }
   if (problem.kind === 'expired') {
     return "Your driver's licence has expired. Please update it in your Profile, or book with a driver instead.";

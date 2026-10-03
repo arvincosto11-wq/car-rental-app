@@ -93,7 +93,6 @@ const Profile = () => {
       birthDate: '', // only ever sent as a one-time backfill — see the birthdate field below, shown only when profile.birthDate is empty
       phone: profile.phone || '',
       address: profile.address || '',
-      licenseNumber: profile.licenseNumber || '',
       licenseExpiry: profile.licenseExpiry ? profile.licenseExpiry.split('T')[0] : '',
       emergencyContactName: profile.emergencyContactName || '',
       emergencyContactNumber: profile.emergencyContactNumber || '',
@@ -485,10 +484,6 @@ const Profile = () => {
                   <span style={s.profileValue}>{profile.address || '—'}</span>
                 </div>
                 <div style={s.profileItem}>
-                  <span style={s.profileLabel}>License Number</span>
-                  <span style={s.profileValue}>{profile.licenseNumber || '—'}</span>
-                </div>
-                <div style={s.profileItem}>
                   <span style={s.profileLabel}>License Expiry</span>
                   <span style={s.profileValue}>
                     {profile.licenseExpiry ? new Date(profile.licenseExpiry).toLocaleDateString() : '—'}
@@ -542,11 +537,6 @@ const Profile = () => {
               </div>
 
               <div className="responsive-row-2" style={s.row}>
-                <div style={s.field}>
-                  <label style={s.label} htmlFor="profile-license-number">License Number</label>
-                  <input id="profile-license-number" style={s.input} type="text" value={form.licenseNumber}
-                    onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} />
-                </div>
                 {/* Editable now. It used to be read off the uploaded photo
                     by whoever checked it; there is no photo, so there is
                     nothing for anybody else to read it off. It drives the
@@ -601,10 +591,9 @@ const Profile = () => {
             <div style={{ marginTop: '12px' }}>
               <span style={s.profileLabel}>Driver&apos;s Licence</span>
               <span style={{ ...s.profileValue, display: 'block', marginTop: '4px' }}>
-                {profile.licenseNumber || 'Not set'}
                 {profile.licenseExpiry
-                  ? ` · expires ${new Date(profile.licenseExpiry).toLocaleDateString()}`
-                  : ''}
+                  ? `Expires ${new Date(profile.licenseExpiry).toLocaleDateString()}`
+                  : 'Not set'}
               </span>
             </div>
           </div>

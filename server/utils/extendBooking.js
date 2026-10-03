@@ -151,7 +151,7 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
   // Asked at booking and never asked again, so a client could extend past
   // the day their licence runs out and keep driving on it — the one place
   // where the system, rather than a counter, is the only thing checking.
-  const client = await User.findById(booking.user).select('licenseNumber licenseExpiry').lean();
+  const client = await User.findById(booking.user).select('licenseExpiry').lean();
 
   const own = bookingSpan(booking);
   const hour = booking.hasPickupTime ? phHour(own.start) : 0;

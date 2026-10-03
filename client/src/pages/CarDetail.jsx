@@ -216,7 +216,7 @@ const CarDetail = () => {
   // Self-drive used to wait on an admin having approved an ID photo. There
   // is no photo now, so what it actually needs is a licence on file that
   // outlasts the trip — which licenceProblem below already decides.
-  const isSelfDriveEligible = !!profile?.licenseNumber && !!profile?.licenseExpiry;
+  const isSelfDriveEligible = !!profile?.licenseExpiry;
   const supportedBookingTypes = car?.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver'];
   const selfDriveBlocked = bookingType === 'self-drive' && !isSelfDriveEligible;
   // Asked here rather than at the counter. A licence that runs out mid-trip
@@ -1102,8 +1102,8 @@ const CarDetail = () => {
                     {selfDriveBlocked && (
                       <div style={s.licenseBox}>
                         <p style={s.licenseNote}>
-                          Self-drive needs your driver&apos;s licence number and expiry on file. Add them in your
-                          Profile, and bring the licence itself to the pickup — we check it there.
+                          Self-drive needs your driver&apos;s licence expiry on file. Add it in your Profile,
+                          and bring the licence itself to the pickup — we check it there.
                         </p>
                         <Link to="/profile" style={s.licenseLink}>Go to Profile</Link>
                       </div>

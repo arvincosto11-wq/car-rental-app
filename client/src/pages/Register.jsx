@@ -65,7 +65,6 @@ const Register = () => {
   const [form, setForm] = useState({
     name: '', email: '', password: '', birthDate: '',
     phone: '', address: '',
-    licenseNumber: '',
     emergencyContactName: '', emergencyContactNumber: '',
   });
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -537,22 +536,10 @@ const Register = () => {
                     <p style={{ ...styles.subtitle, marginBottom: '8px' }}>
                       Driver's license (optional now — only needed if you later book a self-drive vehicle)
                     </p>
-                    <div className="responsive-row-2" style={styles.row}>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="reg-license-number">Driver's License Number</label>
-                        <input
-                          id="reg-license-number"
-                          style={styles.input}
-                          type="text"
-                          placeholder="e.g. N01-23-456789"
-                          value={form.licenseNumber}
-                          onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })}
-                        />
-                      </div>
-                      {/* No expiry here. Our team reads it off the photo
-                          when the licence is checked — a date typed by its
-                          holder is a claim, not a fact. */}
-                    </div>
+                    {/* Nothing about the licence is asked for at sign-up.
+                        Self-drive needs its expiry, which they add in their
+                        Profile when they first want to drive themselves —
+                        and the licence itself is read at the counter. */}
 
                     <div style={styles.stepActions}>
                       <button type="button" style={styles.backBtn} onClick={() => goToStep(1)}>

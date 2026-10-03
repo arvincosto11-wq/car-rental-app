@@ -290,10 +290,6 @@ const ManageClients = () => {
                 <span style={s.profileValue}>{selectedClient.address || '—'}</span>
               </div>
               <div style={s.profileItem}>
-                <span style={s.profileLabel}>Driver's License #</span>
-                <span style={s.profileValue}>{selectedClient.licenseNumber || '—'}</span>
-              </div>
-              <div style={s.profileItem}>
                 <span style={s.profileLabel}>License Expiry</span>
                 <span style={s.profileValue}>
                   {selectedClient.licenseExpiry ? new Date(selectedClient.licenseExpiry).toLocaleDateString() : '—'}
