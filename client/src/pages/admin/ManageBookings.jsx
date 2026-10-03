@@ -163,6 +163,22 @@ const ManageBookings = () => {
     }
   };
 
+  // Every action used to end by downloading all 164 bookings again — a few
+  // hundred kilobytes and a couple of seconds, to change one word on one
+  // row. The server already hands back the booking it just updated, so the
+  // row is patched from that and the screen answers immediately.
+  const applyBooking = (updated) => {
+    if (!updated?._id) return;
+    setBookings((prev) => prev.map((b) => (b._id === updated._id ? { ...b, ...updated } : b)));
+  };
+
+  // Some actions reach beyond the booking they were aimed at: confirming one
+  // request cancels the rival requests for the same dates, cancelling frees
+  // the vehicle, moving it changes another car's calendar. Those still need
+  // the full list — but nobody has to WATCH it arrive. The row updates at
+  // once and the rest catches up a moment later.
+  const refreshQuietly = () => { fetchBookings(); };
+
   // Cancelling asks why first — the reason is what decides the refund, so it
   // can't be inferred after the fact. Everything else goes straight through.
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -228,7 +244,10 @@ const ManageBookings = () => {
       if (res.data.autoRefunded) {
         toast.info(res.data.message);
       }
-      await fetchBookings();
+      // A status change is the one that touches other bookings, so the row
+      // lands now and the list reconciles behind it.
+      applyBooking(res.data.booking || res.data);
+      refreshQuietly();
       refetchPendingCounts();
     } catch (err) {
       console.error(err);
@@ -295,8 +314,8 @@ const ManageBookings = () => {
     );
     if (!ok) return;
     try {
-      await api.put(`/bookings/${booking._id}/late-fee/collected`);
-      await fetchBookings();
+      const res = await api.put(`/bookings/${booking._id}/late-fee/collected`);
+      applyBooking(res.data.booking || res.data);
       toast.success('Late fee recorded as settled.');
     } catch (err) {
       console.error(err);
@@ -312,8 +331,8 @@ const ManageBookings = () => {
     );
     if (!ok) return;
     try {
-      await api.put(`/bookings/${booking._id}/collect-balance`);
-      await fetchBookings();
+      const res = await api.put(`/bookings/${booking._id}/collect-balance`);
+      applyBooking(res.data.booking || res.data);
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Something went wrong recording this balance.');
@@ -392,9 +411,10 @@ const ManageBookings = () => {
     if (!ok) return;
     setMoveBusy(option.id);
     try {
-      await api.put(`/bookings/${moveTarget._id}/move-vehicle`, { carId: option.id });
+      const res = await api.put(`/bookings/${moveTarget._id}/move-vehicle`, { carId: option.id });
       setMoveTarget(null);
-      await fetchBookings();
+      applyBooking(res.data.booking || res.data);
+      refreshQuietly();
       toast.success(`Moved to the ${option.brand} ${option.model}.`);
     } catch (err) {
       console.error(err);
@@ -411,8 +431,8 @@ const ManageBookings = () => {
     );
     if (!ok) return;
     try {
-      await api.put(`/bookings/${booking._id}/damage-charge/collected`);
-      await fetchBookings();
+      const res = await api.put(`/bookings/${booking._id}/damage-charge/collected`);
+      applyBooking(res.data.booking || res.data);
       toast.success('Damage charge recorded as settled.');
     } catch (err) {
       console.error(err);
@@ -427,8 +447,8 @@ const ManageBookings = () => {
     );
     if (!ok) return;
     try {
-      await api.put(`/bookings/${booking._id}/fuel-charge/collected`);
-      await fetchBookings();
+      const res = await api.put(`/bookings/${booking._id}/fuel-charge/collected`);
+      applyBooking(res.data.booking || res.data);
       toast.success('Refuelling charge recorded as settled.');
     } catch (err) {
       console.error(err);
@@ -443,8 +463,9 @@ const ManageBookings = () => {
     );
     if (!ok) return;
     try {
-      await api.put(`/bookings/${booking._id}/no-show`);
-      await fetchBookings();
+      const res = await api.put(`/bookings/${booking._id}/no-show`);
+      applyBooking(res.data.booking || res.data);
+      refreshQuietly();
       refetchPendingCounts();
     } catch (err) {
       console.error(err);
@@ -454,8 +475,9 @@ const ManageBookings = () => {
 
   const handleRefundDecision = async (id, decision) => {
     try {
-      await api.put(`/bookings/${id}/refund`, { decision });
-      await fetchBookings();
+      const res = await api.put(`/bookings/${id}/refund`, { decision });
+      applyBooking(res.data.booking || res.data);
+      refreshQuietly();
       refetchPendingCounts();
     } catch (err) {
       console.error(err);
@@ -469,7 +491,10 @@ const ManageBookings = () => {
       if (res.data.rescheduleRequest?.adminNotes?.startsWith('Automatically declined')) {
         toast.info(res.data.rescheduleRequest.adminNotes);
       }
-      await fetchBookings();
+      // An approved reschedule moves dates, which frees and claims days on
+      // that vehicle's calendar, so the list catches up behind the row.
+      applyBooking(res.data.booking || res.data);
+      refreshQuietly();
       refetchPendingCounts();
     } catch (err) {
       console.error(err);
