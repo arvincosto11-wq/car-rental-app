@@ -14,6 +14,7 @@ import adminStatsRoutes from './routes/adminStats.js';
 import longRentalRoutes from './routes/longRental.js';
 import settingsRoutes from './routes/settings.js';
 import appointmentRoutes from './routes/appointments.js';
+import { normaliseEmail } from './middleware/email.js';
 import backfillCollected from './utils/backfillCollected.js';
 
 dotenv.config();
@@ -42,12 +43,12 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), han
 
 app.use(express.json());
 
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', normaliseEmail, authRoutes);
 app.use('/api/cars', carRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/imagekit', imagekitRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/consignments', consignmentRoutes);
+app.use('/api/consignments', normaliseEmail, consignmentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/admin', adminStatsRoutes);

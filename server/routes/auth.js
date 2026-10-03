@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import EmailVerification from '../models/EmailVerification.js';
 import { protect } from '../middleware/auth.js';
+import { sameEmail } from '../middleware/email.js';
 import { loginLimiter, registerLimiter, verificationLimiter } from '../middleware/rateLimit.js';
 import { sendVerificationCodeEmail } from '../utils/email.js';
 import { notifyAdmins } from '../utils/notify.js';
@@ -136,7 +137,7 @@ router.post('/forgot-password', verificationLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Please enter a valid email address.' });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne(sameEmail(email));
     if (user) {
       const code = String(Math.floor(100000 + Math.random() * 900000));
       await EmailVerification.findOneAndUpdate(
@@ -162,7 +163,7 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'New password must be at least 8 characters.' });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne(sameEmail(email));
     if (!user) return res.status(400).json({ message: 'Invalid request.' });
 
     const verification = await EmailVerification.findOne({ email });
@@ -239,7 +240,7 @@ router.post('/change-email/send-code', protect, verificationLimiter, async (req,
     const match = await bcrypt.compare(currentPassword || '', user.password);
     if (!match) return res.status(400).json({ message: 'Current password is incorrect.' });
 
-    const taken = await User.findOne({ email });
+    const taken = await User.findOne(sameEmail(email));
     if (taken) return res.status(400).json({ message: 'Another account already uses that email address.' });
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -278,7 +279,7 @@ router.put('/change-email', protect, async (req, res) => {
       return res.status(400).json({ message: 'Please verify the new address before switching to it.' });
     }
 
-    const taken = await User.findOne({ email });
+    const taken = await User.findOne(sameEmail(email));
     if (taken) return res.status(400).json({ message: 'Another account already uses that email address.' });
 
     user.email = email;
@@ -299,7 +300,7 @@ router.post('/send-verification-code', verificationLimiter, async (req, res) => 
       return res.status(400).json({ message: 'Please enter a valid email address.' });
     }
 
-    const exists = await User.findOne({ email });
+    const exists = await User.findOne(sameEmail(email));
     if (exists) return res.status(400).json({ message: 'Email already exists' });
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -371,7 +372,7 @@ router.post('/register', registerLimiter, async (req, res) => {
       return res.status(400).json({ message: `You must be at least ${MIN_AGE_YEARS} years old to register.` });
     }
 
-    const exists = await User.findOne({ email });
+    const exists = await User.findOne(sameEmail(email));
     if (exists) return res.status(400).json({ message: 'Email already exists' });
 
     // The whole point of the verification step — without this check it
@@ -412,7 +413,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne(sameEmail(email));
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
     const match = await bcrypt.compare(password, user.password);

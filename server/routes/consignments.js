@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import Car from '../models/Car.js';
 import Consignment from '../models/Consignment.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
+import { sameEmail } from '../middleware/email.js';
 import { registerLimiter } from '../middleware/rateLimit.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 
@@ -55,7 +56,7 @@ router.post('/register', registerLimiter, async (req, res) => {
       return res.status(400).json({ message: `You must be at least ${MIN_AGE_YEARS} years old to register.` });
     }
 
-    const exists = await User.findOne({ email });
+    const exists = await User.findOne(sameEmail(email));
     if (exists) return res.status(400).json({ message: 'Email already exists' });
 
     const hashed = await bcrypt.hash(password, 10);

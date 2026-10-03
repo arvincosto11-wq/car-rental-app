@@ -18,8 +18,9 @@ import handover from './handover.test.mjs';
 import dwell from './dwell.test.mjs';
 import delivery from './delivery.test.mjs';
 import appointments from './appointments.test.mjs';
+import email from './email.test.mjs';
 
-const suites = [phTime, availability, pricing, longRental, refunds, adjustOffer, handover, dwell, delivery, appointments];
+const suites = [phTime, availability, pricing, longRental, refunds, adjustOffer, handover, dwell, delivery, appointments, email];
 
 for (const run of suites) run();
 
