@@ -24,10 +24,6 @@ const AddVehicle = () => {
     suggestedPricePerDay: '', description: '',
   });
 
-  const [orImage, setOrImage] = useState(null);
-  const [orPreview, setOrPreview] = useState('');
-  const [crImage, setCrImage] = useState(null);
-  const [crPreview, setCrPreview] = useState('');
   const [vehiclePhotos, setVehiclePhotos] = useState([]);
   const [vehiclePreviews, setVehiclePreviews] = useState([]);
   const [bookingTypes, setBookingTypes] = useState({ 'self-drive': true, 'with-driver': true });
@@ -129,10 +125,6 @@ const AddVehicle = () => {
     e.preventDefault();
     setError('');
 
-    if (!orImage || !crImage) {
-      setError('Please upload photos of both the OR (Official Receipt) and CR (Certificate of Registration).');
-      return;
-    }
     if (vehiclePhotos.length === 0) {
       setError('Please upload at least one photo of the vehicle.');
       return;
@@ -145,8 +137,6 @@ const AddVehicle = () => {
 
     setLoading(true);
     try {
-      const uploadedOr = await uploadToImageKit(orImage, { isPrivate: true });
-      const uploadedCr = await uploadToImageKit(crImage, { isPrivate: true });
       const uploadedPhotos = [];
       for (const file of vehiclePhotos) {
         const uploaded = await uploadToImageKit(file);
@@ -155,10 +145,6 @@ const AddVehicle = () => {
 
       await api.post('/consignments', {
         ...form,
-        orImage: uploadedOr.url,
-        orImageFileId: uploadedOr.fileId,
-        crImage: uploadedCr.url,
-        crImageFileId: uploadedCr.fileId,
         vehiclePhotos: uploadedPhotos,
         availableBookingTypes: selectedBookingTypes,
       });
@@ -376,37 +362,14 @@ const AddVehicle = () => {
 
                 {step === 2 && (
                   <motion.div key="step2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
+                    {/* The OR and CR are brought to the office now, not
+                        uploaded — they are checked against the vehicle
+                        itself, which a photograph never allowed. */}
                     <h2 style={s.sectionTitle}>Registration Documents</h2>
-                    <div className="responsive-row-2" style={s.row}>
-                      <div style={s.field}>
-                        <label style={s.label} htmlFor="av-or">OR (Official Receipt)</label>
-                        <div style={s.upload}>
-                          {orPreview ? (
-                            <img src={orPreview} alt="OR preview" style={s.uploadPreview} />
-                          ) : (
-                            <div style={s.uploadPlaceholder}>
-                              <span style={{ fontSize: '26px' }}>🧾</span>
-                              <p style={s.uploadHint}>Click to upload OR photo</p>
-                            </div>
-                          )}
-                          <input id="av-or" type="file" accept="image/*" style={s.fileInput} onChange={(e) => { const f = e.target.files[0]; if (f) { setOrImage(f); setOrPreview(URL.createObjectURL(f)); } }} />
-                        </div>
-                      </div>
-                      <div style={s.field}>
-                        <label style={s.label} htmlFor="av-cr">CR (Certificate of Registration)</label>
-                        <div style={s.upload}>
-                          {crPreview ? (
-                            <img src={crPreview} alt="CR preview" style={s.uploadPreview} />
-                          ) : (
-                            <div style={s.uploadPlaceholder}>
-                              <span style={{ fontSize: '26px' }}>📄</span>
-                              <p style={s.uploadHint}>Click to upload CR photo</p>
-                            </div>
-                          )}
-                          <input id="av-cr" type="file" accept="image/*" style={s.fileInput} onChange={(e) => { const f = e.target.files[0]; if (f) { setCrImage(f); setCrPreview(URL.createObjectURL(f)); } }} />
-                        </div>
-                      </div>
-                    </div>
+                    <p style={s.uploadHint}>
+                      Bring the OR and CR with you when you come in with the vehicle. We check them there
+                      and keep no copies.
+                    </p>
 
                     <hr style={s.sectionDivider} />
                     <h2 style={s.sectionTitle}>Vehicle Photos</h2>

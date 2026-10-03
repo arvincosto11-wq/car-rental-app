@@ -2,7 +2,6 @@ import express from 'express';
 import User from '../models/User.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { notifyUser } from '../utils/notify.js';
-import { signedDocumentUrl } from '../utils/documentUrls.js';
 
 const router = express.Router();
 
@@ -18,46 +17,10 @@ router.get('/', protect, adminOnly, async (req, res) => {
   }
 });
 
-// Short-lived links to somebody's identity documents.
-//
-// These photographs are passports, national IDs and driving licences. They
-// sat on links that worked for anybody who had them, for ever — a link
-// leaks through browser history, a screenshot, a shared machine, and then
-// it is somebody's identity out in the world with nothing to withdraw.
-//
-// Asking for them here rather than signing whatever URL a caller hands over
-// means the server decides which files a person may see, rather than
-// trusting them to only ask about their own.
-//
-// Works for photographs already stored in the open as well as new private
-// ones, so the screens can move over before the files do.
-router.get('/:id/documents', protect, async (req, res) => {
-  try {
-    const self = req.params.id === req.user.id;
-    if (!self && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-    const user = await User.findById(req.params.id).select(
-      'validIdImage validIdImageBack licenseImage licenseImageBack '
-      + 'pendingValidIdImage pendingValidIdImageBack pendingLicenseImage pendingLicenseImageBack'
-    ).lean();
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    const fields = [
-      'validIdImage', 'validIdImageBack', 'licenseImage', 'licenseImageBack',
-      'pendingValidIdImage', 'pendingValidIdImageBack', 'pendingLicenseImage', 'pendingLicenseImageBack',
-    ];
-    const out = {};
-    for (const f of fields) out[f] = user[f] ? signedDocumentUrl(user[f]) : '';
-    res.json(out);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Correcting the dates on an already-verified client, read off the ID and
-// licence photos on file. Separate from approval because a typo found a
-// week later should not mean sending somebody back through review.
+// Correcting somebody's document dates, read off the real ID or licence at
+// the counter. The client enters their own when they register, which is a
+// claim rather than a fact — this is how the person who has actually seen
+// the document puts it right.
 router.put('/:id/document-dates', protect, adminOnly, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -66,122 +29,6 @@ router.put('/:id/document-dates', protect, adminOnly, async (req, res) => {
     if (req.body.licenseExpiry !== undefined) user.licenseExpiry = req.body.licenseExpiry || null;
     await user.save();
     res.json({ validIdExpiry: user.validIdExpiry, licenseExpiry: user.licenseExpiry });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Verify or unverify a client's ID (admin)
-router.put('/:id/verify', protect, adminOnly, async (req, res) => {
-  try {
-    const { verified } = req.body;
-    const wasVerified = (await User.findById(req.params.id).select('idVerified'))?.idVerified;
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { idVerified: verified },
-      { new: true }
-    ).select('-password');
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    // Only notify on the actual transition into verified — flip back to
-    // false (an admin correction) doesn't need one.
-    if (verified && !wasVerified) {
-      await notifyUser(user._id, 'ID Verified', 'Your valid ID has been verified. You can now book normally.', '/profile');
-    }
-
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Approve a pending ID update — promotes the pending photo(s)/type/expiry
-// (submitted by an already-verified user, see PUT /auth/me) into the live
-// validId* fields and clears the pending slot. The user was never
-// unverified during the wait, so idVerified just gets re-affirmed as true.
-router.put('/:id/pending-id/approve', protect, adminOnly, async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    if (!user.pendingIdSubmittedAt) {
-      return res.status(400).json({ message: 'This user has no pending ID update.' });
-    }
-
-    if (user.pendingValidIdType) user.validIdType = user.pendingValidIdType;
-    if (user.pendingValidIdImage) { user.validIdImage = user.pendingValidIdImage; user.validIdImageFileId = user.pendingValidIdImageFileId; }
-    if (user.pendingValidIdImageBack) { user.validIdImageBack = user.pendingValidIdImageBack; user.validIdImageBackFileId = user.pendingValidIdImageBackFileId; }
-    if (user.pendingLicenseNumber) user.licenseNumber = user.pendingLicenseNumber;
-    if (user.pendingLicenseImage) { user.licenseImage = user.pendingLicenseImage; user.licenseImageFileId = user.pendingLicenseImageFileId; }
-    if (user.pendingLicenseImageBack) { user.licenseImageBack = user.pendingLicenseImageBack; user.licenseImageBackFileId = user.pendingLicenseImageBackFileId; }
-
-    // The dates come from admin, read off the photographs above, not from
-    // anything the client sent — that is the whole point of the change.
-    // Blank clears the date, which is a real answer for an ID that does not
-    // expire, so undefined and '' are told apart.
-    if (req.body.validIdExpiry !== undefined) user.validIdExpiry = req.body.validIdExpiry || null;
-    if (req.body.licenseExpiry !== undefined) user.licenseExpiry = req.body.licenseExpiry || null;
-
-    user.idVerified = true;
-
-    user.pendingValidIdType = '';
-    user.pendingValidIdImage = '';
-    user.pendingValidIdImageFileId = '';
-    user.pendingValidIdImageBack = '';
-    user.pendingValidIdImageBackFileId = '';
-    user.pendingValidIdExpiry = null;
-    user.pendingLicenseNumber = '';
-    user.pendingLicenseExpiry = null;
-    user.pendingLicenseImage = '';
-    user.pendingLicenseImageFileId = '';
-    user.pendingLicenseImageBack = '';
-    user.pendingLicenseImageBackFileId = '';
-    user.pendingIdSubmittedAt = null;
-
-    await user.save();
-    await notifyUser(user._id, 'ID Update Approved', 'Your updated ID has been verified and is now active.', '/profile');
-
-    const { password, ...safeUser } = user.toObject();
-    res.json(safeUser);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Reject a pending ID update — discards the pending submission and leaves
-// the live (already-verified) ID completely untouched.
-router.put('/:id/pending-id/reject', protect, adminOnly, async (req, res) => {
-  try {
-    const { reason } = req.body;
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    if (!user.pendingIdSubmittedAt) {
-      return res.status(400).json({ message: 'This user has no pending ID update.' });
-    }
-
-    user.pendingValidIdType = '';
-    user.pendingValidIdImage = '';
-    user.pendingValidIdImageFileId = '';
-    user.pendingValidIdImageBack = '';
-    user.pendingValidIdImageBackFileId = '';
-    user.pendingValidIdExpiry = null;
-    user.pendingLicenseNumber = '';
-    user.pendingLicenseExpiry = null;
-    user.pendingLicenseImage = '';
-    user.pendingLicenseImageFileId = '';
-    user.pendingLicenseImageBack = '';
-    user.pendingLicenseImageBackFileId = '';
-    user.pendingIdSubmittedAt = null;
-
-    await user.save();
-    await notifyUser(
-      user._id,
-      'ID Update Rejected',
-      `Your submitted ID update was rejected${reason ? `: ${reason}` : '.'} Your previous verified ID is still active. Please try uploading again in your Profile.`,
-      '/profile'
-    );
-
-    const { password, ...safeUser } = user.toObject();
-    res.json(safeUser);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

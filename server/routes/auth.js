@@ -41,29 +41,31 @@ router.get('/me', protect, async (req, res) => {
 });
 
 // Update the logged-in user's own basic profile info.
-// Deliberately excludes email, password, role, isBlocked, and idVerified —
-// those are either security-sensitive or admin-controlled. birthDate is a
-// special case: it's accepted here ONLY as a one-time backfill for accounts
-// that predate the birthdate field (see the `!user.birthDate` guard below)
-// — once set, it's locked, same as if it had been collected at registration.
+// Deliberately excludes email, password, role and isBlocked — those are
+// either security-sensitive or admin-controlled. birthDate is a special
+// case: it's accepted here ONLY as a one-time backfill for accounts that
+// predate the birthdate field (see the `!user.birthDate` guard below) —
+// once set, it's locked, same as if it had been collected at registration.
+//
+// Expiry dates used to be refused here and typed by admin instead, read off
+// the uploaded photo. There is no photo any more, so there is nothing for
+// admin to read them off, and a date nobody can check is not made truer by
+// making a second person type it. The client enters their own.
+//
+// What that costs, said plainly: these dates are now a claim. They drive
+// the reminder emails and the self-drive warning, both of which are
+// courtesies — somebody determined to lie can type a date and will be
+// stopped at the counter, by a person looking at the real licence, which
+// was always the check that actually mattered.
 router.put('/me', protect, async (req, res) => {
   try {
     const {
       name, phone, address, birthDate,
-      licenseNumber,
-      licenseImage, licenseImageFileId, licenseImageBack, licenseImageBackFileId,
+      licenseNumber, licenseExpiry,
       emergencyContactName, emergencyContactNumber,
-      validIdType, validIdImage, validIdImageFileId,
-      validIdImageBack, validIdImageBackFileId,
+      validIdType, validIdExpiry,
       image, imageFileId
     } = req.body;
-
-    // Expiry dates are deliberately NOT read from this request, for either
-    // document. A date the holder types is a claim about their own papers
-    // and worth nothing — commercial rental systems read it off the scanned
-    // document for exactly that reason. Admin enters both from the photo
-    // they are already looking at. Anything sent here is ignored rather
-    // than refused, so an older client build simply has no effect.
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -71,15 +73,8 @@ router.put('/me', protect, async (req, res) => {
     if (name !== undefined) user.name = name;
     if (phone !== undefined) user.phone = phone;
     if (address !== undefined) user.address = address;
-    // Profile photo — purely cosmetic (avatar in the navbar/admin lists),
-    // not gated behind admin review the way the valid ID is.
+    // Profile photo — purely cosmetic (avatar in the navbar/admin lists).
     if (image) { user.image = image; user.imageFileId = imageFileId || ''; }
-    // Held back below for a verified client, the same as the ID. Applied
-    // directly only while there is nothing verified to protect.
-    const licenceChanged =
-      (licenseNumber !== undefined && String(licenseNumber || '') !== String(user.licenseNumber || ''))
-      || (licenseImage && licenseImage !== user.licenseImage)
-      || (licenseImageBack && licenseImageBack !== user.licenseImageBack);
     if (emergencyContactName !== undefined) user.emergencyContactName = emergencyContactName;
     if (emergencyContactNumber !== undefined) user.emergencyContactNumber = emergencyContactNumber;
 
@@ -90,45 +85,15 @@ router.put('/me', protect, async (req, res) => {
       user.birthDate = birthDate;
     }
 
-    // A new front/back photo or switching ID type means admin has to look
-    // at it again — the expiry date alone changing doesn't (same photo,
-    // nothing new to review).
-    const idPhotoChanged =
-      (validIdType && validIdType !== user.validIdType) ||
-      (validIdImage && validIdImage !== user.validIdImage) ||
-      (validIdImageBack && validIdImageBack !== user.validIdImageBack);
-    // Renamed in spirit: it is any change to the ID, the date included.
-    const wentPending = (idPhotoChanged || licenceChanged) && user.idVerified;
-
-    if (wentPending) {
-      if (validIdType) user.pendingValidIdType = validIdType;
-      if (validIdImage) { user.pendingValidIdImage = validIdImage; user.pendingValidIdImageFileId = validIdImageFileId || ''; }
-      if (validIdImageBack) { user.pendingValidIdImageBack = validIdImageBack; user.pendingValidIdImageBackFileId = validIdImageBackFileId || ''; }
-      if (licenceChanged) {
-        if (licenseNumber !== undefined) user.pendingLicenseNumber = licenseNumber || '';
-        if (licenseImage) { user.pendingLicenseImage = licenseImage; user.pendingLicenseImageFileId = licenseImageFileId || ''; }
-        if (licenseImageBack) { user.pendingLicenseImageBack = licenseImageBack; user.pendingLicenseImageBackFileId = licenseImageBackFileId || ''; }
-      }
-      user.pendingIdSubmittedAt = new Date();
-    } else {
-      if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
-      if (licenseImage) { user.licenseImage = licenseImage; user.licenseImageFileId = licenseImageFileId || ''; }
-      if (licenseImageBack) { user.licenseImageBack = licenseImageBack; user.licenseImageBackFileId = licenseImageBackFileId || ''; }
-      if (idPhotoChanged) {
-        if (validIdType) user.validIdType = validIdType;
-        if (validIdImage) { user.validIdImage = validIdImage; user.validIdImageFileId = validIdImageFileId || ''; }
-        if (validIdImageBack) { user.validIdImageBack = validIdImageBack; user.validIdImageBackFileId = validIdImageBackFileId || ''; }
-        user.idVerified = false;
-      }
-    }
+    if (validIdType !== undefined) user.validIdType = validIdType;
+    // Empty string clears it, which is how somebody says "mine has no
+    // expiry" — a TIN ID, for instance. Undefined leaves it alone.
+    if (validIdExpiry !== undefined) user.validIdExpiry = validIdExpiry || null;
+    if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
+    if (licenseExpiry !== undefined) user.licenseExpiry = licenseExpiry || null;
 
     await user.save();
 
-    if (wentPending) {
-      await notifyAdmins('ID Update Pending Review', `${user.name} submitted an updated ID and is awaiting re-verification.`, '/admin/manage-clients');
-    } else if (idPhotoChanged) {
-      await notifyAdmins('ID Verification Needed', `${user.name} uploaded a new ID photo and needs verification.`, '/admin/manage-clients');
-    }
     const { password, ...safeUser } = user.toObject();
     res.json(safeUser);
   } catch (err) {
@@ -388,10 +353,8 @@ router.post('/register', registerLimiter, async (req, res) => {
   try {
     const {
       name, email, password, birthDate, phone, address,
-      validIdType, validIdImage, validIdImageFileId,
-      validIdImageBack, validIdImageBackFileId, validIdExpiry,
+      validIdType, validIdExpiry,
       licenseNumber, licenseExpiry,
-      licenseImage, licenseImageFileId, licenseImageBack, licenseImageBackFileId,
       emergencyContactName, emergencyContactNumber
     } = req.body;
 
@@ -423,18 +386,12 @@ router.post('/register', registerLimiter, async (req, res) => {
     const user = await User.create({
       name, email, password: hashed, birthDate,
       phone, address,
-      validIdType, validIdImage, validIdImageFileId,
-      validIdImageBack, validIdImageBackFileId, validIdExpiry,
+      validIdType, validIdExpiry,
       licenseNumber, licenseExpiry,
-      licenseImage, licenseImageFileId, licenseImageBack, licenseImageBackFileId,
       emergencyContactName, emergencyContactNumber
     });
 
     await EmailVerification.deleteOne({ email });
-
-    if (validIdImage) {
-      await notifyAdmins('ID Verification Needed', `${user.name} uploaded an ID photo and needs verification.`, '/admin/manage-clients');
-    }
 
     const token = jwt.sign(
       { id: user._id, role: user.role },

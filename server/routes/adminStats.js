@@ -28,22 +28,13 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
     // one thing that runs reliably.
     await expireAdjustOffers();
     const expiryCutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-    const [pendingBookings, refundRequests, rescheduleRequests, pendingClients, pendingConsignments, pendingAvailability, pendingBlockedDates, expiringValidIds, expiringLicenses, expiringRegistrations] = await Promise.all([
+    const [pendingBookings, refundRequests, rescheduleRequests, pendingConsignments, pendingAvailability, pendingBlockedDates, expiringValidIds, expiringLicenses, expiringRegistrations] = await Promise.all([
       Booking.countDocuments({ status: 'pending', payment: 'paid', 'adjustOffer.status': { $ne: 'open' } }),
       Booking.countDocuments({ refundStatus: 'requested' }),
       Booking.countDocuments({ 'rescheduleRequest.status': 'pending' }),
-      // Scoped to role: 'user' — Manage Clients only ever lists and can
-      // verify plain clients, not consignors. Counting consignors here too
-      // made this badge permanently stuck, since there was no way to ever
-      // resolve them from that page. Also counts already-verified users
-      // with a pending ID update awaiting re-review (see PUT /auth/me).
-      User.countDocuments({
-        role: 'user',
-        $or: [
-          { validIdImage: { $ne: '' }, idVerified: false },
-          { pendingIdSubmittedAt: { $ne: null } },
-        ],
-      }),
+      // Manage Clients no longer carries a badge: there is no ID photo to
+      // review any more, so nothing arrives there needing a decision. See
+      // models/User.js.
       Consignment.countDocuments({ status: 'pending' }),
       Car.countDocuments({ 'availabilityRequest.status': 'pending' }),
       // A car can have several pending blocked-date ranges at once (unlike
@@ -60,7 +51,6 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
     ]);
     res.json({
       '/admin/manage-bookings': pendingBookings + refundRequests + rescheduleRequests,
-      '/admin/manage-clients': pendingClients,
       '/admin/manage-consignments': pendingConsignments,
       '/admin/availability-requests': pendingAvailability + (pendingBlockedDates[0]?.count || 0),
       '/admin/expiring-documents': expiringValidIds + expiringLicenses + expiringRegistrations,

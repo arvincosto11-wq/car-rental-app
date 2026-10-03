@@ -6,13 +6,10 @@ import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 import Skeleton from '../components/Skeleton';
 import PasswordInput from '../components/PasswordInput';
 import OtpInput from '../components/OtpInput';
-import ValidIdUpload from '../components/ValidIdUpload';
-import LicensePhotoUpload from '../components/LicensePhotoUpload';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
 import { VALID_ID_TYPES } from '../data/validIdTypes';
 import api from '../api';
-import useDocumentPhotos from '../hooks/useDocumentPhotos';
 
 // A real check-circle glyph, not a plain "✓" character — matches the
 // hand-drawn inline-SVG icon convention used elsewhere on the site.
@@ -64,15 +61,7 @@ const Profile = () => {
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({});
   const [validIdType, setValidIdType] = useState('');
-  const [validIdImage, setValidIdImage] = useState(null);
-  const [validIdPreview, setValidIdPreview] = useState('');
-  const [validIdBackImage, setValidIdBackImage] = useState(null);
-  const [validIdBackPreview, setValidIdBackPreview] = useState('');
   const [validIdExpiry, setValidIdExpiry] = useState('');
-  const [licenseImage, setLicenseImage] = useState(null);
-  const [licensePreview, setLicensePreview] = useState('');
-  const [licenseBackImage, setLicenseBackImage] = useState(null);
-  const [licenseBackPreview, setLicenseBackPreview] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
@@ -113,15 +102,7 @@ const Profile = () => {
       emergencyContactNumber: profile.emergencyContactNumber || '',
     });
     setValidIdType(profile.validIdType || '');
-    setValidIdImage(null);
-    setValidIdPreview('');
-    setValidIdBackImage(null);
-    setValidIdBackPreview('');
     setValidIdExpiry(profile.validIdExpiry ? profile.validIdExpiry.split('T')[0] : '');
-    setLicenseImage(null);
-    setLicensePreview('');
-    setLicenseBackImage(null);
-    setLicenseBackPreview('');
     setSaveError('');
     setSaveSuccess('');
     setEditMode(true);
@@ -131,41 +112,6 @@ const Profile = () => {
     setEditMode(false);
     setSaveError('');
   };
-
-  // Their own documents, through the same signed route admin uses. Falls
-  // back to whatever the profile already carries while they load.
-  const docPhotos = useDocumentPhotos(profile?._id);
-  // A vehicle owner's OR and CR, one group per consigned vehicle. Kept on
-  // this page rather than the dashboard because they are paperwork about
-  // the account, not something anybody acts on while managing a listing.
-  const [ownedPapers, setOwnedPapers] = useState([]);
-
-  useEffect(() => {
-    // Only a vehicle owner has any. Nothing to clear on the way out: the
-    // list starts empty and only a consignor ever fills it.
-    if (profile?.role !== 'consignor') return undefined;
-    let live = true;
-    (async () => {
-      try {
-        const res = await api.get('/consignments/my');
-        const groups = await Promise.all(res.data.map(async (c) => {
-          // One vehicle's papers failing must not empty the whole list.
-          const links = await api.get(`/consignments/${c._id}/papers`)
-            .then((r) => r.data)
-            .catch(() => ({}));
-          return { id: c._id, vehicle: `${c.brand} ${c.model}`, plate: c.plateNumber, ...links };
-        }));
-        if (live) setOwnedPapers(groups.filter((g) => g.orImage || g.crImage));
-      } catch {
-        if (live) setOwnedPapers([]);
-      }
-    })();
-    return () => { live = false; };
-  }, [profile?.role, profile?._id]);
-  // Optional all the way: this runs before the profile has loaded, because
-  // hooks cannot sit behind the early return that waits for it.
-  const idFront = docPhotos.validIdImage || profile?.validIdImage || '';
-  const idBack = docPhotos.validIdImageBack || profile?.validIdImageBack || '';
 
   // `isPrivate` for identity documents only. A private file refuses a plain
   // link and serves only a signed one — which is what every screen that
@@ -212,40 +158,14 @@ const Profile = () => {
     setSaving(true);
     setSaveError('');
     try {
-      // Neither expiry is sent any more. Both are read off the documents by
-      // admin when they check them — see PUT /auth/me, which ignores them.
-      const { licenseExpiry: _dropped, ...rest } = form;
-      const payload = { ...rest, validIdType };
-      if (validIdImage) {
-        const uploaded = await uploadToImageKit(validIdImage, { isPrivate: true });
-        payload.validIdImage = uploaded.url;
-        payload.validIdImageFileId = uploaded.fileId;
-      }
-      if (validIdBackImage) {
-        const uploadedBack = await uploadToImageKit(validIdBackImage, { isPrivate: true });
-        payload.validIdImageBack = uploadedBack.url;
-        payload.validIdImageBackFileId = uploadedBack.fileId;
-      }
-      if (licenseImage) {
-        const uploadedLicense = await uploadToImageKit(licenseImage, { isPrivate: true });
-        payload.licenseImage = uploadedLicense.url;
-        payload.licenseImageFileId = uploadedLicense.fileId;
-      }
-      if (licenseBackImage) {
-        const uploadedLicenseBack = await uploadToImageKit(licenseBackImage, { isPrivate: true });
-        payload.licenseImageBack = uploadedLicenseBack.url;
-        payload.licenseImageBackFileId = uploadedLicenseBack.fileId;
-      }
-
-      const wasVerified = profile.idVerified;
+      // Dates go up with everything else now. There is no document on file
+      // for anybody else to read them off, so the person they belong to is
+      // the only one who can say what they are.
+      const payload = { ...form, validIdType, validIdExpiry: validIdExpiry || '' };
       const res = await api.put('/auth/me', payload);
       setProfile(res.data);
       setEditMode(false);
-      setSaveSuccess(
-        wasVerified && res.data.pendingIdSubmittedAt
-          ? 'Your ID update was submitted for review. Your current verified ID stays active until it’s approved.'
-          : 'Profile updated.'
-      );
+      setSaveSuccess('Profile updated.');
       setTimeout(() => setSaveSuccess(''), 5000);
     } catch (err) {
       setSaveError(err.response?.data?.message || 'Something went wrong saving your profile.');
@@ -512,11 +432,6 @@ const Profile = () => {
             <div style={s.avatarMeta}>
               <span style={s.avatarName}>{profile.name}</span>
               {memberSince && <span style={s.avatarHint}>Member since {memberSince}</span>}
-              <div style={s.avatarBadgeRow}>
-                <span style={profile.idVerified ? s.verifiedTag : s.unverifiedTag}>
-                  {profile.idVerified ? <><CheckCircleIcon /> ID Verified</> : 'Not Verified'}
-                </span>
-              </div>
               {avatarUploading && <span style={s.avatarHint}>Uploading photo...</span>}
             </div>
           </div>
@@ -637,34 +552,17 @@ const Profile = () => {
                   <input id="profile-license-number" style={s.input} type="text" value={form.licenseNumber}
                     onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} />
                 </div>
-                {/* Read-only on purpose. A date the holder types is a claim
-                    about their own papers; this one is read off the photo by
-                    whoever checks it. */}
+                {/* Editable now. It used to be read off the uploaded photo
+                    by whoever checked it; there is no photo, so there is
+                    nothing for anybody else to read it off. It drives the
+                    renewal reminder and the self-drive warning — the licence
+                    itself is checked at the counter. */}
                 <div style={s.field}>
-                  <span style={s.label}>License Expiry</span>
-                  <p style={s.readOnlyValue}>
-                    {profile.licenseExpiry
-                      ? new Date(profile.licenseExpiry).toLocaleDateString()
-                      : 'Set by our team when your licence is checked'}
-                  </p>
+                  <label style={s.label} htmlFor="profile-license-expiry">License Expiry</label>
+                  <input id="profile-license-expiry" style={s.input} type="date" value={form.licenseExpiry || ''}
+                    onChange={(e) => setForm({ ...form, licenseExpiry: e.target.value })} />
                 </div>
               </div>
-
-              {validIdType === 'drivers_license' ? (
-                <p style={s.uploadHint}>Your valid ID photos below already cover your license — no need to upload again.</p>
-              ) : (
-                <>
-                  <p style={{ ...s.label, marginBottom: '2px' }}>License Photo (optional)</p>
-                  <LicensePhotoUpload
-                    styles={s}
-                    idPrefix="profile-license"
-                    frontPreview={licensePreview || docPhotos.licenseImage || profile.licenseImage}
-                    onFrontChange={(f) => { setLicenseImage(f); setLicensePreview(URL.createObjectURL(f)); }}
-                    backPreview={licenseBackPreview || docPhotos.licenseImageBack || profile.licenseImageBack}
-                    onBackChange={(f) => { setLicenseBackImage(f); setLicenseBackPreview(URL.createObjectURL(f)); }}
-                  />
-                </>
-              )}
 
               <div className="responsive-row-2" style={s.row}>
                 <div style={s.field}>
@@ -679,34 +577,29 @@ const Profile = () => {
                 </div>
               </div>
 
-              <p style={{ ...s.label, marginBottom: '2px' }}>Valid ID (leave as is, or update it)</p>
-              {!validIdType && <p style={s.uploadHint}>Select your ID type to view or update it.</p>}
-              {profile.pendingIdSubmittedAt && (
-                <p style={{ ...s.uploadHint, color: isDark ? '#fcd34d' : '#92400e' }}>
-                  You already have an ID update pending review — uploading here replaces that pending submission, not your currently verified ID.
-                </p>
-              )}
-              <ValidIdUpload
-                styles={s}
-                idPrefix="profile-valid-id"
-                idType={validIdType}
-                onIdTypeChange={setValidIdType}
-                frontPreview={validIdPreview || idFront}
-                onFrontChange={(f) => { setValidIdImage(f); setValidIdPreview(URL.createObjectURL(f)); }}
-                backPreview={validIdBackPreview || idBack}
-                onBackChange={(f) => { setValidIdBackImage(f); setValidIdBackPreview(URL.createObjectURL(f)); }}
-                hideExpiry
-                expiry={validIdExpiry}
-                onExpiryChange={setValidIdExpiry}
-                hideExpiry={validIdType === 'drivers_license'}
-              />
-              {(validIdImage || validIdBackImage) && (
-                <p style={s.uploadHint}>
-                  {profile.idVerified
-                    ? 'Uploading a new photo will be submitted for review — your current verified ID stays active until it’s approved.'
-                    : 'Uploading a new photo will require admin re-verification.'}
-                </p>
-              )}
+              <p style={{ ...s.label, marginBottom: '2px' }}>Valid ID</p>
+              <p style={s.uploadHint}>
+                We don&apos;t keep a copy of your ID &mdash; only what type it is and when it runs out, so we can
+                remind you before it does. Bring the ID itself to the pickup; that is where it is checked.
+              </p>
+              <div className="responsive-row-2" style={s.row}>
+                <div style={s.field}>
+                  <label style={s.label} htmlFor="profile-valid-id-type">ID Type</label>
+                  <select id="profile-valid-id-type" style={s.input} value={validIdType}
+                    onChange={(e) => setValidIdType(e.target.value)}>
+                    <option value="">Select an ID type</option>
+                    {VALID_ID_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={s.field}>
+                  <label style={s.label} htmlFor="profile-valid-id-expiry">ID Expiry</label>
+                  <input id="profile-valid-id-expiry" style={s.input} type="date" value={validIdExpiry || ''}
+                    onChange={(e) => setValidIdExpiry(e.target.value)} />
+                  <p style={s.uploadHint}>Leave blank if yours doesn&apos;t expire.</p>
+                </div>
+              </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
                 <button type="submit" style={s.saveBtn} disabled={saving}>
@@ -725,101 +618,50 @@ const Profile = () => {
             <div style={s.profileHeaderRow}>
               <div style={s.sectionTitleRow}>
                 <span style={s.accentBar('#3b82f6')} />
-                <div style={s.sectionTitle}>Identity Verification</div>
+                <div style={s.sectionTitle}>Your Documents</div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                {profile.validIdExpiry && (
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={s.profileLabel}>Document Expiry</span>
-                    <span style={{ ...s.profileValue, display: 'block', marginTop: '4px' }}>
-                      {new Date(profile.validIdExpiry).toLocaleDateString()}
-                    </span>
-                  </div>
-                )}
-                <span style={profile.idVerified ? s.verifiedTag : s.unverifiedTag}>
-                  {profile.idVerified ? <><CheckCircleIcon /> ID Verified</> : 'Not Verified'}
-                </span>
-                {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
-                  <span style={s.expiredTag}>Expired</span>
-                )}
-                {profile.pendingIdSubmittedAt && (
-                  <span style={s.unverifiedTag}>Update Pending Review</span>
-                )}
-              </div>
+              {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
+                <span style={s.expiredTag}>Expired</span>
+              )}
             </div>
 
-            {profile.validIdImage ? (
-              <div style={s.idThumbWrap}>
-                {profile.validIdType && (
-                  <p style={{ ...s.uploadHint, marginBottom: '4px' }}>
-                    {VALID_ID_TYPES.find((t) => t.value === profile.validIdType)?.label || profile.validIdType}
-                  </p>
-                )}
-                <IdImageThumb src={idFront} alt="Valid ID" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />
+            {/* No photographs, no verified badge. There is nothing stored to
+                verify — what is here is what the reminders run on, and the
+                documents themselves are checked at the counter. */}
+            <p style={s.uploadHint}>
+              We hold no copies of your ID or licence. These are the details you gave us, kept only so we
+              can remind you before anything runs out. Bring the documents themselves to the pickup.
+            </p>
+
+            <div className="responsive-row-2" style={{ ...s.row, marginTop: '12px' }}>
+              <div>
+                <span style={s.profileLabel}>Valid ID</span>
+                <span style={{ ...s.profileValue, display: 'block', marginTop: '4px' }}>
+                  {profile.validIdType
+                    ? (VALID_ID_TYPES.find((t) => t.value === profile.validIdType)?.label || profile.validIdType)
+                    : 'Not set'}
+                  {profile.validIdExpiry
+                    ? ` · expires ${new Date(profile.validIdExpiry).toLocaleDateString()}`
+                    : ''}
+                </span>
               </div>
-            ) : (
-              <p style={s.uploadHint}>No valid ID on file yet — add one from Edit Profile above.</p>
-            )}
+              <div>
+                <span style={s.profileLabel}>Driver&apos;s Licence</span>
+                <span style={{ ...s.profileValue, display: 'block', marginTop: '4px' }}>
+                  {profile.licenseNumber || 'Not set'}
+                  {profile.licenseExpiry
+                    ? ` · expires ${new Date(profile.licenseExpiry).toLocaleDateString()}`
+                    : ''}
+                </span>
+              </div>
+            </div>
 
             {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
-              <p style={{ ...s.formError, marginTop: '10px', maxWidth: '360px' }}>
-                Your ID has expired. Please upload an updated photo from Edit Profile above — you won't be able to book until it's renewed and re-verified.
+              <p style={{ ...s.formError, marginTop: '10px', maxWidth: '420px' }}>
+                The ID on your profile has expired. Update its details in Edit Profile above &mdash; you
+                won&apos;t be able to book until it shows a current date.
               </p>
             )}
-            {profile.pendingIdSubmittedAt && (
-              <div style={{ marginTop: '12px' }}>
-                <p style={s.uploadHint}>
-                  Submitted {new Date(profile.pendingIdSubmittedAt).toLocaleDateString()}, awaiting admin review. Your ID above stays verified and active in the meantime.
-                </p>
-                <div style={{ marginTop: '6px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {profile.pendingValidIdImage && <IdImageThumb src={docPhotos.pendingValidIdImage || profile.pendingValidIdImage} alt="Pending ID front" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
-                  {profile.pendingValidIdImageBack && <IdImageThumb src={docPhotos.pendingValidIdImageBack || profile.pendingValidIdImageBack} alt="Pending ID back" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
-                </div>
-              </div>
-            )}
-
-            {(profile.licenseImage || profile.licenseImageBack) && (
-              <div style={{ marginTop: '16px' }}>
-                <span style={s.profileLabel}>License Photo</span>
-                <div style={{ marginTop: '6px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {profile.licenseImage && <IdImageThumb src={docPhotos.licenseImage || profile.licenseImage} alt="License front" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
-                  {profile.licenseImageBack && <IdImageThumb src={docPhotos.licenseImageBack || profile.licenseImageBack} alt="License back" thumbStyle={s.idThumb} overlayStyle={s.idThumbOverlay} />}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {profile?.role === 'consignor' && ownedPapers.length > 0 && (
-          <div style={{ ...s.profileCard, marginTop: '20px' }}>
-            <div style={s.sectionTitleRow}>
-              <span style={s.accentBar(isDark ? GOLD_DARK : GOLD)} />
-              <div style={s.sectionTitle}>Ownership Papers</div>
-            </div>
-            <p style={s.subtitle}>
-              The OR and CR you submitted for each vehicle. Only you and our team can open these.
-            </p>
-            {ownedPapers.map((group) => (
-              <div key={group.id} style={s.paperGroup}>
-                <div style={s.paperVehicle}>{group.vehicle}</div>
-                <div style={s.paperPlate}>{group.plate}</div>
-                <div style={s.paperRow}>
-                  {[['orImage', 'OR'], ['crImage', 'CR']].map(([field, caption]) => (
-                    group[field] ? (
-                      <div key={field} style={s.paperItem}>
-                        <IdImageThumb
-                          src={group[field]}
-                          alt={`${caption} for ${group.vehicle}`}
-                          thumbStyle={s.idThumb}
-                          overlayStyle={s.idThumbOverlay}
-                        />
-                        <span style={s.paperCaption}>{caption}</span>
-                      </div>
-                    ) : null
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         )}
 

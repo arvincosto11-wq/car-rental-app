@@ -14,13 +14,21 @@ const userSchema = new mongoose.Schema({
   birthDate: { type: Date },
   phone: { type: String, default: '' },
   address: { type: String, default: '' },
+  // Identity is recorded as facts, never as photographs.
+  //
+  // This used to hold scans of government IDs and driving licences, front
+  // and back, plus a pending copy of each awaiting review. All of it is
+  // gone. An ID photo is the raw material for opening accounts in somebody
+  // else's name, and a student project on free hosting has no way to detect
+  // a breach, let alone answer one. The least dangerous way to hold that
+  // data is not to hold it.
+  //
+  // What stays is what the reminders need: a type, an expiry, a licence
+  // number. None of it is worth stealing, and all of it is checked properly
+  // at the counter, against the real documents, by somebody looking at the
+  // person holding them. That check was always the one doing the work; the
+  // upload only ever made it feel verified.
   validIdType: { type: String, default: '' },
-  validIdImage: { type: String, default: '' },
-  validIdImageFileId: { type: String, default: '' },
-  // Only set for ID types with real info on the back (driver's license,
-  // national ID, UMID, postal ID) — see client/src/data/validIdTypes.js.
-  validIdImageBack: { type: String, default: '' },
-  validIdImageBackFileId: { type: String, default: '' },
   // Not every ID type expires (e.g. TIN ID), so this stays optional —
   // left unset means "doesn't expire" rather than "unknown", and the
   // expiring-documents view (GET /admin/expiring-documents) just skips
@@ -33,36 +41,8 @@ const userSchema = new mongoose.Schema({
   licenseNumber: { type: String, default: '' },
   licenseExpiry: { type: Date },
   licenseExpiryNotifiedAt: { type: Date },
-  // Only collected when the driver's license ISN'T the user's chosen Valid
-  // ID (in that case the valid-ID photos already cover it — see
-  // idTypeNeedsBack in client/src/data/validIdTypes.js).
-  licenseImage: { type: String, default: '' },
-  licenseImageFileId: { type: String, default: '' },
-  licenseImageBack: { type: String, default: '' },
-  licenseImageBackFileId: { type: String, default: '' },
   emergencyContactName: { type: String, default: '' },
   emergencyContactNumber: { type: String, default: '' },
-  idVerified: { type: Boolean, default: false },
-  // A re-upload from an ALREADY-verified user lands here instead of
-  // overwriting the live validId* fields directly — so their existing
-  // verified ID keeps working (booking stays unaffected) while admin
-  // reviews the update. See PUT /auth/me and PUT /users/:id/pending-id.
-  pendingValidIdType: { type: String, default: '' },
-  pendingValidIdImage: { type: String, default: '' },
-  pendingValidIdImageFileId: { type: String, default: '' },
-  pendingValidIdImageBack: { type: String, default: '' },
-  pendingValidIdImageBackFileId: { type: String, default: '' },
-  pendingValidIdExpiry: { type: Date },
-  // The licence waits for review too. It is the document that decides
-  // whether somebody may drive at all, and its number and expiry were the
-  // last fields a verified client could still rewrite for themselves.
-  pendingLicenseNumber: { type: String, default: '' },
-  pendingLicenseExpiry: { type: Date },
-  pendingLicenseImage: { type: String, default: '' },
-  pendingLicenseImageFileId: { type: String, default: '' },
-  pendingLicenseImageBack: { type: String, default: '' },
-  pendingLicenseImageBackFileId: { type: String, default: '' },
-  pendingIdSubmittedAt: { type: Date },
   isBlocked: { type: Boolean, default: false },
   avgRating: { type: Number, default: 0 },
   ratingCount: { type: Number, default: 0 },

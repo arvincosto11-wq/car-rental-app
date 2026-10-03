@@ -213,7 +213,10 @@ const CarDetail = () => {
   // having a license number/expiry and an uploaded ID photo on file isn't
   // enough on its own, since either could be fabricated. All three are
   // managed from Profile, not inline in this wizard.
-  const isSelfDriveEligible = !!profile?.idVerified;
+  // Self-drive used to wait on an admin having approved an ID photo. There
+  // is no photo now, so what it actually needs is a licence on file that
+  // outlasts the trip — which licenceProblem below already decides.
+  const isSelfDriveEligible = !!profile?.licenseNumber && !!profile?.licenseExpiry;
   const supportedBookingTypes = car?.availableBookingTypes?.length ? car.availableBookingTypes : ['self-drive', 'with-driver'];
   const selfDriveBlocked = bookingType === 'self-drive' && !isSelfDriveEligible;
   // Asked here rather than at the counter. A licence that runs out mid-trip
@@ -1099,9 +1102,8 @@ const CarDetail = () => {
                     {selfDriveBlocked && (
                       <div style={s.licenseBox}>
                         <p style={s.licenseNote}>
-                          {!profile?.validIdImage
-                            ? "Self-drive isn't available yet — please add your driver's license and upload a photo of a valid ID in your Profile, then wait for our team to verify it."
-                            : "Your ID is uploaded and pending verification by our team. You'll be able to book self-drive once it's approved."}
+                          Self-drive needs your driver&apos;s licence number and expiry on file. Add them in your
+                          Profile, and bring the licence itself to the pickup — we check it there.
                         </p>
                         <Link to="/profile" style={s.licenseLink}>Go to Profile</Link>
                       </div>

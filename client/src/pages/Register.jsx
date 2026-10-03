@@ -10,9 +10,7 @@ import PasswordInput from '../components/PasswordInput';
 import OtpInput from '../components/OtpInput';
 import BookingSteps from '../components/BookingSteps';
 import AuthBrandPanel from '../components/AuthBrandPanel';
-import ValidIdUpload from '../components/ValidIdUpload';
-import LicensePhotoUpload from '../components/LicensePhotoUpload';
-import { idTypeNeedsBack } from '../data/validIdTypes';
+import { VALID_ID_TYPES } from '../data/validIdTypes';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
 
@@ -71,15 +69,7 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [validIdType, setValidIdType] = useState('');
-  const [validIdImage, setValidIdImage] = useState(null);
-  const [validIdPreview, setValidIdPreview] = useState('');
-  const [validIdBackImage, setValidIdBackImage] = useState(null);
-  const [validIdBackPreview, setValidIdBackPreview] = useState('');
   const [validIdExpiry, setValidIdExpiry] = useState('');
-  const [licenseImage, setLicenseImage] = useState(null);
-  const [licensePreview, setLicensePreview] = useState('');
-  const [licenseBackImage, setLicenseBackImage] = useState(null);
-  const [licenseBackPreview, setLicenseBackPreview] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
@@ -127,11 +117,7 @@ const Register = () => {
   const validateStep2 = () => {
     const phoneError = !form.phone.trim() ? 'Phone number is required.' : validators.phone(form.phone);
     const addressError = !form.address.trim() ? 'Please complete your address.' : '';
-    const validIdError = !validIdType
-      ? "Please select which valid ID you'll be using."
-      : !validIdImage
-        ? 'Please upload a photo of your ID.'
-        : (idTypeNeedsBack(validIdType) && !validIdBackImage ? 'Please also upload a photo of the back of your ID.' : '');
+    const validIdError = !validIdType ? "Please select which valid ID you'll be using." : '';
 
     setFieldErrors((prev) => ({ ...prev, phone: phoneError, address: addressError, validId: validIdError }));
     return !(phoneError || addressError || validIdError);
@@ -171,35 +157,6 @@ const Register = () => {
     if (sent) setStep(4);
   };
 
-  const handleIdFrontChange = (file) => {
-    setValidIdImage(file);
-    setValidIdPreview(URL.createObjectURL(file));
-  };
-
-  const handleIdBackChange = (file) => {
-    setValidIdBackImage(file);
-    setValidIdBackPreview(URL.createObjectURL(file));
-  };
-
-  // `isPrivate` for identity documents only. A private file refuses a plain
-  // link and serves only a signed one — which is what every screen that
-  // shows these now asks for.
-  const uploadToImageKit = async (file, { isPrivate = false } = {}) => {
-    const authRes = await api.get('/imagekit/public-auth');
-    const { token, expire, signature, publicKey } = authRes.data;
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('fileName', file.name);
-    formData.append('token', token);
-    formData.append('expire', expire);
-    formData.append('signature', signature);
-    formData.append('publicKey', publicKey);
-    if (isPrivate) formData.append('isPrivateFile', 'true');
-    const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', body: formData });
-    const data = await uploadRes.json();
-    return { url: data.url, fileId: data.fileId };
-  };
-
   // The final step's submit does double duty: confirm the code, and only
   // once that succeeds does the account actually get created.
   const handleSubmit = async (e) => {
@@ -233,35 +190,10 @@ const Register = () => {
     try {
       await api.post('/auth/verify-email-code', { email: form.email, code: verificationCode.trim() });
 
-      let uploaded = { url: '', fileId: '' };
-      if (validIdImage) {
-        uploaded = await uploadToImageKit(validIdImage, { isPrivate: true });
-      }
-      let uploadedBack = { url: '', fileId: '' };
-      if (validIdBackImage) {
-        uploadedBack = await uploadToImageKit(validIdBackImage, { isPrivate: true });
-      }
-      let uploadedLicense = { url: '', fileId: '' };
-      if (licenseImage) {
-        uploadedLicense = await uploadToImageKit(licenseImage, { isPrivate: true });
-      }
-      let uploadedLicenseBack = { url: '', fileId: '' };
-      if (licenseBackImage) {
-        uploadedLicenseBack = await uploadToImageKit(licenseBackImage, { isPrivate: true });
-      }
-
       const res = await api.post('/auth/register', {
         ...form,
         validIdType,
-        validIdImage: uploaded.url,
-        validIdImageFileId: uploaded.fileId,
-        validIdImageBack: uploadedBack.url,
-        validIdImageBackFileId: uploadedBack.fileId,
-
-        licenseImage: uploadedLicense.url,
-        licenseImageFileId: uploadedLicense.fileId,
-        licenseImageBack: uploadedLicenseBack.url,
-        licenseImageBackFileId: uploadedLicenseBack.fileId,
+        validIdExpiry,
       });
       login(res.data.user, res.data.token);
       navigate('/');
@@ -597,20 +529,39 @@ const Register = () => {
                     />
                     {fieldErrors.address && <p style={{ ...styles.fieldError, marginTop: '-10px', marginBottom: '16px' }}>{fieldErrors.address}</p>}
 
-                    <ValidIdUpload
-                      styles={styles}
-                      idPrefix="reg-valid-id"
-                      required
-                      idType={validIdType}
-                      onIdTypeChange={setValidIdType}
-                      frontPreview={validIdPreview}
-                      onFrontChange={handleIdFrontChange}
-                      backPreview={validIdBackPreview}
-                      onBackChange={handleIdBackChange}
-                      expiry={validIdExpiry}
-                      onExpiryChange={setValidIdExpiry}
-                      hideExpiry
-                    />
+                    {/* We ask what kind of ID and when it runs out. We do
+                        not ask for a photograph of it, and we never will —
+                        see server/models/User.js. */}
+                    <div className="responsive-row-2" style={styles.row}>
+                      <div style={styles.field}>
+                        <label style={styles.label} htmlFor="reg-valid-id-type">Valid ID Type</label>
+                        <select
+                          id="reg-valid-id-type"
+                          style={styles.input}
+                          value={validIdType}
+                          onChange={(e) => setValidIdType(e.target.value)}
+                        >
+                          <option value="">Select an ID type</option>
+                          {VALID_ID_TYPES.map((t) => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div style={styles.field}>
+                        <label style={styles.label} htmlFor="reg-valid-id-expiry">ID Expiry</label>
+                        <input
+                          id="reg-valid-id-expiry"
+                          style={styles.input}
+                          type="date"
+                          value={validIdExpiry}
+                          onChange={(e) => setValidIdExpiry(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <p style={{ ...styles.subtitle, marginTop: '-8px', marginBottom: '12px' }}>
+                      Leave the date blank if yours doesn&apos;t expire. Bring the ID itself to your pickup —
+                      we check it there and keep no copy.
+                    </p>
                     {fieldErrors.validId && <p style={styles.fieldError}>{fieldErrors.validId}</p>}
 
                     <p style={{ ...styles.subtitle, marginBottom: '8px' }}>
@@ -632,19 +583,6 @@ const Register = () => {
                           when the licence is checked — a date typed by its
                           holder is a claim, not a fact. */}
                     </div>
-
-                    {validIdType === 'drivers_license' ? (
-                      <p style={styles.uploadHint}>Your license photos above already cover this — no need to upload again.</p>
-                    ) : (
-                      <LicensePhotoUpload
-                        styles={styles}
-                        idPrefix="reg-license"
-                        frontPreview={licensePreview}
-                        onFrontChange={(f) => { setLicenseImage(f); setLicensePreview(URL.createObjectURL(f)); }}
-                        backPreview={licenseBackPreview}
-                        onBackChange={(f) => { setLicenseBackImage(f); setLicenseBackPreview(URL.createObjectURL(f)); }}
-                      />
-                    )}
 
                     <div style={styles.stepActions}>
                       <button type="button" style={styles.backBtn} onClick={() => goToStep(1)}>

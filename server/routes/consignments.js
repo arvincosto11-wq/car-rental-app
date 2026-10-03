@@ -7,7 +7,6 @@ import Consignment from '../models/Consignment.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { registerLimiter } from '../middleware/rateLimit.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
-import { signedDocumentUrl } from '../utils/documentUrls.js';
 
 const router = express.Router();
 
@@ -34,12 +33,11 @@ router.post('/register', registerLimiter, async (req, res) => {
     const {
       // Owner info
       name, email, password, birthDate, phone, address,
-      validIdType, validIdImage, validIdImageFileId,
-      validIdImageBack, validIdImageBackFileId, validIdExpiry,
+      validIdType, validIdExpiry,
       // Vehicle info
       brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,
       fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
-      orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
+      vehiclePhotos
     } = req.body;
 
     if (!EMAIL_REGEX.test(email || '')) {
@@ -61,8 +59,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({
       name, email, password: hashed, birthDate, phone, address,
-      validIdType, validIdImage, validIdImageFileId,
-      validIdImageBack, validIdImageBackFileId, validIdExpiry,
+      validIdType, validIdExpiry,
       role: 'consignor'
     });
 
@@ -70,7 +67,7 @@ router.post('/register', registerLimiter, async (req, res) => {
       owner: user._id,
       brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,
       fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
-      orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
+      vehiclePhotos
     });
 
     const token = jwt.sign(
@@ -97,14 +94,14 @@ router.post('/', protect, consignorOnly, async (req, res) => {
     const {
       brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,
       fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
-      orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
+      vehiclePhotos
     } = req.body;
 
     const consignment = await Consignment.create({
       owner: req.user.id,
       brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,
       fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
-      orImage, orImageFileId, crImage, crImageFileId, vehiclePhotos
+      vehiclePhotos
     });
 
     await notifyAdmins('New Consignment Application', `A consignor submitted a new vehicle application (${brand} ${model}).`, '/admin/manage-consignments');
@@ -127,40 +124,11 @@ router.get('/my', protect, consignorOnly, async (req, res) => {
   }
 });
 
-// Short-lived links to a vehicle's ownership papers.
-//
-// The OR and CR are not identity documents, but a CR carries the owner's
-// full name and address alongside the plate, engine and chassis numbers —
-// between them, enough to argue somebody else owns the vehicle. They were
-// sitting on links that worked for anybody who had them, for ever.
-//
-// Admin reviews them; the owner is entitled to see their own back. Nobody
-// else, which is why the file is asked for by which consignment it belongs
-// to rather than by URL.
-router.get('/:id/papers', protect, async (req, res) => {
-  try {
-    const consignment = await Consignment.findById(req.params.id).select('owner orImage crImage').lean();
-    if (!consignment) return res.status(404).json({ message: 'Consignment not found' });
-
-    const owns = String(consignment.owner) === req.user.id;
-    if (!owns && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-
-    res.json({
-      orImage: consignment.orImage ? signedDocumentUrl(consignment.orImage) : '',
-      crImage: consignment.crImage ? signedDocumentUrl(consignment.crImage) : '',
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
 // Get all applications (admin review queue)
 router.get('/all', protect, adminOnly, async (req, res) => {
   try {
     const consignments = await Consignment.find()
-      .populate('owner', 'name email phone address validIdImage idVerified')
+      .populate('owner', 'name email phone address')
       .populate('linkedCar')
       .sort({ createdAt: -1 });
     res.json(consignments);

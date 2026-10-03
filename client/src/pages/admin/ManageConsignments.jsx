@@ -8,7 +8,6 @@ import { GOLD, GOLD_DARK, ON_GOLD } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
-import useDocumentPhotos, { useConsignmentPapers } from '../../hooks/useDocumentPhotos';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
 
@@ -44,10 +43,8 @@ const ManageConsignments = () => {
   const selected = consignments.find((c) => c._id === selectedId);
   // The owner's ID is an identity document like any other, so it comes
   // through the signed route rather than on the plain link it was stored on.
-  const ownerDocs = useDocumentPhotos(selected?.owner?._id);
   // The OR and CR carry the owner's name and address, so they come
   // through the signed route like any other document.
-  const papers = useConsignmentPapers(selected?._id);
   const filtered = consignments.filter((c) => filter === 'all' || c.status === filter);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageConsignments = paginate(filtered, page, PAGE_SIZE);
@@ -255,14 +252,7 @@ const ManageConsignments = () => {
                 <span style={s.profileLabel}>Address</span>
                 <span style={s.profileValue}>{selected.owner?.address || '—'}</span>
               </div>
-              <div style={s.profileItem}>
-                <span style={s.profileLabel}>ID Verified</span>
-                <span style={s.profileValue}>{selected.owner?.idVerified ? 'Yes' : 'Not yet'}</span>
-              </div>
             </div>
-            {selected.owner?.validIdImage && (
-              <img src={ownerDocs.validIdImage || selected.owner.validIdImage} alt="Owner ID" style={{ ...s.docImage, marginBottom: '18px' }} />
-            )}
 
             <h3 style={s.sectionTitle}>Vehicle Details</h3>
             <div style={s.profileGrid}>
@@ -314,17 +304,14 @@ const ManageConsignments = () => {
               </div>
             )}
 
+            {/* The OR and CR used to be uploaded and reviewed here. They
+                are presented in person now, against the vehicle, where a
+                plate and a chassis number can actually be matched to what
+                is parked outside. */}
             <h3 style={s.sectionTitle}>Vehicle Documents</h3>
-            <div style={s.docGrid}>
-              <div>
-                <div style={s.docLabel}>OR (Official Receipt)</div>
-                {selected.orImage ? <img src={papers.orImage || selected.orImage} alt="OR" style={s.docImage} /> : <p style={s.empty}>Not provided</p>}
-              </div>
-              <div>
-                <div style={s.docLabel}>CR (Certificate of Registration)</div>
-                {selected.crImage ? <img src={papers.crImage || selected.crImage} alt="CR" style={s.docImage} /> : <p style={s.empty}>Not provided</p>}
-              </div>
-            </div>
+            <p style={s.empty}>
+              Checked in person, not uploaded. Confirm the OR and CR against the vehicle before approving.
+            </p>
 
             <h3 style={s.sectionTitle}>Vehicle Photos</h3>
             {selected.vehiclePhotos?.length > 0 ? (

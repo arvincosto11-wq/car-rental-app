@@ -46,7 +46,6 @@ const PickupDesk = () => {
   // everything else rather than inside the card: Card is redefined on every
   // render of this page, so a hook in there would remount and re-fetch each
   // time somebody ticked a checkbox.
-  const [docs, setDocs] = useState({});
   // The gauge reading, per booking. Like the tick boxes, it is of the
   // vehicle in front of you, so it starts blank every time.
   const [fuel, setFuel] = useState({});
@@ -63,21 +62,6 @@ const PickupDesk = () => {
 
       // Only the clients who actually have a card here, so a desk with two
       // pickups does not sign every ID in the database.
-      const waitingIds = [...new Set(b.data
-        .filter((x) => x.status === 'confirmed' && x.payment === 'paid' && !x.collectedAt)
-        .map((x) => String(x.user?._id || x.user))
-        .filter(Boolean))];
-      const signed = {};
-      await Promise.all(waitingIds.map(async (uid) => {
-        try {
-          const res = await api.get(`/users/${uid}/documents`);
-          signed[uid] = res.data || {};
-        } catch {
-          // Falls back to whatever the client record already carries.
-          signed[uid] = {};
-        }
-      }));
-      setDocs(signed);
     } catch (err) {
       console.error(err);
       toast.error('Could not load today’s pickups.');
@@ -325,9 +309,6 @@ const PickupDesk = () => {
 
   const Card = ({ booking, late, stale }) => {
     const client = clientFor(booking);
-    const signed = docs[String(client?._id)] || {};
-    const idFront = signed.validIdImage || client?.validIdImage || '';
-    const idBack = signed.validIdImageBack || client?.validIdImageBack || '';
     const remaining = (booking.totalPrice || 0) - (booking.amountPaid || 0);
     const selfDrive = booking.bookingType === 'self-drive';
     const licenceExpired = selfDrive && isExpired(client?.licenseExpiry);
@@ -392,27 +373,15 @@ const PickupDesk = () => {
                 {client?.licenseExpiry ? ` · expires ${new Date(client.licenseExpiry).toLocaleDateString()}` : ''}
               </div>
             )}
+            {/* No photographs to compare against any more — the documents
+                are checked here, in person, which is the only place that
+                check was ever worth anything. What is on file is the type
+                and the dates, shown above, so whoever is on the counter
+                knows what to ask for. */}
             <div style={s.idRow}>
-              {idFront ? (
-                <>
-                  <img
-                    src={idFront}
-                    alt="Valid ID front"
-                    style={s.idImage}
-                    onClick={() => window.open(idFront, '_blank', 'noopener')}
-                  />
-                  {idBack && (
-                    <img
-                      src={idBack}
-                      alt="Valid ID back"
-                      style={s.idImage}
-                      onClick={() => window.open(idBack, '_blank', 'noopener')}
-                    />
-                  )}
-                </>
-              ) : (
-                <span style={s.noId}>No ID uploaded to their account.</span>
-              )}
+              <span style={s.noId}>
+                Ask to see the documents themselves. We hold no copies.
+              </span>
             </div>
             {licenceExpired && (
               <div style={s.warn}>

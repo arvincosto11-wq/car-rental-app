@@ -6,10 +6,8 @@ import Pagination from '../../components/Pagination';
 import { paginate } from '../../utils/paginate';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
-import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import { GOLD, GOLD_DARK, goldInk} from '../../theme';
 import api from '../../api';
-import useDocumentPhotos from '../../hooks/useDocumentPhotos';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 
 const PAGE_SIZE = 10;
@@ -18,16 +16,12 @@ const ManageClients = () => {
   usePageTitle('Manage Clients');
   const { isDark } = useTheme();
   const { confirm } = useUIFeedback();
-  const { refetch: refetchPendingCounts } = useAdminPendingCounts();
   const [clients, setClients] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [page, setPage] = useState(1);
-  const [rejectPendingIdTarget, setRejectPendingIdTarget] = useState(null);
-  const [rejectPendingIdReason, setRejectPendingIdReason] = useState('');
-  const [rejectingPendingId, setRejectingPendingId] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -43,28 +37,6 @@ const ManageClients = () => {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Asked first, because both directions change what somebody can do and
-  // neither is obvious from the button alone. Unverifying is the one that
-  // takes something away, so it is the one marked as destructive.
-  const handleVerify = async (id, currentStatus) => {
-    const ok = await confirm(
-      currentStatus
-        ? "Un-verify this client's ID? They will not be able to make a booking until it is verified again."
-        : "Mark this client's ID as verified? They will be able to book straight away.",
-      currentStatus
-        ? { confirmLabel: 'Un-verify', cancelLabel: 'Keep verified', danger: true }
-        : { confirmLabel: 'Verify', cancelLabel: 'Not yet' }
-    );
-    if (!ok) return;
-    try {
-      await api.put(`/users/${id}/verify`, { verified: !currentStatus });
-      fetchData();
-      refetchPendingCounts();
-    } catch (err) {
-      console.error(err);
     }
   };
 
@@ -93,18 +65,6 @@ const ManageClients = () => {
   const [docDates, setDocDates] = useState({ validIdExpiry: '', licenseExpiry: '' });
   const [savingDates, setSavingDates] = useState(false);
 
-  const handleApprovePendingId = async (id) => {
-    try {
-      await api.put(`/users/${id}/pending-id/approve`, {
-        validIdExpiry: docDates.validIdExpiry || '',
-        licenseExpiry: docDates.licenseExpiry || '',
-      });
-      fetchData();
-      refetchPendingCounts();
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const saveDocumentDates = async (id) => {
     setSavingDates(true);
@@ -121,24 +81,7 @@ const ManageClients = () => {
     }
   };
 
-  const openRejectPendingId = (id) => {
-    setRejectPendingIdTarget(id);
-    setRejectPendingIdReason('');
-  };
 
-  const confirmRejectPendingId = async () => {
-    setRejectingPendingId(true);
-    try {
-      await api.put(`/users/${rejectPendingIdTarget}/pending-id/reject`, { reason: rejectPendingIdReason });
-      fetchData();
-      refetchPendingCounts();
-      setRejectPendingIdTarget(null);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setRejectingPendingId(false);
-    }
-  };
 
   const bookingsForClient = (clientId) =>
     bookings.filter((b) => b.user?._id === clientId);
@@ -157,14 +100,9 @@ const ManageClients = () => {
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
   const selectedClient = clients.find((c) => c._id === selectedClientId);
-  // Asked for by whose they are. Falls back to what the list already holds
-  // while they load, so nothing blinks out.
-  const docPhotos = useDocumentPhotos(selectedClientId);
-  const doc = (field) => docPhotos[field] || selectedClient?.[field] || '';
   const finishedTrips = selectedClient ? finishedTripsFor(selectedClient._id).length : 0;
   const lateReturns = selectedClient ? lateReturnsFor(selectedClient._id).length : 0;
   const clientModalRef = useModalA11y(() => setSelectedClientId(null), !!selectedClient);
-  const rejectPendingIdModalRef = useModalA11y(() => setRejectPendingIdTarget(null), !!rejectPendingIdTarget);
 
   const s = {
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
@@ -252,7 +190,7 @@ const ManageClients = () => {
   return (
     <AdminLayout activePage="Manage Clients">
       <h1 style={s.title}>Manage Clients</h1>
-      <p style={s.subtitle}>View client profiles, verify IDs, and manage booking history.</p>
+      <p style={s.subtitle}>View client profiles, correct document dates, and manage booking history.</p>
 
       <input
         style={s.searchInput}
@@ -271,7 +209,6 @@ const ManageClients = () => {
               <th style={s.th}>Phone</th>
               <th style={s.th}>Joined</th>
               <th style={s.th}>Bookings</th>
-              <th style={s.th}>ID Status</th>
               <th style={s.th}>Account</th>
               <th style={s.th}>Actions</th>
             </tr>
@@ -297,14 +234,6 @@ const ManageClients = () => {
                 <td style={s.td}>{client.phone || '—'}</td>
                 <td style={s.td}>{new Date(client.createdAt).toLocaleDateString()}</td>
                 <td style={s.td}>{bookingsForClient(client._id).length}</td>
-                <td style={s.td}>
-                  <span style={client.idVerified ? s.verified : s.unverified}>
-                    {client.idVerified ? 'Verified' : 'Unverified'}
-                  </span>
-                  {client.pendingIdSubmittedAt && (
-                    <div style={{ marginTop: '4px' }}><span style={s.pendingTag}>Update Pending</span></div>
-                  )}
-                </td>
                 <td style={s.td}>
                   <span style={client.isBlocked ? s.blocked : s.active}>
                     {client.isBlocked ? 'Blocked' : 'Active'}
@@ -341,9 +270,6 @@ const ManageClients = () => {
             <p style={s.modalSub}>{selectedClient.email}</p>
 
             <div style={s.badgeRow}>
-              <span style={selectedClient.idVerified ? s.verified : s.unverified}>
-                {selectedClient.idVerified ? 'ID Verified' : 'ID Unverified'}
-              </span>
               <span style={selectedClient.isBlocked ? s.blocked : s.active}>
                 {selectedClient.isBlocked ? 'Blocked' : 'Active'}
               </span>
@@ -374,11 +300,12 @@ const ManageClients = () => {
                   {selectedClient.licenseExpiry ? new Date(selectedClient.licenseExpiry).toLocaleDateString() : '—'}
                 </span>
               </div>
-              {/* Both dates live here rather than on the client's profile.
-                  A typo found a week later should be a correction, not a
-                  trip back through review. */}
+              {/* We hold no copies of anything, so these dates are the
+                  client's own account of their papers. They are editable
+                  because whoever has actually seen the documents at the
+                  counter is the only person who can put them right. */}
               <div style={{ ...s.profileItem, gridColumn: '1 / -1' }}>
-                <span style={s.profileLabel}>Document expiry dates (from the photos on file)</span>
+                <span style={s.profileLabel}>Document expiry dates (as given by the client)</span>
                 <div style={s.dateRow}>
                   <label style={s.dateField}>
                     <span style={s.profileLabel}>Valid ID</span>
@@ -428,132 +355,18 @@ const ManageClients = () => {
               </div>
             </div>
 
-            {(selectedClient.licenseImage || selectedClient.licenseImageBack) && (
-              <>
-                <h3 style={{ ...s.sectionTitle, marginTop: 0 }}>License Photo</h3>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {selectedClient.licenseImage && <img src={doc('licenseImage')} alt="License front" style={s.idImage} />}
-                  {selectedClient.licenseImageBack && <img src={doc('licenseImageBack')} alt="License back" style={s.idImage} />}
-                </div>
-              </>
-            )}
-
-            <h3 style={{ ...s.sectionTitle, marginTop: 0 }}>Valid ID</h3>
-            {selectedClient.validIdImage ? (
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <img src={doc('validIdImage')} alt="Valid ID front" style={s.idImage} />
-                {selectedClient.validIdImageBack && (
-                  <img src={doc('validIdImageBack')} alt="Valid ID back" style={s.idImage} />
-                )}
-              </div>
-            ) : (
-              <p style={s.empty}>No ID photo on file.</p>
-            )}
-            {selectedClient.validIdExpiry && (
-              <p style={{ ...s.profileValue, marginTop: '8px' }}>
-                ID expiry: {new Date(selectedClient.validIdExpiry).toLocaleDateString()}
-                {new Date(selectedClient.validIdExpiry) < new Date() && <span style={{ ...s.unverified, marginLeft: '8px' }}>Expired</span>}
-              </p>
-            )}
-
-            <div style={s.actionRow}>
+            {/* The block button lived beside an ID-verification button that
+                no longer exists. Blocking is unrelated to documents and is
+                still how an admin stops somebody booking. */}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '18px', marginBottom: '4px' }}>
               <button
-                style={s.verifyBtn(selectedClient.idVerified)}
-                onClick={() => handleVerify(selectedClient._id, selectedClient.idVerified)}
-              >
-                {selectedClient.idVerified ? 'Unverify ID' : 'Mark ID as Verified'}
-              </button>
-              <button
+                type="button"
                 style={s.blockBtn(selectedClient.isBlocked)}
                 onClick={() => handleBlock(selectedClient._id, selectedClient.isBlocked)}
               >
-                {selectedClient.isBlocked ? 'Unblock Client' : 'Block Client'}
+                {selectedClient.isBlocked ? 'Unblock client' : 'Block client'}
               </button>
             </div>
-
-            {selectedClient.pendingIdSubmittedAt && (
-              <div style={s.pendingBox}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                  <span style={s.pendingTag}>Update Pending Review</span>
-                  <span style={s.subCell}>Submitted {new Date(selectedClient.pendingIdSubmittedAt).toLocaleDateString()}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                  {selectedClient.pendingValidIdImage
-                    ? (
-                      <>
-                        <img src={doc('pendingValidIdImage')} alt="Pending ID front" style={s.idImage} />
-                        {doc('pendingValidIdImageBack') && <img src={doc('pendingValidIdImageBack')} alt="Pending ID back" style={s.idImage} />}
-                      </>
-                    ) : (
-                      // Only the date changed, so there is no new photo — and
-                      // approving a date with nothing to read it against is
-                      // just taking the client's word for it, which is the
-                      // whole thing this is meant to stop.
-                      <>
-                        {doc('validIdImage') && <img src={doc('validIdImage')} alt="ID on file, front" style={s.idImage} />}
-                        {doc('validIdImageBack') && <img src={doc('validIdImageBack')} alt="ID on file, back" style={s.idImage} />}
-                      </>
-                    )}
-                </div>
-                {!selectedClient.pendingValidIdImage && (
-                  <p style={{ ...s.subCell, marginBottom: '10px' }}>
-                    No new photo — only the expiry date was changed. Check the claimed date against the ID above.
-                  </p>
-                )}
-                {(selectedClient.pendingLicenseNumber || selectedClient.pendingLicenseExpiry) && (
-                  <p style={{ ...s.profileValue, marginBottom: '10px' }}>
-                    Claimed licence:{' '}
-                    {selectedClient.pendingLicenseNumber || selectedClient.licenseNumber || '—'}
-                    {selectedClient.pendingLicenseExpiry
-                      ? `, expiring ${new Date(selectedClient.pendingLicenseExpiry).toLocaleDateString()}`
-                      : ''}
-                    {selectedClient.licenseExpiry
-                      ? ` (currently ${new Date(selectedClient.licenseExpiry).toLocaleDateString()})`
-                      : ''}
-                  </p>
-                )}
-                {selectedClient.pendingValidIdExpiry && (
-                  <p style={{ ...s.profileValue, marginBottom: '10px' }}>
-                    Claimed expiry: {new Date(selectedClient.pendingValidIdExpiry).toLocaleDateString()}
-                    {selectedClient.validIdExpiry
-                      ? ` (currently ${new Date(selectedClient.validIdExpiry).toLocaleDateString()})`
-                      : ''}
-                  </p>
-                )}
-                <div style={s.dateRow}>
-                  <label style={s.dateField}>
-                    <span style={s.profileLabel}>ID expiry (read it off the photo)</span>
-                    <input
-                      type="date"
-                      style={s.dateInput}
-                      value={docDates.validIdExpiry}
-                      onChange={(e) => setDocDates({ ...docDates, validIdExpiry: e.target.value })}
-                    />
-                  </label>
-                  <label style={s.dateField}>
-                    <span style={s.profileLabel}>Licence expiry</span>
-                    <input
-                      type="date"
-                      style={s.dateInput}
-                      value={docDates.licenseExpiry}
-                      onChange={(e) => setDocDates({ ...docDates, licenseExpiry: e.target.value })}
-                    />
-                  </label>
-                </div>
-                <p style={{ ...s.subCell, marginBottom: '10px' }}>
-                  Leave a date blank if that document doesn&apos;t expire.
-                </p>
-
-                <div style={s.actionRow}>
-                  <button style={s.verifyBtn(false)} onClick={() => handleApprovePendingId(selectedClient._id)}>
-                    Approve New ID
-                  </button>
-                  <button style={s.blockBtn(false)} onClick={() => openRejectPendingId(selectedClient._id)}>
-                    Reject New ID
-                  </button>
-                </div>
-              </div>
-            )}
 
             <h3 style={s.sectionTitle}>Booking History</h3>
             {bookingsForClient(selectedClient._id).length === 0 ? (
@@ -590,29 +403,6 @@ const ManageClients = () => {
         </div>
       )}
 
-      {rejectPendingIdTarget && (
-        <div style={s.modalOverlay}>
-          <div style={s.modalContent} ref={rejectPendingIdModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="reject-pending-id-title">
-            <h2 id="reject-pending-id-title" style={s.modalTitle}>Reject ID Update</h2>
-            <p style={s.modalSub}>The client's current verified ID stays active either way — only the new submission is discarded.</p>
-            <label style={s.profileLabel} htmlFor="reject-pending-id-reason">Reason (optional, shown to the client)</label>
-            <textarea
-              id="reject-pending-id-reason"
-              style={s.modalTextarea}
-              rows={3}
-              value={rejectPendingIdReason}
-              onChange={(e) => setRejectPendingIdReason(e.target.value)}
-              placeholder="e.g. The photo is blurry, please re-upload."
-            />
-            <div style={s.modalActions}>
-              <button style={s.modalCancelBtn} onClick={() => setRejectPendingIdTarget(null)} disabled={rejectingPendingId}>Cancel</button>
-              <button style={s.modalSubmitBtn} onClick={confirmRejectPendingId} disabled={rejectingPendingId}>
-                {rejectingPendingId ? 'Rejecting...' : 'Confirm Reject'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </AdminLayout>
   );
 };

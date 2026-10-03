@@ -10,8 +10,7 @@ import LocationAddressFields from '../components/LocationAddressFields';
 import PasswordInput from '../components/PasswordInput';
 import BookingSteps from '../components/BookingSteps';
 import AuthBrandPanel from '../components/AuthBrandPanel';
-import ValidIdUpload from '../components/ValidIdUpload';
-import { idTypeNeedsBack } from '../data/validIdTypes';
+import { VALID_ID_TYPES } from '../data/validIdTypes';
 import usePageTitle from '../hooks/usePageTitle';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
@@ -59,15 +58,7 @@ const ConsignmentRegister = () => {
   const [fieldErrors, setFieldErrors] = useState({});
 
   const [validIdType, setValidIdType] = useState('');
-  const [validIdImage, setValidIdImage] = useState(null);
-  const [validIdPreview, setValidIdPreview] = useState('');
-  const [validIdBackImage, setValidIdBackImage] = useState(null);
-  const [validIdBackPreview, setValidIdBackPreview] = useState('');
   const [validIdExpiry, setValidIdExpiry] = useState('');
-  const [orImage, setOrImage] = useState(null);
-  const [orPreview, setOrPreview] = useState('');
-  const [crImage, setCrImage] = useState(null);
-  const [crPreview, setCrPreview] = useState('');
   const [vehiclePhotos, setVehiclePhotos] = useState([]);
   const [vehiclePreviews, setVehiclePreviews] = useState([]);
   const [bookingTypes, setBookingTypes] = useState({ 'self-drive': true, 'with-driver': true });
@@ -132,11 +123,7 @@ const ConsignmentRegister = () => {
     const confirmPasswordError = !confirmPassword ? 'Please confirm your password.' : (form.password !== confirmPassword ? 'Passwords do not match.' : '');
     const phoneError = !form.phone.trim() ? 'Phone number is required.' : (PHONE_REGEX.test(form.phone) ? '' : PHONE_ERROR);
     const addressError = !form.address.trim() ? 'Please complete your address.' : '';
-    const validIdError = !validIdType
-      ? "Please select which valid ID you'll be using."
-      : !validIdImage
-        ? 'Please upload a photo of your valid ID.'
-        : (idTypeNeedsBack(validIdType) && !validIdBackImage ? 'Please also upload a photo of the back of your ID.' : '');
+    const validIdError = !validIdType ? "Please select which valid ID you'll be using." : '';
 
     setFieldErrors((prev) => ({
       ...prev,
@@ -210,8 +197,8 @@ const ConsignmentRegister = () => {
     // to attach these to, so they stay a summary banner (this is only a
     // defensive re-check; each step's own Continue button already blocked
     // advancing past it once).
-    if (!PHONE_REGEX.test(form.phone) || !validIdType || !validIdImage || (idTypeNeedsBack(validIdType) && !validIdBackImage)) {
-      setError('Please go back and finish your info and valid ID upload.');
+    if (!PHONE_REGEX.test(form.phone) || !validIdType) {
+      setError('Please go back and finish your details.');
       return;
     }
     const selectedBookingTypes = Object.entries(bookingTypes).filter(([, v]) => v).map(([k]) => k);
@@ -220,23 +207,15 @@ const ConsignmentRegister = () => {
       return;
     }
 
-    // Documents step is the one currently on screen, so these get inline
-    // messages under their own upload boxes instead.
-    const orError = !orImage ? 'Please upload a photo of the OR.' : '';
-    const crError = !crImage ? 'Please upload a photo of the CR.' : '';
+    // The OR and CR are no longer uploaded — they are presented in person,
+    // against the vehicle. Photos of the vehicle itself are still useful
+    // for the listing, so those stay.
     const photosError = vehiclePhotos.length === 0 ? 'Please upload at least one photo of the vehicle.' : '';
-    setFieldErrors((prev) => ({ ...prev, orImage: orError, crImage: crError, vehiclePhotos: photosError }));
-    if (orError || crError || photosError) return;
+    setFieldErrors((prev) => ({ ...prev, vehiclePhotos: photosError }));
+    if (photosError) return;
 
     setLoading(true);
     try {
-      const uploadedId = await uploadToImageKit(validIdImage, { isPrivate: true });
-      let uploadedIdBack = { url: '', fileId: '' };
-      if (validIdBackImage) {
-        uploadedIdBack = await uploadToImageKit(validIdBackImage, { isPrivate: true });
-      }
-      const uploadedOr = await uploadToImageKit(orImage, { isPrivate: true });
-      const uploadedCr = await uploadToImageKit(crImage, { isPrivate: true });
       const uploadedPhotos = [];
       for (const file of vehiclePhotos) {
         const uploaded = await uploadToImageKit(file);
@@ -246,15 +225,7 @@ const ConsignmentRegister = () => {
       const res = await api.post('/consignments/register', {
         ...form,
         validIdType,
-        validIdImage: uploadedId.url,
-        validIdImageFileId: uploadedId.fileId,
-        validIdImageBack: uploadedIdBack.url,
-        validIdImageBackFileId: uploadedIdBack.fileId,
         validIdExpiry: validIdExpiry || null,
-        orImage: uploadedOr.url,
-        orImageFileId: uploadedOr.fileId,
-        crImage: uploadedCr.url,
-        crImageFileId: uploadedCr.fileId,
         vehiclePhotos: uploadedPhotos,
         availableBookingTypes: selectedBookingTypes,
       });
@@ -454,19 +425,37 @@ const ConsignmentRegister = () => {
                     />
                     {fieldErrors.address && <p style={{ ...styles.fieldError, marginTop: '-10px', marginBottom: '16px' }}>{fieldErrors.address}</p>}
 
-                    <ValidIdUpload
-                      styles={styles}
-                      idPrefix="cr-valid-id"
-                      required
-                      idType={validIdType}
-                      onIdTypeChange={setValidIdType}
-                      frontPreview={validIdPreview}
-                      onFrontChange={(f) => { setValidIdImage(f); setValidIdPreview(URL.createObjectURL(f)); }}
-                      backPreview={validIdBackPreview}
-                      onBackChange={(f) => { setValidIdBackImage(f); setValidIdBackPreview(URL.createObjectURL(f)); }}
-                      expiry={validIdExpiry}
-                      onExpiryChange={setValidIdExpiry}
-                    />
+                    {/* Type and expiry only. No photograph of anybody's
+                        ID is taken or kept — see server/models/User.js. */}
+                    <div className="responsive-row-2" style={styles.row}>
+                      <div style={styles.field}>
+                        <label style={styles.label} htmlFor="cr-valid-id-type">Valid ID Type</label>
+                        <select
+                          id="cr-valid-id-type"
+                          style={styles.input}
+                          value={validIdType}
+                          onChange={(e) => setValidIdType(e.target.value)}
+                        >
+                          <option value="">Select an ID type</option>
+                          {VALID_ID_TYPES.map((t) => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div style={styles.field}>
+                        <label style={styles.label} htmlFor="cr-valid-id-expiry">ID Expiry</label>
+                        <input
+                          id="cr-valid-id-expiry"
+                          style={styles.input}
+                          type="date"
+                          value={validIdExpiry}
+                          onChange={(e) => setValidIdExpiry(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <p style={{ ...styles.uploadHint, marginTop: '-8px', marginBottom: '12px' }}>
+                      Leave the date blank if yours doesn&apos;t expire. Bring the ID itself when you come in.
+                    </p>
                     {fieldErrors.validId && <p style={styles.fieldError}>{fieldErrors.validId}</p>}
 
                     <div style={styles.stepActions}>
@@ -641,40 +630,15 @@ const ConsignmentRegister = () => {
 
                 {step === 3 && (
                   <motion.div key="step3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
-                    <div className="responsive-row-2" style={styles.row}>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="cr-or">OR (Official Receipt)</label>
-                        <div style={styles.upload}>
-                          {orPreview ? (
-                            <img src={orPreview} alt="OR preview" style={styles.uploadPreview} />
-                          ) : (
-                            <div style={styles.uploadPlaceholder}>
-                              <span style={{ fontSize: '26px' }}>🧾</span>
-                              <p style={styles.uploadHint}>Click to upload OR photo</p>
-                            </div>
-                          )}
-                          <input id="cr-or" type="file" accept="image/*" style={styles.fileInput}
-                            onChange={(e) => { const f = e.target.files[0]; if (f) { setOrImage(f); setOrPreview(URL.createObjectURL(f)); } }} />
-                        </div>
-                        {fieldErrors.orImage && <p style={styles.fieldError}>{fieldErrors.orImage}</p>}
-                      </div>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="cr-cr">CR (Certificate of Registration)</label>
-                        <div style={styles.upload}>
-                          {crPreview ? (
-                            <img src={crPreview} alt="CR preview" style={styles.uploadPreview} />
-                          ) : (
-                            <div style={styles.uploadPlaceholder}>
-                              <span style={{ fontSize: '26px' }}>📄</span>
-                              <p style={styles.uploadHint}>Click to upload CR photo</p>
-                            </div>
-                          )}
-                          <input id="cr-cr" type="file" accept="image/*" style={styles.fileInput}
-                            onChange={(e) => { const f = e.target.files[0]; if (f) { setCrImage(f); setCrPreview(URL.createObjectURL(f)); } }} />
-                        </div>
-                        {fieldErrors.crImage && <p style={styles.fieldError}>{fieldErrors.crImage}</p>}
-                      </div>
-                    </div>
+                    {/* The OR and CR used to be uploaded here. They are
+                        brought to the office instead, where the plate and
+                        chassis number can be checked against the vehicle
+                        actually parked outside — which a photograph never
+                        allowed. */}
+                    <p style={{ ...styles.uploadHint, marginBottom: '16px' }}>
+                      Bring the OR and CR with you when you come in. We check them against the vehicle and
+                      keep no copies.
+                    </p>
 
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="cr-vehicle-photos">Vehicle Photos (multiple angles recommended)</label>

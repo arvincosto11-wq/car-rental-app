@@ -222,19 +222,18 @@ router.post('/', protect, async (req, res) => {
       });
     }
 
-    // A verified, unexpired ID is required for EVERY booking type — identity
-    // still matters even when a driver is provided, not just for self-drive.
-    // idVerified (set by admin after reviewing the photo) is the real gate,
-    // since the expiry date alone could be fabricated. Managed from the
-    // client's own Profile, never accepted inline here.
-    if (!currentUser.validIdImage) {
-      return res.status(400).json({ message: 'Please upload a photo of your valid ID in your Profile before booking.' });
-    }
-    if (!currentUser.idVerified) {
-      return res.status(400).json({ message: 'Your ID is still pending verification by our team. You can book once it is approved.' });
-    }
+    // An ID recorded as already expired stops the booking, because turning
+    // somebody away at the counter over a document they could have renewed
+    // is the worst moment to find out.
+    //
+    // Two older gates are gone with the photographs. "Upload your ID" has
+    // nothing to upload to, and "awaiting verification" has nothing to
+    // verify — there is no image for admin to look at. What is left is a
+    // date the client typed about their own papers, so this is a courtesy
+    // rather than a check. The check is two physical IDs at the counter,
+    // which is where it always was. See models/User.js.
     if (currentUser.validIdExpiry && new Date(currentUser.validIdExpiry) < new Date()) {
-      return res.status(400).json({ message: 'Your valid ID has expired. Please update it in your Profile before booking.' });
+      return res.status(400).json({ message: 'The valid ID on your profile has expired. Please update its details in your Profile before booking.' });
     }
 
     // Self-drive additionally requires a driver's licence that lasts as long

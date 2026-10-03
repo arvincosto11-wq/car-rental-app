@@ -21,11 +21,10 @@ const consignmentSchema = new mongoose.Schema({
   suggestedPricePerDay: { type: Number, required: true },
   description: { type: String, default: '' },
 
-  // Vehicle documents
-  orImage: { type: String, default: '' },
-  orImageFileId: { type: String, default: '' },
-  crImage: { type: String, default: '' },
-  crImageFileId: { type: String, default: '' },
+  // The OR and CR used to be uploaded here. They are not any more: the
+  // papers are presented in person, against the vehicle, where they can
+  // actually be checked. See models/User.js for the same reasoning about
+  // identity documents.
   vehiclePhotos: [{ url: String, fileId: String }],
 
   // Set once approved and a live Car listing is created from this application
