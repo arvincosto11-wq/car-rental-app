@@ -14,7 +14,7 @@ const daysUntil = (dateStr) => Math.floor((new Date(dateStr) - new Date()) / DAY
 const ExpiringDocuments = () => {
   usePageTitle('Expiring Documents');
   const { isDark } = useTheme();
-  const [data, setData] = useState({ validIds: [], licenses: [], registrations: [] });
+  const [data, setData] = useState({ licenses: [], registrations: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,19 +62,15 @@ const ExpiringDocuments = () => {
       : <span style={s.pillSoon}>{d === 0 ? 'Expires today' : `Expires in ${d}d`}</span>;
   };
 
-  const totalCount = data.validIds.length + data.licenses.length + data.registrations.length;
+  const totalCount = data.licenses.length + data.registrations.length;
 
   return (
     <AdminLayout activePage="Expiring Documents">
       <h1 style={s.title}>Expiring Documents</h1>
-      <p style={s.subtitle}>Valid IDs, driver's licenses, and vehicle registrations that are expired or expiring within 30 days.</p>
+      <p style={s.subtitle}>Driver's licences and vehicle registrations that are expired or expiring within 30 days.</p>
 
       {!loading && (
         <div style={s.summaryRow}>
-          <div style={s.summaryCard}>
-            <div style={s.summaryCount}>{data.validIds.length}</div>
-            <div style={s.summaryLabel}>Valid IDs</div>
-          </div>
           <div style={s.summaryCard}>
             <div style={s.summaryCount}>{data.licenses.length}</div>
             <div style={s.summaryLabel}>Driver's Licenses</div>
@@ -83,38 +79,6 @@ const ExpiringDocuments = () => {
             <div style={s.summaryCount}>{data.registrations.length}</div>
             <div style={s.summaryLabel}>Vehicle Registrations</div>
           </div>
-        </div>
-      )}
-
-      <h2 style={s.sectionTitle}>Valid IDs</h2>
-      <p style={s.sectionSubtitle}>Users whose on-file valid ID is expired or expiring soon.</p>
-      {loading ? (
-        <div className="table-scroll">
-          <table style={s.table}>
-            <thead><tr><th style={s.th}>User</th><th style={s.th}>Role</th><th style={s.th}>Expiry</th><th style={s.th}>Status</th></tr></thead>
-            <tbody><SkeletonTableRows isDark={isDark} columns={4} /></tbody>
-          </table>
-        </div>
-      ) : data.validIds.length === 0 ? (
-        <div style={s.table}><p style={s.empty}>Nothing expiring here.</p></div>
-      ) : (
-        <div className="table-scroll">
-          <table style={s.table}>
-            <thead><tr><th style={s.th}>User</th><th style={s.th}>Role</th><th style={s.th}>Expiry</th><th style={s.th}>Status</th></tr></thead>
-            <tbody>
-              {data.validIds.map((u) => (
-                <tr key={u.userId}>
-                  <td style={s.td}>
-                    <div style={s.name}>{u.name}</div>
-                    <div style={s.meta}>{u.email}</div>
-                  </td>
-                  <td style={s.td}>{u.role === 'consignor' ? 'Consignor' : 'Client'}</td>
-                  <td style={s.td}>{new Date(u.expiry).toLocaleDateString()}</td>
-                  <td style={s.td}><StatusPill expiry={u.expiry} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
 

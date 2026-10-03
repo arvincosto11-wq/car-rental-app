@@ -8,7 +8,6 @@ import PasswordInput from '../components/PasswordInput';
 import OtpInput from '../components/OtpInput';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
-import { VALID_ID_TYPES } from '../data/validIdTypes';
 import api from '../api';
 
 // A real check-circle glyph, not a plain "✓" character — matches the
@@ -60,8 +59,6 @@ const Profile = () => {
   const [profile, setProfile] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({});
-  const [validIdType, setValidIdType] = useState('');
-  const [validIdExpiry, setValidIdExpiry] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
@@ -101,8 +98,6 @@ const Profile = () => {
       emergencyContactName: profile.emergencyContactName || '',
       emergencyContactNumber: profile.emergencyContactNumber || '',
     });
-    setValidIdType(profile.validIdType || '');
-    setValidIdExpiry(profile.validIdExpiry ? profile.validIdExpiry.split('T')[0] : '');
     setSaveError('');
     setSaveSuccess('');
     setEditMode(true);
@@ -161,7 +156,7 @@ const Profile = () => {
       // Dates go up with everything else now. There is no document on file
       // for anybody else to read them off, so the person they belong to is
       // the only one who can say what they are.
-      const payload = { ...form, validIdType, validIdExpiry: validIdExpiry || '' };
+      const payload = { ...form };
       const res = await api.put('/auth/me', payload);
       setProfile(res.data);
       setEditMode(false);
@@ -577,30 +572,6 @@ const Profile = () => {
                 </div>
               </div>
 
-              <p style={{ ...s.label, marginBottom: '2px' }}>Valid ID</p>
-              <p style={s.uploadHint}>
-                We don&apos;t keep a copy of your ID &mdash; only what type it is and when it runs out, so we can
-                remind you before it does. Bring the ID itself to the pickup; that is where it is checked.
-              </p>
-              <div className="responsive-row-2" style={s.row}>
-                <div style={s.field}>
-                  <label style={s.label} htmlFor="profile-valid-id-type">ID Type</label>
-                  <select id="profile-valid-id-type" style={s.input} value={validIdType}
-                    onChange={(e) => setValidIdType(e.target.value)}>
-                    <option value="">Select an ID type</option>
-                    {VALID_ID_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div style={s.field}>
-                  <label style={s.label} htmlFor="profile-valid-id-expiry">ID Expiry</label>
-                  <input id="profile-valid-id-expiry" style={s.input} type="date" value={validIdExpiry || ''}
-                    onChange={(e) => setValidIdExpiry(e.target.value)} />
-                  <p style={s.uploadHint}>Leave blank if yours doesn&apos;t expire.</p>
-                </div>
-              </div>
-
               <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
                 <button type="submit" style={s.saveBtn} disabled={saving}>
                   {saving ? 'Saving...' : 'Save Changes'}
@@ -615,53 +586,27 @@ const Profile = () => {
 
         {profile && (
           <div style={{ ...s.profileCard, marginTop: '20px' }}>
-            <div style={s.profileHeaderRow}>
-              <div style={s.sectionTitleRow}>
-                <span style={s.accentBar('#3b82f6')} />
-                <div style={s.sectionTitle}>Your Documents</div>
-              </div>
-              {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
-                <span style={s.expiredTag}>Expired</span>
-              )}
+            <div style={s.sectionTitleRow}>
+              <span style={s.accentBar('#3b82f6')} />
+              <div style={s.sectionTitle}>Your Licence</div>
             </div>
 
-            {/* No photographs, no verified badge. There is nothing stored to
-                verify — what is here is what the reminders run on, and the
-                documents themselves are checked at the counter. */}
+            {/* The only document this system records, and only as a number
+                and a date. Everything else is checked at the counter. */}
             <p style={s.uploadHint}>
-              We hold no copies of your ID or licence. These are the details you gave us, kept only so we
-              can remind you before anything runs out. Bring the documents themselves to the pickup.
+              We hold no copies of any document. This is kept so we can remind you before it runs out, and
+              so self-drive bookings can check it covers the whole trip.
             </p>
 
-            <div className="responsive-row-2" style={{ ...s.row, marginTop: '12px' }}>
-              <div>
-                <span style={s.profileLabel}>Valid ID</span>
-                <span style={{ ...s.profileValue, display: 'block', marginTop: '4px' }}>
-                  {profile.validIdType
-                    ? (VALID_ID_TYPES.find((t) => t.value === profile.validIdType)?.label || profile.validIdType)
-                    : 'Not set'}
-                  {profile.validIdExpiry
-                    ? ` · expires ${new Date(profile.validIdExpiry).toLocaleDateString()}`
-                    : ''}
-                </span>
-              </div>
-              <div>
-                <span style={s.profileLabel}>Driver&apos;s Licence</span>
-                <span style={{ ...s.profileValue, display: 'block', marginTop: '4px' }}>
-                  {profile.licenseNumber || 'Not set'}
-                  {profile.licenseExpiry
-                    ? ` · expires ${new Date(profile.licenseExpiry).toLocaleDateString()}`
-                    : ''}
-                </span>
-              </div>
+            <div style={{ marginTop: '12px' }}>
+              <span style={s.profileLabel}>Driver&apos;s Licence</span>
+              <span style={{ ...s.profileValue, display: 'block', marginTop: '4px' }}>
+                {profile.licenseNumber || 'Not set'}
+                {profile.licenseExpiry
+                  ? ` · expires ${new Date(profile.licenseExpiry).toLocaleDateString()}`
+                  : ''}
+              </span>
             </div>
-
-            {profile.validIdExpiry && new Date(profile.validIdExpiry) < new Date() && (
-              <p style={{ ...s.formError, marginTop: '10px', maxWidth: '420px' }}>
-                The ID on your profile has expired. Update its details in Edit Profile above &mdash; you
-                won&apos;t be able to book until it shows a current date.
-              </p>
-            )}
           </div>
         )}
 

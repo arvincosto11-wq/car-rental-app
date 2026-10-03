@@ -222,19 +222,6 @@ router.post('/', protect, async (req, res) => {
       });
     }
 
-    // An ID recorded as already expired stops the booking, because turning
-    // somebody away at the counter over a document they could have renewed
-    // is the worst moment to find out.
-    //
-    // Two older gates are gone with the photographs. "Upload your ID" has
-    // nothing to upload to, and "awaiting verification" has nothing to
-    // verify — there is no image for admin to look at. What is left is a
-    // date the client typed about their own papers, so this is a courtesy
-    // rather than a check. The check is two physical IDs at the counter,
-    // which is where it always was. See models/User.js.
-    if (currentUser.validIdExpiry && new Date(currentUser.validIdExpiry) < new Date()) {
-      return res.status(400).json({ message: 'The valid ID on your profile has expired. Please update its details in your Profile before booking.' });
-    }
 
     // Self-drive additionally requires a driver's licence that lasts as long
     // as the booking does — with-driver bookings don't ask, since the renter
@@ -398,7 +385,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
       // position with every booking that mentions it — 664 KB to render a
       // name, a photo and a plate.
       .populate('car', 'brand model year category image plateNumber pricePerDay owner')
-      .populate('user', 'name email image avgRating ratingCount licenseExpiry validIdExpiry licenseNumber')
+      .populate('user', 'name email image avgRating ratingCount licenseExpiry licenseNumber')
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'admin' }));
   } catch (err) {

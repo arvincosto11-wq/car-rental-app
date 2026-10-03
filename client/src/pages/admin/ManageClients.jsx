@@ -62,7 +62,7 @@ const ManageClients = () => {
   // The dates are read off the photographs above and typed here, not taken
   // from anything the client sent. Blank is a real answer — a TIN ID does
   // not expire — so it is sent as an empty string rather than omitted.
-  const [docDates, setDocDates] = useState({ validIdExpiry: '', licenseExpiry: '' });
+  const [docDates, setDocDates] = useState({ licenseExpiry: '' });
   const [savingDates, setSavingDates] = useState(false);
 
 
@@ -70,7 +70,6 @@ const ManageClients = () => {
     setSavingDates(true);
     try {
       await api.put(`/users/${id}/document-dates`, {
-        validIdExpiry: docDates.validIdExpiry || '',
         licenseExpiry: docDates.licenseExpiry || '',
       });
       await fetchData();
@@ -246,7 +245,7 @@ const ManageClients = () => {
                       // Seeded from what is on file, so admin edits a date
                       // rather than retyping one from scratch.
                       const ymd = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
-                      setDocDates({ validIdExpiry: ymd(client.validIdExpiry), licenseExpiry: ymd(client.licenseExpiry) });
+                      setDocDates({ licenseExpiry: ymd(client.licenseExpiry) });
                       setSelectedClientId(client._id);
                     }}
                   >
@@ -305,17 +304,8 @@ const ManageClients = () => {
                   because whoever has actually seen the documents at the
                   counter is the only person who can put them right. */}
               <div style={{ ...s.profileItem, gridColumn: '1 / -1' }}>
-                <span style={s.profileLabel}>Document expiry dates (as given by the client)</span>
+                <span style={s.profileLabel}>Licence expiry (as given by the client)</span>
                 <div style={s.dateRow}>
-                  <label style={s.dateField}>
-                    <span style={s.profileLabel}>Valid ID</span>
-                    <input
-                      type="date"
-                      style={s.dateInput}
-                      value={docDates.validIdExpiry}
-                      onChange={(e) => setDocDates({ ...docDates, validIdExpiry: e.target.value })}
-                    />
-                  </label>
                   <label style={s.dateField}>
                     <span style={s.profileLabel}>Licence</span>
                     <input

@@ -40,7 +40,6 @@ router.post('/register', registerLimiter, async (req, res) => {
     const {
       // Owner info
       name, email, password, birthDate, phone, address,
-      validIdType, validIdExpiry,
     } = req.body;
 
     if (!EMAIL_REGEX.test(email || '')) {
@@ -62,7 +61,6 @@ router.post('/register', registerLimiter, async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({
       name, email, password: hashed, birthDate, phone, address,
-      validIdType, validIdExpiry,
       role: 'consignor'
     });
 

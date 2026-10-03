@@ -6,7 +6,6 @@ import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { formatMoment } from '../../utils/phTime';
 import { FUEL_STEPS, fuelLabel } from '../../utils/fuel';
 import ConditionPhotos from '../../components/ConditionPhotos';
-import { idTypeLabel } from '../../data/validIdTypes';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk} from '../../theme';
 import api from '../../api';
 
@@ -312,7 +311,6 @@ const PickupDesk = () => {
     const remaining = (booking.totalPrice || 0) - (booking.amountPaid || 0);
     const selfDrive = booking.bookingType === 'self-drive';
     const licenceExpired = selfDrive && isExpired(client?.licenseExpiry);
-    const idExpired = isExpired(client?.validIdExpiry);
     const busy = working === booking._id;
 
     return (
@@ -360,11 +358,10 @@ const PickupDesk = () => {
 
         <div className="responsive-row-2" style={s.body}>
           <div>
-            <div style={s.paneTitle}>What we hold on file</div>
+            <div style={s.paneTitle}>What to check</div>
             <div style={s.field}>
-              <span style={s.fieldLabel}>Valid ID: </span>
-              {idTypeLabel(client?.validIdType) || 'none on file'}
-              {client?.validIdExpiry ? ` · expires ${new Date(client.validIdExpiry).toLocaleDateString()}` : ''}
+              <span style={s.fieldLabel}>Valid IDs: </span>
+              two, in their own name, plus a proof of billing
             </div>
             {selfDrive && (
               <div style={s.field}>
@@ -387,11 +384,6 @@ const PickupDesk = () => {
               <div style={s.warn}>
                 Their licence expired on {new Date(client.licenseExpiry).toLocaleDateString()}. Do not
                 release a self-drive vehicle against it.
-              </div>
-            )}
-            {idExpired && (
-              <div style={s.warn}>
-                The ID on their account expired on {new Date(client.validIdExpiry).toLocaleDateString()}.
               </div>
             )}
           </div>

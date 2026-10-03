@@ -14,7 +14,8 @@ const userSchema = new mongoose.Schema({
   birthDate: { type: Date },
   phone: { type: String, default: '' },
   address: { type: String, default: '' },
-  // Identity is recorded as facts, never as photographs.
+  // The only identity document this system records is a driving licence,
+  // and only as a number and a date.
   //
   // This used to hold scans of government IDs and driving licences, front
   // and back, plus a pending copy of each awaiting review. All of it is
@@ -23,21 +24,16 @@ const userSchema = new mongoose.Schema({
   // a breach, let alone answer one. The least dangerous way to hold that
   // data is not to hold it.
   //
-  // What stays is what the reminders need: a type, an expiry, a licence
-  // number. None of it is worth stealing, and all of it is checked properly
-  // at the counter, against the real documents, by somebody looking at the
-  // person holding them. That check was always the one doing the work; the
-  // upload only ever made it feel verified.
-  validIdType: { type: String, default: '' },
-  // Not every ID type expires (e.g. TIN ID), so this stays optional —
-  // left unset means "doesn't expire" rather than "unknown", and the
-  // expiring-documents view (GET /admin/expiring-documents) just skips
-  // anyone without one set.
-  validIdExpiry: { type: Date },
-  // When each expiry-reminder notification was last sent, so the opportunistic
-  // check on GET /auth/me (there's no background job on Render's free tier)
-  // only re-notifies on a cooldown instead of on every single page load.
-  idExpiryNotifiedAt: { type: Date },
+  // The valid ID went the same way as the photographs, and for the same
+  // reason: a type and an expiry that somebody typed about their own papers
+  // proved nothing, and asking for them at registration was friction in
+  // exchange for a reminder nobody needed. Two valid IDs are checked at the
+  // counter, against the person holding them. That was always the check
+  // doing the work.
+  //
+  // The licence stays, because driving a vehicle you do not hold a licence
+  // for is a different kind of problem from a lapsed ID — and the self-drive
+  // gate needs a date to compare against.
   licenseNumber: { type: String, default: '' },
   licenseExpiry: { type: Date },
   licenseExpiryNotifiedAt: { type: Date },

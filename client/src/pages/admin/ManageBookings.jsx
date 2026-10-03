@@ -20,7 +20,7 @@ import { bookingAwaitingDecision, timeLeftLabel } from '../../utils/offerWindow'
 import { formatMoment, phYmd } from '../../utils/phTime';
 import { FUEL_STEPS, fuelLabel, fuelShortfallLabel } from '../../utils/fuel';
 import ConditionPhotos from '../../components/ConditionPhotos';
-import { licenceProblem, idProblem } from '../../utils/documents';
+import { licenceProblem } from '../../utils/documents';
 
 const LOW_RATING_THRESHOLD = 3;
 // How long after the pickup time a no-show can still be recorded. Mirrors
@@ -69,9 +69,6 @@ const docWarning = (b) => {
   // The booking route has the whole user record and refuses it there.
   if (lic?.kind === 'expired') return `Licence expired ${on(lic.expiry)} — they cannot drive this.`;
   if (lic?.kind === 'expires_during') return `Licence expires ${on(lic.expiry)}, before this trip ends.`;
-  const id = idProblem(b.user, { endDate: b.endDate });
-  if (id?.kind === 'expired') return `Their ID expired ${on(id.expiry)}.`;
-  if (id?.kind === 'expires_during') return `Their ID expires ${on(id.expiry)}, before this trip ends.`;
   return '';
 };
 

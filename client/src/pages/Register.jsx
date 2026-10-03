@@ -10,14 +10,16 @@ import PasswordInput from '../components/PasswordInput';
 import OtpInput from '../components/OtpInput';
 import BookingSteps from '../components/BookingSteps';
 import AuthBrandPanel from '../components/AuthBrandPanel';
-import { VALID_ID_TYPES } from '../data/validIdTypes';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
+import useEmailAvailable from '../hooks/useEmailAvailable';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_ERROR = 'Enter a valid PH mobile number (e.g. 09171234567 or +639171234567).';
 const MIN_AGE_YEARS = 18;
+
+const TAKEN_MESSAGE = 'That email already has an account. Log in instead, or use a different address.';
 
 // Whole-years-old as of today — used both to validate on submit and to cap
 // the date picker so a too-recent birthdate can't even be selected.
@@ -68,13 +70,14 @@ const Register = () => {
   });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
-  const [validIdType, setValidIdType] = useState('');
-  const [validIdExpiry, setValidIdExpiry] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [sendingCode, setSendingCode] = useState(false);
   const [resendCooldown, startResendCooldown] = useResendCooldown();
+  // Checked while they type, so a taken address is caught before they
+  // have filled in the rest of the form.
+  const emailTaken = useEmailAvailable(form.email);
   const { login } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
@@ -104,7 +107,9 @@ const Register = () => {
     const birthDateError = !form.birthDate
       ? 'Birthdate is required.'
       : (ageInYears(form.birthDate) < MIN_AGE_YEARS ? `You must be at least ${MIN_AGE_YEARS} years old to register.` : '');
-    const emailError = !form.email.trim() ? 'Email is required.' : validators.email(form.email);
+    const emailError = !form.email.trim()
+      ? 'Email is required.'
+      : (validators.email(form.email) || (emailTaken ? TAKEN_MESSAGE : ''));
     const passwordError = !form.password ? 'Password is required.' : validators.password(form.password);
     const confirmPasswordError = !confirmPassword
       ? 'Please confirm your password.'
@@ -117,10 +122,9 @@ const Register = () => {
   const validateStep2 = () => {
     const phoneError = !form.phone.trim() ? 'Phone number is required.' : validators.phone(form.phone);
     const addressError = !form.address.trim() ? 'Please complete your address.' : '';
-    const validIdError = !validIdType ? "Please select which valid ID you'll be using." : '';
 
-    setFieldErrors((prev) => ({ ...prev, phone: phoneError, address: addressError, validId: validIdError }));
-    return !(phoneError || addressError || validIdError);
+    setFieldErrors((prev) => ({ ...prev, phone: phoneError, address: addressError }));
+    return !(phoneError || addressError);
   };
 
   const validateStep3 = () => {
@@ -190,11 +194,7 @@ const Register = () => {
     try {
       await api.post('/auth/verify-email-code', { email: form.email, code: verificationCode.trim() });
 
-      const res = await api.post('/auth/register', {
-        ...form,
-        validIdType,
-        validIdExpiry,
-      });
+      const res = await api.post('/auth/register', form);
       login(res.data.user, res.data.token);
       navigate('/');
     } catch (err) {
@@ -459,7 +459,11 @@ const Register = () => {
                         aria-describedby={fieldErrors.email ? 'reg-email-error' : undefined}
                         required
                       />
-                      {fieldErrors.email && <p id="reg-email-error" style={styles.fieldError}>{fieldErrors.email}</p>}
+                      {(fieldErrors.email || emailTaken) && (
+                        <p id="reg-email-error" style={styles.fieldError}>
+                          {fieldErrors.email || TAKEN_MESSAGE}
+                        </p>
+                      )}
                     </div>
                     <div style={styles.field}>
                       <label style={styles.label} htmlFor="reg-password">Password</label>
@@ -529,40 +533,6 @@ const Register = () => {
                     />
                     {fieldErrors.address && <p style={{ ...styles.fieldError, marginTop: '-10px', marginBottom: '16px' }}>{fieldErrors.address}</p>}
 
-                    {/* We ask what kind of ID and when it runs out. We do
-                        not ask for a photograph of it, and we never will —
-                        see server/models/User.js. */}
-                    <div className="responsive-row-2" style={styles.row}>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="reg-valid-id-type">Valid ID Type</label>
-                        <select
-                          id="reg-valid-id-type"
-                          style={styles.input}
-                          value={validIdType}
-                          onChange={(e) => setValidIdType(e.target.value)}
-                        >
-                          <option value="">Select an ID type</option>
-                          {VALID_ID_TYPES.map((t) => (
-                            <option key={t.value} value={t.value}>{t.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="reg-valid-id-expiry">ID Expiry</label>
-                        <input
-                          id="reg-valid-id-expiry"
-                          style={styles.input}
-                          type="date"
-                          value={validIdExpiry}
-                          onChange={(e) => setValidIdExpiry(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <p style={{ ...styles.subtitle, marginTop: '-8px', marginBottom: '12px' }}>
-                      Leave the date blank if yours doesn&apos;t expire. Bring the ID itself to your pickup —
-                      we check it there and keep no copy.
-                    </p>
-                    {fieldErrors.validId && <p style={styles.fieldError}>{fieldErrors.validId}</p>}
 
                     <p style={{ ...styles.subtitle, marginBottom: '8px' }}>
                       Driver's license (optional now — only needed if you later book a self-drive vehicle)

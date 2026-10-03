@@ -7,7 +7,7 @@ import { notifyUser, notifyAdmins } from './notify.js';
 import { busySpans, bookingSpan, padded, overlaps } from './availability.js';
 import { recordActivity } from './priority.js';
 import User from '../models/User.js';
-import { licenceProblem, licenceMessage, idProblem } from './documents.js';
+import { licenceProblem, licenceMessage } from './documents.js';
 import { registrationProblem } from './registration.js';
 import { daysLate, carriedLateFee } from './overdueReturns.js';
 import {
@@ -151,7 +151,7 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
   // Asked at booking and never asked again, so a client could extend past
   // the day their licence runs out and keep driving on it — the one place
   // where the system, rather than a counter, is the only thing checking.
-  const client = await User.findById(booking.user).select('licenseNumber licenseExpiry validIdExpiry').lean();
+  const client = await User.findById(booking.user).select('licenseNumber licenseExpiry').lean();
 
   const own = bookingSpan(booking);
   const hour = booking.hasPickupTime ? phHour(own.start) : 0;
@@ -166,19 +166,6 @@ export async function quoteExtension(booking, newEndYmd, now = new Date()) {
   const licence = licenceProblem(client, { bookingType: booking.bookingType, endDate: newEnd }, now);
   if (licence) return { error: licenceMessage(licence) };
 
-  // The ID refuses now too, where it used to warn. That call was made when
-  // the expiry was a date the client typed about their own papers — refusing
-  // somebody over their own guess was harsh. Admin now reads it off the
-  // document, so it is a fact, and a fact worth holding to.
-  const id = idProblem(client, { endDate: newEnd }, now);
-  if (id) {
-    return {
-      error: id.kind === 'expired'
-        ? 'Your valid ID has expired. Please update it in your Profile and wait for it to be checked before extending.'
-        : `Your valid ID expires on ${new Date(id.expiry).toLocaleDateString()}, before this trip would end. `
-          + 'Please update it in your Profile and wait for it to be checked before extending.',
-    };
-  }
 
   const extraDays = Math.max(1, daysBetween(from, newEnd));
   const newTotalDays = booking.totalDays + extraDays;

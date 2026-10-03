@@ -6,7 +6,7 @@ import { registrationProblem, registrationLapsed } from '../utils/registration.j
 import { occupiedSpan } from '../utils/availability.js';
 import { splitDays, repriceForSwap, remainingSpan } from '../utils/moveVehicle.js';
 import { fuelShortfall, fuelShortfallLabel, isFuelLevel, fuelLabel } from '../utils/fuel.js';
-import { licenceProblem, idProblem } from '../utils/documents.js';
+import { licenceProblem } from '../utils/documents.js';
 import { bookingPriority, byUrgency, TIER } from '../utils/priority.js';
 
 // A confirmed booking whose pickup hour has already gone by.
@@ -164,14 +164,6 @@ export default function run() {
   // and refusing them over it would turn a rule about safety into paperwork.
   check('with-driver, no licence at all', licenceProblem({}, { bookingType: 'with-driver', endDate: instantFrom('2026-09-28', 7) }, today), null);
   check('with-driver, expired licence', licenceProblem(driver(instantFrom('2020-01-01', 7)), { bookingType: 'with-driver', endDate: instantFrom('2026-09-28', 7) }, today), null);
-
-  group('an ID is warned about, never refused over');
-  // The terms ask for two IDs at the counter, so one expiring on file is
-  // something to raise rather than something to block a booking over. The
-  // rule still has to spot it.
-  check('outlasts the trip', idProblem({ validIdExpiry: instantFrom('2030-01-01', 7) }, { endDate: instantFrom('2026-09-28', 7) }, today), null);
-  check('expires mid-trip', idProblem({ validIdExpiry: instantFrom('2026-09-26', 7) }, { endDate: instantFrom('2026-09-28', 7) }, today).kind, 'expires_during');
-  check('none on file is not a problem here', idProblem({}, { endDate: instantFrom('2026-09-28', 7) }, today), null);
 
   group('the list runs from what is late to what is far off');
   // Both lists were sorted by when the booking was made, which answers a
@@ -353,17 +345,4 @@ export default function run() {
   // spent in the old one.
   check('only the rest of the trip has to be free', remainingSpan(trip5, day3).start.getTime(), day3.getTime());
   check('and it still ends when the trip does', remainingSpan(trip5, day3).end.getTime(), trip5.endDate.getTime());
-
-  group('an ID now refuses an extension, where it used to warn');
-  // The warning was right while the expiry was a date the client typed
-  // about their own papers. Admin reads it off the document now, so it is a
-  // fact rather than a guess, and worth holding to.
-  const whenNow = new Date('2026-09-26T12:00:00+08:00');
-  const holder = (expiry) => ({ validIdExpiry: expiry });
-  check('outlasts the extension', idProblem(holder(instantFrom('2027-01-01', 7)), { endDate: instantFrom('2026-10-01', 7) }, whenNow), null);
-  check('expires during it', idProblem(holder(instantFrom('2026-09-28', 7)), { endDate: instantFrom('2026-10-01', 7) }, whenNow).kind, 'expires_during');
-  check('already gone', idProblem(holder(instantFrom('2026-09-20', 7)), { endDate: instantFrom('2026-10-01', 7) }, whenNow).kind, 'expired');
-  // Valid for the whole of its expiry day, so one ending on the return date
-  // still covers the trip.
-  check('expires on the last day', idProblem(holder(instantFrom('2026-10-01', 7)), { endDate: instantFrom('2026-10-01', 7) }, whenNow), null);
 }

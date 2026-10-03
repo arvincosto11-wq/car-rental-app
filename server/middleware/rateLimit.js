@@ -28,3 +28,19 @@ export const verificationLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Limits the "is this address already registered?" check behind the sign-up
+// forms.
+//
+// That question necessarily tells the asker whether an address has an
+// account, which is worth saying out loud: it is the same thing the
+// registration error says, and every site with a sign-up form leaks it. The
+// limit is what stops somebody turning one answer at a time into a list of
+// your customers.
+export const emailCheckLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 40,
+  message: { message: 'Too many checks from this device. Please try again shortly.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

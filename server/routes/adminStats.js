@@ -28,7 +28,7 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
     // one thing that runs reliably.
     await expireAdjustOffers();
     const expiryCutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-    const [pendingBookings, refundRequests, rescheduleRequests, pendingConsignments, pendingAvailability, pendingBlockedDates, expiringValidIds, expiringLicenses, expiringRegistrations] = await Promise.all([
+    const [pendingBookings, refundRequests, rescheduleRequests, pendingConsignments, pendingAvailability, pendingBlockedDates, expiringLicenses, expiringRegistrations] = await Promise.all([
       Booking.countDocuments({ status: 'pending', payment: 'paid', 'adjustOffer.status': { $ne: 'open' } }),
       Booking.countDocuments({ refundStatus: 'requested' }),
       Booking.countDocuments({ 'rescheduleRequest.status': 'pending' }),
@@ -45,7 +45,6 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
         { $match: { 'blockedDates.status': 'pending' } },
         { $count: 'count' },
       ]),
-      User.countDocuments({ validIdExpiry: { $ne: null, $lte: expiryCutoff } }),
       User.countDocuments({ role: 'user', licenseExpiry: { $ne: null, $lte: expiryCutoff } }),
       Car.countDocuments({ archived: { $ne: true }, registrationExpiry: { $ne: null, $lte: expiryCutoff } }),
     ]);
@@ -53,7 +52,7 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
       '/admin/manage-bookings': pendingBookings + refundRequests + rescheduleRequests,
       '/admin/manage-consignments': pendingConsignments,
       '/admin/availability-requests': pendingAvailability + (pendingBlockedDates[0]?.count || 0),
-      '/admin/expiring-documents': expiringValidIds + expiringLicenses + expiringRegistrations,
+      '/admin/expiring-documents': expiringLicenses + expiringRegistrations,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -70,10 +69,7 @@ router.get('/expiring-documents', protect, adminOnly, async (req, res) => {
   try {
     const cutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
-    const [validIdUsers, licenseUsers, registrationCars] = await Promise.all([
-      User.find({ validIdExpiry: { $ne: null, $lte: cutoff } })
-        .select('name email role validIdExpiry')
-        .sort({ validIdExpiry: 1 }),
+    const [licenseUsers, registrationCars] = await Promise.all([
       User.find({ role: 'user', licenseExpiry: { $ne: null, $lte: cutoff } })
         .select('name email licenseExpiry')
         .sort({ licenseExpiry: 1 }),
@@ -84,7 +80,6 @@ router.get('/expiring-documents', protect, adminOnly, async (req, res) => {
     ]);
 
     res.json({
-      validIds: validIdUsers.map((u) => ({ userId: u._id, name: u.name, email: u.email, role: u.role, expiry: u.validIdExpiry })),
       licenses: licenseUsers.map((u) => ({ userId: u._id, name: u.name, email: u.email, expiry: u.licenseExpiry })),
       registrations: registrationCars.map((c) => ({
         carId: c._id, brand: c.brand, model: c.model, plateNumber: c.plateNumber,

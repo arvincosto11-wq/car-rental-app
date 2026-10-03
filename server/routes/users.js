@@ -25,10 +25,9 @@ router.put('/:id/document-dates', protect, adminOnly, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    if (req.body.validIdExpiry !== undefined) user.validIdExpiry = req.body.validIdExpiry || null;
     if (req.body.licenseExpiry !== undefined) user.licenseExpiry = req.body.licenseExpiry || null;
     await user.save();
-    res.json({ validIdExpiry: user.validIdExpiry, licenseExpiry: user.licenseExpiry });
+    res.json({ licenseExpiry: user.licenseExpiry });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

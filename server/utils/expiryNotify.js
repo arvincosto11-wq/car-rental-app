@@ -16,19 +16,6 @@ export const checkAndNotifyExpiringDocs = async (user) => {
     const cutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * DAY_MS);
     let touched = false;
 
-    if (user.validIdExpiry && user.validIdExpiry <= cutoff && isDueOrOverdue(user.idExpiryNotifiedAt)) {
-      const expired = user.validIdExpiry < new Date();
-      await notifyUser(
-        user._id,
-        expired ? 'Your Valid ID Has Expired' : 'Your Valid ID Is Expiring Soon',
-        expired
-          ? 'Your valid ID on file has expired. Please upload an updated ID in your Profile — you won’t be able to book until it’s renewed and re-verified.'
-          : `Your valid ID on file expires on ${user.validIdExpiry.toLocaleDateString()}. Please upload an updated one in your Profile before it expires.`,
-        '/profile'
-      );
-      user.idExpiryNotifiedAt = new Date();
-      touched = true;
-    }
 
     // License expiry only matters for plain clients (self-drive bookings) —
     // consignors and admins never need one on file.

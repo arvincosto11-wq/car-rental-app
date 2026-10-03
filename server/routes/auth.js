@@ -5,7 +5,7 @@ import User from '../models/User.js';
 import EmailVerification from '../models/EmailVerification.js';
 import { protect } from '../middleware/auth.js';
 import { sameEmail } from '../middleware/email.js';
-import { loginLimiter, registerLimiter, verificationLimiter } from '../middleware/rateLimit.js';
+import { loginLimiter, registerLimiter, verificationLimiter, emailCheckLimiter } from '../middleware/rateLimit.js';
 import { sendVerificationCodeEmail } from '../utils/email.js';
 import { notifyAdmins } from '../utils/notify.js';
 import { checkAndNotifyExpiringDocs } from '../utils/expiryNotify.js';
@@ -64,7 +64,6 @@ router.put('/me', protect, async (req, res) => {
       name, phone, address, birthDate,
       licenseNumber, licenseExpiry,
       emergencyContactName, emergencyContactNumber,
-      validIdType, validIdExpiry,
       image, imageFileId
     } = req.body;
 
@@ -86,10 +85,6 @@ router.put('/me', protect, async (req, res) => {
       user.birthDate = birthDate;
     }
 
-    if (validIdType !== undefined) user.validIdType = validIdType;
-    // Empty string clears it, which is how somebody says "mine has no
-    // expiry" — a TIN ID, for instance. Undefined leaves it alone.
-    if (validIdExpiry !== undefined) user.validIdExpiry = validIdExpiry || null;
     if (licenseNumber !== undefined) user.licenseNumber = licenseNumber;
     if (licenseExpiry !== undefined) user.licenseExpiry = licenseExpiry || null;
 
@@ -349,12 +344,36 @@ router.post('/verify-email-code', async (req, res) => {
   }
 });
 
+// Is this address already registered?
+//
+// Asked while somebody is still typing, so they find out before they have
+// filled in a whole form — the same courtesy the phone field already gives.
+// The registration routes still refuse a duplicate; this only moves the
+// answer earlier.
+//
+// Case-insensitive, like the checks it mirrors, so "TEST@..." is told the
+// truth about "test@...". Rate limited: see middleware/rateLimit.js for why.
+router.get('/email-available', emailCheckLimiter, async (req, res) => {
+  try {
+    const email = String(req.query.email || '').trim();
+    // Not an address yet — somebody mid-type gets no opinion rather than a
+    // red warning about something they have not finished writing.
+    if (!EMAIL_REGEX.test(email)) return res.json({ available: true, checked: false });
+    const taken = await User.findOne(sameEmail(email)).select('_id').lean();
+    res.json({ available: !taken, checked: true });
+  } catch (err) {
+    // A failed check must never block a sign-up. The registration route is
+    // the one that actually decides.
+    console.error('Email availability check failed:', err.message);
+    res.json({ available: true, checked: false });
+  }
+});
+
 // Register
 router.post('/register', registerLimiter, async (req, res) => {
   try {
     const {
       name, email, password, birthDate, phone, address,
-      validIdType, validIdExpiry,
       licenseNumber, licenseExpiry,
       emergencyContactName, emergencyContactNumber
     } = req.body;
@@ -387,7 +406,6 @@ router.post('/register', registerLimiter, async (req, res) => {
     const user = await User.create({
       name, email, password: hashed, birthDate,
       phone, address,
-      validIdType, validIdExpiry,
       licenseNumber, licenseExpiry,
       emergencyContactName, emergencyContactNumber
     });

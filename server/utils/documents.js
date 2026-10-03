@@ -28,18 +28,6 @@ export function licenceProblem(user, { bookingType, endDate }, now = new Date())
   return null;
 }
 
-// The same question about their ID, which every booking type needs. Kept
-// separate because the answer is treated differently: the terms ask for two
-// IDs at the counter, so one expiring on file is a thing to warn about
-// rather than a thing to refuse over.
-export function idProblem(user, { endDate }, now = new Date()) {
-  if (!user?.validIdExpiry) return null;
-  const expiry = new Date(user.validIdExpiry);
-  if (!outlasts(expiry, now)) return { kind: 'expired', expiry };
-  if (!outlasts(expiry, endDate)) return { kind: 'expires_during', expiry };
-  return null;
-}
-
 // What to tell whoever is reading. Written for the client, since they are
 // the ones who have to do something about it.
 export function licenceMessage(problem) {

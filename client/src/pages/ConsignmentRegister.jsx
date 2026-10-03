@@ -10,14 +10,15 @@ import LocationAddressFields from '../components/LocationAddressFields';
 import PasswordInput from '../components/PasswordInput';
 import BookingSteps from '../components/BookingSteps';
 import AuthBrandPanel from '../components/AuthBrandPanel';
-import { VALID_ID_TYPES } from '../data/validIdTypes';
 import usePageTitle from '../hooks/usePageTitle';
+import useEmailAvailable from '../hooks/useEmailAvailable';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const PHONE_ERROR = 'Enter a valid PH mobile number (e.g. 09171234567 or +639171234567).';
 const OTHER = '__other__';
 const MIN_AGE_YEARS = 18;
 const CONSIGN_STEPS = ['Your Information'];
+const TAKEN_MESSAGE = 'That email already has an account. Log in instead, or use a different address.';
 
 // Whole-years-old as of today — used both to validate on submit and to cap
 // the date picker so a too-recent birthdate can't even be selected.
@@ -57,14 +58,15 @@ const ConsignmentRegister = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
 
-  const [validIdType, setValidIdType] = useState('');
-  const [validIdExpiry, setValidIdExpiry] = useState('');
 
 
 
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Checked while they type, so a taken address is caught before they
+  // have filled in the rest of the form.
+  const emailTaken = useEmailAvailable(form.email);
   const { login } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
@@ -79,19 +81,18 @@ const ConsignmentRegister = () => {
     const birthDateError = !form.birthDate
       ? 'Birthdate is required.'
       : (ageInYears(form.birthDate) < MIN_AGE_YEARS ? `You must be at least ${MIN_AGE_YEARS} years old to register.` : '');
-    const emailError = !form.email.trim() ? 'Email is required.' : '';
+    const emailError = !form.email.trim() ? 'Email is required.' : (emailTaken ? TAKEN_MESSAGE : '');
     const passwordError = !form.password ? 'Password is required.' : (form.password.length < 8 ? 'Password must be at least 8 characters.' : '');
     const confirmPasswordError = !confirmPassword ? 'Please confirm your password.' : (form.password !== confirmPassword ? 'Passwords do not match.' : '');
     const phoneError = !form.phone.trim() ? 'Phone number is required.' : (PHONE_REGEX.test(form.phone) ? '' : PHONE_ERROR);
     const addressError = !form.address.trim() ? 'Please complete your address.' : '';
-    const validIdError = !validIdType ? "Please select which valid ID you'll be using." : '';
 
     setFieldErrors((prev) => ({
       ...prev,
       name: nameError, birthDate: birthDateError, email: emailError, password: passwordError, confirmPassword: confirmPasswordError,
-      phone: phoneError, address: addressError, validId: validIdError,
+      phone: phoneError, address: addressError,
     }));
-    return !(nameError || birthDateError || emailError || passwordError || confirmPasswordError || phoneError || addressError || validIdError);
+    return !(nameError || birthDateError || emailError || passwordError || confirmPasswordError || phoneError || addressError);
   };
 
 
@@ -108,11 +109,7 @@ const ConsignmentRegister = () => {
     try {
       // The account only. Nothing about the vehicle is typed here any more:
       // it is seen at the office, with its papers, and entered there.
-      const res = await api.post('/consignments/register', {
-        ...form,
-        validIdType,
-        validIdExpiry: validIdExpiry || null,
-      });
+      const res = await api.post('/consignments/register', form);
 
       login(res.data.user, res.data.token);
       navigate('/consignor');
@@ -276,7 +273,9 @@ const ConsignmentRegister = () => {
                         <label style={styles.label} htmlFor="cr-email">Email</label>
                         <input id="cr-email" style={inputStyle('email')} type="email" placeholder="Enter your email"
                           value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-                        {fieldErrors.email && <p style={styles.fieldError}>{fieldErrors.email}</p>}
+                        {(fieldErrors.email || emailTaken) && (
+                          <p style={styles.fieldError}>{fieldErrors.email || TAKEN_MESSAGE}</p>
+                        )}
                       </div>
                       <div style={styles.field}>
                         <label style={styles.label} htmlFor="cr-password">Password</label>
@@ -309,38 +308,6 @@ const ConsignmentRegister = () => {
                     />
                     {fieldErrors.address && <p style={{ ...styles.fieldError, marginTop: '-10px', marginBottom: '16px' }}>{fieldErrors.address}</p>}
 
-                    {/* Type and expiry only. No photograph of anybody's
-                        ID is taken or kept — see server/models/User.js. */}
-                    <div className="responsive-row-2" style={styles.row}>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="cr-valid-id-type">Valid ID Type</label>
-                        <select
-                          id="cr-valid-id-type"
-                          style={styles.input}
-                          value={validIdType}
-                          onChange={(e) => setValidIdType(e.target.value)}
-                        >
-                          <option value="">Select an ID type</option>
-                          {VALID_ID_TYPES.map((t) => (
-                            <option key={t.value} value={t.value}>{t.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="cr-valid-id-expiry">ID Expiry</label>
-                        <input
-                          id="cr-valid-id-expiry"
-                          style={styles.input}
-                          type="date"
-                          value={validIdExpiry}
-                          onChange={(e) => setValidIdExpiry(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <p style={{ ...styles.uploadHint, marginTop: '-8px', marginBottom: '12px' }}>
-                      Leave the date blank if yours doesn&apos;t expire. Bring the ID itself when you come in.
-                    </p>
-                    {fieldErrors.validId && <p style={styles.fieldError}>{fieldErrors.validId}</p>}
 
                     <div style={styles.stepActions}>
                       <button style={styles.nextBtn} type="submit" disabled={loading}>
