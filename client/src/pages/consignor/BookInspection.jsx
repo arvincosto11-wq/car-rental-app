@@ -5,6 +5,7 @@ import { useUIFeedback } from '../../context/UIFeedbackContext';
 import Skeleton from '../../components/Skeleton';
 import usePageTitle from '../../hooks/usePageTitle';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER } from '../../data/vehicleBrands';
+import { vehicleNoteProblem, OLDEST_VEHICLE_YEAR } from '../../utils/appointments';
 import api from '../../api';
 
 const DAY_LABEL = { weekday: 'short', month: 'short', day: 'numeric' };
@@ -152,7 +153,8 @@ const BookInspection = ({ stage, onBooked }) => {
   const times = days.find((d) => d.day === pickedDay)?.times || [];
 
   const submit = async () => {
-    if (!form.brand.trim() || !form.model.trim()) { setError('Please say what vehicle you are bringing.'); return; }
+    const noteProblem = vehicleNoteProblem(form);
+    if (noteProblem) { setError(noteProblem); return; }
     if (!pickedTime) { setError('Please choose a day and time.'); return; }
     setSaving(true);
     setError('');
@@ -318,7 +320,8 @@ const BookInspection = ({ stage, onBooked }) => {
             </div>
             <div>
               <label style={s.label} htmlFor="ap-year">Year</label>
-              <input id="ap-year" style={s.input} type="number" placeholder="2019" value={form.year}
+              <input id="ap-year" style={s.input} type="number" placeholder="2019"
+                min={OLDEST_VEHICLE_YEAR} max={new Date().getFullYear() + 1} value={form.year}
                 onChange={(e) => setForm({ ...form, year: e.target.value })} />
             </div>
           </div>

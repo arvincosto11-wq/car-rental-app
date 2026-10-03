@@ -1,7 +1,7 @@
 import { suite, group, check } from './harness.mjs';
 import {
   appointmentSettings, openSlots, slotProblem, phInstant, phDay, phWeekday, slotLabel,
-  APPOINTMENT_DEFAULTS,
+  APPOINTMENT_DEFAULTS, vehicleNoteProblem, OLDEST_VEHICLE_YEAR,
 } from '../utils/appointments.js';
 
 // Thursday 1 October 2026, 10:00 in Legazpi.
@@ -100,4 +100,36 @@ export default function run() {
   const flat = appointmentSettings({ appointments: { startHour: 8, endHour: 11 } });
   check('flattening twice changes nothing', appointmentSettings(flat).startHour, 8);
   check('and a slot list off it agrees', openSlots(flat, { now }).length, openSlots({ appointments: flat }, { now }).length);
+
+  group('what somebody says they are bringing');
+  const car = (over = {}) => ({ brand: 'Toyota', model: 'Vios', year: 2019, ...over });
+  check('an ordinary one', vehicleNoteProblem(car(), now), null);
+  check('no year is fine', vehicleNoteProblem(car({ year: '' }), now), null);
+  check('nor is a missing one', vehicleNoteProblem({ brand: 'Honda', model: 'Click' }, now), null);
+  // Models are allowed to be bare numbers: a Mazda 3, a BMW 5.
+  check('a numeric model', vehicleNoteProblem(car({ model: '3' }), now), null);
+
+  check('no brand', !!vehicleNoteProblem(car({ brand: '' }), now), true);
+  check('one letter of brand', !!vehicleNoteProblem(car({ brand: 'T' }), now), true);
+  // Punctuation is not a name.
+  check('a brand with no letters', !!vehicleNoteProblem(car({ brand: '...' }), now), true);
+  check('no model', !!vehicleNoteProblem(car({ model: '' }), now), true);
+  check('a model of punctuation', !!vehicleNoteProblem(car({ model: '--' }), now), true);
+  check('a very long brand', !!vehicleNoteProblem(car({ brand: 'x'.repeat(61) }), now), true);
+
+  group('the year has to be a year');
+  // The one this came from: seven digits typed into a number box.
+  check('0980980', !!vehicleNoteProblem(car({ year: '0980980' }), now), true);
+  check('before cars existed', !!vehicleNoteProblem(car({ year: 1800 }), now), true);
+  check('far in the future', !!vehicleNoteProblem(car({ year: 2099 }), now), true);
+  check('not a number', !!vehicleNoteProblem(car({ year: 'soon' }), now), true);
+  check('a fraction', !!vehicleNoteProblem(car({ year: 2019.5 }), now), true);
+  check('the oldest allowed', vehicleNoteProblem(car({ year: OLDEST_VEHICLE_YEAR }), now), null);
+  // Next year is allowed: new models are sold ahead of their model year.
+  check('next year', vehicleNoteProblem(car({ year: new Date(now).getFullYear() + 1 }), now), null);
+  check('the year after next', !!vehicleNoteProblem(car({ year: new Date(now).getFullYear() + 2 }), now), true);
+
+  // What it cannot do, written down so nobody mistakes it for a guarantee.
+  // No rule tells a made-up word from a real brand; the inspection does.
+  check('nonsense that looks like a word passes', vehicleNoteProblem(car({ brand: 'Jlkhlhk', model: 'Khgkhvk' }), now), null);
 }

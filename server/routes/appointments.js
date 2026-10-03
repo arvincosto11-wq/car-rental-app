@@ -5,7 +5,7 @@ import Settings from '../models/Settings.js';
 import User from '../models/User.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
-import { openSlots, slotProblem, appointmentSettings, slotLabel } from '../utils/appointments.js';
+import { openSlots, slotProblem, appointmentSettings, slotLabel, vehicleNoteProblem } from '../utils/appointments.js';
 
 const router = express.Router();
 
@@ -56,6 +56,12 @@ router.get('/mine', protect, async (req, res) => {
 // check, and only one of them gets the row.
 router.post('/', protect, consignorOnly, async (req, res) => {
   try {
+    // Checked here as well as in the form, because the form is a courtesy
+    // and this is the gate. See utils/appointments.js for what it can and
+    // cannot tell.
+    const noteProblem = vehicleNoteProblem(req.body);
+    if (noteProblem) return res.status(400).json({ message: noteProblem });
+
     const settings = await Settings.current();
     const problem = slotProblem(req.body.at, settings, { taken: await takenSlots() });
     if (problem) return res.status(400).json({ message: problem });

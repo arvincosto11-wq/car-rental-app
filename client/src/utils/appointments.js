@@ -154,3 +154,46 @@ export function slotProblem(wanted, settings, { taken = [], now = new Date() } =
   if (!fits) return 'We are not open then. Please pick one of the times offered.';
   return null;
 }
+
+// Whether what somebody typed about the vehicle is worth writing down.
+//
+// This is a rough note, not the vehicle record — admin types the real one at
+// the office with the car in front of them. So the bar is low: enough to
+// know what is turning up and roughly how long it will take.
+//
+// It cannot catch nonsense, and pretending otherwise would be dishonest.
+// "jlkhlhk" is a plausible string and no rule will say it is not a brand.
+// What it does catch is the shape of a mistake: a year that is not a year,
+// a field with no letters in it, a single stray character. Beyond that the
+// check is the inspection itself, which is the point of the appointment —
+// nobody is listed from what they typed here.
+
+// A vehicle on the road today was built somewhere in this range. Next year
+// is allowed because new models are sold ahead of their model year.
+export const OLDEST_VEHICLE_YEAR = 1950;
+
+export function vehicleNoteProblem(vehicle, now = new Date()) {
+  const brand = String(vehicle?.brand || '').trim();
+  const model = String(vehicle?.model || '').trim();
+
+  if (brand.length < 2) return 'Please say what brand it is.';
+  // Letters, not just punctuation or digits. Every brand has a name.
+  if (!/[a-z]/i.test(brand)) return 'That brand does not look right. Please check it.';
+  if (brand.length > 60) return 'That brand is too long. Please shorten it.';
+
+  if (!model) return 'Please say what model it is.';
+  // Models can be bare numbers — a Mazda 3, a BMW 5 — so a digit counts.
+  if (!/[a-z0-9]/i.test(model)) return 'That model does not look right. Please check it.';
+  if (model.length > 60) return 'That model is too long. Please shorten it.';
+
+  // Optional. Given at all, it has to be a year.
+  if (vehicle?.year !== undefined && vehicle?.year !== null && String(vehicle.year).trim() !== '') {
+    const year = Number(vehicle.year);
+    const newest = new Date(now).getFullYear() + 1;
+    if (!Number.isInteger(year) || year < OLDEST_VEHICLE_YEAR || year > newest) {
+      return `Please enter a year between ${OLDEST_VEHICLE_YEAR} and ${newest}, or leave it blank.`;
+    }
+  }
+
+  return null;
+}
