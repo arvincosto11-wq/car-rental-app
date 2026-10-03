@@ -19,7 +19,6 @@ import { latestPossibleEnd, quoteExtension, startExtension, confirmExtension, ha
 import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, phHour, formatMoment } from '../utils/phTime.js';
 import { notifyOverdueReturns, notifyUpcomingReturns, warnOfCollidingBookings, isOverdue, daysOverdue, lateFeeRecord } from '../utils/overdueReturns.js';
 import { isFuelLevel } from '../utils/fuel.js';
-import { penaltyState, penaltyPaths, waiveBlocker, isWaiveReason, penaltyNoun, PENALTY_KINDS } from '../utils/penalties.js';
 import { licenceProblem, licenceMessage } from '../utils/documents.js';
 import { byUrgency } from '../utils/priority.js';
 import { recordActivity } from '../utils/priority.js';
@@ -782,20 +781,12 @@ router.put('/:id/damage-charge/collected', protect, adminOnly, async (req, res) 
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
-    // A charge that has been let off in full is not a debt any more, so
-    // there is nothing to mark as arrived. Partly waived still collects —
-    // what is left of it. See utils/penalties.js.
-    const state = penaltyState(booking, 'damage');
-    if (!state.exists) {
-      return res.status(400).json({ message: `There is no ${state.noun} on this booking.` });
+    if (!(booking.condition?.damageCharge > 0)) {
+      return res.status(400).json({ message: 'There is no damage charge on this booking.' });
     }
-    if (state.settled) {
-      return res.status(400).json({ message: `This ${state.noun} is already marked as settled.` });
+    if (booking.condition.damageCollectedAt) {
+      return res.status(400).json({ message: 'This damage charge is already marked as settled.' });
     }
-    if (state.waivedFully) {
-      return res.status(400).json({ message: `This ${state.noun} was waived, so there is nothing to collect.` });
-    }
-
     booking.condition.damageCollectedAt = new Date();
     await booking.save();
     res.json(booking);
@@ -810,20 +801,12 @@ router.put('/:id/fuel-charge/collected', protect, adminOnly, async (req, res) =>
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
-    // A charge that has been let off in full is not a debt any more, so
-    // there is nothing to mark as arrived. Partly waived still collects —
-    // what is left of it. See utils/penalties.js.
-    const state = penaltyState(booking, 'fuel');
-    if (!state.exists) {
-      return res.status(400).json({ message: `There is no ${state.noun} on this booking.` });
+    if (!(booking.fuel?.charge > 0)) {
+      return res.status(400).json({ message: 'There is no refuelling charge on this booking.' });
     }
-    if (state.settled) {
-      return res.status(400).json({ message: `This ${state.noun} is already marked as settled.` });
+    if (booking.fuel.collectedAt) {
+      return res.status(400).json({ message: 'This refuelling charge is already marked as settled.' });
     }
-    if (state.waivedFully) {
-      return res.status(400).json({ message: `This ${state.noun} was waived, so there is nothing to collect.` });
-    }
-
     booking.fuel.collectedAt = new Date();
     await booking.save();
     res.json(booking);
@@ -839,112 +822,13 @@ router.put('/:id/late-fee/collected', protect, adminOnly, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
-    // A charge that has been let off in full is not a debt any more, so
-    // there is nothing to mark as arrived. Partly waived still collects —
-    // what is left of it. See utils/penalties.js.
-    const state = penaltyState(booking, 'late_fee');
-    if (!state.exists) {
-      return res.status(400).json({ message: `There is no ${state.noun} on this booking.` });
+    if (!(booking.lateFee?.amount > 0)) {
+      return res.status(400).json({ message: 'There is no late fee on this booking.' });
     }
-    if (state.settled) {
-      return res.status(400).json({ message: `This ${state.noun} is already marked as settled.` });
+    if (booking.lateFee.collectedAt) {
+      return res.status(400).json({ message: 'This late fee is already marked as settled.' });
     }
-    if (state.waivedFully) {
-      return res.status(400).json({ message: `This ${state.noun} was waived, so there is nothing to collect.` });
-    }
-
     booking.lateFee.collectedAt = new Date();
-    await booking.save();
-    res.json(booking);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Letting a client off a charge — a late fee, a refuelling charge or a
-// damage bill. One route for all three, because the decision is the same
-// decision and three near-identical handlers is three places for them to
-// drift apart.
-//
-// The charge itself is never reduced. What it came to stays on the record
-// and the waiver sits beside it, so the booking can always answer what was
-// owed, how much was let off, by whom and why — which is the first thing
-// anybody asks about a forgiven debt, and exactly what zeroing the figure
-// would destroy.
-router.put('/:id/penalties/:kind/waive', protect, adminOnly, async (req, res) => {
-  try {
-    const { kind } = req.params;
-    if (!PENALTY_KINDS.includes(kind)) {
-      return res.status(400).json({ message: 'That is not a charge we recognise.' });
-    }
-    const booking = await Booking.findById(req.params.id);
-    if (!booking) return res.status(404).json({ message: 'Booking not found' });
-
-    const state = penaltyState(booking, kind);
-    // Leaving the amount out means all of it, which is the common case and
-    // should not need saying.
-    const amount = req.body.amount === undefined || req.body.amount === null || req.body.amount === ''
-      ? state.gross
-      : Math.round(Number(req.body.amount));
-
-    const blocker = waiveBlocker(booking, kind, amount);
-    if (blocker) return res.status(400).json({ message: blocker });
-    if (!isWaiveReason(req.body.reason)) {
-      return res.status(400).json({ message: 'Please say why this charge is being waived.' });
-    }
-
-    const paths = penaltyPaths(kind);
-    const owner = booking[paths.owner];
-    owner.waivedAmount = amount;
-    owner.waivedAt = new Date();
-    owner.waivedBy = req.user.id;
-    owner.waivedReason = req.body.reason;
-    owner.waivedNote = String(req.body.note || '').trim().slice(0, 300);
-    await booking.save();
-
-    // The client hears it from us rather than noticing the figure quietly
-    // change. Money they expected to pay and now do not is good news, and
-    // good news nobody announces reads as a mistake later.
-    const after = penaltyState(booking, kind);
-    await notifyUser(
-      booking.user,
-      after.waivedFully ? `Your ${after.noun} has been waived` : `Your ${after.noun} has been reduced`,
-      after.waivedFully
-        ? `We have waived the ₱${after.gross.toLocaleString()} ${after.noun} on your booking. There is nothing to pay.`
-        : `We have taken ₱${after.waived.toLocaleString()} off the ₱${after.gross.toLocaleString()} ${after.noun} on your booking. ₱${after.payable.toLocaleString()} is still due.`,
-      '/my-bookings',
-      { email: true }
-    );
-
-    res.json(booking);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// Putting a waiver back. Mistakes get made at a counter, and a decision
-// that cannot be undone is one people are afraid to make.
-router.delete('/:id/penalties/:kind/waive', protect, adminOnly, async (req, res) => {
-  try {
-    const { kind } = req.params;
-    if (!PENALTY_KINDS.includes(kind)) {
-      return res.status(400).json({ message: 'That is not a charge we recognise.' });
-    }
-    const booking = await Booking.findById(req.params.id);
-    if (!booking) return res.status(404).json({ message: 'Booking not found' });
-
-    const state = penaltyState(booking, kind);
-    if (!state.waived) {
-      return res.status(400).json({ message: `That ${penaltyNoun(kind)} has not been waived.` });
-    }
-
-    const paths = penaltyPaths(kind);
-    const owner = booking[paths.owner];
-    owner.waivedAmount = 0;
-    owner.waivedAt = null;
-    owner.waivedBy = null;
-    owner.waivedReason = '';
-    owner.waivedNote = '';
     await booking.save();
     res.json(booking);
   } catch (err) {

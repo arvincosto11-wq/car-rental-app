@@ -18,7 +18,6 @@ import { bookingAwaitingDecision, timeLeftLabel } from '../utils/offerWindow';
 import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays } from '../utils/phTime';
 import { daysOverdue } from '../utils/overdue';
 import { refundOutcome } from '../utils/refundPolicy';
-import { penaltyState } from '../utils/penalties';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk } from '../theme';
@@ -570,11 +569,11 @@ const MyBookings = () => {
     if (b.rescheduleRequest?.status === 'pending') return { tone: 'muted', text: 'Reschedule waiting for approval' };
     if (b.rescheduleRequest?.status === 'declined') return { tone: 'red', text: 'Reschedule declined — see note' };
     if (b.refundStatus === 'declined') return { tone: 'red', text: 'Refund declined' };
-    // A charge we have waived is not a charge they still owe. Counting it
-    // would chase somebody for money we told them they did not have to pay,
-    // which is worse than never having waived it.
-    const owed = ['damage', 'fuel', 'late_fee']
-      .filter((kind) => penaltyState(b, kind)?.outstanding).length;
+    const owed = [
+      b.condition?.damageCharge > 0 && !b.condition?.damageCollectedAt,
+      b.fuel?.charge > 0 && !b.fuel?.collectedAt,
+      b.lateFee?.days > 0 && !b.lateFee?.collectedAt,
+    ].filter(Boolean).length;
     if (owed > 0) return { tone: 'red', text: `${owed} charge${owed === 1 ? '' : 's'} not yet settled` };
     if (b.status === 'completed' && !b.carRating?.ratedAt) return { tone: 'gold', text: 'Not rated yet' };
     if (b.refundStatus === 'approved') return { tone: 'blue', text: `Refunded ₱${(b.refundAmount || 0).toLocaleString()}` };
@@ -1557,18 +1556,7 @@ const MyBookings = () => {
                 ) : (
                   <> One day&apos;s rental rate per day of delay.</>
                 )}
-                {/* Said last, because it is the line that changes what
-                    they owe. Everything above explains how the figure was
-                    reached; this says whether it still stands. */}
-                {(() => {
-                  const p = penaltyState(booking, 'late_fee');
-                  if (p.waivedFully) return ' We have waived this — there is nothing to pay.';
-                  if (p.waivedPartly) {
-                    return ` We have taken ₱${p.waived.toLocaleString()} off this, so ₱${p.payable.toLocaleString()} is due.`
-                      + (p.settled ? ' Settled.' : ' Not yet settled.');
-                  }
-                  return p.settled ? ' Settled.' : ' Not yet settled.';
-                })()}
+                {booking.lateFee.collectedAt ? ' Settled.' : ' Not yet settled.'}
               </div>
             )}
             {booking.status === 'completed' && (

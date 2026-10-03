@@ -4,8 +4,6 @@ import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import BackButton from '../../components/BackButton';
 import StarRating from '../../components/StarRating';
-import PenaltyChip from '../../components/PenaltyChip';
-import WaivePenaltyModal from '../../components/WaivePenaltyModal';
 import ClientRatingModal from '../../components/ClientRatingModal';
 import BookingDetailsModal from '../../components/BookingDetailsModal';
 import { SkeletonTableRows } from '../../components/Skeleton';
@@ -419,36 +417,6 @@ const ManageBookings = () => {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Something went wrong recording this charge.');
-    }
-  };
-
-  // Which charge is being waived, if any. One piece of state for all three
-  // kinds — the dialog asks the same questions whichever it is.
-  const [waiving, setWaiving] = useState(null);
-
-  const applyBooking = (updated) => {
-    setBookings((prev) => prev.map((b) => (b._id === updated._id ? { ...b, ...updated } : b)));
-  };
-
-  const handleWaived = (updated) => {
-    applyBooking(updated);
-    setWaiving(null);
-    toast.success('Waived. The client has been told.');
-  };
-
-  const handleUndoWaive = async (booking, kind) => {
-    const ok = await confirm(
-      'The client was told this charge was waived. Putting it back means they owe it again, '
-      + 'and nothing tells them that automatically — you would need to.',
-      { confirmLabel: 'Put it back', cancelLabel: 'Leave it waived' }
-    );
-    if (!ok) return;
-    try {
-      const res = await api.delete(`/bookings/${booking._id}/penalties/${kind}/waive`);
-      applyBooking(res.data);
-      toast.success('Waiver removed. The charge is owed again.');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not undo that.');
     }
   };
 
@@ -1349,15 +1317,15 @@ const ManageBookings = () => {
                       <span style={s.cancelled}><span style={s.statusDot(isDark ? '#fca5a5' : '#991b1b')} />Cancelled</span>
                       {/* A breakdown the client caused ends the booking and
                           leaves a repair bill behind it. */}
-<PenaltyChip
-                          booking={booking}
-                          kind="damage"
-                          isDark={isDark}
-                          title={'Damage recorded at return.'}
-                          onCollect={handleCollectDamageCharge}
-                          onWaive={(b, k) => setWaiving({ booking: b, kind: k })}
-                          onUndoWaive={handleUndoWaive}
-                        />
+                      {booking.condition?.damageCharge > 0 && (
+                        booking.condition.damageCollectedAt ? (
+                          <span style={s.feeSettled}>{peso(booking.condition.damageCharge)} damage settled</span>
+                        ) : (
+                          <button style={s.feeBtn} onClick={() => handleCollectDamageCharge(booking)}>
+                            Collect {peso(booking.condition.damageCharge)} damage
+                          </button>
+                        )
+                      )}
                     </div>
                   ) : booking.status === 'completed' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -1367,38 +1335,52 @@ const ManageBookings = () => {
                           the moment it completed. We had the record and
                           showed it nowhere, so nobody could see who makes a
                           habit of it — least of all the client. */}
-<PenaltyChip
-                          booking={booking}
-                          kind="damage"
-                          isDark={isDark}
-                          title={booking.condition?.atReturn?.note || 'Damage recorded at return.'}
-                          onCollect={handleCollectDamageCharge}
-                          onWaive={(b, k) => setWaiving({ booking: b, kind: k })}
-                          onUndoWaive={handleUndoWaive}
-                        />
-<PenaltyChip
-                          booking={booking}
-                          kind="fuel"
-                          isDark={isDark}
-                          title={fuelShortfallLabel(booking) ? `Came back ${fuelShortfallLabel(booking)} short of the level it went out with.` : 'Refuelling charge recorded at return.'}
-                          onCollect={handleCollectFuelCharge}
-                          onWaive={(b, k) => setWaiving({ booking: b, kind: k })}
-                          onUndoWaive={handleUndoWaive}
-                        />
+                      {booking.condition?.damageCharge > 0 && (
+                        booking.condition.damageCollectedAt ? (
+                          <span style={s.feeSettled}>{peso(booking.condition.damageCharge)} damage settled</span>
+                        ) : (
+                          <button
+                            style={s.feeBtn}
+                            onClick={() => handleCollectDamageCharge(booking)}
+                            title={booking.condition.atReturn?.note || 'Damage recorded at return.'}
+                          >
+                            Collect {peso(booking.condition.damageCharge)} damage
+                          </button>
+                        )
+                      )}
+                      {booking.fuel?.charge > 0 && (
+                        booking.fuel.collectedAt ? (
+                          <span style={s.feeSettled}>{peso(booking.fuel.charge)} refuelling settled</span>
+                        ) : (
+                          <button
+                            style={s.feeBtn}
+                            onClick={() => handleCollectFuelCharge(booking)}
+                            title={fuelShortfallLabel(booking)
+                              ? `Came back ${fuelShortfallLabel(booking)} short of the level it went out with.`
+                              : 'Refuelling charge recorded at return.'}
+                          >
+                            Collect {peso(booking.fuel.charge)} refuelling
+                          </button>
+                        )
+                      )}
                       {booking.lateFee?.days > 0 && (
                         <>
                           <span style={s.overdueNote}>
                             Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late
                           </span>
-                          <PenaltyChip
-                          booking={booking}
-                          kind="late_fee"
-                          isDark={isDark}
-                          title={"One day's rental rate per day of delay, per the booking terms."}
-                          onCollect={handleCollectLateFee}
-                          onWaive={(b, k) => setWaiving({ booking: b, kind: k })}
-                          onUndoWaive={handleUndoWaive}
-                        />
+                          {booking.lateFee.collectedAt ? (
+                            <span style={s.feeSettled}>
+                              {peso(booking.lateFee.amount)} late fee settled
+                            </span>
+                          ) : (
+                            <button
+                              style={s.feeBtn}
+                              onClick={() => handleCollectLateFee(booking)}
+                              title="One day's rental rate per day of delay, per the booking terms."
+                            >
+                              Collect {peso(booking.lateFee.amount)} late fee
+                            </button>
+                          )}
                         </>
                       )}
                       {booking.clientRating?.ratedAt && (
@@ -1750,15 +1732,6 @@ const ManageBookings = () => {
             </div>
           </div>
         </div>
-      )}
-      {waiving && (
-        <WaivePenaltyModal
-          booking={waiving.booking}
-          kind={waiving.kind}
-          isDark={isDark}
-          onClose={() => setWaiving(null)}
-          onDone={handleWaived}
-        />
       )}
     </AdminLayout>
   );
