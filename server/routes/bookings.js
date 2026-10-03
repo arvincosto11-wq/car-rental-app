@@ -332,20 +332,43 @@ router.post('/', protect, async (req, res) => {
 });
 
 // Get logged-in user's bookings
+// Housekeeping that only sends notices — nobody's screen is waiting on it.
+//
+// Six sweeps used to run, awaited, before an admin's booking list could
+// return a single row. Two of them change what the list SHOWS, so those
+// still run first. The rest only decide whether somebody gets an email or a
+// bell, and making an admin watch that happen bought nothing: the notices go
+// out either way, moments later.
+//
+// Deliberately not awaited, and each one catches its own failure. A sweep
+// that throws must not take down the request that happened to trigger it —
+// that was already true when they were awaited, and it stays true now that
+// nothing is listening for the result.
+function sweepInBackground(...jobs) {
+  for (const job of jobs) {
+    Promise.resolve()
+      .then(job)
+      .catch((err) => console.error('Background sweep failed:', err.message));
+  }
+}
+
 router.get('/my', protect, async (req, res) => {
   try {
     await autoCompleteExpiredBookings();
+    await expireAdjustOffers();
     // Scoped to this client, so somebody who is late — or about to be —
     // hears about it when they open the app rather than whenever an admin
-    // next loads a page.
-    await notifyUpcomingReturns({ userId: req.user.id });
-    await notifyOverdueReturns({ userId: req.user.id });
-    await remindStalePendingBookings();
-    await expireAdjustOffers();
-    // Plate number is confidential — clients never see it, not even in the
-    // raw response, so it can't be read off the network tab either.
+    // next loads a page. Still true when it runs a moment after the reply.
+    sweepInBackground(
+      () => notifyUpcomingReturns({ userId: req.user.id }),
+      () => notifyOverdueReturns({ userId: req.user.id }),
+      remindStalePendingBookings,
+    );
+    // Named fields rather than everything-except-the-plate: the plate stays
+    // out either way, and a client's list does not need each vehicle's
+    // description, blocked dates, papers or GPS position shipped with it.
     const bookings = await Booking.find({ user: req.user.id })
-      .populate('car', '-plateNumber')
+      .populate('car', 'brand model year category image pricePerDay')
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'client' }));
   } catch (err) {
@@ -356,16 +379,26 @@ router.get('/my', protect, async (req, res) => {
 // Get all bookings (admin)
 router.get('/all', protect, adminOnly, async (req, res) => {
   try {
+    // These two change what the list is about to show — a trip that ended
+    // yesterday should already read as completed, and an offer that ran out
+    // should already be settled — so they are worth waiting for.
     await autoCompleteExpiredBookings();
-    await notifyUpcomingReturns();
-    await notifyOverdueReturns();
-    // Only from the admin list: this one wants admin to see it immediately,
-    // and it should not depend on a client happening to open the app.
-    await warnOfCollidingBookings();
-    await remindStalePendingBookings();
     await expireAdjustOffers();
+    // These only decide who gets told what. See sweepInBackground above.
+    sweepInBackground(
+      notifyUpcomingReturns,
+      notifyOverdueReturns,
+      // Only from the admin list: this one wants admin to see it, and it
+      // should not depend on a client happening to open the app.
+      warnOfCollidingBookings,
+      remindStalePendingBookings,
+    );
     const bookings = await Booking.find()
-      .populate('car')
+      // Only the fields these lists actually draw. A full populate shipped
+      // each vehicle's description, blocked dates, papers, promo and GPS
+      // position with every booking that mentions it — 664 KB to render a
+      // name, a photo and a plate.
+      .populate('car', 'brand model year category image plateNumber pricePerDay owner')
       .populate('user', 'name email image avgRating ratingCount licenseExpiry validIdExpiry licenseNumber')
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'admin' }));
@@ -384,7 +417,11 @@ router.get('/owner', protect, consignorOnly, async (req, res) => {
     const cars = await Car.find({ owner: req.user.id }).select('_id');
     const carIds = cars.map((c) => c._id);
     const bookings = await Booking.find({ car: { $in: carIds } })
-      .populate('car')
+      // Only the fields these lists actually draw. A full populate shipped
+      // each vehicle's description, blocked dates, papers, promo and GPS
+      // position with every booking that mentions it — 664 KB to render a
+      // name, a photo and a plate.
+      .populate('car', 'brand model year category image plateNumber pricePerDay owner')
       .populate('user', 'name')
       .sort({ createdAt: -1 });
     // The owner reads this the way admin does: what needs attention on their

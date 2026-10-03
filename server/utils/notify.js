@@ -15,6 +15,16 @@ import { sendNotificationEmail } from './email.js';
 // safely stored, and a failure to send is logged and swallowed: a client
 // must never lose the record of something because their mail provider was
 // having a bad afternoon.
+//
+// It is also not waited for. Sending goes out over the internet to a mail
+// provider, and awaiting it put that round trip inside whatever request
+// happened to trigger it — an admin confirming a booking sat watching their
+// own screen while an email left the building. Nothing on that screen
+// depended on the answer: the result was already swallowed either way, and
+// the client gets the mail a moment later regardless.
+//
+// The notification itself IS awaited. That is the record, it goes in our own
+// database, and losing it would lose the thing the client comes back to read.
 export const notifyUser = async (userId, title, message, link = '', { email = false } = {}) => {
   if (!userId) return;
   try {
@@ -24,12 +34,11 @@ export const notifyUser = async (userId, title, message, link = '', { email = fa
   }
 
   if (!email) return;
-  try {
-    const user = await User.findById(userId).select('email');
-    if (user?.email) await sendNotificationEmail({ to: user.email, title, message, link });
-  } catch (err) {
-    console.error(`Failed to email notification "${title}":`, err.message);
-  }
+  User.findById(userId).select('email')
+    .then((user) => (user?.email
+      ? sendNotificationEmail({ to: user.email, title, message, link })
+      : null))
+    .catch((err) => console.error(`Failed to email notification "${title}":`, err.message));
 };
 
 export const notifyAdmins = async (title, message, link = '') => {
