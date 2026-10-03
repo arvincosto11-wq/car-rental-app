@@ -4,9 +4,14 @@ import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import Skeleton from '../../components/Skeleton';
 import usePageTitle from '../../hooks/usePageTitle';
+import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER } from '../../data/vehicleBrands';
 import api from '../../api';
 
 const DAY_LABEL = { weekday: 'short', month: 'short', day: 'numeric' };
+
+// Same escape hatch Add Vehicle uses: the list covers what is on the road
+// here, not every vehicle ever built.
+const OTHER = '__other__';
 
 // Stage one of becoming a consignor: book a time to bring the vehicle in.
 //
@@ -29,6 +34,12 @@ const BookInspection = ({ stage, onBooked }) => {
   const [pickedDay, setPickedDay] = useState('');
   const [pickedTime, setPickedTime] = useState('');
   const [form, setForm] = useState({ brand: '', model: '', year: '', note: '' });
+  // Picked from a list rather than typed, the same way admin adds a vehicle.
+  // Two people typing "Toyota" and "toyota" is two makes in the data, and
+  // this is the first place a vehicle is named.
+  const [vehicleType, setVehicleType] = useState('car');
+  const [brandChoice, setBrandChoice] = useState('');
+  const [modelChoice, setModelChoice] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,6 +60,31 @@ const BookInspection = ({ stage, onBooked }) => {
   }, [booked]);
 
   const loading = !booked && !slotsLoaded;
+
+  const brandOrder = vehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
+  const modelOptions = brandChoice && brandChoice !== OTHER
+    ? (VEHICLE_DATA[brandChoice] || []).filter((m) => (
+      vehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
+    ))
+    : [];
+
+  const changeVehicleType = (value) => {
+    setVehicleType(value);
+    setBrandChoice('');
+    setModelChoice('');
+    setForm({ ...form, brand: '', model: '' });
+  };
+
+  const changeBrand = (value) => {
+    setBrandChoice(value);
+    setModelChoice('');
+    setForm({ ...form, brand: value === OTHER ? '' : value, model: '' });
+  };
+
+  const changeModel = (value) => {
+    setModelChoice(value);
+    setForm({ ...form, model: value === OTHER ? '' : value });
+  };
 
   const gold = isDark ? GOLD_DARK : GOLD;
   const s = {
@@ -75,6 +111,13 @@ const BookInspection = ({ stage, onBooked }) => {
     },
     row: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '14px' },
     chips: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' },
+    typeRow: { display: 'flex', gap: '8px', marginBottom: '14px' },
+    typeBtn: (on) => ({
+      flex: 1, padding: '10px', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: '700',
+      border: `1px solid ${on ? gold : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      background: on ? (isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.08)') : (isDark ? '#18191a' : '#fff'),
+      color: on ? goldInk(isDark) : (isDark ? '#b0b3b8' : '#6b7280'),
+    }),
     chip: (active) => ({
       padding: '9px 14px', borderRadius: '10px', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600',
       border: `1px solid ${active ? gold : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
@@ -212,16 +255,50 @@ const BookInspection = ({ stage, onBooked }) => {
 
         <div style={s.card}>
           <h2 style={s.h2}>What are you bringing?</h2>
+          <div style={s.typeRow} role="group" aria-label="Vehicle type">
+            <button type="button" style={s.typeBtn(vehicleType === 'car')} aria-pressed={vehicleType === 'car'}
+              onClick={() => changeVehicleType('car')}>
+              🚗 Car
+            </button>
+            <button type="button" style={s.typeBtn(vehicleType === 'motorcycle')} aria-pressed={vehicleType === 'motorcycle'}
+              onClick={() => changeVehicleType('motorcycle')}>
+              🏍️ Motorcycle
+            </button>
+          </div>
+
           <div style={s.row}>
             <div>
               <label style={s.label} htmlFor="ap-brand">Make</label>
-              <input id="ap-brand" style={s.input} placeholder="Toyota" value={form.brand}
-                onChange={(e) => setForm({ ...form, brand: e.target.value })} />
+              <select id="ap-brand" style={s.input} value={brandChoice} onChange={(e) => changeBrand(e.target.value)}>
+                <option value="">Select make</option>
+                {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
+                <option value={OTHER}>Other (type it)</option>
+              </select>
+              {brandChoice === OTHER && (
+                <input aria-label="Make" style={{ ...s.input, marginTop: '8px' }} placeholder="Enter the make"
+                  value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
+              )}
             </div>
             <div>
               <label style={s.label} htmlFor="ap-model">Model</label>
-              <input id="ap-model" style={s.input} placeholder="Vios" value={form.model}
-                onChange={(e) => setForm({ ...form, model: e.target.value })} />
+              {brandChoice && brandChoice !== OTHER ? (
+                <>
+                  <select id="ap-model" style={s.input} value={modelChoice} onChange={(e) => changeModel(e.target.value)}>
+                    <option value="">Select model</option>
+                    {modelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
+                    <option value={OTHER}>Other (type it)</option>
+                  </select>
+                  {modelChoice === OTHER && (
+                    <input aria-label="Model" style={{ ...s.input, marginTop: '8px' }} placeholder="Enter the model"
+                      value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
+                  )}
+                </>
+              ) : (
+                <input id="ap-model" style={s.input}
+                  placeholder={brandChoice === OTHER ? 'Enter the model' : 'Pick a make first'}
+                  value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}
+                  disabled={!brandChoice} />
+              )}
             </div>
             <div>
               <label style={s.label} htmlFor="ap-year">Year</label>
