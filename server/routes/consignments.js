@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import EmailVerification from '../models/EmailVerification.js';
 import Car from '../models/Car.js';
 import Consignment from '../models/Consignment.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
@@ -58,11 +59,26 @@ router.post('/register', registerLimiter, async (req, res) => {
     const exists = await User.findOne(sameEmail(email));
     if (exists) return res.status(400).json({ message: 'Email already exists' });
 
+    // The same gate the client sign-up has, and it was missing here.
+    //
+    // Everything a vehicle owner is ever told goes to this address: when
+    // their inspection is, whether the vehicle passed, every booking on it.
+    // A typo means they hear none of it and cannot reset their password;
+    // somebody else's address means a stranger is told about a vehicle that
+    // is not theirs. Checked on the server, so calling the API directly does
+    // not skip it.
+    const verification = await EmailVerification.findOne({ email });
+    if (!verification?.verified || verification.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'Please verify your email before registering.' });
+    }
+
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({
       name, email, password: hashed, birthDate, phone, address,
       role: 'consignor'
     });
+
+    await EmailVerification.deleteOne({ email });
 
     const token = jwt.sign(
       { id: user._id, role: user.role },

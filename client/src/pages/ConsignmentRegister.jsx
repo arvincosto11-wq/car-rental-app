@@ -12,12 +12,14 @@ import BookingSteps from '../components/BookingSteps';
 import AuthBrandPanel from '../components/AuthBrandPanel';
 import usePageTitle from '../hooks/usePageTitle';
 import useEmailAvailable from '../hooks/useEmailAvailable';
+import useResendCooldown from '../hooks/useResendCooldown';
+import OtpInput from '../components/OtpInput';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const PHONE_ERROR = 'Enter a valid PH mobile number (e.g. 09171234567 or +639171234567).';
 const OTHER = '__other__';
 const MIN_AGE_YEARS = 18;
-const CONSIGN_STEPS = ['Your Information'];
+const CONSIGN_STEPS = ['Your Information', 'Verify Email'];
 const TAKEN_MESSAGE = 'That email already has an account. Log in instead, or use a different address.';
 
 // Whole-years-old as of today — used both to validate on submit and to cap
@@ -40,6 +42,7 @@ const maxBirthDate = () => {
 // crossfade — keyed by step number so it matches CONSIGN_STEPS above.
 const CONSIGN_TAGLINES = {
   1: 'Make an account, then book a time to bring your vehicle in.',
+  2: 'Just confirm your email and your account is ready.',
 };
 
 const ConsignmentRegister = () => {
@@ -65,6 +68,9 @@ const ConsignmentRegister = () => {
   // Checked while they type, so a taken address is caught before they
   // have filled in the rest of the form.
   const emailTaken = useEmailAvailable(form.email);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [sendingCode, setSendingCode] = useState(false);
+  const [resendCooldown, startResendCooldown] = useResendCooldown();
   const { login } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
@@ -97,14 +103,44 @@ const ConsignmentRegister = () => {
 
 
 
+  // Sends (or resends) the code without moving steps itself — the caller
+  // decides what to do once it knows whether sending actually worked.
+  const sendVerificationCode = async () => {
+    setSendingCode(true);
+    setError('');
+    try {
+      await api.post('/auth/send-verification-code', { email: form.email });
+      startResendCooldown();
+      return true;
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to send the verification code. Please try again.');
+      return false;
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const goToVerify = async () => {
+    if (!validateStep1()) return;
+    const sent = await sendVerificationCode();
+    if (sent) setStep(2);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
+    if (!verificationCode.trim()) {
+      setFieldErrors((prev) => ({ ...prev, verificationCode: 'Please enter the code we sent to your email.' }));
+      return;
+    }
     if (!validateStep1()) return;
 
     setLoading(true);
     try {
+      // Confirms the code, then creates the account. The server checks the
+      // address is verified either way, so a tampered request cannot skip it.
+      await api.post('/auth/verify-email-code', { email: form.email, code: verificationCode.trim() });
       // The account only. Nothing about the vehicle is typed here any more:
       // it is seen at the office, with its papers, and entered there.
       const res = await api.post('/consignments/register', form);
@@ -308,8 +344,34 @@ const ConsignmentRegister = () => {
 
 
                     <div style={styles.stepActions}>
+                      <button type="button" style={styles.nextBtn} onClick={goToVerify} disabled={sendingCode}>
+                        {sendingCode ? 'Sending code...' : 'Continue'}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {step === 2 && (
+                  <motion.div key="step2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
+                    <p style={{ ...styles.subtitle, marginBottom: '16px' }}>
+                      We sent a 6-digit code to <strong>{form.email}</strong>. Enter it below to finish creating your account.
+                    </p>
+                    <div style={styles.field}>
+                      <label style={styles.label} htmlFor="cr-verify-code">Verification Code</label>
+                      <OtpInput value={verificationCode} onChange={setVerificationCode} isDark={isDark} />
+                      {fieldErrors.verificationCode && <p style={styles.fieldError}>{fieldErrors.verificationCode}</p>}
+                    </div>
+                    <button type="button" className="text-link-btn" style={{ ...styles.footerLink, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: resendCooldown > 0 ? 'default' : 'pointer' }}
+                      onClick={sendVerificationCode} disabled={sendingCode || resendCooldown > 0}>
+                      {sendingCode ? 'Resending...' : resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Didn't get it? Resend code"}
+                    </button>
+
+                    <div style={styles.stepActions}>
+                      <button type="button" style={styles.backBtn} onClick={() => setStep(1)}>
+                        Back
+                      </button>
                       <button style={styles.nextBtn} type="submit" disabled={loading}>
-                        {loading ? 'Creating your account...' : 'Create account'}
+                        {loading ? 'Verifying & creating account...' : 'Verify & Create Account'}
                       </button>
                     </div>
                   </motion.div>
