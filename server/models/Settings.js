@@ -45,6 +45,22 @@ const settingsSchema = new mongoose.Schema({
     // Straight-line distance understates a real drive. See utils/delivery.js.
     roadFactor: { type: Number, default: 1.3 },
   },
+
+  // When somebody can bring a vehicle in to be inspected. Slots are worked
+  // out from these rather than stored — see utils/appointments.js.
+  appointments: {
+    enabled: { type: Boolean, default: true },
+    // Days of the week you are open for inspections, 0 = Sunday.
+    days: { type: [Number], default: [1, 2, 3, 4, 5, 6] },
+    startHour: { type: Number, default: 9 },
+    endHour: { type: Number, default: 16 },
+    // How long one inspection takes, which is also how far apart the slots
+    // sit. One vehicle per slot.
+    slotMinutes: { type: Number, default: 60 },
+    // Nobody can book this afternoon: somebody has to be free to meet them.
+    leadHours: { type: Number, default: 24 },
+    horizonDays: { type: Number, default: 30 },
+  },
 }, { timestamps: true });
 
 // Always returns a document, creating the defaults on first use, so no

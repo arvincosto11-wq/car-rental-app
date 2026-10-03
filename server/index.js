@@ -13,6 +13,7 @@ import paymentsRoutes, { handlePaymongoWebhook } from './routes/payments.js';
 import adminStatsRoutes from './routes/adminStats.js';
 import longRentalRoutes from './routes/longRental.js';
 import settingsRoutes from './routes/settings.js';
+import appointmentRoutes from './routes/appointments.js';
 import backfillCollected from './utils/backfillCollected.js';
 
 dotenv.config();
@@ -52,6 +53,7 @@ app.use('/api/payments', paymentsRoutes);
 app.use('/api/admin', adminStatsRoutes);
 app.use('/api/long-rental-discounts', longRentalRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: '🚗 Car Rental API is running!' });

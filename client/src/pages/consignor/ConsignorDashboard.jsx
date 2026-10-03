@@ -10,6 +10,7 @@ import BlockDatesPanel, { upcomingBlockCount } from '../../components/BlockDates
 import { ownerEarningFor, adminCoveredFor, isPromoVisible } from '../../utils/promo';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
+import BookInspection from './BookInspection';
 import api from '../../api';
 import { formatMoment } from '../../utils/phTime';
 import { fuelLabel } from '../../utils/fuel';
@@ -45,10 +46,22 @@ const ConsignorDashboard = () => {
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestError, setRequestError] = useState('');
   const [earningsPeriod, setEarningsPeriod] = useState('month');
+  // Which half of the consignor journey they are on. Worked out from whether
+  // they own a listed vehicle rather than stored as a flag — see
+  // routes/appointments.js. Null while it is still being asked.
+  const [stage, setStage] = useState(null);
   const requestModalRef = useModalA11y(() => setRequestModalCarId(null), !!requestModalCarId);
+
+  const loadStage = () => api.get('/appointments/stage')
+    .then((res) => setStage(res.data))
+    // A failed check must not lock somebody out of a dashboard they have
+    // earned. Treated as "already a consignor", which the page below then
+    // renders from the vehicles it actually finds.
+    .catch(() => setStage({ stage: 'consignor' }));
 
   useEffect(() => {
     if (!user) return navigate('/login');
+    loadStage();
     fetchConsignments();
     fetchBookings();
   }, [user]);
@@ -294,6 +307,13 @@ const ConsignorDashboard = () => {
     modalSubmitBtn: { flex: 1, padding: '10px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
   };
 
+  // Stage one: no vehicle has passed its check yet, so there is no dashboard
+  // to show. Not the real one in an empty state — that would be a room full
+  // of things that are not theirs.
+  if (stage && stage.stage === 'applicant') {
+    return <BookInspection stage={stage} onBooked={loadStage} />;
+  }
+
   return (
     <div style={s.page}>
       <div style={s.container}>
@@ -304,7 +324,7 @@ const ConsignorDashboard = () => {
           </div>
           <div style={s.headerBtnGroup}>
             <Link className="btn-like" to="/consignor/gps-tracking" style={s.gpsBtn}>GPS Tracking</Link>
-            <Link className="btn-like" to="/consignor/add-vehicle" style={s.addBtn}>+ Add Another Vehicle</Link>
+            <Link className="btn-like" to="/consignor/add-vehicle" style={s.addBtn}>+ Book Another Inspection</Link>
           </div>
         </div>
 
@@ -355,7 +375,7 @@ const ConsignorDashboard = () => {
         ) : consignments.length === 0 ? (
           <div style={s.empty}>
             <p>You haven't submitted any vehicles yet.</p>
-            <Link className="btn-like" to="/consignor/add-vehicle" style={s.addBtn}>Submit Your First Vehicle</Link>
+            <Link className="btn-like" to="/consignor/add-vehicle" style={s.addBtn}>Book an Inspection</Link>
           </div>
         ) : (
           consignments.map((c) => (

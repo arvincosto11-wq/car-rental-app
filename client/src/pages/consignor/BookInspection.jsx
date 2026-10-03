@@ -1,0 +1,289 @@
+import { useState, useEffect } from 'react';
+import { useTheme } from '../../context/ThemeContext';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
+import { useUIFeedback } from '../../context/UIFeedbackContext';
+import Skeleton from '../../components/Skeleton';
+import usePageTitle from '../../hooks/usePageTitle';
+import api from '../../api';
+
+const DAY_LABEL = { weekday: 'short', month: 'short', day: 'numeric' };
+
+// Stage one of becoming a consignor: book a time to bring the vehicle in.
+//
+// Nothing about the vehicle is entered here beyond what it is. The details,
+// the price, the photographs — all of that is typed at the office with the
+// vehicle in front of whoever is typing, because that is the only way the
+// plate on the papers can be checked against the plate on the car.
+//
+// This page is the whole of the consignor side until a vehicle passes. There
+// is no dashboard to show: no vehicles, no bookings, no earnings. Showing
+// the real dashboard empty would be showing somebody a room full of things
+// that are not theirs yet.
+const BookInspection = ({ stage, onBooked }) => {
+  usePageTitle('Book an inspection');
+  const { isDark } = useTheme();
+  const { toast, confirm } = useUIFeedback();
+  const [days, setDays] = useState([]);
+  const [settings, setSettings] = useState(null);
+  const [slotsLoaded, setSlotsLoaded] = useState(false);
+  const [pickedDay, setPickedDay] = useState('');
+  const [pickedTime, setPickedTime] = useState('');
+  const [form, setForm] = useState({ brand: '', model: '', year: '', note: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const booked = stage?.booked;
+  const last = stage?.last;
+
+  // An appointment already booked needs no slot list, so nothing is
+  // fetched and nothing is waited for — which is why "loading" is derived
+  // below rather than set here.
+  useEffect(() => {
+    if (booked) return undefined;
+    let live = true;
+    api.get('/appointments/slots')
+      .then((res) => { if (live) { setDays(res.data.days); setSettings(res.data.settings); } })
+      .catch(() => { if (live) setError('Could not load the available times. Please try again.'); })
+      .finally(() => { if (live) setSlotsLoaded(true); });
+    return () => { live = false; };
+  }, [booked]);
+
+  const loading = !booked && !slotsLoaded;
+
+  const gold = isDark ? GOLD_DARK : GOLD;
+  const s = {
+    page: { minHeight: '100vh', background: isDark ? '#18191a' : '#f9fafb' },
+    wrap: { maxWidth: '860px', margin: '0 auto', padding: '32px 16px 56px' },
+    title: { fontSize: '24px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', margin: '0 0 6px' },
+    sub: { fontSize: '14px', color: isDark ? '#b0b3b8' : '#6b7280', margin: '0 0 24px', lineHeight: 1.6 },
+    card: {
+      background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      borderRadius: '14px', padding: '22px', marginBottom: '18px',
+    },
+    h2: { fontSize: '15px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', margin: '0 0 10px' },
+    steps: { margin: 0, paddingLeft: '20px', fontSize: '13.5px', lineHeight: 1.9, color: isDark ? '#b0b3b8' : '#4b5563' },
+    bring: {
+      margin: '0', padding: '14px 16px', borderRadius: '10px', fontSize: '13.5px', lineHeight: 1.9,
+      background: isDark ? 'rgba(232,161,0,0.10)' : 'rgba(184,121,10,0.07)',
+      border: `1px solid ${isDark ? '#5a4a1a' : '#f3d98b'}`, color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    label: { display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '5px', color: isDark ? '#e4e6eb' : '#374151' },
+    input: {
+      width: '100%', padding: '9px 12px', fontSize: '13px', boxSizing: 'border-box',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', outline: 'none',
+      background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
+    },
+    row: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '14px' },
+    chips: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' },
+    chip: (active) => ({
+      padding: '9px 14px', borderRadius: '10px', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600',
+      border: `1px solid ${active ? gold : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      background: active ? (isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.08)') : (isDark ? '#18191a' : '#fff'),
+      color: active ? goldInk(isDark) : (isDark ? '#e4e6eb' : '#1a1a1a'),
+    }),
+    hint: { fontSize: '12px', color: isDark ? '#8a8d91' : '#9ca3af', margin: '0 0 12px', lineHeight: 1.6 },
+    book: {
+      padding: '11px 22px', borderRadius: '10px', border: 'none', cursor: saving ? 'default' : 'pointer',
+      background: gold, color: ON_GOLD, fontSize: '14px', fontWeight: '700', opacity: saving ? 0.6 : 1,
+    },
+    cancel: {
+      padding: '9px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, background: 'transparent',
+      color: isDark ? '#b0b3b8' : '#6b7280',
+    },
+    error: { fontSize: '13px', color: isDark ? '#f87171' : '#dc2626', marginBottom: '12px' },
+    when: { fontSize: '19px', fontWeight: '700', color: goldInk(isDark), margin: '0 0 4px' },
+    outcome: {
+      margin: '0 0 18px', padding: '14px 16px', borderRadius: '10px', fontSize: '13.5px', lineHeight: 1.7,
+      background: isDark ? '#3a2f10' : '#fff7e6', border: `1px solid ${isDark ? '#5a4a1a' : '#f3d98b'}`,
+      color: isDark ? '#e8c463' : '#8a6d1a',
+    },
+    empty: { padding: '20px', textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '13.5px' },
+  };
+
+  const times = days.find((d) => d.day === pickedDay)?.times || [];
+
+  const submit = async () => {
+    if (!form.brand.trim() || !form.model.trim()) { setError('Please say what vehicle you are bringing.'); return; }
+    if (!pickedTime) { setError('Please choose a day and time.'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      await api.post('/appointments', { at: pickedTime, ...form, year: form.year || undefined });
+      toast.success('Booked. We will see you then.');
+      onBooked();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not book that time.');
+      setSaving(false);
+    }
+  };
+
+  const cancelBooking = async () => {
+    const ok = await confirm(
+      'Cancel this appointment? You can book another time whenever you are ready.',
+      { confirmLabel: 'Cancel it', cancelLabel: 'Keep it' },
+    );
+    if (!ok) return;
+    try {
+      await api.delete(`/appointments/${booked._id}`);
+      toast.success('Appointment cancelled.');
+      onBooked();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not cancel that.');
+    }
+  };
+
+  const whatToBring = (
+    <div style={s.card}>
+      <h2 style={s.h2}>What to bring</h2>
+      <p style={s.bring}>
+        <strong>The vehicle itself</strong> — we check it over and photograph it for the listing.<br />
+        <strong>The OR and CR</strong> — the originals, not copies. We check the plate and chassis number against
+        the vehicle and hand them straight back.<br />
+        <strong>One valid ID</strong> — so we know the papers and the person match. We keep no copy of it.
+      </p>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div style={s.page}><div style={s.wrap}><Skeleton height="420px" radius="14px" isDark={isDark} /></div></div>
+    );
+  }
+
+  // Already booked: the page becomes the reminder rather than the form.
+  if (booked) {
+    const at = new Date(booked.at);
+    return (
+      <div style={s.page}>
+        <div style={s.wrap}>
+          <h1 style={s.title}>Your appointment</h1>
+          <p style={s.sub}>Bring the vehicle and its papers, and we will do the rest here.</p>
+          <div style={s.card}>
+            <p style={s.when}>
+              {at.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              {' at '}
+              {at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })}
+            </p>
+            <p style={s.hint}>
+              {booked.vehicle?.brand} {booked.vehicle?.model}
+              {booked.vehicle?.year ? ` · ${booked.vehicle.year}` : ''}
+            </p>
+            <button type="button" style={s.cancel} onClick={cancelBooking}>Cancel this appointment</button>
+          </div>
+          {whatToBring}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={s.page}>
+      <div style={s.wrap}>
+        <h1 style={s.title}>List your vehicle</h1>
+        <p style={s.sub}>
+          We look at every vehicle in person before it goes on the site. Book a time, bring it over with its
+          papers, and if all is well we will have it listed the same day.
+        </p>
+
+        {/* Said before anything else, because somebody whose vehicle was
+            turned away needs to know they can simply come back. */}
+        {last && last.status === 'failed' && (
+          <p style={s.outcome}>
+            Your last visit didn&apos;t go through
+            {last.outcomeNote ? `: ${last.outcomeNote}` : '.'} Book again once it is sorted.
+          </p>
+        )}
+        {last && last.status === 'missed' && (
+          <p style={s.outcome}>You missed your last appointment. Book another whenever you are ready.</p>
+        )}
+
+        <div style={s.card}>
+          <h2 style={s.h2}>How it works</h2>
+          <ol style={s.steps}>
+            <li>Book a time below and tell us roughly what you are bringing.</li>
+            <li>Come to our place in Salugan, Camalig with the vehicle and its papers.</li>
+            <li>We check it over, agree a daily rate with you, and photograph it.</li>
+            <li>If all is well we create the listing and your dashboard opens up.</li>
+          </ol>
+        </div>
+
+        {whatToBring}
+
+        <div style={s.card}>
+          <h2 style={s.h2}>What are you bringing?</h2>
+          <div style={s.row}>
+            <div>
+              <label style={s.label} htmlFor="ap-brand">Make</label>
+              <input id="ap-brand" style={s.input} placeholder="Toyota" value={form.brand}
+                onChange={(e) => setForm({ ...form, brand: e.target.value })} />
+            </div>
+            <div>
+              <label style={s.label} htmlFor="ap-model">Model</label>
+              <input id="ap-model" style={s.input} placeholder="Vios" value={form.model}
+                onChange={(e) => setForm({ ...form, model: e.target.value })} />
+            </div>
+            <div>
+              <label style={s.label} htmlFor="ap-year">Year</label>
+              <input id="ap-year" style={s.input} type="number" placeholder="2019" value={form.year}
+                onChange={(e) => setForm({ ...form, year: e.target.value })} />
+            </div>
+          </div>
+          <label style={s.label} htmlFor="ap-note">Anything we should know (optional)</label>
+          <input id="ap-note" style={s.input} maxLength={300} value={form.note}
+            onChange={(e) => setForm({ ...form, note: e.target.value })} />
+        </div>
+
+        <div style={s.card}>
+          <h2 style={s.h2}>Pick a time</h2>
+          {!settings?.enabled || days.length === 0 ? (
+            <p style={s.empty}>
+              We aren&apos;t taking appointments at the moment. Please call us on 0950-651-0479 to arrange a visit.
+            </p>
+          ) : (
+            <>
+              <p style={s.hint}>
+                One vehicle per slot, so each booking has our full attention.
+                {settings.leadHours >= 24 && ' The earliest is tomorrow.'}
+              </p>
+              <div style={s.chips} role="group" aria-label="Choose a day">
+                {days.slice(0, 14).map((d) => (
+                  <button
+                    type="button"
+                    key={d.day}
+                    style={s.chip(pickedDay === d.day)}
+                    aria-pressed={pickedDay === d.day}
+                    onClick={() => { setPickedDay(d.day); setPickedTime(''); }}
+                  >
+                    {new Date(`${d.day}T12:00:00+08:00`).toLocaleDateString('en-US', DAY_LABEL)}
+                  </button>
+                ))}
+              </div>
+              {pickedDay && (
+                <div style={s.chips} role="group" aria-label="Choose a time">
+                  {times.map((t) => (
+                    <button
+                      type="button"
+                      key={t.at}
+                      style={s.chip(pickedTime === t.at)}
+                      aria-pressed={pickedTime === t.at}
+                      onClick={() => setPickedTime(t.at)}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {error && <p style={s.error}>{error}</p>}
+              <button type="button" style={s.book} onClick={submit} disabled={saving}>
+                {saving ? 'Booking…' : 'Book this time'}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default BookInspection;

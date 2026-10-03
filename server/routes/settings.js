@@ -2,6 +2,7 @@ import express from 'express';
 import Settings from '../models/Settings.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { deliverySettings, DEFAULTS } from '../utils/delivery.js';
+import { appointmentSettings } from '../utils/appointments.js';
 
 const router = express.Router();
 
@@ -19,6 +20,15 @@ router.get('/delivery', async (req, res) => {
     // anything, so serving them is correct rather than a fallback.
     console.error('Settings read failed, serving defaults:', err.message);
     res.json(deliverySettings(null));
+  }
+});
+
+router.get('/appointments', async (req, res) => {
+  try {
+    res.json(appointmentSettings(await Settings.current()));
+  } catch (err) {
+    console.error('Settings read failed, serving defaults:', err.message);
+    res.json(appointmentSettings(null));
   }
 });
 
@@ -54,6 +64,27 @@ router.put('/', protect, adminOnly, async (req, res) => {
       current.base.label = String(base.label ?? current.base.label).trim().slice(0, 120);
       current.base.lat = lat;
       current.base.lng = lng;
+    }
+
+    const { appointments } = req.body || {};
+    if (appointments) {
+      const a = current.appointments;
+      if (appointments.enabled !== undefined) a.enabled = !!appointments.enabled;
+      if (Array.isArray(appointments.days)) {
+        const days = [...new Set(appointments.days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+        if (!days.length) {
+          return res.status(400).json({ message: 'Pick at least one day you are open for inspections.' });
+        }
+        a.days = days;
+      }
+      a.startHour = Math.min(23, Math.max(0, asNumber(appointments.startHour, a.startHour)));
+      a.endHour = Math.min(24, asNumber(appointments.endHour, a.endHour));
+      if (a.endHour <= a.startHour) {
+        return res.status(400).json({ message: 'The closing hour has to be after the opening one.' });
+      }
+      a.slotMinutes = Math.min(240, Math.max(15, asNumber(appointments.slotMinutes, a.slotMinutes)));
+      a.leadHours = Math.max(0, asNumber(appointments.leadHours, a.leadHours));
+      a.horizonDays = Math.min(180, Math.max(1, asNumber(appointments.horizonDays, a.horizonDays)));
     }
 
     if (delivery) {

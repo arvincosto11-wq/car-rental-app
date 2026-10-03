@@ -26,18 +26,20 @@ const ageInYears = (birthDate) => {
 };
 
 // Register as a vehicle owner (consignor) + submit their first vehicle in one step.
-// Public route — creates the User account (role: consignor) and the first
-// Consignment application together, then logs them straight in.
+// Public route — creates the User account (role: consignor) and logs them
+// straight in.
+//
+// It used to create a vehicle application at the same time, from details and
+// photographs typed into the form. Nothing about a vehicle is entered online
+// any more: every one is looked at in person, against its papers, and
+// entered at the office. So this makes an account and nothing else, and the
+// account lands on the page that books that visit.
 router.post('/register', registerLimiter, async (req, res) => {
   try {
     const {
       // Owner info
       name, email, password, birthDate, phone, address,
       validIdType, validIdExpiry,
-      // Vehicle info
-      brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,
-      fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
-      vehiclePhotos
     } = req.body;
 
     if (!EMAIL_REGEX.test(email || '')) {
@@ -63,25 +65,15 @@ router.post('/register', registerLimiter, async (req, res) => {
       role: 'consignor'
     });
 
-    const consignment = await Consignment.create({
-      owner: user._id,
-      brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,
-      fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
-      vehiclePhotos
-    });
-
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    await notifyAdmins('New Consignment Application', `${name} submitted a new vehicle application (${brand} ${model}).`, '/admin/manage-consignments');
-
     res.status(201).json({
       token,
       user: { id: user._id, name, email, role: user.role },
-      consignment
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

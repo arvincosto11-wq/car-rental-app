@@ -17,7 +17,7 @@ const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const PHONE_ERROR = 'Enter a valid PH mobile number (e.g. 09171234567 or +639171234567).';
 const OTHER = '__other__';
 const MIN_AGE_YEARS = 18;
-const CONSIGN_STEPS = ['Your Information', 'Vehicle Details', 'Documents'];
+const CONSIGN_STEPS = ['Your Information'];
 
 // Whole-years-old as of today — used both to validate on submit and to cap
 // the date picker so a too-recent birthdate can't even be selected.
@@ -59,48 +59,9 @@ const ConsignmentRegister = () => {
 
   const [validIdType, setValidIdType] = useState('');
   const [validIdExpiry, setValidIdExpiry] = useState('');
-  const [vehiclePhotos, setVehiclePhotos] = useState([]);
-  const [vehiclePreviews, setVehiclePreviews] = useState([]);
-  const [bookingTypes, setBookingTypes] = useState({ 'self-drive': true, 'with-driver': true });
-  const [vehicleType, setVehicleType] = useState('car');
-  const [brandChoice, setBrandChoice] = useState('');
-  const [modelChoice, setModelChoice] = useState('');
 
-  const brandOrder = vehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
-  const modelOptions = brandChoice && brandChoice !== OTHER
-    ? (VEHICLE_DATA[brandChoice] || []).filter((m) =>
-        vehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
-      )
-    : [];
 
-  const handleVehicleTypeChange = (type) => {
-    setVehicleType(type);
-    setBrandChoice('');
-    setModelChoice('');
-    setForm({ ...form, brand: '', model: '', category: type === 'motorcycle' ? 'Motorcycle' : '' });
-    setBookingTypes(
-      type === 'motorcycle'
-        ? { 'self-drive': true, 'with-driver': false }
-        : { 'self-drive': true, 'with-driver': true }
-    );
-  };
 
-  const handleBrandChoiceChange = (value) => {
-    setBrandChoice(value);
-    setModelChoice('');
-    setForm({ ...form, brand: value === OTHER ? '' : value, model: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '' });
-  };
-
-  const handleModelChoiceChange = (value) => {
-    setModelChoice(value);
-    if (value === OTHER) {
-      setForm({ ...form, model: '' });
-      return;
-    }
-    const match = modelOptions.find((m) => m.model === value);
-    const autoCategory = match?.category || (vehicleType === 'motorcycle' ? 'Motorcycle' : '');
-    setForm({ ...form, model: value, category: autoCategory });
-  };
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -133,101 +94,24 @@ const ConsignmentRegister = () => {
     return !(nameError || birthDateError || emailError || passwordError || confirmPasswordError || phoneError || addressError || validIdError);
   };
 
-  const validateStep2 = () => {
-    const brandModelError = (!form.brand.trim() || !form.model.trim()) ? 'Please select or enter the vehicle brand and model.' : '';
-    const yearError = !form.year ? 'Please enter the vehicle year.' : '';
-    const plateError = !form.plateNumber.trim() ? 'Please enter the plate number.' : '';
-    const categoryError = (vehicleType !== 'motorcycle' && !form.category) ? 'Please select a category.' : '';
-    const transmissionError = !form.transmission ? 'Please select a transmission.' : '';
-    const fuelError = !form.fuelType ? 'Please select a fuel type.' : '';
-    const seatsError = !form.seats ? 'Please enter the seating capacity.' : '';
-    const priceError = !form.suggestedPricePerDay ? 'Please enter a suggested daily price.' : '';
-    const selectedBookingTypes = Object.entries(bookingTypes).filter(([, v]) => v);
-    const bookingTypeError = selectedBookingTypes.length === 0 ? 'Please select at least one booking type.' : '';
 
-    setFieldErrors((prev) => ({
-      ...prev,
-      brandModel: brandModelError, year: yearError, plateNumber: plateError, category: categoryError,
-      transmission: transmissionError, fuelType: fuelError, seats: seatsError,
-      suggestedPricePerDay: priceError, bookingTypes: bookingTypeError,
-    }));
-    return !(brandModelError || yearError || plateError || categoryError || transmissionError || fuelError || seatsError || priceError || bookingTypeError);
-  };
 
-  const goToStep2Next = () => { if (validateStep1()) setStep(2); };
-  const goToStep3Next = () => { if (validateStep2()) setStep(3); };
 
-  // isPrivate is decided here and nowhere else: ImageKit fixes it at upload
-  // and its update API silently ignores any later attempt to change it.
-  // Identity documents and ownership papers go up private; vehicle
-  // photographs are meant to be seen and stay as they are.
-  const uploadToImageKit = async (file, { isPrivate = false } = {}) => {
-    const authRes = await api.get('/imagekit/public-auth');
-    const { token, expire, signature, publicKey } = authRes.data;
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('fileName', file.name);
-    formData.append('token', token);
-    formData.append('expire', expire);
-    formData.append('signature', signature);
-    formData.append('publicKey', publicKey);
-    if (isPrivate) formData.append('isPrivateFile', 'true');
-    const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', body: formData });
-    const data = await uploadRes.json();
-    return { url: data.url, fileId: data.fileId };
-  };
-
-  const handleVehiclePhotosChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    setVehiclePhotos((prev) => [...prev, ...files]);
-    setVehiclePreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
-  };
-
-  const removeVehiclePhoto = (index) => {
-    setVehiclePhotos((prev) => prev.filter((_, i) => i !== index));
-    setVehiclePreviews((prev) => prev.filter((_, i) => i !== index));
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    // Steps 1 and 2 are already off-screen by now — no single visible field
-    // to attach these to, so they stay a summary banner (this is only a
-    // defensive re-check; each step's own Continue button already blocked
-    // advancing past it once).
-    if (!PHONE_REGEX.test(form.phone) || !validIdType) {
-      setError('Please go back and finish your details.');
-      return;
-    }
-    const selectedBookingTypes = Object.entries(bookingTypes).filter(([, v]) => v).map(([k]) => k);
-    if (selectedBookingTypes.length === 0) {
-      setError('Please go back and select at least one booking type.');
-      return;
-    }
-
-    // The OR and CR are no longer uploaded — they are presented in person,
-    // against the vehicle. Photos of the vehicle itself are still useful
-    // for the listing, so those stay.
-    const photosError = vehiclePhotos.length === 0 ? 'Please upload at least one photo of the vehicle.' : '';
-    setFieldErrors((prev) => ({ ...prev, vehiclePhotos: photosError }));
-    if (photosError) return;
+    if (!validateStep1()) return;
 
     setLoading(true);
     try {
-      const uploadedPhotos = [];
-      for (const file of vehiclePhotos) {
-        const uploaded = await uploadToImageKit(file);
-        uploadedPhotos.push(uploaded);
-      }
-
+      // The account only. Nothing about the vehicle is typed here any more:
+      // it is seen at the office, with its papers, and entered there.
       const res = await api.post('/consignments/register', {
         ...form,
         validIdType,
         validIdExpiry: validIdExpiry || null,
-        vehiclePhotos: uploadedPhotos,
-        availableBookingTypes: selectedBookingTypes,
       });
 
       login(res.data.user, res.data.token);
@@ -459,219 +343,13 @@ const ConsignmentRegister = () => {
                     {fieldErrors.validId && <p style={styles.fieldError}>{fieldErrors.validId}</p>}
 
                     <div style={styles.stepActions}>
-                      <button type="button" style={styles.nextBtn} onClick={goToStep2Next}>
-                        Continue
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-
-                {step === 2 && (
-                  <motion.div key="step2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
-                    <div style={styles.typeToggleRow}>
-                      <button type="button" style={styles.typeToggleBtn(vehicleType === 'car')} onClick={() => handleVehicleTypeChange('car')}>
-                        🚗 Car
-                      </button>
-                      <button type="button" style={styles.typeToggleBtn(vehicleType === 'motorcycle')} onClick={() => handleVehicleTypeChange('motorcycle')}>
-                        🏍️ Motorcycle
-                      </button>
-                    </div>
-
-                    <div className="responsive-row-2" style={styles.row}>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="cr-brand">Brand</label>
-                        <select id="cr-brand" style={inputStyle('brandModel')} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
-                          <option value="">Select brand</option>
-                          {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
-                          <option value={OTHER}>Other (type manually)</option>
-                        </select>
-                        {brandChoice === OTHER && (
-                          <input aria-label="Brand name" style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
-                            value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} required />
-                        )}
-                      </div>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="cr-model">Model</label>
-                        {brandChoice && brandChoice !== OTHER ? (
-                          <>
-                            <select id="cr-model" style={inputStyle('brandModel')} value={modelChoice} onChange={(e) => handleModelChoiceChange(e.target.value)} required>
-                              <option value="">Select model</option>
-                              {modelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
-                              <option value={OTHER}>Other (type manually)</option>
-                            </select>
-                            {modelChoice === OTHER && (
-                              <input aria-label="Model name" style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
-                                value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} required />
-                            )}
-                          </>
-                        ) : (
-                          <input id="cr-model" style={inputStyle('brandModel')} type="text" placeholder={brandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
-                            value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}
-                            disabled={!brandChoice} required />
-                        )}
-                      </div>
-                    </div>
-                    {fieldErrors.brandModel && <p style={{ ...styles.fieldError, marginTop: '-10px', marginBottom: '16px' }}>{fieldErrors.brandModel}</p>}
-
-                    <div className="responsive-row-3" style={styles.row3}>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="cr-year">Year</label>
-                        <input id="cr-year" style={inputStyle('year')} type="number" placeholder="e.g. 2022"
-                          value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} required />
-                        {fieldErrors.year && <p style={styles.fieldError}>{fieldErrors.year}</p>}
-                      </div>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="cr-color">Color</label>
-                        <input id="cr-color" style={styles.input} type="text" placeholder="e.g. White"
-                          value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
-                      </div>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="cr-mileage">Mileage (km)</label>
-                        <input id="cr-mileage" style={styles.input} type="number" placeholder="e.g. 35000"
-                          value={form.mileage} onChange={(e) => setForm({ ...form, mileage: e.target.value })} />
-                      </div>
-                    </div>
-
-                    <div style={styles.field}>
-                      <label style={styles.label} htmlFor="cr-plate">Plate Number</label>
-                      <input id="cr-plate" style={inputStyle('plateNumber')} type="text" placeholder="e.g. ABC 1234"
-                        value={form.plateNumber} onChange={(e) => setForm({ ...form, plateNumber: e.target.value })} required />
-                      {fieldErrors.plateNumber && <p style={styles.fieldError}>{fieldErrors.plateNumber}</p>}
-                    </div>
-
-                    <div style={styles.field}>
-                      <label style={styles.label} htmlFor="cr-reg-expiry">OR/CR Registration Expiry (optional)</label>
-                      <input id="cr-reg-expiry" style={styles.input} type="date"
-                        value={form.registrationExpiry} onChange={(e) => setForm({ ...form, registrationExpiry: e.target.value })} />
-                    </div>
-
-                    <div className="responsive-row-3" style={styles.row3}>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="cr-category">Category</label>
-                        {vehicleType === 'motorcycle' ? (
-                          <div id="cr-category" style={styles.categoryFixed}>Motorcycle</div>
-                        ) : (
-                          <select id="cr-category" style={inputStyle('category')} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
-                            <option value="">Select category</option>
-                            {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
-                          </select>
-                        )}
-                        {fieldErrors.category && <p style={styles.fieldError}>{fieldErrors.category}</p>}
-                      </div>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="cr-transmission">Transmission</label>
-                        <select id="cr-transmission" style={inputStyle('transmission')} value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })} required>
-                          <option value="">Select transmission</option>
-                          <option>Automatic</option><option>Manual</option><option>Semi-Automatic</option>
-                        </select>
-                        {fieldErrors.transmission && <p style={styles.fieldError}>{fieldErrors.transmission}</p>}
-                      </div>
-                      <div style={styles.field}>
-                        <label style={styles.label} htmlFor="cr-fuel">Fuel Type</label>
-                        <select id="cr-fuel" style={inputStyle('fuelType')} value={form.fuelType} onChange={(e) => setForm({ ...form, fuelType: e.target.value })} required>
-                          <option value="">Select fuel type</option>
-                          <option>Petrol</option><option>Diesel</option><option>Electric</option><option>Hybrid</option>
-                        </select>
-                        {fieldErrors.fuelType && <p style={styles.fieldError}>{fieldErrors.fuelType}</p>}
-                      </div>
-                    </div>
-
-                    <div style={styles.field}>
-                      <label style={styles.label} htmlFor="cr-seats">Seating Capacity</label>
-                      <input id="cr-seats" style={inputStyle('seats')} type="number" placeholder="e.g. 5"
-                        value={form.seats} onChange={(e) => setForm({ ...form, seats: e.target.value })} required />
-                      {fieldErrors.seats && <p style={styles.fieldError}>{fieldErrors.seats}</p>}
-                    </div>
-
-                    <div style={styles.field}>
-                      <label style={styles.label} htmlFor="cr-price">Suggested Daily Price (₱)</label>
-                      <input id="cr-price" style={inputStyle('suggestedPricePerDay')} type="number" placeholder="e.g. 120"
-                        value={form.suggestedPricePerDay} onChange={(e) => setForm({ ...form, suggestedPricePerDay: e.target.value })} required />
-                      {fieldErrors.suggestedPricePerDay
-                        ? <p style={styles.fieldError}>{fieldErrors.suggestedPricePerDay}</p>
-                        : <p style={styles.fieldHint}>This is a starting suggestion — our admin may adjust it before listing.</p>}
-                    </div>
-
-                    <div style={styles.field}>
-                      <label style={styles.label} id="cr-booking-types-label">Available Booking Types</label>
-                      <div role="group" aria-labelledby="cr-booking-types-label" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                        <label style={styles.checkboxLabel}>
-                          <input type="checkbox" checked={bookingTypes['self-drive']}
-                            onChange={(e) => setBookingTypes({ ...bookingTypes, 'self-drive': e.target.checked })} />
-                          Self Drive
-                        </label>
-                        <label style={styles.checkboxLabel}>
-                          <input type="checkbox" checked={bookingTypes['with-driver']}
-                            onChange={(e) => setBookingTypes({ ...bookingTypes, 'with-driver': e.target.checked })} />
-                          With Driver
-                        </label>
-                      </div>
-                      {fieldErrors.bookingTypes
-                        ? <p style={styles.fieldError}>{fieldErrors.bookingTypes}</p>
-                        : <p style={styles.fieldHint}>At least one must be checked. Motorcycles default to Self Drive only.</p>}
-                    </div>
-
-                    <div style={styles.field}>
-                      <label style={styles.label} htmlFor="cr-description">Description (optional)</label>
-                      <textarea id="cr-description" style={styles.textarea} placeholder="Anything else buyers should know about the vehicle"
-                        value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-                    </div>
-
-                    <div style={styles.stepActions}>
-                      <button type="button" style={styles.backBtn} onClick={() => goToStep(1)}>
-                        Back
-                      </button>
-                      <button type="button" style={styles.nextBtn} onClick={goToStep3Next}>
-                        Continue
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-
-                {step === 3 && (
-                  <motion.div key="step3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
-                    {/* The OR and CR used to be uploaded here. They are
-                        brought to the office instead, where the plate and
-                        chassis number can be checked against the vehicle
-                        actually parked outside — which a photograph never
-                        allowed. */}
-                    <p style={{ ...styles.uploadHint, marginBottom: '16px' }}>
-                      Bring the OR and CR with you when you come in. We check them against the vehicle and
-                      keep no copies.
-                    </p>
-
-                    <div style={styles.field}>
-                      <label style={styles.label} htmlFor="cr-vehicle-photos">Vehicle Photos (multiple angles recommended)</label>
-                      <div style={styles.upload}>
-                        <div style={styles.uploadPlaceholder}>
-                          <span style={{ fontSize: '26px' }}>📷</span>
-                          <p style={styles.uploadHint}>Click to add photos — you can select more than one</p>
-                        </div>
-                        <input id="cr-vehicle-photos" type="file" accept="image/*" multiple style={styles.fileInput} onChange={handleVehiclePhotosChange} />
-                      </div>
-                      {fieldErrors.vehiclePhotos && <p style={styles.fieldError}>{fieldErrors.vehiclePhotos}</p>}
-                      {vehiclePreviews.length > 0 && (
-                        <div style={styles.photoGrid}>
-                          {vehiclePreviews.map((src, i) => (
-                            <div key={i} style={styles.photoThumbWrap}>
-                              <img src={src} alt={`Vehicle ${i + 1}`} style={styles.photoThumb} />
-                              <button type="button" style={styles.removePhotoBtn} onClick={() => removeVehiclePhoto(i)} aria-label={`Remove photo ${i + 1}`}>×</button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={styles.stepActions}>
-                      <button type="button" style={styles.backBtn} onClick={() => goToStep(2)}>
-                        Back
-                      </button>
                       <button style={styles.nextBtn} type="submit" disabled={loading}>
-                        {loading ? 'Submitting application...' : 'Submit Application'}
+                        {loading ? 'Creating your account...' : 'Create account'}
                       </button>
                     </div>
                   </motion.div>
                 )}
+
               </AnimatePresence>
             </div>
           </div>
