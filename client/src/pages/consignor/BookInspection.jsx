@@ -125,6 +125,11 @@ const BookInspection = ({ stage, onBooked }) => {
       color: active ? goldInk(isDark) : (isDark ? '#e4e6eb' : '#1a1a1a'),
     }),
     hint: { fontSize: '12px', color: isDark ? '#8a8d91' : '#9ca3af', margin: '0 0 12px', lineHeight: 1.6 },
+    backToList: {
+      display: 'inline-block', marginTop: '6px', padding: 0, border: 'none', background: 'none',
+      font: 'inherit', fontSize: '11.5px', cursor: 'pointer', textDecoration: 'underline',
+      color: isDark ? '#8a8d91' : '#6b7280',
+    },
     book: {
       padding: '11px 22px', borderRadius: '10px', border: 'none', cursor: saving ? 'default' : 'pointer',
       background: gold, color: ON_GOLD, fontSize: '14px', fontWeight: '700', opacity: saving ? 0.6 : 1,
@@ -267,37 +272,48 @@ const BookInspection = ({ stage, onBooked }) => {
           </div>
 
           <div style={s.row}>
+            {/* Choosing "Other" swaps the list OUT for a box, rather than
+                leaving both on screen. Two controls under one label, one
+                saying "select" and the other "enter", reads as a mistake —
+                and the field underneath the field made the row ragged. */}
             <div>
               <label style={s.label} htmlFor="ap-brand">Make</label>
-              <select id="ap-brand" style={s.input} value={brandChoice} onChange={(e) => changeBrand(e.target.value)}>
-                <option value="">Select make</option>
-                {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
-                <option value={OTHER}>Other (type it)</option>
-              </select>
-              {brandChoice === OTHER && (
-                <input aria-label="Make" style={{ ...s.input, marginTop: '8px' }} placeholder="Enter the make"
-                  value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
+              {brandChoice === OTHER ? (
+                <>
+                  <input id="ap-brand" style={s.input} autoFocus placeholder="Type the make"
+                    value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
+                  <button type="button" style={s.backToList} onClick={() => changeBrand('')}>
+                    Choose from the list instead
+                  </button>
+                </>
+              ) : (
+                <select id="ap-brand" style={s.input} value={brandChoice} onChange={(e) => changeBrand(e.target.value)}>
+                  <option value="">Choose a make…</option>
+                  {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
+                  <option value={OTHER}>Not listed — type it</option>
+                </select>
               )}
             </div>
             <div>
               <label style={s.label} htmlFor="ap-model">Model</label>
-              {brandChoice && brandChoice !== OTHER ? (
+              {modelChoice === OTHER || brandChoice === OTHER ? (
                 <>
-                  <select id="ap-model" style={s.input} value={modelChoice} onChange={(e) => changeModel(e.target.value)}>
-                    <option value="">Select model</option>
-                    {modelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
-                    <option value={OTHER}>Other (type it)</option>
-                  </select>
+                  <input id="ap-model" style={s.input} placeholder="Type the model"
+                    value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
                   {modelChoice === OTHER && (
-                    <input aria-label="Model" style={{ ...s.input, marginTop: '8px' }} placeholder="Enter the model"
-                      value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
+                    <button type="button" style={s.backToList} onClick={() => changeModel('')}>
+                      Choose from the list instead
+                    </button>
                   )}
                 </>
+              ) : brandChoice ? (
+                <select id="ap-model" style={s.input} value={modelChoice} onChange={(e) => changeModel(e.target.value)}>
+                  <option value="">Choose a model…</option>
+                  {modelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
+                  <option value={OTHER}>Not listed — type it</option>
+                </select>
               ) : (
-                <input id="ap-model" style={s.input}
-                  placeholder={brandChoice === OTHER ? 'Enter the model' : 'Pick a make first'}
-                  value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}
-                  disabled={!brandChoice} />
+                <input id="ap-model" style={s.input} placeholder="Pick a make first" value="" disabled readOnly />
               )}
             </div>
             <div>
