@@ -103,6 +103,14 @@ const bookingSchema = new mongoose.Schema({
     // way to dodge the fine rather than the honest way to put it right.
     carriedDays: { type: Number, default: 0 },
     carriedAmount: { type: Number, default: 0 },
+    // Letting this one off, recorded rather than applied by deletion: the
+    // gross figure above stays as it was, and what is actually owed is the
+    // difference. See utils/penalties.js.
+    waivedAt: { type: Date, default: null },
+    waivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    waivedReason: { type: String, default: '' },
+    waivedNote: { type: String, default: '' },
+    waivedAmount: { type: Number, default: 0 },
   },
   // The gauge when the keys went over and when they came back, in eighths
   // of a tank — see utils/fuel.js. Null means nobody read it, which is not
@@ -114,6 +122,14 @@ const bookingSchema = new mongoose.Schema({
     atReturn: { type: Number, default: null },
     charge: { type: Number, default: 0 },
     collectedAt: { type: Date, default: null },
+    // Letting this one off, recorded rather than applied by deletion: the
+    // gross figure above stays as it was, and what is actually owed is the
+    // difference. See utils/penalties.js.
+    waivedAt: { type: Date, default: null },
+    waivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    waivedReason: { type: String, default: '' },
+    waivedNote: { type: String, default: '' },
+    waivedAmount: { type: Number, default: 0 },
   },
   // What the vehicle looked like at each end. Section 4 makes the renter
   // liable for damage during the rental, which was unarguable in principle
@@ -126,6 +142,14 @@ const bookingSchema = new mongoose.Schema({
     atReturn: { photos: [{ type: String }], note: { type: String, default: '' } },
     damageCharge: { type: Number, default: 0 },
     damageCollectedAt: { type: Date, default: null },
+    // Letting this one off, recorded rather than applied by deletion: the
+    // gross figure above stays as it was, and what is actually owed is the
+    // difference. See utils/penalties.js.
+    waivedAt: { type: Date, default: null },
+    waivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    waivedReason: { type: String, default: '' },
+    waivedNote: { type: String, default: '' },
+    waivedAmount: { type: Number, default: 0 },
   },
   // Highest escalation already sent to admin about this booking sitting
   // unconfirmed — see utils/pendingReminders.js. Stored so each tier fires
