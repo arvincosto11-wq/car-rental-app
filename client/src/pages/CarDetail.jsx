@@ -1301,8 +1301,19 @@ const CarDetail = () => {
                     <span style={s.footPush}>
                       {/* A place we don't serve stops the booking here, where
                           the map is still on screen to change it — not at
-                          the payment screen, and certainly not after. */}
-                      <button style={s.nextBtn} onClick={goToConfirmNext} disabled={deliveryBlocked}>Continue →</button>
+                          the payment screen, and certainly not after. It has
+                          to LOOK stopped too: a full-strength gold button
+                          that silently does nothing reads as a broken site
+                          rather than as an answer. */}
+                      <button
+                        style={deliveryBlocked
+                          ? { ...s.nextBtn, opacity: 0.45, cursor: 'not-allowed', boxShadow: 'none' }
+                          : s.nextBtn}
+                        onClick={goToConfirmNext}
+                        disabled={deliveryBlocked}
+                      >
+                        Continue →
+                      </button>
                     </span>
                   </>
                 )}
