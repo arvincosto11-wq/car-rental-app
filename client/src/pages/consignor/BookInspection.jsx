@@ -277,10 +277,10 @@ const BookInspection = ({ stage, onBooked }) => {
                 saying "select" and the other "enter", reads as a mistake —
                 and the field underneath the field made the row ragged. */}
             <div>
-              <label style={s.label} htmlFor="ap-brand">Make</label>
+              <label style={s.label} htmlFor="ap-brand">Brand</label>
               {brandChoice === OTHER ? (
                 <>
-                  <input id="ap-brand" style={s.input} autoFocus placeholder="Type the make"
+                  <input id="ap-brand" style={s.input} autoFocus placeholder="Type the brand"
                     value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
                   <button type="button" style={s.backToList} onClick={() => changeBrand('')}>
                     Choose from the list instead
@@ -288,7 +288,7 @@ const BookInspection = ({ stage, onBooked }) => {
                 </>
               ) : (
                 <select id="ap-brand" style={s.input} value={brandChoice} onChange={(e) => changeBrand(e.target.value)}>
-                  <option value="">Choose a make…</option>
+                  <option value="">Choose a brand…</option>
                   {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
                   <option value={OTHER}>Not listed — type it</option>
                 </select>
@@ -313,7 +313,7 @@ const BookInspection = ({ stage, onBooked }) => {
                   <option value={OTHER}>Not listed — type it</option>
                 </select>
               ) : (
-                <input id="ap-model" style={s.input} placeholder="Pick a make first" value="" disabled readOnly />
+                <input id="ap-model" style={s.input} placeholder="Pick a brand first" value="" disabled readOnly />
               )}
             </div>
             <div>
