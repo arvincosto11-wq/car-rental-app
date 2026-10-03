@@ -85,7 +85,10 @@ const PlacePicker = ({ value, onChange, settings, isDark, label, describedBy }) 
     wrap: { marginTop: '8px' },
     searchWrap: { position: 'relative', marginTop: '10px' },
     results: {
-      position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 500,
+      // Leaflet puts its own zoom buttons at z-index 1000 inside the map's
+      // corner panes, and the results list sits directly over the map. At
+      // anything lower the + and − punch straight through the dropdown.
+      position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 1200,
       background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '8px', overflow: 'hidden', boxShadow: '0 6px 20px rgba(0,0,0,0.18)',
     },
