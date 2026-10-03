@@ -40,56 +40,21 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [carsRes, bookingsRes] = await Promise.all([
-        api.get('/cars'),
-        api.get('/bookings/all'),
-      ]);
-      const bookings = bookingsRes.data;
-      const confirmed = bookings.filter((b) => b.status === 'confirmed');
-      const pending = bookings.filter((b) => b.status === 'pending');
-
-      const now = new Date();
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - 7);
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-      const sumSince = (cutoff) => confirmed
-        .filter((b) => new Date(b.createdAt) >= cutoff)
-        .reduce((sum, b) => sum + b.totalPrice, 0);
-
-      const months = Array.from({ length: 6 }).map((_, i) => {
-        const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-        return { year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString('en-US', { month: 'short' }) };
-      });
-      const trend = months.map(({ year, month, label }) => ({
-        label,
-        value: confirmed
-          .filter((b) => {
-            const bd = new Date(b.createdAt);
-            return bd.getFullYear() === year && bd.getMonth() === month;
-          })
-          .reduce((sum, b) => sum + b.totalPrice, 0),
-      }));
-
-      const rated = carsRes.data
-        .filter((c) => c.ratingCount > 0)
-        .sort((a, b) => b.avgRating - a.avgRating || b.ratingCount - a.ratingCount)
-        .slice(0, 5);
-      setStats({ totalCars: carsRes.data.length, totalBookings: bookings.length, pending: pending.length, confirmed: confirmed.length });
-      setRecentBookings(bookings.slice(0, 5));
-      setTopRatedCars(rated);
-      setRevenue({
-        week: sumSince(startOfWeek),
-        month: sumSince(startOfMonth),
-        all: confirmed.reduce((sum, b) => sum + b.totalPrice, 0),
-      });
-      setMonthlyTrend(trend);
+      // One small request instead of every booking in the system. The
+      // counting, the six-month trend and the top-rated list are all worked
+      // out server-side now — see routes/adminStats.js.
+      const { data } = await api.get('/admin/dashboard');
+      setStats(data.stats);
+      setRecentBookings(data.recentBookings);
+      setTopRatedCars(data.topRatedCars);
+      setRevenue(data.revenue);
+      setMonthlyTrend(data.monthlyTrend);
       // Spelled out under the figure, so nobody has to guess whether "this
       // month" means the last 30 days or the calendar month.
       setPeriodDates({
-        weekStart: startOfWeek.toLocaleDateString('en-US', MONTH_DAY),
-        today: now.toLocaleDateString('en-US', MONTH_DAY_YEAR),
-        monthStart: startOfMonth.toLocaleDateString('en-US', MONTH_DAY_YEAR),
+        weekStart: new Date(data.periods.weekStart).toLocaleDateString('en-US', MONTH_DAY),
+        today: new Date(data.periods.today).toLocaleDateString('en-US', MONTH_DAY_YEAR),
+        monthStart: new Date(data.periods.monthStart).toLocaleDateString('en-US', MONTH_DAY_YEAR),
       });
     } catch (err) {
       console.error(err);

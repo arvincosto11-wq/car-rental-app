@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 // Rounded-top, square-bottom bar path (never a plain <rect rx>, which rounds
 // every corner including the baseline).
@@ -54,7 +54,30 @@ const RevenueTrendChart = ({
   const format = formatValue || ((v) => `₱${v.toLocaleString()}`);
   const compact = formatCompact || formatShort;
 
-  const width = detailed ? 740 : 600;
+  // The chart used to be drawn at a fixed width and then squashed to fit,
+  // which shrinks the lettering along with everything else — at a 1024px
+  // window the 10px axis labels came out around 7px and stopped being
+  // readable. Measuring the space instead means one SVG unit is one screen
+  // pixel, so the text is the size it says it is at every width, and only
+  // the bars get narrower.
+  const wrapRef = useRef(null);
+  const [measured, setMeasured] = useState(0);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(([entry]) => {
+      setMeasured(Math.round(entry.contentRect.width));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const natural = detailed ? 740 : 600;
+  // Below this the bars stop being bars. Narrower than this the chart goes
+  // back to scaling, which is ugly but still legible — unreadable text in a
+  // correctly sized box would be worse.
+  const MIN_WIDTH = 320;
+  const width = measured >= MIN_WIDTH ? measured : natural;
   const height = detailed ? 236 : 200;
   const padLeft = detailed ? 52 : 46;
   const padRight = 8;
@@ -94,7 +117,8 @@ const RevenueTrendChart = ({
   const showAverage = detailed && !isEmpty;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }} role="img" aria-label={title || 'Monthly revenue for the last 6 months'}>
+    <div ref={wrapRef} style={{ width: '100%' }}>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }} role="img" aria-label={title || 'Monthly revenue for the last 6 months'}>
       {gridLines.map((g, i) => {
         const y = padTop + chartH - (scaleMax > 0 ? (g / scaleMax) * chartH : 0);
         return (
@@ -207,7 +231,8 @@ const RevenueTrendChart = ({
           </g>
         );
       })}
-    </svg>
+      </svg>
+    </div>
   );
 };
 

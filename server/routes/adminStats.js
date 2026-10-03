@@ -106,4 +106,94 @@ router.get('/expiring-documents', protect, adminOnly, async (req, res) => {
   }
 });
 
+
+// Everything the admin dashboard draws, worked out here instead of shipped.
+//
+// It used to ask for every booking in the system — 164 of them, with their
+// vehicles attached, about 400 KB — and then count them in the browser to
+// show four numbers, a six-month chart, five rows and five vehicles. The
+// counting is the cheap part; the carrying was the expensive one.
+//
+// Dates are measured in Philippine time rather than the browser's, so the
+// figure does not shift depending on which machine is looking at it. The
+// boundaries come back with the numbers so the captions can say exactly
+// what period they describe.
+router.get('/dashboard', protect, adminOnly, async (req, res) => {
+  try {
+    const now = new Date();
+    const phNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+    // Month boundaries built from PH wall-clock parts, then shifted back to
+    // real instants to compare against stored dates.
+    const phMonthStart = (back) => new Date(Date.UTC(
+      phNow.getUTCFullYear(),
+      phNow.getUTCMonth() - back,
+      1,
+    ) - 8 * 60 * 60 * 1000);
+    const startOfMonth = phMonthStart(0);
+    const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Only the two fields the sums need. Confirmed-only, which is what this
+    // dashboard has always counted as revenue.
+    const [cars, confirmedMoney, statusCounts, totalBookings, recent] = await Promise.all([
+      Car.find({ archived: { $ne: true } })
+        .select('brand model image avgRating ratingCount')
+        .lean(),
+      Booking.find({ status: 'confirmed' }).select('createdAt totalPrice').lean(),
+      Booking.aggregate([{ $group: { _id: '$status', n: { $sum: 1 } } }]),
+      Booking.countDocuments(),
+      Booking.find()
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select('status totalPrice createdAt startDate car')
+        .populate('car', 'brand model image')
+        .lean(),
+    ]);
+
+    const byStatus = Object.fromEntries(statusCounts.map((s) => [s._id, s.n]));
+    const sumSince = (cutoff) => confirmedMoney
+      .filter((b) => new Date(b.createdAt) >= cutoff)
+      .reduce((sum, b) => sum + (b.totalPrice || 0), 0);
+
+    // Six buckets ending with the month we are in, labelled the way the
+    // chart prints them.
+    const trend = Array.from({ length: 6 }).map((unused, i) => {
+      const start = phMonthStart(5 - i);
+      const end = phMonthStart(4 - i);
+      return {
+        label: new Date(start.getTime() + 8 * 60 * 60 * 1000)
+          .toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }),
+        value: confirmedMoney
+          .filter((b) => {
+            const at = new Date(b.createdAt);
+            return at >= start && at < end;
+          })
+          .reduce((sum, b) => sum + (b.totalPrice || 0), 0),
+      };
+    });
+
+    res.json({
+      stats: {
+        totalCars: cars.length,
+        totalBookings,
+        pending: byStatus.pending || 0,
+        confirmed: byStatus.confirmed || 0,
+      },
+      revenue: {
+        week: sumSince(startOfWeek),
+        month: sumSince(startOfMonth),
+        all: confirmedMoney.reduce((sum, b) => sum + (b.totalPrice || 0), 0),
+      },
+      monthlyTrend: trend,
+      recentBookings: recent,
+      topRatedCars: cars
+        .filter((c) => c.ratingCount > 0)
+        .sort((a, b) => b.avgRating - a.avgRating || b.ratingCount - a.ratingCount)
+        .slice(0, 5),
+      periods: { weekStart: startOfWeek, monthStart: startOfMonth, today: now },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 export default router;

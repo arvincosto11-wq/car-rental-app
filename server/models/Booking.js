@@ -304,4 +304,19 @@ const bookingSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+// Without these, every question about a booking reads the whole collection.
+// Fine at a few hundred; it degrades in a straight line forever, and the
+// queries below are the ones asked most often.
+
+// "Is this vehicle free on these dates?" — asked on every booking attempt,
+// every vehicle page, and inside the availability and clash checks.
+bookingSchema.index({ car: 1, status: 1 });
+
+// A client opening My Bookings: their own, newest first. The sort is part
+// of the index so the database does not have to order them afterwards.
+bookingSchema.index({ user: 1, createdAt: -1 });
+
+// The sweep that completes trips whose return date has passed.
+bookingSchema.index({ status: 1, endDate: 1 });
+
 export default mongoose.model('Booking', bookingSchema);
