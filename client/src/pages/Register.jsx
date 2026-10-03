@@ -54,7 +54,7 @@ const REGISTER_STEPS = ['Account', 'Contact & ID', 'Emergency Contact', 'Verify 
 // crossfade — keyed by step number so it matches REGISTER_STEPS above.
 const REGISTER_TAGLINES = {
   1: 'Sign up to get started — it only takes a minute.',
-  2: 'Add your contact details and ID for a smoother pickup.',
+  2: 'Add your contact details for a smoother pickup.',
   3: 'One quick emergency contact and you’re almost done.',
   4: 'Just confirm your email and your account is ready.',
 };

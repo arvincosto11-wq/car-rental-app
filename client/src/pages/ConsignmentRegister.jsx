@@ -39,9 +39,7 @@ const maxBirthDate = () => {
 // Shown on the branding panel, swapped per step via AuthBrandPanel's own
 // crossfade — keyed by step number so it matches CONSIGN_STEPS above.
 const CONSIGN_TAGLINES = {
-  1: 'Tell us about you and upload your ID for verification.',
-  2: "Add your vehicle's details and your suggested price.",
-  3: 'Upload your documents and vehicle photos to finish.',
+  1: 'Make an account, then book a time to bring your vehicle in.',
 };
 
 const ConsignmentRegister = () => {
