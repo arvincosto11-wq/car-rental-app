@@ -27,6 +27,7 @@ const BookInspection = ({ stage, onBooked }) => {
   const { isDark } = useTheme();
   const { toast, confirm } = useUIFeedback();
   const [days, setDays] = useState([]);
+  const [history, setHistory] = useState([]);
   const [settings, setSettings] = useState(null);
   const [slotsLoaded, setSlotsLoaded] = useState(false);
   const [pickedDay, setPickedDay] = useState('');
@@ -55,6 +56,18 @@ const BookInspection = ({ stage, onBooked }) => {
       .finally(() => { if (live) setSlotsLoaded(true); });
     return () => { live = false; };
   }, [booked]);
+
+  // Every visit they have ever booked, whatever became of it. Somebody who
+  // has forgotten when they are due needs to be able to look it up, and
+  // somebody turned away needs to see what was said — neither of those is
+  // served by a page that only knows about the appointment still open.
+  useEffect(() => {
+    let live = true;
+    api.get('/appointments/mine')
+      .then((res) => { if (live) setHistory(res.data); })
+      .catch(() => { if (live) setHistory([]); });
+    return () => { live = false; };
+  }, [stage]);
 
   const loading = !booked && !slotsLoaded;
 
@@ -141,6 +154,23 @@ const BookInspection = ({ stage, onBooked }) => {
       color: isDark ? '#86efac' : '#14532d',
     },
     empty: { padding: '20px', textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '13.5px' },
+    visit: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+      padding: '11px 0', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`,
+    },
+    visitWhen: { fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    visitWhat: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '2px' },
+    visitTag: (status) => {
+      const map = {
+        passed: ['#16a34a', '#dcfce7', '#15803d'],
+        failed: ['#dc2626', '#fee2e2', '#991b1b'],
+        booked: ['#2563eb', '#dbeafe', '#1e40af'],
+      }[status] || ['#9ca3af', '#f3f4f6', '#6b7280'];
+      return {
+        fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '20px', whiteSpace: 'nowrap',
+        background: isDark ? `${map[0]}22` : map[1], color: isDark ? map[0] : map[2],
+      };
+    },
   };
 
   const times = days.find((d) => d.day === pickedDay)?.times || [];
@@ -175,6 +205,40 @@ const BookInspection = ({ stage, onBooked }) => {
       toast.error(err.response?.data?.message || 'Could not cancel that.');
     }
   };
+
+  const STATUS_WORD = {
+    booked: 'Booked',
+    passed: 'Approved',
+    failed: 'Not approved',
+    missed: 'Missed',
+    cancelled: 'Cancelled',
+  };
+
+  const pastVisits = (
+    history.length > 1 || (history.length === 1 && history[0].status !== 'booked')
+  ) ? (
+    <div style={s.card}>
+      <h2 style={s.h2}>Your visits</h2>
+      <p style={s.hint}>Everything you have booked with us, and how each one went.</p>
+      {history.map((h) => (
+        <div key={h._id} style={s.visit}>
+          <div>
+            <div style={s.visitWhen}>
+              {new Date(h.at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              {' · '}
+              {new Date(h.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })}
+            </div>
+            <div style={s.visitWhat}>
+              {h.vehicle?.brand} {h.vehicle?.model}
+              {h.vehicle?.year ? ` · ${h.vehicle.year}` : ''}
+              {h.outcomeNote ? ` — ${h.outcomeNote}` : ''}
+            </div>
+          </div>
+          <span style={s.visitTag(h.status)}>{STATUS_WORD[h.status] || h.status}</span>
+        </div>
+      ))}
+    </div>
+  ) : null;
 
   const whatToBring = (
     <div style={s.card}>
@@ -215,6 +279,7 @@ const BookInspection = ({ stage, onBooked }) => {
             <button type="button" style={s.cancel} onClick={cancelBooking}>Cancel this appointment</button>
           </div>
           {whatToBring}
+          {pastVisits}
         </div>
       </div>
     );
@@ -266,6 +331,7 @@ const BookInspection = ({ stage, onBooked }) => {
         </div>
 
         {whatToBring}
+        {pastVisits}
 
         <div style={s.card}>
           <h2 style={s.h2}>What are you bringing?</h2>

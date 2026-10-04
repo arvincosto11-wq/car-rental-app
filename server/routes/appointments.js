@@ -84,6 +84,20 @@ router.post('/', protect, consignorOnly, async (req, res) => {
       },
     });
 
+    // The person who booked it hears about it too. Admin was told and the
+    // owner was not, which left the only written record of their own
+    // appointment on a page they had to remember to go back to.
+    const when = `${appointment.at.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })} at ${slotLabel(appointment.at)}`;
+    await notifyUser(
+      req.user.id,
+      'Inspection booked',
+      `Your ${appointment.vehicle.brand} ${appointment.vehicle.model} is booked in for ${when} at our place in `
+      + 'Salugan, Camalig. Bring the vehicle, its OR and CR (the originals), and one valid ID. '
+      + 'If you need to change it, you can cancel from your dashboard and book another time.',
+      '/consignor',
+      { email: true },
+    );
+
     const who = await User.findById(req.user.id).select('name').lean();
     await notifyAdmins(
       'New inspection appointment',
@@ -114,9 +128,26 @@ router.delete('/:id', protect, async (req, res) => {
     if (appointment.status !== 'booked') {
       return res.status(400).json({ message: 'That appointment is already closed.' });
     }
+    const cancelledByAdmin = String(appointment.owner) !== req.user.id;
     appointment.status = 'cancelled';
     appointment.closedAt = new Date();
     await appointment.save();
+
+    // Only when somebody else did it. Telling people what they have just
+    // done themselves is noise; finding out your slot is gone by turning up
+    // to an empty office is not.
+    if (cancelledByAdmin) {
+      const when = `${appointment.at.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })} at ${slotLabel(appointment.at)}`;
+      await notifyUser(
+        appointment.owner,
+        'Inspection cancelled',
+        `Your inspection on ${when} has been cancelled by our team. Please book another time that suits you, `
+        + 'or call us on 0950-651-0479.',
+        '/consignor',
+        { email: true },
+      );
+    }
+
     res.json(appointment);
   } catch (err) {
     res.status(500).json({ message: err.message });
