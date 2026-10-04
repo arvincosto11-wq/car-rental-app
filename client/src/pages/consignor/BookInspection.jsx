@@ -134,6 +134,12 @@ const BookInspection = ({ stage, onBooked }) => {
       background: isDark ? '#3a2f10' : '#fff7e6', border: `1px solid ${isDark ? '#5a4a1a' : '#f3d98b'}`,
       color: isDark ? '#e8c463' : '#8a6d1a',
     },
+    approved: {
+      margin: '0 0 18px', padding: '14px 16px', borderRadius: '10px', fontSize: '13.5px', lineHeight: 1.7,
+      background: isDark ? 'rgba(22,163,74,0.14)' : '#dcfce7',
+      border: `1px solid ${isDark ? 'rgba(22,163,74,0.4)' : '#86efac'}`,
+      color: isDark ? '#86efac' : '#14532d',
+    },
     empty: { padding: '20px', textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '13.5px' },
   };
 
@@ -233,6 +239,20 @@ const BookInspection = ({ stage, onBooked }) => {
         )}
         {last && last.status === 'missed' && (
           <p style={s.outcome}>You missed your last appointment. Book another whenever you are ready.</p>
+        )}
+        {/* The gap this fills: a vehicle that passed its check leaves no
+            booked appointment behind, so this page fell straight back to
+            the booking form and said nothing. Somebody who had just been
+            approved was shown no sign of it. */}
+        {last && last.status === 'passed' && (
+          <p style={s.approved}>
+            <strong>
+              Your {last.vehicle?.brand} {last.vehicle?.model} passed its check.
+            </strong>
+            <br />
+            We&apos;re setting its listing up now — it will appear here as soon as it is live. Nothing more
+            for you to do. Bringing another vehicle? Book a time for it below.
+          </p>
         )}
 
         <div style={s.card}>
