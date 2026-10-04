@@ -3,6 +3,7 @@ import AdminLayout from '../../components/AdminLayout';
 import Skeleton from '../../components/Skeleton';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
+import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import usePageTitle from '../../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
 import { WEEKDAYS } from '../../utils/appointments';
@@ -21,6 +22,7 @@ const Appointments = () => {
   usePageTitle('Appointments');
   const { isDark } = useTheme();
   const { toast, confirm } = useUIFeedback();
+  const { refetch: refetchPendingCounts } = useAdminPendingCounts();
   const [rows, setRows] = useState([]);
   const [hours, setHours] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +73,8 @@ const Appointments = () => {
       setNote('');
       toast.success(outcome === 'passed' ? 'Approved. Add the vehicle in Manage Cars.' : 'Recorded. The owner has been told.');
       load();
+      // The sidebar counts open appointments, and this one just closed.
+      refetchPendingCounts();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not record that.');
     }

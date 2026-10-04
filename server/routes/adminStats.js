@@ -3,6 +3,7 @@ import Booking from '../models/Booking.js';
 import User from '../models/User.js';
 import Consignment from '../models/Consignment.js';
 import Car from '../models/Car.js';
+import Appointment from '../models/Appointment.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { expireAdjustOffers } from '../utils/adjustOffer.js';
@@ -28,7 +29,7 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
     // one thing that runs reliably.
     await expireAdjustOffers();
     const expiryCutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-    const [pendingBookings, refundRequests, rescheduleRequests, pendingConsignments, pendingAvailability, pendingBlockedDates, expiringLicenses, expiringRegistrations] = await Promise.all([
+    const [pendingBookings, refundRequests, rescheduleRequests, pendingConsignments, openAppointments, pendingAvailability, pendingBlockedDates, expiringLicenses, expiringRegistrations] = await Promise.all([
       Booking.countDocuments({ status: 'pending', payment: 'paid', 'adjustOffer.status': { $ne: 'open' } }),
       Booking.countDocuments({ refundStatus: 'requested' }),
       Booking.countDocuments({ 'rescheduleRequest.status': 'pending' }),
@@ -36,6 +37,10 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
       // review any more, so nothing arrives there needing a decision. See
       // models/User.js.
       Consignment.countDocuments({ status: 'pending' }),
+      // Every booked appointment is an open loop: somebody is coming, and
+      // afterwards it still has to be marked as seen, failed or missed. It
+      // stops counting the moment it is closed, whichever way.
+      Appointment.countDocuments({ status: 'booked' }),
       Car.countDocuments({ 'availabilityRequest.status': 'pending' }),
       // A car can have several pending blocked-date ranges at once (unlike
       // the single-slot availabilityRequest), so this counts individual
@@ -51,6 +56,7 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
     res.json({
       '/admin/manage-bookings': pendingBookings + refundRequests + rescheduleRequests,
       '/admin/manage-consignments': pendingConsignments,
+      '/admin/appointments': openAppointments,
       '/admin/availability-requests': pendingAvailability + (pendingBlockedDates[0]?.count || 0),
       '/admin/expiring-documents': expiringLicenses + expiringRegistrations,
     });
