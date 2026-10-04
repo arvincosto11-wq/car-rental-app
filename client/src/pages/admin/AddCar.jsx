@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import api from '../../api';
@@ -8,15 +9,30 @@ import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../../theme
 import usePageTitle from '../../hooks/usePageTitle';
 import ColorPicker from '../../components/ColorPicker';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
+import { INSPECTION_CHECKS } from '../../utils/appointments';
 
+// Adding a vehicle, either one of ours or one somebody has just brought in.
+//
+// The second case arrives here with ?appointment=<id> on the URL, from the
+// Appointments page. That is not a different form: it is this form with the
+// owner attached, the checklist on top, and the OR/CR expiry filled in from
+// the papers on the counter. Saving it IS approving the vehicle — there is
+// no approve button anywhere, because one existed and it could tell an owner
+// their listing was being set up when no listing existed.
 const AddCar = () => {
   usePageTitle('Add Vehicle');
   const { isDark } = useTheme();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const appointmentId = params.get('appointment');
+  const [appointment, setAppointment] = useState(null);
+  const [checked, setChecked] = useState([]);
   const [vehicleType, setVehicleType] = useState('car'); // 'car' | 'motorcycle'
   const [form, setForm] = useState({
     brand: '', model: '', year: '', pricePerDay: '',
     category: '', transmission: '', fuelType: '',
     seats: '', description: '', plateNumber: '', color: '', mileage: '',
+    registrationExpiry: '',
   });
   const [bookingTypes, setBookingTypes] = useState({ 'self-drive': true, 'with-driver': true });
   const [photos, setPhotos] = useState([]);
@@ -24,6 +40,31 @@ const AddCar = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // What they said they were bringing, carried over so nobody retypes it
+  // with the owner stood there. Every one of these stays editable: the note
+  // was typed from memory, the form is being filled in with the vehicle in
+  // view, and the vehicle wins.
+  useEffect(() => {
+    if (!appointmentId) return;
+    api.get(`/appointments/${appointmentId}`)
+      .then(({ data }) => {
+        setAppointment(data);
+        if (data.vehicle?.brand) {
+          setForm((f) => ({
+            ...f,
+            brand: data.vehicle.brand || '',
+            model: data.vehicle.model || '',
+            year: data.vehicle.year ? String(data.vehicle.year) : '',
+          }));
+        }
+      })
+      .catch(() => setError('Could not load that appointment. You can still add the vehicle from Manage Cars.'));
+  }, [appointmentId]);
+
+  const toggleCheck = (key) => setChecked(
+    (prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]),
+  );
 
   const brandOptions = vehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
   // Matched case-insensitively, so a brand typed in lower case still offers
@@ -115,6 +156,19 @@ const AddCar = () => {
       setError('Please enter the plate number.');
       return;
     }
+    // Only for a vehicle somebody has brought in. A ticked box cannot make
+    // anybody look at a chassis number — but reaching the end of this form
+    // without having been asked is a gap worth closing.
+    if (appointmentId) {
+      if (checked.length < INSPECTION_CHECKS.length) {
+        setError('Please go through the whole inspection checklist first.');
+        return;
+      }
+      if (!form.registrationExpiry) {
+        setError("Please enter the OR/CR expiry date from the vehicle's papers.");
+        return;
+      }
+    }
 
     setLoading(true);
     try {
@@ -129,9 +183,19 @@ const AddCar = () => {
         photos: uploadedPhotos,
         availableBookingTypes: selectedBookingTypes,
         status,
+        // Present only for a consigned vehicle, and what tells the server to
+        // close the appointment, file the consignment and tell the owner.
+        ...(appointmentId ? { appointmentId, inspectionChecks: checked } : {}),
       });
+      // A consigned vehicle is now somebody else's property on our lot, so
+      // the next thing to look at is the consignment, not another blank form.
+      if (appointmentId) {
+        setSuccess('Listed, and the owner has been told. Opening Manage Consignments…');
+        setTimeout(() => navigate('/admin/manage-consignments'), 1200);
+        return;
+      }
       setSuccess(status === 'draft' ? 'Saved as draft — not visible to customers yet. Find it under Manage Cars → Drafts.' : 'Vehicle published successfully!');
-      setForm({ brand: '', model: '', year: '', pricePerDay: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '', transmission: '', fuelType: '', seats: '', description: '', plateNumber: '', color: '', mileage: '' });
+      setForm({ brand: '', model: '', year: '', pricePerDay: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '', transmission: '', fuelType: '', seats: '', description: '', plateNumber: '', color: '', mileage: '', registrationExpiry: '' });
       setBookingTypes(
         vehicleType === 'motorcycle'
           ? { 'self-drive': true, 'with-driver': false }
@@ -185,16 +249,55 @@ const AddCar = () => {
       color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#b0b3b8' : '#374151'),
       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
     }),
+    checkRow: {
+      display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '13px', cursor: 'pointer',
+      padding: '9px 0', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`,
+      color: isDark ? '#e4e6eb' : '#374151', lineHeight: 1.45,
+    },
+    who: {
+      fontSize: '13px', color: isDark ? '#b0b3b8' : '#4b5563', marginBottom: '14px', lineHeight: 1.5,
+    },
     categoryFixed: { padding: '9px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', background: isDark ? '#18191a' : '#f9fafb', color: isDark ? '#b0b3b8' : '#6b7280' },
   };
 
   return (
     <AdminLayout activePage="Add Vehicle">
-      <h1 style={s.title}>Add New Vehicle</h1>
-      <p style={s.subtitle}>Fill in details to list a new vehicle for booking.</p>
+      <h1 style={s.title}>{appointmentId ? 'Add Consigned Vehicle' : 'Add New Vehicle'}</h1>
+      <p style={s.subtitle}>
+        {appointmentId
+          ? 'The vehicle somebody has just brought in. Saving this listing is what approves it.'
+          : 'Fill in details to list a new vehicle for booking.'}
+      </p>
       {error && <div style={s.error}>{error}</div>}
       {success && <div style={s.success}>{success}</div>}
       <form onSubmit={handleSubmit} style={s.form}>
+        {appointmentId && (
+          <div style={s.section}>
+            <h2 style={s.sectionTitle}>Inspection</h2>
+            <p style={s.who}>
+              {appointment
+                ? <>
+                    <strong>{appointment.owner?.name || 'Owner'}</strong>
+                    {appointment.owner?.phone ? ` · ${appointment.owner.phone}` : ''}
+                    {appointment.vehicle?.note ? <><br />{appointment.vehicle.note}</> : null}
+                  </>
+                : 'Loading the appointment…'}
+            </p>
+            {INSPECTION_CHECKS.map((c) => (
+              <label key={c.key} style={s.checkRow}>
+                <input type="checkbox" checked={checked.includes(c.key)} onChange={() => toggleCheck(c.key)} />
+                <span>{c.label}</span>
+              </label>
+            ))}
+            <div style={{ ...s.field, marginTop: '16px', marginBottom: 0, maxWidth: '220px' }}>
+              <label style={s.label} htmlFor="ac-reg-expiry">OR/CR expiry</label>
+              <input id="ac-reg-expiry" style={s.input} type="date" value={form.registrationExpiry}
+                onChange={(e) => setForm({ ...form, registrationExpiry: e.target.value })} />
+              <p style={s.hint}>Read it off the CR while it is in front of you — bookings are checked against it.</p>
+            </div>
+          </div>
+        )}
+
         <div style={s.section}>
           <h2 style={s.sectionTitle}>Vehicle Type</h2>
           <div style={{ ...s.typeToggleRow, marginBottom: 0 }}>
@@ -278,6 +381,16 @@ const AddCar = () => {
           <div style={{ ...s.row, marginBottom: 0 }}>
             <div style={s.field}><label style={s.label} htmlFor="ac-plate">Plate Number</label><input id="ac-plate" style={s.input} type="text" placeholder="e.g. ABC 1234" value={form.plateNumber} onChange={(e) => setForm({...form, plateNumber: formatPlateNumber(e.target.value)})} required /></div>
             <div style={s.field}><label style={s.label} htmlFor="ac-mileage">Mileage (km)</label><input id="ac-mileage" style={s.input} type="text" inputMode="numeric" placeholder="e.g. 35000" value={form.mileage} onChange={(e) => setForm({...form, mileage: sanitizeDigits(e.target.value, 7)})} /></div>
+            {/* A consigned vehicle has this up in the Inspection section,
+                where the papers are. One of ours can have it entered here or
+                left for later, which is what Manage Cars has always done. */}
+            {!appointmentId && (
+              <div style={s.field}>
+                <label style={s.label} htmlFor="ac-reg-expiry-own">OR/CR Registration Expiry</label>
+                <input id="ac-reg-expiry-own" style={s.input} type="date" value={form.registrationExpiry}
+                  onChange={(e) => setForm({ ...form, registrationExpiry: e.target.value })} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -330,11 +443,16 @@ const AddCar = () => {
         </div>
 
         <div style={s.submitRow}>
-          <button style={s.draftBtn} type="button" disabled={loading} onClick={(e) => handleSubmit(e, 'draft')}>
-            {loading ? 'Saving...' : 'Save Draft'}
-          </button>
+          {/* No draft for a consigned vehicle. Saving one would tell the
+              owner their vehicle is listed while nobody can book it, which
+              is the exact gap this whole flow exists to close. */}
+          {!appointmentId && (
+            <button style={s.draftBtn} type="button" disabled={loading} onClick={(e) => handleSubmit(e, 'draft')}>
+              {loading ? 'Saving...' : 'Save Draft'}
+            </button>
+          )}
           <button style={s.btn} type="button" disabled={loading} onClick={(e) => handleSubmit(e, 'published')}>
-            {loading ? 'Publishing...' : 'Publish Listing'}
+            {loading ? 'Publishing...' : (appointmentId ? 'Approve & Publish Listing' : 'Publish Listing')}
           </button>
         </div>
       </form>

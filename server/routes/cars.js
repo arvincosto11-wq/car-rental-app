@@ -13,6 +13,9 @@ import { openAdjustOffer, previewAlternatives, alternativeVehicles } from '../ut
 import { bookingSpan, blockedSpan, padded, bookingsOverlapping, overlaps, occupiedSpan, OFF_ROAD_HORIZON_DAYS } from '../utils/availability.js';
 import { instantFrom, isClockHour, formatMoment, turnaroundHoursFor, addDays } from '../utils/phTime.js';
 import User from '../models/User.js';
+import Appointment from '../models/Appointment.js';
+import Consignment from '../models/Consignment.js';
+import { INSPECTION_CHECKS, isInspectionCheck } from '../utils/appointments.js';
 
 const router = express.Router();
 
@@ -807,7 +810,96 @@ router.get('/:id/reviews', async (req, res) => {
 // Add car (admin only)
 router.post('/', protect, adminOnly, async (req, res) => {
   try {
-    const car = await Car.create(req.body);
+    const { appointmentId, inspectionChecks, ...fields } = req.body;
+
+    // An ordinary vehicle of our own: nothing else to do.
+    if (!appointmentId) {
+      const car = await Car.create(fields);
+      return res.status(201).json(car);
+    }
+
+    // --- a consigned vehicle, created at the counter ----------------------
+    //
+    // This is the approval. There is no separate approve button any more,
+    // because one existed and it told owners their listing was being set up
+    // when nothing was being set up. Saving the vehicle is the only thing
+    // that can honestly say a vehicle was taken on, so everything that
+    // follows from approval happens here, together, or not at all.
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+    if (!['requested', 'accepted'].includes(appointment.status)) {
+      return res.status(400).json({ message: 'That appointment is already closed.' });
+    }
+
+    // The checklist is only worth having if it has to be finished. Ticking
+    // it cannot make anybody look at the vehicle — but reaching the end of
+    // the form without having been asked is a gap worth closing.
+    const checked = Array.isArray(inspectionChecks) ? [...new Set(inspectionChecks.filter(isInspectionCheck))] : [];
+    if (checked.length < INSPECTION_CHECKS.length) {
+      return res.status(400).json({ message: 'Please go through the whole inspection checklist before adding the vehicle.' });
+    }
+
+    // The one date nobody could enter before. Booking checks depend on it,
+    // so it is read off the CR while the CR is in the room rather than left
+    // for whenever somebody remembers.
+    const expiry = new Date(fields.registrationExpiry);
+    if (Number.isNaN(expiry.getTime())) {
+      return res.status(400).json({ message: "Please enter the OR/CR expiry date from the vehicle's papers." });
+    }
+
+    // Manage Consignments is where consigned vehicles are looked after, so
+    // one has to exist and it has to be approved — a vehicle that is live
+    // but missing from that list is a vehicle nobody is managing.
+    //
+    // Built and checked BEFORE the vehicle is created. It asks for a little
+    // more than a vehicle does (a plate, a year), and finding that out after
+    // the listing exists would leave a live vehicle that no list knows
+    // about, which is the one outcome worth going out of the way to avoid.
+    const consignment = new Consignment({
+      owner: appointment.owner,
+      status: 'approved',
+      brand: fields.brand,
+      model: fields.model,
+      year: fields.year,
+      plateNumber: fields.plateNumber,
+      registrationExpiry: expiry,
+      color: fields.color || '',
+      mileage: fields.mileage || undefined,
+      category: fields.category,
+      transmission: fields.transmission,
+      fuelType: fields.fuelType,
+      seats: fields.seats,
+      availableBookingTypes: fields.availableBookingTypes?.length ? fields.availableBookingTypes : ['self-drive', 'with-driver'],
+      suggestedPricePerDay: fields.pricePerDay,
+      description: fields.description || '',
+      vehiclePhotos: fields.photos || [],
+      adminNotes: 'Inspected in person and listed from the appointment.',
+    });
+    const incomplete = consignment.validateSync();
+    if (incomplete) {
+      return res.status(400).json({
+        message: `A consigned vehicle needs ${Object.keys(incomplete.errors).join(', ')} filled in.`,
+      });
+    }
+
+    const car = await Car.create({ ...fields, registrationExpiry: expiry, owner: appointment.owner });
+    consignment.linkedCar = car._id;
+    await consignment.save();
+
+    appointment.status = 'completed';
+    appointment.closedAt = new Date();
+    appointment.inspection = { checked, registrationExpiry: expiry, at: new Date() };
+    await appointment.save();
+
+    await notifyUser(
+      appointment.owner,
+      'Vehicle approved',
+      `Your ${car.brand} ${car.model} passed its check and is now listed with us. You can see it, and any `
+      + 'bookings it gets, on your dashboard.',
+      '/consignor',
+      { email: true },
+    );
+
     res.status(201).json(car);
   } catch (err) {
     res.status(500).json({ message: err.message });

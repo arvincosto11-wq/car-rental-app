@@ -2,6 +2,7 @@ import { suite, group, check } from './harness.mjs';
 import {
   appointmentSettings, openSlots, slotProblem, phInstant, phDay, phWeekday, slotLabel,
   APPOINTMENT_DEFAULTS, vehicleNoteProblem, OLDEST_VEHICLE_YEAR, outcomeTooEarly,
+  INSPECTION_CHECKS, isInspectionCheck, APPOINTMENT_OPEN, isAppointmentOpen,
 } from '../utils/appointments.js';
 
 // Thursday 1 October 2026, 10:00 in Legazpi.
@@ -139,15 +140,13 @@ export default function run() {
   const during = phInstant('2026-10-02', 10, 30);
   const slotOver = phInstant('2026-10-02', 11);
 
-  // Approving is admin's call whenever they like: a vehicle dropped off a
-  // day early, or settled over the phone, still has to be recordable.
-  check('approved the day before is allowed', outcomeTooEarly(slot, 'passed', 60, now), null);
-  check('so is turning one away', outcomeTooEarly(slot, 'failed', 60, now), null);
+  // Turning a vehicle away is admin's call whenever they like: one dropped
+  // off a day early, or settled over the phone, still has to be recordable.
+  check('turned away the day before is allowed', outcomeTooEarly(slot, 'rejected', 60, now), null);
   // The no-show is the one that cannot be true yet.
   check('a no-show the day before', !!outcomeTooEarly(slot, 'missed', 60, now), true);
 
-  check('approved once it has started', outcomeTooEarly(slot, 'passed', 60, during), null);
-  check('and not approved too', outcomeTooEarly(slot, 'failed', 60, during), null);
+  check('turned away once it has started', outcomeTooEarly(slot, 'rejected', 60, during), null);
   // But ten minutes into their hour they are late, not absent.
   check('a no-show mid-slot is too early', !!outcomeTooEarly(slot, 'missed', 60, during), true);
   check('a no-show once the slot is over', outcomeTooEarly(slot, 'missed', 60, slotOver), null);
@@ -156,4 +155,29 @@ export default function run() {
   // the no-show half an hour sooner.
   check('a shorter slot ends sooner', outcomeTooEarly(slot, 'missed', 30, during), null);
   check('a longer one has not', !!outcomeTooEarly(slot, 'missed', 120, slotOver), true);
+
+  group('which appointments still hold their slot');
+  // A request is a claim on the time until somebody answers it, so both
+  // live states count. This is the same set the unique index uses, and the
+  // same one the sidebar badge counts.
+  check('a request holds it', isAppointmentOpen('requested'), true);
+  check('so does an accepted one', isAppointmentOpen('accepted'), true);
+  check('a cancelled one gives it back', isAppointmentOpen('cancelled'), false);
+  check('a missed one too', isAppointmentOpen('missed'), false);
+  check('a vehicle turned away', isAppointmentOpen('rejected'), false);
+  // 'completed' means a vehicle exists. Nothing is still waiting on it.
+  check('and a listed one is finished with', isAppointmentOpen('completed'), false);
+  check('nothing at all is not open', isAppointmentOpen(undefined), false);
+  check('exactly two live states', APPOINTMENT_OPEN.length, 2);
+
+  group('the inspection checklist');
+  // The list is shared so the boxes on screen and the keys stored on the
+  // record cannot drift apart.
+  check('every item has a key and a label', INSPECTION_CHECKS.every((c) => c.key && c.label), true);
+  check('no two share a key', new Set(INSPECTION_CHECKS.map((c) => c.key)).size, INSPECTION_CHECKS.length);
+  check('a real one is recognised', isInspectionCheck('or_original'), true);
+  // The server counts ticked boxes against this list, so anything invented
+  // by a hand-written request has to not count.
+  check('an invented one is not', isInspectionCheck('looked_shiny'), false);
+  check('nor is nothing', isInspectionCheck(''), false);
 }

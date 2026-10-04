@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import Skeleton from '../../components/Skeleton';
 import { useTheme } from '../../context/ThemeContext';
@@ -6,7 +7,7 @@ import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import usePageTitle from '../../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
-import { WEEKDAYS, outcomeTooEarly } from '../../utils/appointments';
+import { WEEKDAYS, outcomeTooEarly, isAppointmentOpen } from '../../utils/appointments';
 import api from '../../api';
 
 const WHEN = { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' };
@@ -20,6 +21,7 @@ const TIME = { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' };
 // another.
 const Appointments = () => {
   usePageTitle('Appointments');
+  const navigate = useNavigate();
   const { isDark } = useTheme();
   const { toast, confirm } = useUIFeedback();
   const { refetch: refetchPendingCounts } = useAdminPendingCounts();
@@ -73,23 +75,29 @@ const Appointments = () => {
     }
   };
 
+  // Confirming the time, and nothing else. Whether the vehicle is taken on
+  // is a separate decision, made later with the vehicle in the car park.
+  const accept = async (row) => {
+    try {
+      await api.put(`/appointments/${row._id}/accept`);
+      toast.success('Confirmed. The owner has been told to come.');
+      load();
+      refetchPendingCounts();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not accept that.');
+    }
+  };
+
   const close = async (row, outcome) => {
-    if (outcome === 'failed' && !note.trim()) {
+    if (outcome === 'rejected' && !note.trim()) {
       toast.error('Please say why, so they know what to fix.');
       return;
     }
-    const ok = outcome === 'passed'
-      ? await confirm(
-        'Mark this vehicle as approved? The owner is told their listing is being set up — so add the vehicle in Manage Cars straight after, with them as the owner.',
-        { confirmLabel: 'Approved', cancelLabel: 'Not yet' },
-      )
-      : true;
-    if (!ok) return;
     try {
       await api.put(`/appointments/${row._id}/outcome`, { outcome, note });
       setNoteFor(null);
       setNote('');
-      toast.success(outcome === 'passed' ? 'Approved. Add the vehicle in Manage Cars.' : 'Recorded. The owner has been told.');
+      toast.success('Recorded. The owner has been told.');
       load();
       // The sidebar counts open appointments, and this one just closed.
       refetchPendingCounts();
@@ -142,8 +150,8 @@ const Appointments = () => {
     }),
     tag: (status) => {
       const map = {
-        passed: ['#16a34a', '#dcfce7', '#15803d'],
-        failed: ['#dc2626', '#fee2e2', '#991b1b'],
+        completed: ['#16a34a', '#dcfce7', '#15803d'],
+        rejected: ['#dc2626', '#fee2e2', '#991b1b'],
         missed: ['#9ca3af', '#f3f4f6', '#6b7280'],
         cancelled: ['#9ca3af', '#f3f4f6', '#6b7280'],
       }[status] || ['#2563eb', '#dbeafe', '#1e40af'];
@@ -160,8 +168,14 @@ const Appointments = () => {
     return <AdminLayout activePage="Appointments"><Skeleton height="420px" radius="12px" isDark={isDark} /></AdminLayout>;
   }
 
-  const upcoming = rows.filter((r) => r.status === 'booked');
-  const past = rows.filter((r) => r.status !== 'booked').reverse();
+  const upcoming = rows.filter((r) => isAppointmentOpen(r.status));
+  const past = rows.filter((r) => !isAppointmentOpen(r.status)).reverse();
+
+  // What a closed one is called in words, rather than the word the database
+  // happens to store.
+  const outcomeWord = {
+    completed: 'listed', rejected: 'not approved', missed: 'no-show', cancelled: 'cancelled',
+  };
 
   const toggleDay = (value) => setHours((h) => ({
     ...h,
@@ -184,21 +198,37 @@ const Appointments = () => {
           {row.outcomeNote ? ` · ${row.outcomeNote}` : ''}
         </div>
       </div>
-      {row.status === 'booked' ? (
+      {isAppointmentOpen(row.status) ? (
         <div style={s.actions}>
-          {/* Approving or turning one away is admin's call whenever they
-              like — a vehicle dropped off early still has to be recorded.
-              Only the no-show waits for the slot to run out, because ten
-              minutes in they are late rather than absent. */}
-          <button type="button" style={s.btn('pass')} onClick={() => close(row, 'passed')}>Approved</button>
-          <button type="button" style={s.btn()} onClick={() => { setNoteFor(row._id); setNote(''); }}>Not approved</button>
-          {!outcomeTooEarly(row.at, 'missed', hours.slotMinutes) && (
-            <button type="button" style={s.btn()} onClick={() => close(row, 'missed')}>No-show</button>
+          {row.status === 'requested' ? (
+            /* Only the time is being answered here. Nobody has seen the
+               vehicle yet, so there is nothing to say about it. */
+            <button type="button" style={s.btn('pass')} onClick={() => accept(row)}>Accept</button>
+          ) : (
+            <>
+              {/* The vehicle decision, made with the vehicle in front of
+                  you. Adding it IS approving it — there is no separate
+                  approve button, because one existed and it could tell an
+                  owner their listing was being set up when no listing
+                  existed. Only the no-show waits for the slot to run out,
+                  because ten minutes in they are late, not absent. */}
+              <button
+                type="button"
+                style={s.btn('pass')}
+                onClick={() => navigate(`/admin/add-car?appointment=${row._id}`)}
+              >
+                Add the vehicle
+              </button>
+              <button type="button" style={s.btn()} onClick={() => { setNoteFor(row._id); setNote(''); }}>Not approved</button>
+              {!outcomeTooEarly(row.at, 'missed', hours.slotMinutes) && (
+                <button type="button" style={s.btn()} onClick={() => close(row, 'missed')}>No-show</button>
+              )}
+            </>
           )}
           <button type="button" style={s.btn()} onClick={() => callOff(row)}>Cancel it</button>
         </div>
       ) : (
-        <span style={s.tag(row.status)}>{row.status}</span>
+        <span style={s.tag(row.status)}>{outcomeWord[row.status] || row.status}</span>
       )}
       {noteFor === row._id && (
         <div style={s.noteBox}>
@@ -210,7 +240,7 @@ const Appointments = () => {
             maxLength={300}
             onChange={(e) => setNote(e.target.value)}
           />
-          <button type="button" style={s.btn()} onClick={() => close(row, 'failed')}>Save</button>
+          <button type="button" style={s.btn()} onClick={() => close(row, 'rejected')}>Save</button>
           <button type="button" style={s.btn()} onClick={() => setNoteFor(null)}>Cancel</button>
         </div>
       )}
@@ -225,8 +255,8 @@ const Appointments = () => {
       <div style={s.card}>
         <h2 style={s.h2}>Coming up</h2>
         <p style={s.sub}>
-          Mark each one once you have seen the vehicle. Approving tells the owner their listing is being set
-          up — add the vehicle in Manage Cars with them as the owner.
+          Accept the time first, so they know to come. Once the vehicle is here, Add the vehicle opens the
+          form with the checklist and the OR/CR expiry on it — saving it there is what approves the vehicle.
         </p>
         {upcoming.length === 0 ? <p style={s.empty}>Nobody booked in.</p> : upcoming.map(line)}
       </div>
@@ -284,7 +314,7 @@ const Appointments = () => {
 
       <div style={s.card}>
         <h2 style={s.h2}>Already dealt with</h2>
-        <p style={s.sub}>Kept rather than cleared — a missed visit and a vehicle that failed are both worth being able to look back at.</p>
+        <p style={s.sub}>Kept rather than cleared — a missed visit and a vehicle turned away are both worth being able to look back at.</p>
         {past.length === 0 ? <p style={s.empty}>Nothing yet.</p> : past.map(line)}
       </div>
     </AdminLayout>

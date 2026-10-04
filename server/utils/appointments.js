@@ -217,3 +217,25 @@ export function outcomeTooEarly(at, outcome, slotMinutes = APPOINTMENT_DEFAULTS.
     ? 'That slot has not finished yet, so nobody has missed it.'
     : null;
 }
+
+// What somebody confirms they have actually looked at before a vehicle is
+// taken on. Shared so the list on screen and the list stored on the record
+// are the same list, and so changing it changes both.
+//
+// It cannot make anybody look. It can make sure nobody reaches the end of
+// the form without having been asked — which is the whole of what a
+// checklist does, and worth not overstating.
+export const INSPECTION_CHECKS = [
+  { key: 'vehicle_present', label: 'The vehicle is here and matches what they booked' },
+  { key: 'or_original', label: 'The OR is the original, not a copy' },
+  { key: 'cr_original', label: 'The CR is the original, not a copy' },
+  { key: 'plate_matches', label: 'The plate on the vehicle matches the CR' },
+  { key: 'name_matches', label: "The name on the CR matches the owner's ID" },
+  { key: 'roadworthy', label: 'The vehicle is roadworthy and fit to rent out' },
+];
+
+export const isInspectionCheck = (key) => INSPECTION_CHECKS.some((c) => c.key === key);
+
+// Which states still hold their slot, and which are finished with.
+export const APPOINTMENT_OPEN = ['requested', 'accepted'];
+export const isAppointmentOpen = (status) => APPOINTMENT_OPEN.includes(status);

@@ -7,6 +7,7 @@ import Appointment from '../models/Appointment.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { expireAdjustOffers } from '../utils/adjustOffer.js';
+import { APPOINTMENT_OPEN } from '../utils/appointments.js';
 
 const router = express.Router();
 
@@ -37,10 +38,10 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
       // review any more, so nothing arrives there needing a decision. See
       // models/User.js.
       Consignment.countDocuments({ status: 'pending' }),
-      // Every booked appointment is an open loop: somebody is coming, and
-      // afterwards it still has to be marked as seen, failed or missed. It
+      // Every live appointment is an open loop: a request needs answering,
+      // and an accepted one still has to be marked once the day comes. It
       // stops counting the moment it is closed, whichever way.
-      Appointment.countDocuments({ status: 'booked' }),
+      Appointment.countDocuments({ status: { $in: APPOINTMENT_OPEN } }),
       Car.countDocuments({ 'availabilityRequest.status': 'pending' }),
       // A car can have several pending blocked-date ranges at once (unlike
       // the single-slot availabilityRequest), so this counts individual

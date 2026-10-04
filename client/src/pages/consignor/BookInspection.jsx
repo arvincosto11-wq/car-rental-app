@@ -5,7 +5,7 @@ import { useUIFeedback } from '../../context/UIFeedbackContext';
 import Skeleton from '../../components/Skeleton';
 import usePageTitle from '../../hooks/usePageTitle';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER } from '../../data/vehicleBrands';
-import { vehicleNoteProblem, OLDEST_VEHICLE_YEAR } from '../../utils/appointments';
+import { vehicleNoteProblem, OLDEST_VEHICLE_YEAR, isAppointmentOpen } from '../../utils/appointments';
 import Autocomplete from '../../components/Autocomplete';
 import api from '../../api';
 
@@ -162,9 +162,10 @@ const BookInspection = ({ stage, onBooked }) => {
     visitWhat: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '2px' },
     visitTag: (status) => {
       const map = {
-        passed: ['#16a34a', '#dcfce7', '#15803d'],
-        failed: ['#dc2626', '#fee2e2', '#991b1b'],
-        booked: ['#2563eb', '#dbeafe', '#1e40af'],
+        completed: ['#16a34a', '#dcfce7', '#15803d'],
+        rejected: ['#dc2626', '#fee2e2', '#991b1b'],
+        requested: ['#2563eb', '#dbeafe', '#1e40af'],
+        accepted: ['#2563eb', '#dbeafe', '#1e40af'],
       }[status] || ['#9ca3af', '#f3f4f6', '#6b7280'];
       return {
         fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '20px', whiteSpace: 'nowrap',
@@ -207,15 +208,16 @@ const BookInspection = ({ stage, onBooked }) => {
   };
 
   const STATUS_WORD = {
-    booked: 'Booked',
-    passed: 'Approved',
-    failed: 'Not approved',
+    requested: 'Waiting for us',
+    accepted: 'Confirmed',
+    completed: 'Listed',
+    rejected: 'Not approved',
     missed: 'Missed',
     cancelled: 'Cancelled',
   };
 
   const pastVisits = (
-    history.length > 1 || (history.length === 1 && history[0].status !== 'booked')
+    history.length > 1 || (history.length === 1 && !isAppointmentOpen(history[0].status))
   ) ? (
     <div style={s.card}>
       <h2 style={s.h2}>Your visits</h2>
@@ -265,7 +267,11 @@ const BookInspection = ({ stage, onBooked }) => {
       <div style={s.page}>
         <div style={s.wrap}>
           <h1 style={s.title}>Your appointment</h1>
-          <p style={s.sub}>Bring the vehicle and its papers, and we will do the rest here.</p>
+          <p style={s.sub}>
+            {booked.status === 'accepted'
+              ? 'Confirmed. Bring the vehicle and its papers, and we will do the rest here.'
+              : 'We have your request and are holding that time. Please wait for us to confirm it before you travel.'}
+          </p>
           <div style={s.card}>
             <p style={s.when}>
               {at.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -275,6 +281,9 @@ const BookInspection = ({ stage, onBooked }) => {
             <p style={s.hint}>
               {booked.vehicle?.brand} {booked.vehicle?.model}
               {booked.vehicle?.year ? ` · ${booked.vehicle.year}` : ''}
+            </p>
+            <p style={{ ...s.hint, marginTop: '6px' }}>
+              <span style={s.visitTag(booked.status)}>{STATUS_WORD[booked.status] || booked.status}</span>
             </p>
             <button type="button" style={s.cancel} onClick={cancelBooking}>Cancel this appointment</button>
           </div>
@@ -296,7 +305,7 @@ const BookInspection = ({ stage, onBooked }) => {
 
         {/* Said before anything else, because somebody whose vehicle was
             turned away needs to know they can simply come back. */}
-        {last && last.status === 'failed' && (
+        {last && last.status === 'rejected' && (
           <p style={s.outcome}>
             Your last visit didn&apos;t go through
             {last.outcomeNote ? `: ${last.outcomeNote}` : '.'} Book again once it is sorted.
@@ -305,18 +314,22 @@ const BookInspection = ({ stage, onBooked }) => {
         {last && last.status === 'missed' && (
           <p style={s.outcome}>You missed your last appointment. Book another whenever you are ready.</p>
         )}
-        {/* The gap this fills: a vehicle that passed its check leaves no
-            booked appointment behind, so this page fell straight back to
-            the booking form and said nothing. Somebody who had just been
-            approved was shown no sign of it. */}
-        {last && last.status === 'passed' && (
+        {/* The gap this fills: a vehicle that was taken on leaves no open
+            appointment behind, so this page fell straight back to the
+            booking form and said nothing. Somebody who had just been
+            approved was shown no sign of it.
+
+            It no longer says a listing is being set up, because by the time
+            this status exists the listing already exists — that is what
+            creates it. */}
+        {last && last.status === 'completed' && (
           <p style={s.approved}>
             <strong>
-              Your {last.vehicle?.brand} {last.vehicle?.model} passed its check.
+              Your {last.vehicle?.brand} {last.vehicle?.model} passed its check and is listed.
             </strong>
             <br />
-            We&apos;re setting its listing up now — it will appear here as soon as it is live. Nothing more
-            for you to do. Bringing another vehicle? Book a time for it below.
+            Nothing more for you to do — you can see it, and any bookings it gets, on your dashboard.
+            Bringing another vehicle? Book a time for it below.
           </p>
         )}
 

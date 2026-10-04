@@ -5,17 +5,24 @@ import Settings from '../models/Settings.js';
 import User from '../models/User.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
-import { openSlots, slotProblem, appointmentSettings, slotLabel, vehicleNoteProblem, outcomeTooEarly } from '../utils/appointments.js';
+import {
+  openSlots, slotProblem, appointmentSettings, slotLabel, vehicleNoteProblem, outcomeTooEarly,
+  APPOINTMENT_OPEN, isAppointmentOpen,
+} from '../utils/appointments.js';
 
 const router = express.Router();
 
-// Slots already spoken for. Only a booked one holds a time — a cancelled or
-// missed appointment gives it back, which is the same rule the unique index
-// in models/Appointment.js enforces.
+// Slots already spoken for. Both live states hold a time — a request is a
+// claim on it until somebody answers — while a cancelled, missed or finished
+// appointment gives it back. Same rule as the unique index in
+// models/Appointment.js, which is what actually enforces it.
 const takenSlots = async (from = new Date()) => {
-  const rows = await Appointment.find({ status: 'booked', at: { $gte: from } }).select('at').lean();
+  const rows = await Appointment.find({ status: { $in: APPOINTMENT_OPEN }, at: { $gte: from } }).select('at').lean();
   return rows.map((r) => r.at);
 };
+
+// How a date and time reads in a message to somebody who has to drive there.
+const whenLabel = (at) => `${at.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })} at ${slotLabel(at)}`;
 
 // What somebody can pick. Public to a logged-in consignor; there is nothing
 // sensitive in a list of free times, but there is no reason to publish the
@@ -68,7 +75,7 @@ router.post('/', protect, consignorOnly, async (req, res) => {
 
     // One at a time. Somebody with three vehicles books the next one after
     // this visit, which is also the only way we know the first went well.
-    const existing = await Appointment.findOne({ owner: req.user.id, status: 'booked' });
+    const existing = await Appointment.findOne({ owner: req.user.id, status: { $in: APPOINTMENT_OPEN } });
     if (existing) {
       return res.status(400).json({ message: 'You already have an appointment booked. Please keep or cancel that one first.' });
     }
@@ -87,22 +94,24 @@ router.post('/', protect, consignorOnly, async (req, res) => {
     // The person who booked it hears about it too. Admin was told and the
     // owner was not, which left the only written record of their own
     // appointment on a page they had to remember to go back to.
-    const when = `${appointment.at.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })} at ${slotLabel(appointment.at)}`;
+    // The person who booked it hears about it too, and hears the truth: the
+    // time is held for them, but somebody still has to confirm it.
     await notifyUser(
       req.user.id,
-      'Inspection booked',
-      `Your ${appointment.vehicle.brand} ${appointment.vehicle.model} is booked in for ${when} at our place in `
-      + 'Salugan, Camalig. Bring the vehicle, its OR and CR (the originals), and one valid ID. '
-      + 'If you need to change it, you can cancel from your dashboard and book another time.',
+      'Inspection requested',
+      `We have your request to bring a ${appointment.vehicle.brand} ${appointment.vehicle.model} in on `
+      + `${whenLabel(appointment.at)}. We will confirm it shortly — please wait for that before you travel. `
+      + 'When you come, bring the vehicle, its OR and CR (the originals), and one valid ID. Our place is in '
+      + 'Salugan, Camalig. If you need to change it, you can cancel from your dashboard and book another time.',
       '/consignor',
       { email: true },
     );
 
     const who = await User.findById(req.user.id).select('name').lean();
     await notifyAdmins(
-      'New inspection appointment',
-      `${who?.name || 'A vehicle owner'} is bringing a ${appointment.vehicle.brand} ${appointment.vehicle.model} in on `
-      + `${appointment.at.toDateString()} at ${slotLabel(appointment.at)}.`,
+      'New inspection request',
+      `${who?.name || 'A vehicle owner'} wants to bring a ${appointment.vehicle.brand} ${appointment.vehicle.model} in on `
+      + `${appointment.at.toDateString()} at ${slotLabel(appointment.at)}. It needs accepting.`,
       '/admin/appointments',
     );
     res.status(201).json(appointment);
@@ -125,7 +134,7 @@ router.delete('/:id', protect, async (req, res) => {
     if (String(appointment.owner) !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
-    if (appointment.status !== 'booked') {
+    if (!isAppointmentOpen(appointment.status)) {
       return res.status(400).json({ message: 'That appointment is already closed.' });
     }
     const cancelledByAdmin = String(appointment.owner) !== req.user.id;
@@ -137,11 +146,10 @@ router.delete('/:id', protect, async (req, res) => {
     // done themselves is noise; finding out your slot is gone by turning up
     // to an empty office is not.
     if (cancelledByAdmin) {
-      const when = `${appointment.at.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })} at ${slotLabel(appointment.at)}`;
       await notifyUser(
         appointment.owner,
         'Inspection cancelled',
-        `Your inspection on ${when} has been cancelled by our team. Please book another time that suits you, `
+        `Your inspection on ${whenLabel(appointment.at)} has been cancelled by our team. Please book another time that suits you, `
         + 'or call us on 0950-651-0479.',
         '/consignor',
         { email: true },
@@ -168,26 +176,62 @@ router.get('/all', protect, adminOnly, async (req, res) => {
   }
 });
 
-// Closing one off: they came and it passed, they came and it did not, or
-// they never came.
+// Confirming the appointment itself — not the vehicle.
 //
-// Passing does NOT create the vehicle. Admin types that in Manage Cars with
-// the vehicle in front of them, which is the whole point of the visit — and
-// a half-filled listing created automatically here would be a worse start
-// than no listing at all.
+// These are two separate decisions and used to be one button, which is how
+// an owner ended up being told their listing was being set up while no
+// listing existed. All this says is: yes, that time works, we will see you.
+// What happens to the vehicle is decided when it is in front of us.
+router.put('/:id/accept', protect, adminOnly, async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+    if (appointment.status === 'accepted') return res.json(appointment);
+    if (appointment.status !== 'requested') {
+      return res.status(400).json({ message: 'That appointment is already closed.' });
+    }
+
+    appointment.status = 'accepted';
+    await appointment.save();
+
+    await notifyUser(
+      appointment.owner,
+      'Inspection confirmed',
+      `Your inspection on ${whenLabel(appointment.at)} is confirmed. Please bring the vehicle, its OR and CR `
+      + '(the originals), and one valid ID to our place in Salugan, Camalig. If something changes, you can '
+      + 'cancel from your dashboard or call us on 0950-651-0479.',
+      '/consignor',
+      { email: true },
+    );
+
+    res.json(appointment);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Closing one off without a vehicle coming out of it: they came and it was
+// turned away, or they never came.
+//
+// There is no "passed" here any more. A vehicle that passes is a vehicle
+// that gets listed, and listing it is what records that — see
+// routes/cars.js, which marks this appointment 'completed' when the vehicle
+// is actually created. Nothing can now say a vehicle was approved while no
+// vehicle exists.
 router.put('/:id/outcome', protect, adminOnly, async (req, res) => {
   try {
     const { outcome } = req.body;
-    if (!['passed', 'failed', 'missed'].includes(outcome)) {
-      return res.status(400).json({ message: 'Say whether it passed, failed, or was missed.' });
+    if (!['rejected', 'missed'].includes(outcome)) {
+      return res.status(400).json({ message: 'Say whether the vehicle was turned away or the appointment was missed.' });
     }
     const appointment = await Appointment.findById(req.params.id);
     if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
-    if (appointment.status !== 'booked') {
+    if (!isAppointmentOpen(appointment.status)) {
       return res.status(400).json({ message: 'That appointment is already closed.' });
     }
-    // Every outcome is a claim about something that already happened, so
-    // none of them can be recorded before it has. See utils/appointments.js.
+    // A no-show cannot be true until the slot has run out. Turning a vehicle
+    // away is admin's own call, whenever they make it. See
+    // utils/appointments.js.
     const settings = await Settings.current();
     const tooEarly = outcomeTooEarly(appointment.at, outcome, appointmentSettings(settings).slotMinutes);
     if (tooEarly) return res.status(400).json({ message: tooEarly });
@@ -198,14 +242,13 @@ router.put('/:id/outcome', protect, adminOnly, async (req, res) => {
     await appointment.save();
 
     const messages = {
-      passed: 'Your vehicle passed its check. We are setting up its listing now — it will appear on your dashboard shortly.',
-      failed: `Your vehicle wasn't approved this time${appointment.outcomeNote ? `: ${appointment.outcomeNote}` : '.'} `
+      rejected: `Your vehicle wasn't approved this time${appointment.outcomeNote ? `: ${appointment.outcomeNote}` : '.'} `
         + 'You can book another appointment once it is sorted.',
       missed: 'You missed your appointment. You can book another one whenever you are ready.',
     };
     await notifyUser(
       appointment.owner,
-      outcome === 'passed' ? 'Vehicle approved' : outcome === 'failed' ? 'Vehicle not approved' : 'Appointment missed',
+      outcome === 'rejected' ? 'Vehicle not approved' : 'Appointment missed',
       messages[outcome],
       '/consignor',
       { email: true },
@@ -226,7 +269,7 @@ router.put('/:id/outcome', protect, adminOnly, async (req, res) => {
 router.get('/stage', protect, async (req, res) => {
   try {
     const vehicles = await Car.countDocuments({ owner: req.user.id, archived: { $ne: true } });
-    const appointment = await Appointment.findOne({ owner: req.user.id, status: 'booked' }).lean();
+    const appointment = await Appointment.findOne({ owner: req.user.id, status: { $in: APPOINTMENT_OPEN } }).lean();
     const last = await Appointment.findOne({ owner: req.user.id }).sort({ at: -1 }).lean();
     res.json({
       stage: vehicles > 0 ? 'consignor' : 'applicant',
@@ -234,6 +277,20 @@ router.get('/stage', protect, async (req, res) => {
       booked: appointment || null,
       last: last || null,
     });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// One of them, for the Add Vehicle form to fill itself in from. Admin only,
+// and last in the file on purpose: a bare ':id' matches '/stage' and
+// '/slots' just as happily, so it has to be the thing Express tries after
+// every named path has had its turn.
+router.get('/:id', protect, adminOnly, async (req, res) => {
+  try {
+    const row = await Appointment.findById(req.params.id).populate('owner', 'name email phone address').lean();
+    if (!row) return res.status(404).json({ message: 'Appointment not found' });
+    res.json(row);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
