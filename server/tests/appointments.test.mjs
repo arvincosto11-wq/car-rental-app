@@ -1,7 +1,7 @@
 import { suite, group, check } from './harness.mjs';
 import {
   appointmentSettings, openSlots, slotProblem, phInstant, phDay, phWeekday, slotLabel,
-  APPOINTMENT_DEFAULTS, vehicleNoteProblem, OLDEST_VEHICLE_YEAR,
+  APPOINTMENT_DEFAULTS, vehicleNoteProblem, OLDEST_VEHICLE_YEAR, outcomeTooEarly,
 } from '../utils/appointments.js';
 
 // Thursday 1 October 2026, 10:00 in Legazpi.
@@ -132,4 +132,26 @@ export default function run() {
   // What it cannot do, written down so nobody mistakes it for a guarantee.
   // No rule tells a made-up word from a real brand; the inspection does.
   check('nonsense that looks like a word passes', vehicleNoteProblem(car({ brand: 'Jlkhlhk', model: 'Khgkhvk' }), now), null);
+
+  group('nothing can be recorded before the visit happens');
+  // An hour-long slot at 10 AM on 2 October.
+  const slot = phInstant('2026-10-02', 10);
+  const during = phInstant('2026-10-02', 10, 30);
+  const slotOver = phInstant('2026-10-02', 11);
+
+  check('approved the day before', !!outcomeTooEarly(slot, 'passed', 60, now), true);
+  check('not approved the day before', !!outcomeTooEarly(slot, 'failed', 60, now), true);
+  check('a no-show the day before', !!outcomeTooEarly(slot, 'missed', 60, now), true);
+
+  // Standing at the counter with the vehicle: it can be judged now.
+  check('approved once it has started', outcomeTooEarly(slot, 'passed', 60, during), null);
+  check('and not approved too', outcomeTooEarly(slot, 'failed', 60, during), null);
+  // But ten minutes into their hour they are late, not absent.
+  check('a no-show mid-slot is too early', !!outcomeTooEarly(slot, 'missed', 60, during), true);
+  check('a no-show once the slot is over', outcomeTooEarly(slot, 'missed', 60, slotOver), null);
+
+  // The slot length decides when "over" is, so a half-hour inspection frees
+  // the no-show half an hour sooner.
+  check('a shorter slot ends sooner', outcomeTooEarly(slot, 'missed', 30, during), null);
+  check('a longer one has not', !!outcomeTooEarly(slot, 'missed', 120, slotOver), true);
 }

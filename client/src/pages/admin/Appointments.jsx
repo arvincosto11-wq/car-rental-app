@@ -6,7 +6,7 @@ import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import usePageTitle from '../../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
-import { WEEKDAYS } from '../../utils/appointments';
+import { WEEKDAYS, outcomeTooEarly } from '../../utils/appointments';
 import api from '../../api';
 
 const WHEN = { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' };
@@ -52,6 +52,24 @@ const Appointments = () => {
       toast.error(err.response?.data?.message || 'Could not save.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Somebody phoning to say they cannot make it, recorded by whoever took
+  // the call. The slot goes back on offer.
+  const callOff = async (row) => {
+    const ok = await confirm(
+      'Cancel this appointment? The slot goes back on offer and they can book another.',
+      { confirmLabel: 'Cancel it', cancelLabel: 'Leave it' },
+    );
+    if (!ok) return;
+    try {
+      await api.delete(`/appointments/${row._id}`);
+      toast.success('Cancelled. That time is free again.');
+      load();
+      refetchPendingCounts();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not cancel that.');
     }
   };
 
@@ -134,6 +152,7 @@ const Appointments = () => {
         background: isDark ? `${map[0]}22` : map[1], color: isDark ? map[0] : map[2],
       };
     },
+    waiting: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
     noteBox: { display: 'flex', gap: '6px', marginTop: '8px', width: '100%' },
     empty: { padding: '28px', textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '13.5px' },
   };
@@ -168,9 +187,24 @@ const Appointments = () => {
       </div>
       {row.status === 'booked' ? (
         <div style={s.actions}>
-          <button type="button" style={s.btn('pass')} onClick={() => close(row, 'passed')}>Approved</button>
-          <button type="button" style={s.btn()} onClick={() => { setNoteFor(row._id); setNote(''); }}>Not approved</button>
-          <button type="button" style={s.btn()} onClick={() => close(row, 'missed')}>No-show</button>
+          {/* Nothing can be recorded about a visit that has not happened.
+              Before the slot there is only calling it off; a no-show waits
+              until the slot has run out, because ten minutes in they are
+              late rather than absent. */}
+          {outcomeTooEarly(row.at, 'passed', hours.slotMinutes) ? (
+            <>
+              <span style={s.waiting}>Not yet &mdash; {new Date(row.at).toLocaleDateString('en-US', WHEN)}</span>
+              <button type="button" style={s.btn()} onClick={() => callOff(row)}>Cancel it</button>
+            </>
+          ) : (
+            <>
+              <button type="button" style={s.btn('pass')} onClick={() => close(row, 'passed')}>Approved</button>
+              <button type="button" style={s.btn()} onClick={() => { setNoteFor(row._id); setNote(''); }}>Not approved</button>
+              {!outcomeTooEarly(row.at, 'missed', hours.slotMinutes) && (
+                <button type="button" style={s.btn()} onClick={() => close(row, 'missed')}>No-show</button>
+              )}
+            </>
+          )}
         </div>
       ) : (
         <span style={s.tag(row.status)}>{row.status}</span>

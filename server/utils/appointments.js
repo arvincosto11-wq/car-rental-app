@@ -197,3 +197,20 @@ export function vehicleNoteProblem(vehicle, now = new Date()) {
 
   return null;
 }
+
+// Whether an appointment can be marked yet, and why not.
+//
+// All three outcomes are claims about something that has already happened:
+// the vehicle was seen and passed, was seen and did not, or nobody came.
+// None of them can be true before the slot has started, and a no-show
+// cannot be true until the slot has run out — somebody ten minutes into
+// their hour is late, not absent.
+export function outcomeTooEarly(at, outcome, slotMinutes = APPOINTMENT_DEFAULTS.slotMinutes, now = new Date()) {
+  const starts = new Date(at).getTime();
+  const ends = starts + Math.max(1, Number(slotMinutes) || APPOINTMENT_DEFAULTS.slotMinutes) * 60 * 1000;
+  const at_ = new Date(now).getTime();
+  if (outcome === 'missed') {
+    return at_ < ends ? 'That slot has not finished yet, so nobody has missed it.' : null;
+  }
+  return at_ < starts ? 'That appointment has not happened yet.' : null;
+}

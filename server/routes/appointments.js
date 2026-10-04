@@ -5,7 +5,7 @@ import Settings from '../models/Settings.js';
 import User from '../models/User.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
-import { openSlots, slotProblem, appointmentSettings, slotLabel, vehicleNoteProblem } from '../utils/appointments.js';
+import { openSlots, slotProblem, appointmentSettings, slotLabel, vehicleNoteProblem, outcomeTooEarly } from '../utils/appointments.js';
 
 const router = express.Router();
 
@@ -155,6 +155,11 @@ router.put('/:id/outcome', protect, adminOnly, async (req, res) => {
     if (appointment.status !== 'booked') {
       return res.status(400).json({ message: 'That appointment is already closed.' });
     }
+    // Every outcome is a claim about something that already happened, so
+    // none of them can be recorded before it has. See utils/appointments.js.
+    const settings = await Settings.current();
+    const tooEarly = outcomeTooEarly(appointment.at, outcome, appointmentSettings(settings).slotMinutes);
+    if (tooEarly) return res.status(400).json({ message: tooEarly });
 
     appointment.status = outcome;
     appointment.outcomeNote = String(req.body.note || '').trim().slice(0, 300);
