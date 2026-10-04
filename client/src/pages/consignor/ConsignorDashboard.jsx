@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../../theme';
 import { useNotifications } from '../../context/NotificationContext';
-import { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
+import Skeleton, { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
 import PromoBadge from '../../components/PromoBadge';
 import BlockDatesPanel, { upcomingBlockCount } from '../../components/BlockDatesPanel';
 import { ownerEarningFor, adminCoveredFor, isPromoVisible } from '../../utils/promo';
@@ -307,10 +307,27 @@ const ConsignorDashboard = () => {
     modalSubmitBtn: { flex: 1, padding: '10px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
   };
 
+  // Which stage somebody is on is not known until the server says, and
+  // until then NEITHER page is the right one to draw. Falling through to
+  // the dashboard meant an applicant watched a stranger's empty dashboard
+  // assemble itself — vehicle counts, earnings, booking table — and then
+  // get replaced the moment the answer arrived.
+  if (!stage) {
+    return (
+      <div style={s.page}>
+        <div style={s.container}>
+          <Skeleton height="120px" radius="14px" isDark={isDark} />
+          <div style={{ height: '18px' }} />
+          <Skeleton height="320px" radius="14px" isDark={isDark} />
+        </div>
+      </div>
+    );
+  }
+
   // Stage one: no vehicle has passed its check yet, so there is no dashboard
   // to show. Not the real one in an empty state — that would be a room full
   // of things that are not theirs.
-  if (stage && stage.stage === 'applicant') {
+  if (stage.stage === 'applicant') {
     return <BookInspection stage={stage} onBooked={loadStage} />;
   }
 
