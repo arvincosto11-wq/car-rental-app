@@ -46,7 +46,6 @@ const Autocomplete = ({
   const wrapRef = useRef(null);
 
   const suggestions = open ? rank(options, value || '') : [];
-  const exactMatch = options.some((o) => o.toLowerCase() === String(value || '').trim().toLowerCase());
   const showEmptyHint = open && !!String(value || '').trim() && suggestions.length === 0;
 
   // A click anywhere else closes it. Pointerdown rather than click so it
@@ -106,7 +105,6 @@ const Autocomplete = ({
       fontWeight: on ? '700' : '500',
     }),
     hint: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '5px', lineHeight: 1.5 },
-    tick: { color: isDark ? '#4ade80' : '#15803d', fontWeight: '700' },
   };
 
   const listId = `${id}-suggestions`;
@@ -152,7 +150,6 @@ const Autocomplete = ({
       )}
 
       {showEmptyHint && <p style={s.hint}>{emptyHint}</p>}
-      {!open && exactMatch && <p style={s.hint}><span style={s.tick}>✓</span> On our list</p>}
     </div>
   );
 };
