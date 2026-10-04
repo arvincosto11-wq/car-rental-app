@@ -6,13 +6,10 @@ import Skeleton from '../../components/Skeleton';
 import usePageTitle from '../../hooks/usePageTitle';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER } from '../../data/vehicleBrands';
 import { vehicleNoteProblem, OLDEST_VEHICLE_YEAR } from '../../utils/appointments';
+import Autocomplete from '../../components/Autocomplete';
 import api from '../../api';
 
 const DAY_LABEL = { weekday: 'short', month: 'short', day: 'numeric' };
-
-// Same escape hatch Add Vehicle uses: the list covers what is on the road
-// here, not every vehicle ever built.
-const OTHER = '__other__';
 
 // Stage one of becoming a consignor: book a time to bring the vehicle in.
 //
@@ -35,12 +32,11 @@ const BookInspection = ({ stage, onBooked }) => {
   const [pickedDay, setPickedDay] = useState('');
   const [pickedTime, setPickedTime] = useState('');
   const [form, setForm] = useState({ brand: '', model: '', year: '', note: '' });
-  // Picked from a list rather than typed, the same way admin adds a vehicle.
-  // Two people typing "Toyota" and "toyota" is two makes in the data, and
-  // this is the first place a vehicle is named.
+  // The brand and model boxes suggest as they are typed. Two people typing
+  // "Toyota" and "toyota" is two brands in the data, and this is the first
+  // place a vehicle is ever named — a suggestion somebody picks is spelled
+  // the way the rest of the system spells it.
   const [vehicleType, setVehicleType] = useState('car');
-  const [brandChoice, setBrandChoice] = useState('');
-  const [modelChoice, setModelChoice] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -62,30 +58,26 @@ const BookInspection = ({ stage, onBooked }) => {
 
   const loading = !booked && !slotsLoaded;
 
-  const brandOrder = vehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
-  const modelOptions = brandChoice && brandChoice !== OTHER
-    ? (VEHICLE_DATA[brandChoice] || []).filter((m) => (
-      vehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
-    ))
+  const brandOptions = vehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
+
+  // Models are offered only once the brand is one we recognise. Matched
+  // case-insensitively, so somebody typing "toyota" still gets Toyota's
+  // models rather than an empty list.
+  const knownBrand = brandOptions.find((b) => b.toLowerCase() === String(form.brand || '').trim().toLowerCase());
+  const modelOptions = knownBrand
+    ? (VEHICLE_DATA[knownBrand] || [])
+      .filter((m) => (vehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'))
+      .map((m) => m.model)
     : [];
 
   const changeVehicleType = (value) => {
     setVehicleType(value);
-    setBrandChoice('');
-    setModelChoice('');
     setForm({ ...form, brand: '', model: '' });
   };
 
-  const changeBrand = (value) => {
-    setBrandChoice(value);
-    setModelChoice('');
-    setForm({ ...form, brand: value === OTHER ? '' : value, model: '' });
-  };
-
-  const changeModel = (value) => {
-    setModelChoice(value);
-    setForm({ ...form, model: value === OTHER ? '' : value });
-  };
+  // Changing the brand drops the model: a Vios under Honda is somebody
+  // halfway through changing their mind.
+  const changeBrand = (value) => setForm({ ...form, brand: value, model: '' });
 
   const gold = isDark ? GOLD_DARK : GOLD;
   const s = {
@@ -126,11 +118,6 @@ const BookInspection = ({ stage, onBooked }) => {
       color: active ? goldInk(isDark) : (isDark ? '#e4e6eb' : '#1a1a1a'),
     }),
     hint: { fontSize: '12px', color: isDark ? '#8a8d91' : '#9ca3af', margin: '0 0 12px', lineHeight: 1.6 },
-    backToList: {
-      display: 'inline-block', marginTop: '6px', padding: 0, border: 'none', background: 'none',
-      font: 'inherit', fontSize: '11.5px', cursor: 'pointer', textDecoration: 'underline',
-      color: isDark ? '#8a8d91' : '#6b7280',
-    },
     book: {
       padding: '11px 22px', borderRadius: '10px', border: 'none', cursor: saving ? 'default' : 'pointer',
       background: gold, color: ON_GOLD, fontSize: '14px', fontWeight: '700', opacity: saving ? 0.6 : 1,
@@ -274,49 +261,34 @@ const BookInspection = ({ stage, onBooked }) => {
           </div>
 
           <div style={s.row}>
-            {/* Choosing "Other" swaps the list OUT for a box, rather than
-                leaving both on screen. Two controls under one label, one
-                saying "select" and the other "enter", reads as a mistake —
-                and the field underneath the field made the row ragged. */}
+            {/* One box each, suggesting as it is typed. Neither refuses a
+                value: the lists cover what is on the road here, not
+                everything ever built. See components/Autocomplete.jsx. */}
             <div>
               <label style={s.label} htmlFor="ap-brand">Brand</label>
-              {brandChoice === OTHER ? (
-                <>
-                  <input id="ap-brand" style={s.input} autoFocus placeholder="Type the brand"
-                    value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
-                  <button type="button" style={s.backToList} onClick={() => changeBrand('')}>
-                    Choose from the list instead
-                  </button>
-                </>
-              ) : (
-                <select id="ap-brand" style={s.input} value={brandChoice} onChange={(e) => changeBrand(e.target.value)}>
-                  <option value="">Choose a brand…</option>
-                  {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
-                  <option value={OTHER}>Not listed — type it</option>
-                </select>
-              )}
+              <Autocomplete
+                id="ap-brand"
+                isDark={isDark}
+                value={form.brand}
+                onChange={changeBrand}
+                options={brandOptions}
+                placeholder="Start typing — e.g. Toyota"
+              />
             </div>
             <div>
               <label style={s.label} htmlFor="ap-model">Model</label>
-              {modelChoice === OTHER || brandChoice === OTHER ? (
-                <>
-                  <input id="ap-model" style={s.input} placeholder="Type the model"
-                    value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
-                  {modelChoice === OTHER && (
-                    <button type="button" style={s.backToList} onClick={() => changeModel('')}>
-                      Choose from the list instead
-                    </button>
-                  )}
-                </>
-              ) : brandChoice ? (
-                <select id="ap-model" style={s.input} value={modelChoice} onChange={(e) => changeModel(e.target.value)}>
-                  <option value="">Choose a model…</option>
-                  {modelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
-                  <option value={OTHER}>Not listed — type it</option>
-                </select>
-              ) : (
-                <input id="ap-model" style={s.input} placeholder="Pick a brand first" value="" disabled readOnly />
-              )}
+              <Autocomplete
+                id="ap-model"
+                isDark={isDark}
+                value={form.model}
+                onChange={(v) => setForm({ ...form, model: v })}
+                options={modelOptions}
+                placeholder={form.brand ? 'Start typing — e.g. Vios' : 'Brand first'}
+                disabled={!String(form.brand || '').trim()}
+                emptyHint={knownBrand
+                  ? "Not on our list for that brand — that's fine, we'll check it when you come in."
+                  : "We don't know that brand, so we can't suggest models. Type it and we'll check it when you come in."}
+              />
             </div>
             <div>
               <label style={s.label} htmlFor="ap-year">Year</label>
