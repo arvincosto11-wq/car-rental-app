@@ -133,17 +133,19 @@ export default function run() {
   // No rule tells a made-up word from a real brand; the inspection does.
   check('nonsense that looks like a word passes', vehicleNoteProblem(car({ brand: 'Jlkhlhk', model: 'Khgkhvk' }), now), null);
 
-  group('nothing can be recorded before the visit happens');
+  group('only the no-show waits for the clock');
   // An hour-long slot at 10 AM on 2 October.
   const slot = phInstant('2026-10-02', 10);
   const during = phInstant('2026-10-02', 10, 30);
   const slotOver = phInstant('2026-10-02', 11);
 
-  check('approved the day before', !!outcomeTooEarly(slot, 'passed', 60, now), true);
-  check('not approved the day before', !!outcomeTooEarly(slot, 'failed', 60, now), true);
+  // Approving is admin's call whenever they like: a vehicle dropped off a
+  // day early, or settled over the phone, still has to be recordable.
+  check('approved the day before is allowed', outcomeTooEarly(slot, 'passed', 60, now), null);
+  check('so is turning one away', outcomeTooEarly(slot, 'failed', 60, now), null);
+  // The no-show is the one that cannot be true yet.
   check('a no-show the day before', !!outcomeTooEarly(slot, 'missed', 60, now), true);
 
-  // Standing at the counter with the vehicle: it can be judged now.
   check('approved once it has started', outcomeTooEarly(slot, 'passed', 60, during), null);
   check('and not approved too', outcomeTooEarly(slot, 'failed', 60, during), null);
   // But ten minutes into their hour they are late, not absent.

@@ -152,7 +152,6 @@ const Appointments = () => {
         background: isDark ? `${map[0]}22` : map[1], color: isDark ? map[0] : map[2],
       };
     },
-    waiting: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
     noteBox: { display: 'flex', gap: '6px', marginTop: '8px', width: '100%' },
     empty: { padding: '28px', textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '13.5px' },
   };
@@ -187,24 +186,16 @@ const Appointments = () => {
       </div>
       {row.status === 'booked' ? (
         <div style={s.actions}>
-          {/* Nothing can be recorded about a visit that has not happened.
-              Before the slot there is only calling it off; a no-show waits
-              until the slot has run out, because ten minutes in they are
-              late rather than absent. */}
-          {outcomeTooEarly(row.at, 'passed', hours.slotMinutes) ? (
-            <>
-              <span style={s.waiting}>Not yet &mdash; {new Date(row.at).toLocaleDateString('en-US', WHEN)}</span>
-              <button type="button" style={s.btn()} onClick={() => callOff(row)}>Cancel it</button>
-            </>
-          ) : (
-            <>
-              <button type="button" style={s.btn('pass')} onClick={() => close(row, 'passed')}>Approved</button>
-              <button type="button" style={s.btn()} onClick={() => { setNoteFor(row._id); setNote(''); }}>Not approved</button>
-              {!outcomeTooEarly(row.at, 'missed', hours.slotMinutes) && (
-                <button type="button" style={s.btn()} onClick={() => close(row, 'missed')}>No-show</button>
-              )}
-            </>
+          {/* Approving or turning one away is admin's call whenever they
+              like — a vehicle dropped off early still has to be recorded.
+              Only the no-show waits for the slot to run out, because ten
+              minutes in they are late rather than absent. */}
+          <button type="button" style={s.btn('pass')} onClick={() => close(row, 'passed')}>Approved</button>
+          <button type="button" style={s.btn()} onClick={() => { setNoteFor(row._id); setNote(''); }}>Not approved</button>
+          {!outcomeTooEarly(row.at, 'missed', hours.slotMinutes) && (
+            <button type="button" style={s.btn()} onClick={() => close(row, 'missed')}>No-show</button>
           )}
+          <button type="button" style={s.btn()} onClick={() => callOff(row)}>Cancel it</button>
         </div>
       ) : (
         <span style={s.tag(row.status)}>{row.status}</span>

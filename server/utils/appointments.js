@@ -200,17 +200,20 @@ export function vehicleNoteProblem(vehicle, now = new Date()) {
 
 // Whether an appointment can be marked yet, and why not.
 //
-// All three outcomes are claims about something that has already happened:
-// the vehicle was seen and passed, was seen and did not, or nobody came.
-// None of them can be true before the slot has started, and a no-show
-// cannot be true until the slot has run out — somebody ten minutes into
-// their hour is late, not absent.
+// Only the no-show waits. Somebody ten minutes into their hour is late
+// rather than absent, so it cannot be true until the slot has run out, and
+// the slot length is what decides when that is.
+//
+// Approving or turning a vehicle away is deliberately NOT restricted. It
+// looks like the same kind of claim, but it is admin's call about their own
+// business — somebody who drops the vehicle off a day early, or settles it
+// over the phone, still needs recording, and a rule that waits for the
+// clock would have them unable to write down what they have already done.
 export function outcomeTooEarly(at, outcome, slotMinutes = APPOINTMENT_DEFAULTS.slotMinutes, now = new Date()) {
+  if (outcome !== 'missed') return null;
   const starts = new Date(at).getTime();
   const ends = starts + Math.max(1, Number(slotMinutes) || APPOINTMENT_DEFAULTS.slotMinutes) * 60 * 1000;
-  const at_ = new Date(now).getTime();
-  if (outcome === 'missed') {
-    return at_ < ends ? 'That slot has not finished yet, so nobody has missed it.' : null;
-  }
-  return at_ < starts ? 'That appointment has not happened yet.' : null;
+  return new Date(now).getTime() < ends
+    ? 'That slot has not finished yet, so nobody has missed it.'
+    : null;
 }
