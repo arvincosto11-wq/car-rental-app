@@ -29,7 +29,7 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
     // one thing that runs reliably.
     await expireAdjustOffers();
     const expiryCutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-    const [pendingBookings, refundRequests, rescheduleRequests, pendingConsignments, openAppointments, pendingAvailability, pendingBlockedDates, expiringLicenses, expiringRegistrations] = await Promise.all([
+    const [pendingBookings, refundRequests, rescheduleRequests, pendingConsignments, openAppointments, pendingAvailability, pendingBlockedDates, expiringRegistrations] = await Promise.all([
       Booking.countDocuments({ status: 'pending', payment: 'paid', 'adjustOffer.status': { $ne: 'open' } }),
       Booking.countDocuments({ refundStatus: 'requested' }),
       Booking.countDocuments({ 'rescheduleRequest.status': 'pending' }),
@@ -50,7 +50,6 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
         { $match: { 'blockedDates.status': 'pending' } },
         { $count: 'count' },
       ]),
-      User.countDocuments({ role: 'user', licenseExpiry: { $ne: null, $lte: expiryCutoff } }),
       Car.countDocuments({ archived: { $ne: true }, registrationExpiry: { $ne: null, $lte: expiryCutoff } }),
     ]);
     res.json({
@@ -58,7 +57,7 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
       '/admin/manage-consignments': pendingConsignments,
       '/admin/appointments': openAppointments,
       '/admin/availability-requests': pendingAvailability + (pendingBlockedDates[0]?.count || 0),
-      '/admin/expiring-documents': expiringLicenses + expiringRegistrations,
+      '/admin/expiring-documents': expiringRegistrations,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -75,10 +74,12 @@ router.get('/expiring-documents', protect, adminOnly, async (req, res) => {
   try {
     const cutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
-    const [licenseUsers, registrationCars] = await Promise.all([
-      User.find({ role: 'user', licenseExpiry: { $ne: null, $lte: cutoff } })
-        .select('name email licenseExpiry')
-        .sort({ licenseExpiry: 1 }),
+    // Licences are no longer listed here. The date is the client's own
+    // account of their own papers now, and nothing admin can do about it —
+    // the client still gets their renewal reminder, and an expired one still
+    // refuses a self-drive booking. A vehicle's registration is different:
+    // it has to be chased, and an expired one stops the vehicle going out.
+    const [registrationCars] = await Promise.all([
       Car.find({ archived: { $ne: true }, registrationExpiry: { $ne: null, $lte: cutoff } })
         .select('brand model plateNumber registrationExpiry owner')
         .populate('owner', 'name')
@@ -86,7 +87,6 @@ router.get('/expiring-documents', protect, adminOnly, async (req, res) => {
     ]);
 
     res.json({
-      licenses: licenseUsers.map((u) => ({ userId: u._id, name: u.name, email: u.email, expiry: u.licenseExpiry })),
       registrations: registrationCars.map((c) => ({
         carId: c._id, brand: c.brand, model: c.model, plateNumber: c.plateNumber,
         ownerName: c.owner?.name || null, expiry: c.registrationExpiry,
