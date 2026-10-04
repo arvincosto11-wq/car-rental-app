@@ -7,6 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
+import Autocomplete from '../../components/Autocomplete';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD, goldInk} from '../../theme';
 import usePageTitle from '../../hooks/usePageTitle';
 import useModalA11y from '../../hooks/useModalA11y';
@@ -21,7 +22,6 @@ import { isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
 
 const DASH_CH = '—';
 
-const OTHER = '__other__';
 
 const PAGE_SIZE = 10;
 
@@ -63,8 +63,6 @@ const ManageCars = ({ view = 'active' }) => {
   const [editNewPhotoPreviews, setEditNewPhotoPreviews] = useState([]);
   const [updating, setUpdating] = useState(false);
   const [editVehicleType, setEditVehicleType] = useState('car');
-  const [editBrandChoice, setEditBrandChoice] = useState('');
-  const [editModelChoice, setEditModelChoice] = useState('');
   const [search, setSearch] = useState('');
   const [blockPanelCarId, setBlockPanelCarId] = useState(null);
   const [offRoadTarget, setOffRoadTarget] = useState(null);
@@ -91,12 +89,18 @@ const ManageCars = ({ view = 'active' }) => {
   const closeEditModal = () => setEditingCar(null);
   const editModalRef = useModalA11y(closeEditModal, !!editingCarData);
 
-  const editBrandOrder = editVehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
-  const editModelOptions = editBrandChoice && editBrandChoice !== OTHER
-    ? (VEHICLE_DATA[editBrandChoice] || []).filter((m) =>
-        editVehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
-      )
+  const editBrandOptions = editVehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
+  // Matched case-insensitively, so an existing car saved as "toyota" still
+  // offers Toyota's models rather than an empty list.
+  const editKnownBrand = editBrandOptions.find(
+    (b) => b.toLowerCase() === String(editForm.brand || '').trim().toLowerCase(),
+  );
+  const editModelRows = editKnownBrand
+    ? (VEHICLE_DATA[editKnownBrand] || []).filter((m) => (
+      editVehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
+    ))
     : [];
+  const editModelOptions = editModelRows.map((m) => m.model);
 
   useEffect(() => {
     fetchCars();
@@ -276,45 +280,29 @@ const ManageCars = ({ view = 'active' }) => {
       turnaroundHours: car.turnaroundHours ?? '',
     });
 
-    // Try to match the car's existing brand/model against the curated lists so
-    // the dropdowns preselect correctly instead of defaulting to "Other".
-    const vehicleType = car.category === 'Motorcycle' ? 'motorcycle' : 'car';
-    const brandOrder = vehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
-    const brandMatches = brandOrder.includes(car.brand);
-    let modelMatch = '';
-    if (brandMatches) {
-      const modelOptions = (VEHICLE_DATA[car.brand] || []).filter((m) =>
-        vehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
-      );
-      modelMatch = modelOptions.some((m) => m.model === car.model) ? car.model : OTHER;
-    }
-    setEditVehicleType(vehicleType);
-    setEditBrandChoice(brandMatches ? car.brand : OTHER);
-    setEditModelChoice(brandMatches ? modelMatch : '');
+    // Nothing to preselect any more: the boxes hold whatever the car was
+    // saved with, and suggest from there. Only which list to suggest from
+    // still has to be worked out.
+    setEditVehicleType(car.category === 'Motorcycle' ? 'motorcycle' : 'car');
   };
 
   const handleEditVehicleTypeChange = (type) => {
     setEditVehicleType(type);
-    setEditBrandChoice('');
-    setEditModelChoice('');
     setEditForm({ ...editForm, brand: '', model: '', category: type === 'motorcycle' ? 'Motorcycle' : '' });
   };
 
-  const handleEditBrandChoiceChange = (value) => {
-    setEditBrandChoice(value);
-    setEditModelChoice('');
-    setEditForm({ ...editForm, brand: value === OTHER ? '' : value, model: '', category: editVehicleType === 'motorcycle' ? 'Motorcycle' : '' });
-  };
+  const handleEditBrandChange = (value) => setEditForm({
+    ...editForm, brand: value, model: '', category: editVehicleType === 'motorcycle' ? 'Motorcycle' : '',
+  });
 
-  const handleEditModelChoiceChange = (value) => {
-    setEditModelChoice(value);
-    if (value === OTHER) {
-      setEditForm({ ...editForm, model: '' });
-      return;
-    }
-    const match = editModelOptions.find((m) => m.model === value);
-    const autoCategory = match?.category || (editVehicleType === 'motorcycle' ? 'Motorcycle' : '');
-    setEditForm({ ...editForm, model: value, category: autoCategory });
+  // A model we recognise still fills the category in, typed or picked.
+  const handleEditModelChange = (value) => {
+    const match = editModelRows.find((m) => m.model.toLowerCase() === value.trim().toLowerCase());
+    setEditForm({
+      ...editForm,
+      model: value,
+      category: match?.category || (editVehicleType === 'motorcycle' ? 'Motorcycle' : editForm.category),
+    });
   };
 
   const toggleEditBookingType = (type) => {
@@ -958,35 +946,17 @@ const ManageCars = ({ view = 'active' }) => {
                 <div style={styles.editGrid}>
                   <div style={styles.field}>
                     <label style={styles.label} htmlFor="mc-edit-brand">Brand</label>
-                    <select id="mc-edit-brand" style={styles.input} value={editBrandChoice} onChange={(e) => handleEditBrandChoiceChange(e.target.value)}>
-                      <option value="">Select brand</option>
-                      {editBrandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
-                      <option value={OTHER}>Other (type manually)</option>
-                    </select>
-                    {editBrandChoice === OTHER && (
-                      <input aria-label="Brand name" style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
-                        value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })} />
-                    )}
+                    <Autocomplete id="mc-edit-brand" isDark={isDark} value={editForm.brand}
+                      onChange={handleEditBrandChange} options={editBrandOptions}
+                      placeholder="Start typing — e.g. Toyota" />
                   </div>
                   <div style={styles.field}>
                     <label style={styles.label} htmlFor="mc-edit-model">Model</label>
-                    {editBrandChoice && editBrandChoice !== OTHER ? (
-                      <>
-                        <select id="mc-edit-model" style={styles.input} value={editModelChoice} onChange={(e) => handleEditModelChoiceChange(e.target.value)}>
-                          <option value="">Select model</option>
-                          {editModelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
-                          <option value={OTHER}>Other (type manually)</option>
-                        </select>
-                        {editModelChoice === OTHER && (
-                          <input aria-label="Model name" style={{ ...styles.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
-                            value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })} />
-                        )}
-                      </>
-                    ) : (
-                      <input id="mc-edit-model" style={styles.input} type="text" placeholder={editBrandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
-                        value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
-                        disabled={!editBrandChoice} />
-                    )}
+                    <Autocomplete id="mc-edit-model" isDark={isDark} value={editForm.model}
+                      onChange={handleEditModelChange} options={editModelOptions}
+                      placeholder={editForm.brand ? 'Start typing — e.g. Vios' : 'Brand first'}
+                      disabled={!String(editForm.brand || '').trim()}
+                      emptyHint="Not on our list — it will still be saved exactly as typed." />
                   </div>
                   <div style={styles.field}>
                     <label style={styles.label} htmlFor="mc-edit-year">Year</label>
@@ -1019,9 +989,9 @@ const ManageCars = ({ view = 'active' }) => {
                           {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
                         </select>
                         <p style={styles.hint}>
-                          {editModelChoice && editModelChoice !== OTHER
-                            ? "Auto-filled based on the model you picked — change it if it's not right."
-                            : 'Pick a listed model to auto-fill this, or choose manually.'}
+                          {editModelOptions.some((m) => m.toLowerCase() === String(editForm.model || '').trim().toLowerCase())
+                            ? "Auto-filled from the model — change it if it's not right."
+                            : 'Type a listed model to auto-fill this, or choose manually.'}
                         </p>
                       </>
                     )}

@@ -3,12 +3,11 @@ import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import api from '../../api';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER, CAR_CATEGORIES_ORDERED } from '../../data/vehicleBrands';
+import Autocomplete from '../../components/Autocomplete';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../../theme';
 import usePageTitle from '../../hooks/usePageTitle';
 import ColorPicker from '../../components/ColorPicker';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
-
-const OTHER = '__other__';
 
 const AddCar = () => {
   usePageTitle('Add Vehicle');
@@ -19,8 +18,6 @@ const AddCar = () => {
     category: '', transmission: '', fuelType: '',
     seats: '', description: '', plateNumber: '', color: '', mileage: '',
   });
-  const [brandChoice, setBrandChoice] = useState('');
-  const [modelChoice, setModelChoice] = useState('');
   const [bookingTypes, setBookingTypes] = useState({ 'self-drive': true, 'with-driver': true });
   const [photos, setPhotos] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
@@ -28,17 +25,19 @@ const AddCar = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const brandOrder = vehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
-  const modelOptions = brandChoice && brandChoice !== OTHER
-    ? (VEHICLE_DATA[brandChoice] || []).filter((m) =>
-        vehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
-      )
+  const brandOptions = vehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
+  // Matched case-insensitively, so a brand typed in lower case still offers
+  // its models rather than an empty list.
+  const knownBrand = brandOptions.find((b) => b.toLowerCase() === String(form.brand || '').trim().toLowerCase());
+  const modelRows = knownBrand
+    ? (VEHICLE_DATA[knownBrand] || []).filter((m) => (
+      vehicleType === 'motorcycle' ? m.category === 'Motorcycle' : m.category !== 'Motorcycle'
+    ))
     : [];
+  const modelOptions = modelRows.map((m) => m.model);
 
   const handleVehicleTypeChange = (type) => {
     setVehicleType(type);
-    setBrandChoice('');
-    setModelChoice('');
     setForm({ ...form, brand: '', model: '', category: type === 'motorcycle' ? 'Motorcycle' : '' });
     setBookingTypes(
       type === 'motorcycle'
@@ -47,21 +46,21 @@ const AddCar = () => {
     );
   };
 
-  const handleBrandChoiceChange = (value) => {
-    setBrandChoice(value);
-    setModelChoice('');
-    setForm({ ...form, brand: value === OTHER ? '' : value, model: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '' });
-  };
+  // A new brand drops the model: a Vios under Honda is somebody halfway
+  // through changing their mind.
+  const handleBrandChange = (value) => setForm({
+    ...form, brand: value, model: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '',
+  });
 
-  const handleModelChoiceChange = (value) => {
-    setModelChoice(value);
-    if (value === OTHER) {
-      setForm({ ...form, model: '' });
-      return;
-    }
-    const match = modelOptions.find((m) => m.model === value);
-    const autoCategory = match?.category || (vehicleType === 'motorcycle' ? 'Motorcycle' : '');
-    setForm({ ...form, model: value, category: autoCategory });
+  // Picking a model we know still fills the category in — that was worth
+  // keeping, and it works on a typed value too as soon as it matches.
+  const handleModelChange = (value) => {
+    const match = modelRows.find((m) => m.model.toLowerCase() === value.trim().toLowerCase());
+    setForm({
+      ...form,
+      model: value,
+      category: match?.category || (vehicleType === 'motorcycle' ? 'Motorcycle' : form.category),
+    });
   };
 
   const handlePhotosChange = (e) => {
@@ -133,8 +132,6 @@ const AddCar = () => {
       });
       setSuccess(status === 'draft' ? 'Saved as draft — not visible to customers yet. Find it under Manage Cars → Drafts.' : 'Vehicle published successfully!');
       setForm({ brand: '', model: '', year: '', pricePerDay: '', category: vehicleType === 'motorcycle' ? 'Motorcycle' : '', transmission: '', fuelType: '', seats: '', description: '', plateNumber: '', color: '', mileage: '' });
-      setBrandChoice('');
-      setModelChoice('');
       setBookingTypes(
         vehicleType === 'motorcycle'
           ? { 'self-drive': true, 'with-driver': false }
@@ -215,35 +212,16 @@ const AddCar = () => {
           <div style={s.row}>
             <div style={s.field}>
               <label style={s.label} htmlFor="ac-brand">Brand</label>
-              <select id="ac-brand" style={s.input} value={brandChoice} onChange={(e) => handleBrandChoiceChange(e.target.value)} required>
-                <option value="">Select brand</option>
-                {brandOrder.map((b) => <option key={b} value={b}>{b}</option>)}
-                <option value={OTHER}>Other (type manually)</option>
-              </select>
-              {brandChoice === OTHER && (
-                <input aria-label="Brand name" style={{ ...s.input, marginTop: '8px' }} type="text" placeholder="Enter brand name"
-                  value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} required />
-              )}
+              <Autocomplete id="ac-brand" isDark={isDark} value={form.brand} onChange={handleBrandChange}
+                options={brandOptions} placeholder="Start typing — e.g. Toyota" />
             </div>
             <div style={s.field}>
               <label style={s.label} htmlFor="ac-model">Model</label>
-              {brandChoice && brandChoice !== OTHER ? (
-                <>
-                  <select id="ac-model" style={s.input} value={modelChoice} onChange={(e) => handleModelChoiceChange(e.target.value)} required>
-                    <option value="">Select model</option>
-                    {modelOptions.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
-                    <option value={OTHER}>Other (type manually)</option>
-                  </select>
-                  {modelChoice === OTHER && (
-                    <input aria-label="Model name" style={{ ...s.input, marginTop: '8px' }} type="text" placeholder="Enter model name"
-                      value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} required />
-                  )}
-                </>
-              ) : (
-                <input id="ac-model" style={s.input} type="text" placeholder={brandChoice === OTHER ? 'Enter model name' : 'Select a brand first'}
-                  value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}
-                  disabled={!brandChoice} required />
-              )}
+              <Autocomplete id="ac-model" isDark={isDark} value={form.model} onChange={handleModelChange}
+                options={modelOptions}
+                placeholder={form.brand ? 'Start typing — e.g. Vios' : 'Brand first'}
+                disabled={!String(form.brand || '').trim()}
+                emptyHint="Not on our list — it will still be saved exactly as typed." />
             </div>
           </div>
 
@@ -258,9 +236,9 @@ const AddCar = () => {
                   {CAR_CATEGORIES_ORDERED.map((c) => <option key={c}>{c}</option>)}
                 </select>
                 <p style={s.hint}>
-                  {modelChoice && modelChoice !== OTHER
-                    ? 'Auto-filled based on the model you picked — change it if it\'s not right.'
-                    : 'Pick a listed model to auto-fill this, or choose manually.'}
+                  {modelOptions.some((m) => m.toLowerCase() === String(form.model || '').trim().toLowerCase())
+                    ? 'Auto-filled from the model — change it if it is not right.'
+                    : 'Type a listed model to auto-fill this, or choose manually.'}
                 </p>
               </>
             )}
