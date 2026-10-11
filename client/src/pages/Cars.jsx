@@ -52,7 +52,11 @@ const Cars = () => {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [availableOnly, setAvailableOnly] = useState(false);
-  const [sortBy, setSortBy] = useState('');
+  // The page opens on On Sale: the discounted vehicles are what somebody
+  // scrolling a rental list is looking for, and leaving them to be found at
+  // the bottom of a dropdown meant most people never saw them. Newest is
+  // still a choice, and still what everything falls back to within a group.
+  const [sortBy, setSortBy] = useState('on-sale');
   const { isDark } = useTheme();
   const { notifications, markReadByLinkPrefix } = useNotifications();
   const longRentalRules = useLongRentalRules();
@@ -595,12 +599,12 @@ const Cars = () => {
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
-                <option value="">Newest</option>
+                <option value="on-sale">On Sale</option>
+                <option value="rating-desc">Highest Rated</option>
                 <option value="price-asc">Price: Low to High</option>
                 <option value="price-desc">Price: High to Low</option>
-                <option value="rating-desc">Highest Rated</option>
+                <option value="newest">Newest</option>
                 <option value="name-asc">Name: A to Z</option>
-                <option value="on-sale">On Sale</option>
               </select>
               <ChevronDownIcon style={styles.selectArrow} />
             </div>
