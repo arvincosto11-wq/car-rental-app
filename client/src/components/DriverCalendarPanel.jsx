@@ -166,9 +166,11 @@ const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
       fontWeight: '700', background: gold, color: ON_GOLD, cursor: saving ? 'default' : 'pointer',
       opacity: saving ? 0.6 : 1,
     },
-    link: {
-      background: 'none', border: 'none', padding: 0, fontSize: '12px', fontWeight: '700',
-      color: isDark ? '#b0b3b8' : '#6b7280', cursor: 'pointer', textDecoration: 'underline',
+    putBack: {
+      flexShrink: 0, padding: '5px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: '700',
+      cursor: 'pointer', background: 'transparent',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      color: isDark ? '#b0b3b8' : '#6b7280',
     },
   };
 
@@ -220,6 +222,7 @@ const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
                 <span style={s.chosenDates}>{readableRange(form.startDate, form.endDate)}</span>
                 <button
                   type="button"
+                  className="compact-btn"
                   style={s.clearBtn}
                   aria-label="Clear the chosen days"
                   onClick={() => setForm({ ...form, startDate: '', endDate: '' })}
@@ -262,7 +265,9 @@ const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
                   </div>
                   {b.reason ? <div style={s.rowSub}>{b.reason}</div> : null}
                 </div>
-                <button type="button" style={s.link} onClick={() => removeBlock(b)}>Put back</button>
+                <button type="button" className="compact-btn" style={s.putBack} onClick={() => removeBlock(b)}>
+                  Put back
+                </button>
               </div>
             ))}
 

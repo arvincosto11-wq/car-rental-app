@@ -199,6 +199,27 @@ button.dropdown-item-btn:not(:disabled):active {
   box-shadow: none;
 }
 
+/* Small bordered controls that sit inside a list row or a pill — "Put
+   back", a clear ×, and anything else the size of a word. The page-wide
+   lift and shadow are sized for a call to action; on something this small
+   they read as the text itself jumping, and the shadow looks like a stray
+   box floating behind it. These answer by picking up the accent instead,
+   which is the same thing the calendar's month arrows do. */
+button.compact-btn:not(:disabled) {
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+button.compact-btn:not(:disabled):hover,
+button.compact-btn:not(:disabled):active {
+  filter: none;
+  box-shadow: none;
+  transform: none;
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  button.compact-btn:not(:disabled) { transition: none; }
+}
+
 /* Small "this needs attention" dot — admin sidebar, status tabs, etc. A
    gentle pulse on the halo makes it noticeable without being alarming. */
 .pending-dot {
