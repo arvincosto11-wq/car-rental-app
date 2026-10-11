@@ -35,6 +35,19 @@ const driverSchema = new mongoose.Schema({
   image: { type: String, default: '' },
   imageFileId: { type: String, default: '' },
 
+  // What people who have actually been driven by them say.
+  //
+  // Kept on the driver rather than worked out on every read, the same way a
+  // vehicle's rating is: the booking page shows a rating beside every name
+  // it offers, and averaging each driver's trips to draw one list would be
+  // a query per driver per page load.
+  //
+  // Recomputed from the bookings whenever one is rated, so it can always be
+  // rebuilt and can never drift into being its own version of the truth.
+  // See recomputeDriverRating in routes/bookings.js.
+  avgRating: { type: Number, default: 0 },
+  ratingCount: { type: Number, default: 0 },
+
   // For the office. Never leaves the admin side.
   note: { type: String, default: '' },
 }, { timestamps: true });

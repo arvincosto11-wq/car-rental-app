@@ -60,6 +60,31 @@ async function recomputeCarRating(carId) {
   });
 }
 
+// The same, for a driver. Hidden reviews drop out of the average exactly
+// as they do for a vehicle, and a driver nobody has rated reads as 0 rather
+// than as a missing field the pages then have to guard against.
+//
+// Read off the booking's own driverRating.driver rather than its current
+// driver, so moving a booking to somebody else later cannot silently move
+// a rating with it: the rating belongs to whoever actually drove.
+async function recomputeDriverRating(driverId) {
+  if (!driverId) return;
+  const [result] = await Booking.aggregate([
+    {
+      $match: {
+        'driverRating.driver': new mongoose.Types.ObjectId(driverId),
+        'driverRating.rating': { $exists: true },
+        'driverRating.hidden': { $ne: true },
+      },
+    },
+    { $group: { _id: null, avg: { $avg: '$driverRating.rating' }, count: { $sum: 1 } } },
+  ]);
+  await Driver.findByIdAndUpdate(driverId, {
+    avgRating: result ? Math.round(result.avg * 10) / 10 : 0,
+    ratingCount: result ? result.count : 0,
+  });
+}
+
 // A confirmed booking is auto-completed the day after its return date, so
 // clients can rate their trip and consignors get credited without an admin
 // having to remember to click "Mark as Returned". Early returns still go
@@ -358,7 +383,7 @@ router.put('/:id/driver', protect, adminOnly, async (req, res) => {
     if (!req.body.driver) {
       booking.driver = null;
       await booking.save();
-      return res.json(await booking.populate('driver', 'name phone image'));
+      return res.json(await booking.populate('driver', 'name phone image avgRating ratingCount'));
     }
 
     const chosen = await Driver.findById(req.body.driver);
@@ -389,7 +414,7 @@ router.put('/:id/driver', protect, adminOnly, async (req, res) => {
       );
     }
 
-    res.json(await booking.populate('driver', 'name phone image'));
+    res.json(await booking.populate('driver', 'name phone image avgRating ratingCount'));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -436,7 +461,7 @@ router.get('/my', protect, async (req, res) => {
       // Name and face. A client is told who is driving them and shown who
       // to look for; the mobile number is the office's, not theirs. See
       // utils/drivers.js.
-      .populate('driver', 'name image')
+      .populate('driver', 'name image avgRating ratingCount')
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'client' }));
   } catch (err) {
@@ -470,7 +495,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
       .populate('user', 'name email image avgRating ratingCount licenseExpiry')
       // The number too: this is the list somebody works from when a driver
       // has to be rung on the morning of a pickup.
-      .populate('driver', 'name phone image active')
+      .populate('driver', 'name phone image active avgRating ratingCount')
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'admin' }));
   } catch (err) {
@@ -494,7 +519,7 @@ router.get('/owner', protect, consignorOnly, async (req, res) => {
       // name, a photo and a plate.
       .populate('car', 'brand model year category image plateNumber pricePerDay owner')
       .populate('user', 'name')
-      .populate('driver', 'name image')
+      .populate('driver', 'name image avgRating ratingCount')
       .sort({ createdAt: -1 });
     // The owner reads this the way admin does: what needs attention on their
     // vehicles first, finished rentals last.
@@ -1391,6 +1416,20 @@ router.post('/:id/rate-car', protect, async (req, res) => {
       }
     }
 
+    // The driver is rated on the same form, and is optional on it. Sent at
+    // all, it has to be a real score — and it has to be a booking that
+    // actually had a driver, or it is a rating of nobody.
+    const driverScore = req.body.driverRating;
+    const ratesDriver = driverScore !== undefined && driverScore !== null && driverScore !== 0;
+    if (ratesDriver) {
+      if (!booking.driver) {
+        return res.status(400).json({ message: 'This booking had no driver to rate.' });
+      }
+      if (!Number.isInteger(driverScore) || driverScore < 1 || driverScore > 5) {
+        return res.status(400).json({ message: 'The driver rating must be a whole number between 1 and 5.' });
+      }
+    }
+
     const overall = Math.round(((vehicleCondition + serviceQuality + cleanliness) / 3) * 10) / 10;
     const ratedAt = booking.carRating?.ratedAt || new Date();
     // Preserve any existing moderation state across a client's edit to their
@@ -1402,8 +1441,23 @@ router.post('/:id/rate-car', protect, async (req, res) => {
       comment: comment || '', photos: Array.isArray(photos) ? photos : [], hidden,
       ratedAt, updatedAt: new Date(),
     };
+    if (ratesDriver) {
+      // Whoever this rating has always been about, so an edit cannot move
+      // it onto a driver who was assigned later.
+      const ratedDriver = booking.driverRating?.driver || booking.driver;
+      booking.driverRating = {
+        driver: ratedDriver,
+        rating: driverScore,
+        comment: String(req.body.driverComment || '').trim().slice(0, 500),
+        hidden: booking.driverRating?.hidden || false,
+        ratedAt: booking.driverRating?.ratedAt || new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
     await booking.save();
     await recomputeCarRating(booking.car);
+    if (ratesDriver) await recomputeDriverRating(booking.driverRating.driver);
 
     res.json(booking);
   } catch (err) {

@@ -305,6 +305,26 @@ const bookingSchema = new mongoose.Schema({
     ratedAt: { type: Date },
     updatedAt: { type: Date },
   },
+  // How the trip's driver was, said by the person they drove.
+  //
+  // Separate from carRating because it is about a person, not a vehicle:
+  // the same driver turns up in a different car next week, and the same car
+  // goes out with a different driver. Folding the two together would let a
+  // dirty vehicle drag down somebody's name, and a good driver flatter a
+  // car nobody enjoyed.
+  //
+  // Optional even on a with-driver booking. Somebody who rates the vehicle
+  // and says nothing about the driver has rated the vehicle, and making the
+  // driver compulsory would buy ratings nobody meant to give.
+  driverRating: {
+    driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver' },
+    rating: { type: Number, min: 1, max: 5 },
+    comment: { type: String, default: '' },
+    // Moderated the same way a car review is.
+    hidden: { type: Boolean, default: false },
+    ratedAt: { type: Date },
+    updatedAt: { type: Date },
+  },
   clientRating: {
     rating: { type: Number, min: 1, max: 5 },
     comment: { type: String, default: '' },

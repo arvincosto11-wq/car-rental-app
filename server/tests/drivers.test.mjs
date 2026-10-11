@@ -1,7 +1,7 @@
 import { suite, group, check } from './harness.mjs';
 import {
   driverProblem, tidyPhone, tidyName, isWorking, publicDriver, MAX_NAME,
-  driverFreeFor, driverChoiceProblem, spansOverlap, DRIVER_GAP_HOURS,
+  driverFreeFor, driverChoiceProblem, spansOverlap, DRIVER_GAP_HOURS, ratingLabel,
 } from '../utils/drivers.js';
 
 export default function run() {
@@ -59,7 +59,11 @@ export default function run() {
   check('and the photo', shown.image, 'https://x/j.jpg');
   check('the number is not', shown.phone, undefined);
   check('nor is the office note', shown.note, undefined);
-  check('and nothing else came along', Object.keys(shown).sort().join(','), '_id,image,name');
+  // The rating goes out too: a list of strangers to choose between tells
+  // somebody nothing without it.
+  check('and the rating', publicDriver({ _id: 'a', name: 'J', avgRating: 4.8, ratingCount: 9 }).avgRating, 4.8);
+  check('with how many trips it is from', publicDriver({ _id: 'a', name: 'J', avgRating: 4.8, ratingCount: 9 }).ratingCount, 9);
+  check('and nothing else came along', Object.keys(shown).sort().join(','), '_id,avgRating,image,name,ratingCount');
   // Named outward rather than deleted inward, so a field added to the
   // record later cannot leak by being forgotten about here.
   const future = publicDriver({ _id: 'abc', name: 'Juan', somethingAddedLater: 'secret' });
@@ -116,4 +120,15 @@ export default function run() {
   check('apart', spansOverlap({ start: at(12, 9), end: at(13, 9) }, { start: at(15, 9), end: at(16, 9) }), false);
   // A booking with no dates cannot be checked, so nobody is free for it.
   check('no dates means nobody is free', driverFreeFor(null, []), false);
+
+  group('how a rating reads');
+  // A driver in their first week has not been judged badly, and an empty
+  // row of stars says they have.
+  check('nobody has rated them yet', ratingLabel({ ratingCount: 0 }), 'New driver');
+  check('nor a driver with no fields at all', ratingLabel({}), 'New driver');
+  check('nor nobody', ratingLabel(null), 'New driver');
+  check('one trip is singular', ratingLabel({ avgRating: 5, ratingCount: 1 }), '5.0 · 1 trip');
+  check('several are not', ratingLabel({ avgRating: 4.8, ratingCount: 12 }), '4.8 · 12 trips');
+  // Always one decimal, so a column of them lines up.
+  check('a whole number still shows its decimal', ratingLabel({ avgRating: 4, ratingCount: 3 }), '4.0 · 3 trips');
 }

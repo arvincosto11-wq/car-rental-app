@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 import DriverAvatar from './DriverAvatar';
+import { ratingLabel } from '../utils/drivers';
 
 // Naming the driver on a booking, or changing one.
 //
@@ -52,6 +53,7 @@ const DriverAssign = ({ booking, isDark, onAssigned }) => {
       color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '8px',
     },
     current: { fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '8px' },
+    rating: { display: 'block', fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
     sub: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '8px', lineHeight: 1.5 },
     row: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' },
     select: {
@@ -82,7 +84,10 @@ const DriverAssign = ({ booking, isDark, onAssigned }) => {
           ? (
             <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <DriverAvatar driver={booking.driver} isDark={isDark} size={34} />
-              <span>{booking.driver.name}{booking.driver.phone ? ` · ${booking.driver.phone}` : ''}</span>
+              <span>
+                {booking.driver.name}{booking.driver.phone ? ` · ${booking.driver.phone}` : ''}
+                <span style={s.rating}>{ratingLabel(booking.driver)}</span>
+              </span>
             </span>
           )
           : 'Nobody named yet — the customer left it to you.'}

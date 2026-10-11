@@ -16,6 +16,7 @@ import useLongRentalRules from '../hooks/useLongRentalRules';
 import { bestLongRentalRule, longRentalDiscountOn, rulesForCar } from '../utils/longRental';
 import { instantFrom, phDayStart, pickupHours, formatHour, formatPhDate, formatMoment, SHORT_NOTICE_HOURS } from '../utils/phTime';
 import DriverAvatar from '../components/DriverAvatar';
+import { ratingLabel } from '../utils/drivers';
 import RefundNoticeLine from '../components/RefundNoticeLine';
 import PlacePicker from '../components/PlacePicker';
 import { deliveryQuote } from '../utils/delivery';
@@ -661,6 +662,8 @@ const CarDetail = () => {
     choiceTitle: (active) => ({ fontSize: '13.5px', fontWeight: '700', color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a') }),
     choiceSub: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
     driverRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' },
+    chipText: { display: 'grid', justifyItems: 'start', lineHeight: 1.25 },
+    chipRating: { fontSize: '10.5px', fontWeight: '600', opacity: 0.75 },
     driverChip: (active) => ({
       display: 'flex', alignItems: 'center', gap: '8px',
       padding: '7px 14px 7px 7px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'inherit',
@@ -1133,7 +1136,15 @@ const CarDetail = () => {
                                   onClick={() => setAskedFor(d._id)}
                                 >
                                   <DriverAvatar driver={d} isDark={isDark} size={28} />
-                                  {d.name}
+                                  <span style={s.chipText}>
+                                    <span>{d.name}</span>
+                                    {/* The rating sits on the chip itself:
+                                        a row of unfamiliar names is not a
+                                        choice anybody can make. */}
+                                    <span style={s.chipRating}>
+                                      {d.ratingCount ? `★ ${ratingLabel(d)}` : ratingLabel(d)}
+                                    </span>
+                                  </span>
                                 </button>
                               ))}
                             </div>
@@ -1332,8 +1343,12 @@ const CarDetail = () => {
                             <span style={s.summarySub}>
                               {bookingType === 'self-drive'
                                 ? 'You drive it yourself'
-                                : ((drivers || []).find((d) => d._id === driverId)?.name
-                                  || 'We will tell you who is driving before pickup')}
+                                : (() => {
+                                  const chosen = (drivers || []).find((d) => d._id === driverId);
+                                  return chosen
+                                    ? `${chosen.name} · ${ratingLabel(chosen)}`
+                                    : 'We will tell you who is driving before pickup';
+                                })()}
                             </span>
                           </span>
                         </span>

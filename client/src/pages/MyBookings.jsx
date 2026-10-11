@@ -6,6 +6,7 @@ import { useUIFeedback } from '../context/UIFeedbackContext';
 import { useNotifications } from '../context/NotificationContext';
 import api from '../api';
 import DriverAvatar from '../components/DriverAvatar';
+import { ratingLabel } from '../utils/drivers';
 import StarRating from '../components/StarRating';
 import RatingModal from '../components/RatingModal';
 import BookingConfirmationModal from '../components/BookingConfirmationModal';
@@ -1352,7 +1353,7 @@ const MyBookings = () => {
                         {booking.bookingType === 'self-drive'
                           ? "Bring a valid ID and your driver's license to pick up the vehicle."
                           : booking.driver?.name
-                            ? `${booking.driver.name} will meet you at the pickup location.`
+                            ? `${booking.driver.name} · ${ratingLabel(booking.driver)} — will meet you at the pickup location.`
                             : 'Your driver will meet you at the pickup location. We will tell you who is coming before then.'}
                       </span>
                     </div>

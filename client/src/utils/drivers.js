@@ -64,7 +64,22 @@ export const publicDriver = (driver) => ({
   _id: driver._id,
   name: driver.name,
   image: driver.image || '',
+  // What people they have driven say. Shown beside the name, because a
+  // list of strangers to choose between tells somebody nothing on its own.
+  avgRating: driver.avgRating || 0,
+  ratingCount: driver.ratingCount || 0,
 });
+
+// How a rating reads before anybody has given one.
+//
+// "No rating yet" rather than a lonely zero or an empty row of stars: a
+// driver on their first week has not been judged badly, and showing
+// nothing at all reads as something withheld.
+export const ratingLabel = (driver) => {
+  const count = driver?.ratingCount || 0;
+  if (!count) return 'New driver';
+  return `${(driver.avgRating || 0).toFixed(1)} · ${count} trip${count === 1 ? '' : 's'}`;
+};
 
 // --- when somebody is free ------------------------------------------------
 //

@@ -4,6 +4,7 @@ import StarRating from './StarRating';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import LAYERS from '../layers';
 import useModalA11y from '../hooks/useModalA11y';
+import DriverAvatar from './DriverAvatar';
 
 // Shared "rate your experience" modal, used by both the My Bookings list
 // and the dedicated Rate My Bookings panel so the rating flow only lives
@@ -25,6 +26,11 @@ const uploadToImageKit = async (file) => {
 
 const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
   const [form, setForm] = useState({ vehicleCondition: 0, serviceQuality: 0, cleanliness: 0, comment: '' });
+  // Kept apart from the vehicle's scores because it is optional and they
+  // are not: 0 here means "said nothing about the driver", which is a
+  // perfectly good answer and must not read as one star.
+  const [driverScore, setDriverScore] = useState(0);
+  const [driverComment, setDriverComment] = useState('');
   const [photos, setPhotos] = useState([]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -38,6 +44,8 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
       comment: booking.carRating?.comment || '',
     });
     setPhotos((booking.carRating?.photos || []).map((p) => ({ id: p.url, url: p.url, fileId: p.fileId })));
+    setDriverScore(booking.driverRating?.rating || 0);
+    setDriverComment(booking.driverRating?.comment || '');
     setError('');
   }, [booking]);
 
@@ -72,6 +80,9 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
       }
       const res = await api.post(`/bookings/${booking._id}/rate-car`, {
         vehicleCondition, serviceQuality, cleanliness, comment, photos: uploadedPhotos,
+        // Left out entirely when they said nothing, so the server never
+        // records a rating nobody gave.
+        ...(driverScore ? { driverRating: driverScore, driverComment } : {}),
       });
       onSubmitted(res.data.carRating);
     } catch (err) {
@@ -97,6 +108,13 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
       padding: '10px 14px', borderRadius: '8px', marginBottom: '14px',
     },
     modalLabel: { display: 'block', fontSize: '13px', color: isDark ? '#b0b3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
+    driverBox: {
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '10px',
+      padding: '12px', marginBottom: '14px',
+    },
+    driverHead: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' },
+    driverName: { fontSize: '13.5px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    driverSub: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
     modalTextarea: {
       width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: isDark ? '#e4e6eb' : '#1a1a1a',
@@ -148,6 +166,34 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
             />
           </div>
         ))}
+
+        {/* The driver is a person, not a feature of the car. Rating them
+            separately keeps a dirty vehicle from dragging down somebody's
+            name, and a good driver from flattering a car nobody enjoyed.
+            Optional, and it only appears when somebody actually drove. */}
+        {booking.driver && (
+          <div style={s.driverBox}>
+            <div style={s.driverHead}>
+              <DriverAvatar driver={booking.driver} isDark={isDark} size={38} />
+              <div>
+                <div style={s.driverName}>{booking.driver.name}</div>
+                <div style={s.driverSub}>Your driver — optional</div>
+              </div>
+            </div>
+            <StarRating value={driverScore} onChange={setDriverScore} size={22} />
+            {driverScore > 0 && (
+              <textarea
+                id="driver-rating-comment"
+                aria-label={`Comment about ${booking.driver.name}`}
+                style={{ ...s.modalTextarea, marginTop: '10px' }}
+                rows={2}
+                value={driverComment}
+                onChange={(e) => setDriverComment(e.target.value)}
+                placeholder={`How was ${booking.driver.name}?`}
+              />
+            )}
+          </div>
+        )}
 
         <label style={s.modalLabel} htmlFor="rating-comment">Comment (optional)</label>
         <textarea

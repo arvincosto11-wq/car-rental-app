@@ -5,7 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import usePageTitle from '../../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
-import { driverProblem, tidyPhone, isWorking } from '../../utils/drivers';
+import { driverProblem, tidyPhone, isWorking, ratingLabel } from '../../utils/drivers';
 import DriverAvatar from '../../components/DriverAvatar';
 import api from '../../api';
 
@@ -240,7 +240,7 @@ const ManageDrivers = () => {
         <DriverAvatar driver={driver} isDark={isDark} size={40} />
         <div style={{ minWidth: 0 }}>
           <div style={s.name}>{driver.name}</div>
-          <div style={s.meta}>{tidyPhone(driver.phone)}</div>
+          <div style={s.meta}>{tidyPhone(driver.phone)} · {ratingLabel(driver)}</div>
           {driver.note ? <div style={s.note}>{driver.note}</div> : null}
         </div>
       </div>
