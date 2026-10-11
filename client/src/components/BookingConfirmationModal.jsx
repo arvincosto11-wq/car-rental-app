@@ -2,6 +2,7 @@ import useModalA11y from '../hooks/useModalA11y';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 import LAYERS from '../layers';
 import { phHour, formatHour } from '../utils/phTime';
+import ModalClose from './ModalClose';
 
 // Shown when a customer comes back from GCash. It replaced a toast, which
 // vanished after a few seconds — right when someone has just sent real money
@@ -118,12 +119,6 @@ const BookingConfirmationModal = ({ booking, status, isDark, onClose, onCheckAga
       fontSize: '13.5px', fontWeight: '800', background: 'none', color: isDark ? '#8a8d91' : '#9ca3af',
     },
     right: { position: 'relative', padding: '32px', minWidth: 0 },
-    close: {
-      position: 'absolute', top: '18px', right: '18px', width: '30px', height: '30px', borderRadius: '50%',
-      border: 'none', cursor: 'pointer', fontSize: '13px',
-      background: isDark ? '#18191a' : '#f9fafb', color: isDark ? '#8a8d91' : '#9ca3af',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    },
     title: { margin: '0 0 22px', fontSize: '18px', fontWeight: '800', letterSpacing: '-0.01em', paddingRight: '36px', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     pairKey: { fontSize: '12px', color: isDark ? '#8a8d91' : '#9ca3af' },
     pairVal: { fontSize: '14px', fontWeight: '700', marginTop: '1px', color: isDark ? '#e4e6eb' : '#1a1a1a' },
@@ -178,7 +173,7 @@ const BookingConfirmationModal = ({ booking, status, isDark, onClose, onCheckAga
         </div>
 
         <div style={s.right}>
-          <button type="button" className="icon-toggle-btn" style={s.close} onClick={onClose} aria-label="Close">✕</button>
+          <ModalClose onClose={onClose} isDark={isDark} />
           <h3 style={s.title}>Booking Summary</h3>
 
           <div style={{ marginBottom: '14px' }}>

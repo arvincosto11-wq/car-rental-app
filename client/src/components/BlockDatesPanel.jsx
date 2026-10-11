@@ -9,6 +9,7 @@ import { isPromoVisible } from '../utils/promo';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import { offerMessage, offerDeadline } from '../utils/offerWindow';
 import { formatHour, formatMoment } from '../utils/phTime';
+import ModalClose from './ModalClose';
 
 // Everything to do with taking one vehicle off the road, in its own panel.
 // It used to live inside Edit Vehicle, which mixed two kinds of saving in one
@@ -178,12 +179,6 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '16px', padding: '24px',
     },
-    closeBtn: {
-      position: 'absolute', top: '16px', right: '16px', width: '32px', height: '32px',
-      borderRadius: '50%', border: 'none', background: isDark ? '#18191a' : '#f3f4f6',
-      color: isDark ? '#e4e6eb' : '#374151', fontSize: '16px', cursor: 'pointer',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    },
     title: { fontSize: '16px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', paddingRight: '40px' },
     sub: { fontSize: '12px', lineHeight: 1.5, color: isDark ? '#b0b3b8' : '#6b7280', margin: '6px 0 18px' },
     sectionLabel: {
@@ -302,7 +297,7 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
         aria-modal="true"
         aria-labelledby="block-dates-title"
       >
-        <button type="button" className="icon-toggle-btn" style={s.closeBtn} onClick={close} aria-label="Close">×</button>
+        <ModalClose onClose={close} isDark={isDark} />
 
         {conflicts ? (
           <>

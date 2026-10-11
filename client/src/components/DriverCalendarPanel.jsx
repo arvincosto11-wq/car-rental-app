@@ -6,6 +6,7 @@ import AvailabilityCalendar from './AvailabilityCalendar';
 import DriverAvatar from './DriverAvatar';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import { formatMoment } from '../utils/phTime';
+import ModalClose from './ModalClose';
 
 // One driver's diary: the trips they are on, and the days they are off.
 //
@@ -116,17 +117,18 @@ const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex',
       alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px',
     },
+    // The card holds the close button, so it must not be the thing that
+    // scrolls — otherwise the × scrolls off the top with the header, which
+    // is exactly what it did.
     card: {
-      background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '22px',
-      maxWidth: '560px', width: '100%', maxHeight: '88vh', overflowY: 'auto',
+      background: isDark ? '#242526' : '#fff', borderRadius: '12px',
+      maxWidth: '560px', width: '100%', maxHeight: '88vh', position: 'relative',
+      display: 'flex', flexDirection: 'column', overflow: 'hidden',
     },
+    body: { padding: '22px', overflowY: 'auto', flex: 1, minHeight: 0 },
     head: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' },
     title: { fontSize: '17px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     sub: { fontSize: '12.5px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '2px' },
-    close: {
-      marginLeft: 'auto', background: 'none', border: 'none', fontSize: '20px', lineHeight: 1,
-      color: isDark ? '#b0b3b8' : '#6b7280', cursor: 'pointer',
-    },
     sectionTitle: {
       fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
       color: isDark ? '#8a8d91' : '#9ca3af', margin: '18px 0 8px',
@@ -190,13 +192,14 @@ const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
   return (
     <div style={s.overlay} onClick={onClose}>
       <div style={s.card} ref={modalRef} role="dialog" aria-modal="true" aria-label={`${driver.name}'s calendar`} onClick={(e) => e.stopPropagation()}>
+        <ModalClose onClose={onClose} isDark={isDark} />
+        <div style={s.body}>
         <div style={s.head}>
           <DriverAvatar driver={driver} isDark={isDark} size={42} />
           <div>
             <div style={s.title}>{driver.name}</div>
             <div style={s.sub}>Trips and days off</div>
           </div>
-          <button type="button" className="icon-toggle-btn" style={s.close} onClick={onClose} aria-label="Close">×</button>
         </div>
 
         {data === null ? (
@@ -287,6 +290,7 @@ const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
             ))}
           </>
         )}
+        </div>
       </div>
     </div>
   );

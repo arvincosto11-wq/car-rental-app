@@ -1,6 +1,7 @@
 import useModalA11y from '../hooks/useModalA11y';
 import DriverAssign from './DriverAssign';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
+import ModalClose from './ModalClose';
 
 // Everything about a booking that's reference material rather than
 // something admin needs to scan or act on every time — payment/refund
@@ -21,7 +22,6 @@ const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance, onAss
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '18px' },
     modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     modalSubtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '2px' },
-    closeBtn: { background: 'none', border: 'none', fontSize: '20px', lineHeight: 1, color: isDark ? '#b0b3b8' : '#6b7280', cursor: 'pointer', padding: '2px' },
     section: { marginBottom: '18px' },
     sectionTitle: { fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '8px' },
     row: { display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '5px 0', fontSize: '13px', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
@@ -60,7 +60,7 @@ const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance, onAss
             <h2 id="booking-details-modal-title" style={s.modalTitle}>Booking Details</h2>
             <p style={s.modalSubtitle}>{booking.user?.name || 'Unknown'} · {booking.car?.brand} {booking.car?.model}</p>
           </div>
-          <button type="button" className="icon-toggle-btn" style={s.closeBtn} onClick={onClose} aria-label="Close">×</button>
+          <ModalClose onClose={onClose} isDark={isDark} floating={false} />
         </div>
 
         <div style={s.section}>

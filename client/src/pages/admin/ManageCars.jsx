@@ -19,6 +19,7 @@ import Pagination from '../../components/Pagination';
 import { paginate } from '../../utils/paginate';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
 import { isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
+import ModalClose from '../../components/ModalClose';
 
 const DASH_CH = '—';
 
@@ -545,12 +546,6 @@ const ManageCars = ({ view = 'active' }) => {
       background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '12px', padding: '24px', outline: 'none',
     },
-    editModalCloseBtn: {
-      position: 'absolute', top: '16px', right: '16px', width: '32px', height: '32px',
-      borderRadius: '50%', border: 'none', background: isDark ? '#18191a' : '#f3f4f6',
-      color: isDark ? '#e4e6eb' : '#374151', fontSize: '16px', cursor: 'pointer',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    },
     editTitle: { fontSize: '16px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '16px' },
     imageUpload: { position: 'relative', width: '200px', height: '140px', border: `2px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#18191a' : '#fff' },
     imagePlaceholder: { textAlign: 'center', padding: '16px' },
@@ -901,7 +896,7 @@ const ManageCars = ({ view = 'active' }) => {
               aria-labelledby="edit-car-modal-title"
               onClick={(e) => e.stopPropagation()}
             >
-              <button type="button" style={styles.editModalCloseBtn} aria-label="Close" onClick={closeEditModal}>✕</button>
+              <ModalClose onClose={closeEditModal} isDark={isDark} />
               <div style={styles.editForm}>
                 <h3 id="edit-car-modal-title" style={styles.editTitle}>Edit Car</h3>
 

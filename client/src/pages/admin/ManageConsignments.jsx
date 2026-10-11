@@ -10,6 +10,7 @@ import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
+import ModalClose from '../../components/ModalClose';
 
 const PAGE_SIZE = 10;
 
@@ -122,13 +123,14 @@ const ManageConsignments = () => {
     empty: { fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', padding: '24px 0', textAlign: 'center' },
 
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
-    modalContent: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '700px', width: '100%', maxHeight: '85vh', overflow: 'auto', position: 'relative' },
-    closeX: {
-      position: 'absolute', top: '14px', right: '14px', zIndex: 1,
-      width: '32px', height: '32px', flexShrink: 0, borderRadius: '50%', border: 'none', cursor: 'pointer',
-      background: isDark ? '#18191a' : '#f3f4f6', color: isDark ? '#b0b3b8' : '#4b5563', fontSize: '14px',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+    // The card and the scrolling area have to be different elements, or the
+    // close button — positioned against the card — scrolls away with the
+    // content. Same split as Manage Clients.
+    modalContent: {
+      background: isDark ? '#242526' : '#fff', borderRadius: '12px', maxWidth: '700px', width: '100%',
+      maxHeight: '85vh', position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden',
     },
+    modalBody: { padding: '24px', overflowY: 'auto', flex: 1, minHeight: 0 },
     modalTitle: { fontSize: '20px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     modalSub: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px' },
     sectionTitle: { fontSize: '14px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '10px', marginTop: '20px' },
@@ -232,7 +234,8 @@ const ManageConsignments = () => {
       {selected && (
         <div style={s.modalOverlay}>
           <div style={s.modalContent} ref={detailModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="consignment-modal-title">
-            <button type="button" className="icon-toggle-btn" style={s.closeX} onClick={closeModal} aria-label="Close">✕</button>
+            <ModalClose onClose={closeModal} isDark={isDark} />
+            <div style={s.modalBody}>
             <h2 id="consignment-modal-title" style={s.modalTitle}>{selected.brand} {selected.model} ({selected.year})</h2>
             <p style={s.modalSub}>
               Submitted by {selected.owner?.name} &middot; <span style={badgeStyle(selected.status)}>{selected.status}</span>
@@ -358,6 +361,7 @@ const ManageConsignments = () => {
             {selected.status === 'approved' && (
               <p style={s.reviewedNote}>This vehicle is now live in Manage Cars.</p>
             )}
+            </div>
           </div>
         </div>
       )}

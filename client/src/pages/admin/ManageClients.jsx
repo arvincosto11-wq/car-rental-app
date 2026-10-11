@@ -9,6 +9,7 @@ import usePageTitle from '../../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, goldInk} from '../../theme';
 import api from '../../api';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
+import ModalClose from '../../components/ModalClose';
 
 const PAGE_SIZE = 10;
 
@@ -142,16 +143,6 @@ const ManageClients = () => {
     // content. Splitting them keeps it against the card, which never moves.
     modalShell: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', maxWidth: '600px', width: '100%', maxHeight: '85vh', position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
     modalBody: { padding: '24px', overflowY: 'auto', flex: 1, minHeight: 0 },
-    closeX: {
-      position: 'absolute', top: '14px', right: '14px', zIndex: 2,
-      width: '34px', height: '34px', flexShrink: 0, borderRadius: '50%', cursor: 'pointer',
-      border: `1px solid ${isDark ? '#4a4b4c' : '#d1d5db'}`,
-      background: isDark ? '#3a3b3c' : '#e5e7eb',
-      color: isDark ? '#e4e6eb' : '#1a1a1a',
-      fontSize: '15px', fontWeight: '700', lineHeight: 1,
-      boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.45)' : '0 2px 8px rgba(0,0,0,0.18)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-    },
     modalTitle: { fontSize: '20px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     modalSub: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '18px' },
     badgeRow: { display: 'flex', gap: '8px', marginBottom: '18px' },
@@ -263,7 +254,7 @@ const ManageClients = () => {
       {selectedClient && (
         <div style={s.modalOverlay}>
           <div style={s.modalShell} ref={clientModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="client-modal-title">
-            <button type="button" className="icon-toggle-btn" style={s.closeX} onClick={() => setSelectedClientId(null)} aria-label="Close">✕</button>
+            <ModalClose onClose={() => setSelectedClientId(null)} isDark={isDark} />
             <div style={s.modalBody}>
             <h2 id="client-modal-title" style={s.modalTitle}>{selectedClient.name}</h2>
             <p style={s.modalSub}>{selectedClient.email}</p>

@@ -29,6 +29,7 @@ import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD, goldInk} from '../
 import { isPromoVisible, promoOffer, promoDateRange, promoCoversRange, promoDiscountOn } from '../utils/promo';
 import api from '../api';
 import { licenceProblem, licenceMessage } from '../utils/documents';
+import ModalClose from '../components/ModalClose';
 
 // Booking-modal icons — hand-drawn inline SVG, like the rest of the site.
 const ModalIcon = ({ children, size = 17 }) => (
@@ -610,11 +611,6 @@ const CarDetail = () => {
     },
     bookHeadTitle: { margin: 0, fontSize: '18px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     bookHeadSub: { margin: '3px 0 0', fontSize: '12.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
-    bookCloseBtn: {
-      width: '32px', height: '32px', flexShrink: 0, borderRadius: '50%', border: 'none', cursor: 'pointer',
-      background: isDark ? '#18191a' : '#f3f4f6', color: isDark ? '#b0b3b8' : '#4b5563', fontSize: '14px',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    },
     // The body scrolls, so the footer's action stays reachable without
     // scrolling the whole dialog.
     bookBody: { padding: '22px 26px', overflowY: 'auto', flex: 1, minHeight: 0 },
@@ -937,7 +933,7 @@ const CarDetail = () => {
                   <h3 style={s.bookHeadTitle}>{STEP_HEADINGS[step].title}</h3>
                   <p style={s.bookHeadSub}>{STEP_HEADINGS[step].sub}</p>
                 </div>
-                <button type="button" className="icon-toggle-btn" aria-label="Close" style={s.bookCloseBtn} onClick={() => setShowBookingModal(false)}>✕</button>
+                <ModalClose onClose={() => setShowBookingModal(false)} isDark={isDark} floating={false} />
               </div>
 
               <div style={s.bookBody}>

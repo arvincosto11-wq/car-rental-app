@@ -4,6 +4,7 @@ import PromoTab from './PromoTab';
 import LongRentalTab from './LongRentalTab';
 import { isPromoVisible } from '../utils/promo';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
+import ModalClose from './ModalClose';
 
 // Every discount in one place, opened from the Manage Cars header. The two
 // kinds stay separate underneath because they genuinely behave differently
@@ -54,11 +55,6 @@ const DiscountsPanel = ({ cars, isDark, onClose, onCarUpdated, ruleCount, onRule
       background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '16px', padding: '24px',
     },
-    closeBtn: {
-      position: 'absolute', top: '16px', right: '16px', width: '32px', height: '32px', borderRadius: '50%',
-      border: 'none', background: isDark ? '#18191a' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151',
-      fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    },
     title: { fontSize: '17px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', paddingRight: '40px' },
     // A single sunken strip with the selected tab raised out of it — reads as
     // "one of these two", which separate buttons wouldn't.
@@ -88,7 +84,7 @@ const DiscountsPanel = ({ cars, isDark, onClose, onCarUpdated, ruleCount, onRule
     <div style={s.overlay} onClick={onClose}>
       <div ref={panelRef} tabIndex={-1} style={s.card} onClick={(e) => e.stopPropagation()}
         role="dialog" aria-modal="true" aria-labelledby="discounts-title">
-        <button type="button" className="icon-toggle-btn" style={s.closeBtn} onClick={onClose} aria-label="Close">×</button>
+        <ModalClose onClose={onClose} isDark={isDark} />
         <div id="discounts-title" style={s.title}>Discounts</div>
 
         <div role="tablist" aria-label="Kind of discount" style={s.tabList} onKeyDown={onTabKey}>

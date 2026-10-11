@@ -25,6 +25,7 @@ import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk } from '../theme';
 import LAYERS from '../layers';
 import { fuelShortfallLabel, fuelLabel } from '../utils/fuel';
+import ModalClose from '../components/ModalClose';
 
 // How long a change is worth pointing out. After a day it is history, and a
 // list covered in badges says nothing at all.
@@ -781,16 +782,6 @@ const MyBookings = () => {
       borderLeft: `1px solid ${isDark ? '#3a3b3c' : '#e3e5e8'}`,
       padding: '28px',
       boxSizing: 'border-box',
-    },
-    drawerClose: {
-      alignSelf: 'flex-end', flexShrink: 0,
-      width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', padding: 0,
-      border: `1px solid ${isDark ? '#4a4b4c' : '#d1d5db'}`,
-      background: isDark ? '#3a3b3c' : '#e5e7eb',
-      color: isDark ? '#e4e6eb' : '#1a1a1a',
-      fontSize: '15px', fontWeight: '700', lineHeight: 1,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.45)' : '0 2px 8px rgba(0,0,0,0.18)',
     },
     card: {
       display: 'flex',
@@ -1818,15 +1809,12 @@ const MyBookings = () => {
             aria-modal="true"
             aria-label={`Booking ${drawerNumber}`}
           >
-            <button
-              type="button"
-              className="icon-toggle-btn"
-              style={styles.drawerClose}
-              onClick={() => setDrawerBookingId(null)}
-              aria-label="Close"
-            >
-              ✕
-            </button>
+            <ModalClose
+              onClose={() => setDrawerBookingId(null)}
+              isDark={isDark}
+              floating={false}
+              extraStyle={{ alignSelf: 'flex-end' }}
+            />
             {bookingDetail(drawerBooking, drawerNumber)}
           </div>
         </>

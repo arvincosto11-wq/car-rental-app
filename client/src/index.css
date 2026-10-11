@@ -220,6 +220,25 @@ button.compact-btn:not(:disabled):active {
   button.compact-btn:not(:disabled) { transition: none; }
 }
 
+/* The × that closes a dialog (components/ModalClose.jsx). Same reasoning
+   as .compact-btn: the page-wide lift and shadow are sized for a call to
+   action, and on a 34px circle pinned to a corner a 2px jump reads as the
+   dialog itself wobbling. It answers by picking up the accent. */
+button.modal-close-btn:not(:disabled) {
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+button.modal-close-btn:not(:disabled):hover,
+button.modal-close-btn:not(:disabled):active {
+  filter: none;
+  box-shadow: none;
+  transform: none;
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  button.modal-close-btn:not(:disabled) { transition: none; }
+}
+
 /* Small "this needs attention" dot — admin sidebar, status tabs, etc. A
    gentle pulse on the halo makes it noticeable without being alarming. */
 .pending-dot {
