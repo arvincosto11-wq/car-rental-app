@@ -196,7 +196,7 @@ const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
             <div style={s.title}>{driver.name}</div>
             <div style={s.sub}>Trips and days off</div>
           </div>
-          <button type="button" style={s.close} onClick={onClose} aria-label="Close">×</button>
+          <button type="button" className="icon-toggle-btn" style={s.close} onClick={onClose} aria-label="Close">×</button>
         </div>
 
         {data === null ? (

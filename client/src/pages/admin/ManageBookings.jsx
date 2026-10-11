@@ -1408,7 +1408,7 @@ const ManageBookings = () => {
                       {booking.clientRating?.ratedAt && (
                         <>
                           <StarRating value={booking.clientRating.rating} size={12} readOnly />
-                          <button style={s.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
+                          <button className="text-link-btn" style={s.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
                         </>
                       )}
                     </div>

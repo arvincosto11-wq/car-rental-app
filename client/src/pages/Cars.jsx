@@ -521,7 +521,7 @@ const Cars = () => {
           <span>
             📅 Showing vehicles available {pickupDate || '—'} to {returnDate || '—'} — pick one and these dates carry over to its booking form.
           </span>
-          <button type="button" style={styles.clearDatesBtn} onClick={clearDates}>Clear dates</button>
+          <button type="button" className="text-link-btn" style={styles.clearDatesBtn} onClick={clearDates}>Clear dates</button>
         </div>
       )}
 

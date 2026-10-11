@@ -281,6 +281,7 @@ const AdminAccount = () => {
                 </button>
                 <button
                   type="button"
+                  className="text-link-btn"
                   style={cooldown > 0 ? s.linkOff : s.link}
                   disabled={cooldown > 0 || emailBusy}
                   onClick={() => sendEmailCode()}
@@ -349,6 +350,7 @@ const AdminAccount = () => {
                 </button>
                 <button
                   type="button"
+                  className="text-link-btn"
                   style={cooldown > 0 ? s.linkOff : s.link}
                   disabled={cooldown > 0 || pwBusy}
                   onClick={() => sendPasswordCode()}

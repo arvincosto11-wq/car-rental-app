@@ -181,7 +181,7 @@ const BookingsCalendar = () => {
                     </span>
                   ))}
                   {dayBookings.length > CHIP_LIMIT && (
-                    <button style={s.moreBtn} onClick={() => setSelectedDay(date)}>
+                    <button className="text-link-btn" style={s.moreBtn} onClick={() => setSelectedDay(date)}>
                       +{dayBookings.length - CHIP_LIMIT} more
                     </button>
                   )}

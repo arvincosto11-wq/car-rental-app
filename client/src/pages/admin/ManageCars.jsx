@@ -938,13 +938,13 @@ const ManageCars = ({ view = 'active' }) => {
                       {editExistingPhotos.map((photo, i) => (
                         <div key={photo.fileId || photo.url || i} style={styles.photoThumbWrap}>
                           <img src={photo.url} alt={`Existing ${i + 1}`} style={styles.photoThumb} />
-                          <button type="button" style={styles.removePhotoBtn} onClick={() => removeExistingPhoto(i)} aria-label={`Remove existing photo ${i + 1}`}>×</button>
+                          <button type="button" className="icon-toggle-btn" style={styles.removePhotoBtn} onClick={() => removeExistingPhoto(i)} aria-label={`Remove existing photo ${i + 1}`}>×</button>
                         </div>
                       ))}
                       {editNewPhotoPreviews.map((src, i) => (
                         <div key={src} style={styles.photoThumbWrap}>
                           <img src={src} alt={`New ${i + 1}`} style={styles.photoThumb} />
-                          <button type="button" style={styles.removePhotoBtn} onClick={() => removeNewPhoto(i)} aria-label={`Remove new photo ${i + 1}`}>×</button>
+                          <button type="button" className="icon-toggle-btn" style={styles.removePhotoBtn} onClick={() => removeNewPhoto(i)} aria-label={`Remove new photo ${i + 1}`}>×</button>
                         </div>
                       ))}
                     </div>

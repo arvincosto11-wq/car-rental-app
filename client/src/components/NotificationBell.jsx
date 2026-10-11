@@ -115,7 +115,7 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
         >
           <div style={s.header}>
             <span style={s.headerTitle}>Notifications</span>
-            {unreadCount > 0 && <button style={s.markAllBtn} onClick={markAllRead}>Mark all read</button>}
+            {unreadCount > 0 && <button className="text-link-btn" style={s.markAllBtn} onClick={markAllRead}>Mark all read</button>}
           </div>
           {notifications.length === 0 ? (
             <div style={s.empty}>No notifications yet.</div>
@@ -148,7 +148,7 @@ const NotificationBell = ({ isDark, iconColor, btnBg, btnBorder }) => {
                 </div>
               ))}
               {!showAll && notifications.length > DROPDOWN_LIMIT && (
-                <button style={s.viewAllBtn} onClick={handleViewAll}>View All</button>
+                <button className="text-link-btn" style={s.viewAllBtn} onClick={handleViewAll}>View All</button>
               )}
             </>
           )}

@@ -988,7 +988,7 @@ const CarDetail = () => {
                             </span>
                           </span>
                         </span>
-                        <button type="button" style={s.pillAction} onClick={() => { setStartDate(''); setEndDate(''); }}>Clear</button>
+                        <button type="button" className="text-link-btn" style={s.pillAction} onClick={() => { setStartDate(''); setEndDate(''); }}>Clear</button>
                       </div>
                     )}
 
@@ -1066,7 +1066,7 @@ const CarDetail = () => {
                           </span>
                         </span>
                       </span>
-                      <button type="button" style={s.pillAction} onClick={() => goToStep(1)}>Edit</button>
+                      <button type="button" className="text-link-btn" style={s.pillAction} onClick={() => goToStep(1)}>Edit</button>
                     </div>
 
                     <div style={s.sectionLabel} id="cd-booking-type-label">Booking type</div>
@@ -1305,7 +1305,7 @@ const CarDetail = () => {
                             </span>
                           </span>
                         </span>
-                        <button type="button" style={s.pillAction} onClick={() => goToStep(2)}>Edit</button>
+                        <button type="button" className="text-link-btn" style={s.pillAction} onClick={() => goToStep(2)}>Edit</button>
                       </div>
                     )}
                     <div className="booking-summary-grid" style={s.summaryGrid}>
@@ -1386,7 +1386,7 @@ const CarDetail = () => {
                         />
                         <span>
                           <label htmlFor="cd-agree-terms">I agree to the</label>{' '}
-                          <button type="button" style={{ ...s.termsLink, background: 'none', border: 'none', padding: 0, font: 'inherit' }} onClick={() => setShowTerms(true)}>
+                          <button type="button" className="text-link-btn" style={{ ...s.termsLink, background: 'none', border: 'none', padding: 0, font: 'inherit' }} onClick={() => setShowTerms(true)}>
                             Terms and Conditions
                           </button>
                         </span>

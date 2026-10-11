@@ -136,7 +136,7 @@ export const UIFeedbackProvider = ({ children }) => {
         {toasts.map((t) => (
           <div key={t.id} style={s.toast(t.type)}>
             <span style={{ flex: 1 }}>{t.message}</span>
-            <button style={s.toastClose} onClick={() => dismissToast(t.id)} aria-label="Dismiss">×</button>
+            <button className="icon-toggle-btn" style={s.toastClose} onClick={() => dismissToast(t.id)} aria-label="Dismiss">×</button>
           </div>
         ))}
       </div>

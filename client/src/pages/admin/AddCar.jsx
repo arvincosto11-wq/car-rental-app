@@ -410,7 +410,7 @@ const AddCar = () => {
                 {photoPreviews.map((src, i) => (
                   <div key={i} style={s.photoThumbWrap}>
                     <img src={src} alt={`Vehicle ${i + 1}`} style={s.photoThumb} />
-                    <button type="button" style={s.removePhotoBtn} onClick={() => removePhoto(i)} aria-label={`Remove photo ${i + 1}`}>×</button>
+                    <button type="button" className="icon-toggle-btn" style={s.removePhotoBtn} onClick={() => removePhoto(i)} aria-label={`Remove photo ${i + 1}`}>×</button>
                   </div>
                 ))}
               </div>

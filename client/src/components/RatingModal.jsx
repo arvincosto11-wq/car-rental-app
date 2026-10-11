@@ -215,7 +215,7 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
             {photos.map((p, i) => (
               <div key={p.id} style={s.photoThumbWrap}>
                 <img src={p.preview || p.url} alt={`Review photo ${i + 1}`} style={s.photoThumb} />
-                <button type="button" style={s.removePhotoBtn} onClick={() => removePhoto(p.id)} aria-label={`Remove photo ${i + 1}`}>×</button>
+                <button type="button" className="icon-toggle-btn" style={s.removePhotoBtn} onClick={() => removePhoto(p.id)} aria-label={`Remove photo ${i + 1}`}>×</button>
               </div>
             ))}
           </div>
