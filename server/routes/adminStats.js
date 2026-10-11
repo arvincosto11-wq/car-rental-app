@@ -124,13 +124,22 @@ router.get('/dashboard', protect, adminOnly, async (req, res) => {
     const startOfMonth = phMonthStart(0);
     const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Only the two fields the sums need. Confirmed-only, which is what this
-    // dashboard has always counted as revenue.
-    const [cars, confirmedMoney, statusCounts, totalBookings, recent] = await Promise.all([
+    // Only the two fields the sums need.
+    //
+    // Confirmed AND completed. It used to be confirmed alone, which meant a
+    // booking counted as revenue while the trip was still ahead of it and
+    // stopped counting the moment the vehicle came back — so the figure went
+    // DOWN as business got done, and "all time" showed whatever happened to
+    // be upcoming that day. With 78 finished trips on the books it read
+    // ₱2,000. Cancelled stays out: that money was never earned.
+    //
+    // This is also what Analytics has always counted, so the two screens now
+    // agree about the same money instead of giving different answers.
+    const [cars, earnedMoney, statusCounts, totalBookings, recent] = await Promise.all([
       Car.find({ archived: { $ne: true } })
         .select('brand model image avgRating ratingCount')
         .lean(),
-      Booking.find({ status: 'confirmed' }).select('createdAt totalPrice').lean(),
+      Booking.find({ status: { $in: ['confirmed', 'completed'] } }).select('createdAt totalPrice').lean(),
       Booking.aggregate([{ $group: { _id: '$status', n: { $sum: 1 } } }]),
       Booking.countDocuments(),
       Booking.find()
@@ -142,7 +151,7 @@ router.get('/dashboard', protect, adminOnly, async (req, res) => {
     ]);
 
     const byStatus = Object.fromEntries(statusCounts.map((s) => [s._id, s.n]));
-    const sumSince = (cutoff) => confirmedMoney
+    const sumSince = (cutoff) => earnedMoney
       .filter((b) => new Date(b.createdAt) >= cutoff)
       .reduce((sum, b) => sum + (b.totalPrice || 0), 0);
 
@@ -154,7 +163,7 @@ router.get('/dashboard', protect, adminOnly, async (req, res) => {
       return {
         label: new Date(start.getTime() + 8 * 60 * 60 * 1000)
           .toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }),
-        value: confirmedMoney
+        value: earnedMoney
           .filter((b) => {
             const at = new Date(b.createdAt);
             return at >= start && at < end;
@@ -173,7 +182,7 @@ router.get('/dashboard', protect, adminOnly, async (req, res) => {
       revenue: {
         week: sumSince(startOfWeek),
         month: sumSince(startOfMonth),
-        all: confirmedMoney.reduce((sum, b) => sum + (b.totalPrice || 0), 0),
+        all: earnedMoney.reduce((sum, b) => sum + (b.totalPrice || 0), 0),
       },
       monthlyTrend: trend,
       recentBookings: recent,
