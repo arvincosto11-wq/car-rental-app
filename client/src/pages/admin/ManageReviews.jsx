@@ -25,12 +25,12 @@ const ManageReviews = () => {
   const [tab, setTab] = useState('vehicles');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [visibilityFilter, setVisibilityFilter] = useState('all');
-  // Kept apart from the visibility filter rather than folded into one list,
-  // because they answer different questions and you often want both: the
-  // thing somebody moderates is usually a visible review WITH a comment in
-  // it. One dropdown would make you pick which half to ask.
-  const [contentFilter, setContentFilter] = useState('any');
+  // One filter at a time, grouped by what it asks about. Two dropdowns let
+  // you combine them, which sounds better than it reads: on a shop this
+  // size the question is almost always a single one — show me the one-star
+  // ones, show me the hidden ones — and two controls to answer it made the
+  // row look like a report builder.
+  const [filter, setFilter] = useState('all');
   const [workingId, setWorkingId] = useState(null);
 
   useEffect(() => { fetchReviews(); }, []);
@@ -97,22 +97,35 @@ const ManageReviews = () => {
     }
   };
 
-  const matchesVisibility = (r) => (
-    visibilityFilter === 'all' ? true : visibilityFilter === 'hidden' ? r.hidden : !r.hidden
-  );
-
-  // Written words are what turns abusive, and a low score is what somebody
-  // disputes, so those are the two worth being able to ask for.
-  const matchesContent = (score, comment, photos) => {
-    if (contentFilter === 'comments') return !!comment?.trim();
-    if (contentFilter === 'photos') return (photos?.length || 0) > 0;
-    if (contentFilter === 'low') return Number(score) <= 2;
+  // Everything the dropdown can ask, in one place. A star filter rounds the
+  // score, because an average of three categories lands on 4.7 and nobody
+  // thinks of that as anything but five stars.
+  const matchesFilter = (r, score, comment, photos) => {
+    if (filter === 'visible') return !r.hidden;
+    if (filter === 'hidden') return !!r.hidden;
+    if (filter === 'comments') return !!comment?.trim();
+    if (filter === 'photos') return (photos?.length || 0) > 0;
+    if (filter.startsWith('star')) return Math.round(Number(score)) === Number(filter.slice(4));
     return true;
+  };
+
+  // What each option would find, shown beside it. Counted over the whole
+  // tab rather than over what the search has already narrowed, so the
+  // numbers do not move while somebody is typing.
+  const countOf = (rows, pick) => rows.filter(pick).length;
+  const tabRows = tab === 'drivers' ? driverReviews : reviews;
+  const scoreOf = (r) => (tab === 'drivers' ? r.rating : r.overall);
+  const counts = {
+    hidden: countOf(tabRows, (r) => r.hidden),
+    visible: countOf(tabRows, (r) => !r.hidden),
+    comments: countOf(tabRows, (r) => !!r.comment?.trim()),
+    photos: countOf(tabRows, (r) => (r.photos?.length || 0) > 0),
+    stars: [5, 4, 3, 2, 1].map((n) => ({ n, count: countOf(tabRows, (r) => Math.round(Number(scoreOf(r))) === n) })),
   };
 
   const filteredDrivers = driverReviews.filter((r) => {
     const q = search.trim().toLowerCase();
-    return matchesVisibility(r) && matchesContent(r.rating, r.comment) && (!q
+    return matchesFilter(r, r.rating, r.comment) && (!q
       || r.driver?.name?.toLowerCase().includes(q)
       || r.reviewerName?.toLowerCase().includes(q)
       || r.reviewerEmail?.toLowerCase().includes(q)
@@ -120,14 +133,13 @@ const ManageReviews = () => {
   });
 
   const filtered = reviews.filter((r) => {
-    const matchVisibility = matchesVisibility(r);
-    if (!matchesContent(r.overall, r.comment, r.photos)) return false;
+    const matchFilter = matchesFilter(r, r.overall, r.comment, r.photos);
     const q = search.trim().toLowerCase();
     const matchSearch = !q
       || r.reviewerName?.toLowerCase().includes(q)
       || r.reviewerEmail?.toLowerCase().includes(q)
       || `${r.car?.brand} ${r.car?.model}`.toLowerCase().includes(q);
-    return matchVisibility && matchSearch;
+    return matchFilter && matchSearch;
   });
 
   const s = {
@@ -195,7 +207,7 @@ const ManageReviews = () => {
           type="button"
           style={s.tab(tab === 'drivers')}
           aria-pressed={tab === 'drivers'}
-          onClick={() => { setTab('drivers'); if (contentFilter === 'photos') setContentFilter('any'); }}
+          onClick={() => { setTab('drivers'); if (filter === 'photos') setFilter('all'); }}
         >
           Drivers ({driverReviews.length})
         </button>
@@ -210,18 +222,24 @@ const ManageReviews = () => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select style={s.select} value={visibilityFilter} aria-label="Filter by visibility" onChange={(e) => setVisibilityFilter(e.target.value)}>
-          <option value="all">All Reviews</option>
-          <option value="visible">Visible Only</option>
-          <option value="hidden">Hidden Only</option>
-        </select>
-        <select style={s.select} value={contentFilter} aria-label="Filter by content" onChange={(e) => setContentFilter(e.target.value)}>
-          <option value="any">Anything</option>
-          <option value="comments">With Comments</option>
-          {/* A driver review has no photographs to carry, so the option is
-              not offered on that tab rather than offered and always empty. */}
-          {tab === 'vehicles' && <option value="photos">With Photos</option>}
-          <option value="low">1&ndash;2 Stars</option>
+        <select style={s.select} value={filter} aria-label="Filter reviews" onChange={(e) => setFilter(e.target.value)}>
+          <option value="all">All Reviews ({tabRows.length})</option>
+          <optgroup label="Visibility">
+            <option value="visible">Visible ({counts.visible})</option>
+            <option value="hidden">Hidden ({counts.hidden})</option>
+          </optgroup>
+          <optgroup label="What's in it">
+            <option value="comments">With Comments ({counts.comments})</option>
+            {/* A driver review has no photographs to carry, so the option is
+                not offered on that tab rather than offered and always
+                empty. */}
+            {tab === 'vehicles' && <option value="photos">With Photos ({counts.photos})</option>}
+          </optgroup>
+          <optgroup label="Rating">
+            {counts.stars.map(({ n, count }) => (
+              <option key={n} value={`star${n}`}>{n} Star{n === 1 ? '' : 's'} ({count})</option>
+            ))}
+          </optgroup>
         </select>
       </div>
 
