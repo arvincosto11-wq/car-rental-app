@@ -224,7 +224,48 @@ router.post('/:id/blocks', protect, adminOnly, async (req, res) => {
 
     driver.blocks.push({ start, end, reason: String(req.body.reason || '').trim().slice(0, 200) });
     await driver.save();
-    res.status(201).json(driver);
+
+    // Saved, and now say what it has cost. These are warnings rather than
+    // refusals on purpose: somebody being ill is a fact, not a request, and
+    // a system that would not let you write it down would be lying about
+    // the rota to keep its own books tidy. But finding out on the morning
+    // is worse than finding out now.
+    const overlapping = (b) => {
+      const span = bookingSpan(b);
+      return span.start < end && span.end > start;
+    };
+    const when = (b) => new Date(b.startDate).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', timeZone: 'Asia/Manila' });
+
+    const [asked, unassigned, allDrivers] = await Promise.all([
+      // Somebody asked for this driver by name and is still waiting for an
+      // answer. Their request is not lost, but it cannot be honoured as it
+      // stands, and whoever accepts it needs to know before they do.
+      Booking.find({ driver: driver._id, status: 'pending' }).select('startDate endDate hasPickupTime user').populate('user', 'name').lean(),
+      // A trip that needs a driver and has not got one yet.
+      Booking.find({ status: { $in: ['pending', 'confirmed'] }, bookingType: 'with-driver', driver: null })
+        .select('startDate endDate hasPickupTime status user').populate('user', 'name').lean(),
+      Driver.find().lean(),
+    ]);
+
+    const warnings = [];
+    for (const b of asked.filter(overlapping)) {
+      warnings.push(`${b.user?.name || 'A client'} asked for ${driver.name} on ${when(b)}. That request needs another driver now.`);
+    }
+
+    // Read fresh, so the block just saved is counted: the question is who
+    // is left, not who was free a moment ago.
+    const busy = await driverBusy();
+    for (const b of unassigned.filter(overlapping)) {
+      const span = bookingSpan(b);
+      const anyoneLeft = allDrivers
+        .filter(isWorking)
+        .some((d) => driverFreeFor(span, busy.get(String(d._id)) || []));
+      if (!anyoneLeft) {
+        warnings.push(`Nobody is left to drive ${b.user?.name || 'a client'} on ${when(b)}.`);
+      }
+    }
+
+    res.status(201).json({ driver, warnings });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

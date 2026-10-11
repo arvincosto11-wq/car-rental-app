@@ -76,12 +76,15 @@ const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
     }
     setSaving(true);
     try {
-      await api.post(`/drivers/${driver._id}/blocks`, {
+      const { data: saved } = await api.post(`/drivers/${driver._id}/blocks`, {
         startDate: form.startDate,
         endDate: form.endDate || form.startDate,
         reason: form.reason,
       });
       toast.success('Marked off. They will not be offered for those days.');
+      // What it cost, said one line at a time rather than as a paragraph
+      // nobody reads. These are things to go and fix, not errors.
+      for (const warning of saved?.warnings || []) toast.info(warning);
       setForm({ startDate: '', endDate: '', reason: '' });
       load();
       onChanged?.();
@@ -135,7 +138,22 @@ const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
     },
     rowSub: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px' },
     empty: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', padding: '10px 0' },
-    chosen: { fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a', margin: '0 0 4px' },
+    chosen: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', margin: '0 0 4px' },
+    // The chosen days read as one object you can put down again, rather
+    // than a sentence with a word underlined in it.
+    chosenRow: {
+      display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '4px',
+      padding: '6px 6px 6px 12px', borderRadius: '999px',
+      border: `1px solid ${gold}`,
+      background: isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.08)',
+    },
+    chosenDates: { fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    clearBtn: {
+      width: '20px', height: '20px', lineHeight: '18px', padding: 0, borderRadius: '50%',
+      border: 'none', cursor: 'pointer', fontSize: '14px',
+      background: isDark ? '#3a3b3c' : '#e5e7eb',
+      color: isDark ? '#e4e6eb' : '#4b5563',
+    },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginTop: '10px' },
     label: { display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '5px', color: isDark ? '#e4e6eb' : '#374151' },
     input: {
@@ -197,17 +215,21 @@ const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
                 two fields saying the same thing as the outlined squares is
                 one more place for the two to disagree. What is chosen is
                 written out instead, so it is never a guess. */}
-            <p style={s.chosen}>
-              {form.startDate
-                ? <>
-                    <strong>{readableRange(form.startDate, form.endDate)}</strong>
-                    {' · '}
-                    <button type="button" style={s.link} onClick={() => setForm({ ...form, startDate: '', endDate: '' })}>
-                      clear
-                    </button>
-                  </>
-                : 'Click a day on the calendar, then the last day if it is more than one.'}
-            </p>
+            {form.startDate ? (
+              <div style={s.chosenRow}>
+                <span style={s.chosenDates}>{readableRange(form.startDate, form.endDate)}</span>
+                <button
+                  type="button"
+                  style={s.clearBtn}
+                  aria-label="Clear the chosen days"
+                  onClick={() => setForm({ ...form, startDate: '', endDate: '' })}
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <p style={s.chosen}>Click a day on the calendar, then the last day if it is more than one.</p>
+            )}
             <div style={s.grid}>
               <div>
                 <label style={s.label} htmlFor="dc-why">Why (optional)</label>
