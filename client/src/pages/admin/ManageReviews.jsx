@@ -26,6 +26,11 @@ const ManageReviews = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [visibilityFilter, setVisibilityFilter] = useState('all');
+  // Kept apart from the visibility filter rather than folded into one list,
+  // because they answer different questions and you often want both: the
+  // thing somebody moderates is usually a visible review WITH a comment in
+  // it. One dropdown would make you pick which half to ask.
+  const [contentFilter, setContentFilter] = useState('any');
   const [workingId, setWorkingId] = useState(null);
 
   useEffect(() => { fetchReviews(); }, []);
@@ -96,9 +101,18 @@ const ManageReviews = () => {
     visibilityFilter === 'all' ? true : visibilityFilter === 'hidden' ? r.hidden : !r.hidden
   );
 
+  // Written words are what turns abusive, and a low score is what somebody
+  // disputes, so those are the two worth being able to ask for.
+  const matchesContent = (score, comment, photos) => {
+    if (contentFilter === 'comments') return !!comment?.trim();
+    if (contentFilter === 'photos') return (photos?.length || 0) > 0;
+    if (contentFilter === 'low') return Number(score) <= 2;
+    return true;
+  };
+
   const filteredDrivers = driverReviews.filter((r) => {
     const q = search.trim().toLowerCase();
-    return matchesVisibility(r) && (!q
+    return matchesVisibility(r) && matchesContent(r.rating, r.comment) && (!q
       || r.driver?.name?.toLowerCase().includes(q)
       || r.reviewerName?.toLowerCase().includes(q)
       || r.reviewerEmail?.toLowerCase().includes(q)
@@ -106,7 +120,8 @@ const ManageReviews = () => {
   });
 
   const filtered = reviews.filter((r) => {
-    const matchVisibility = visibilityFilter === 'all' ? true : visibilityFilter === 'hidden' ? r.hidden : !r.hidden;
+    const matchVisibility = matchesVisibility(r);
+    if (!matchesContent(r.overall, r.comment, r.photos)) return false;
     const q = search.trim().toLowerCase();
     const matchSearch = !q
       || r.reviewerName?.toLowerCase().includes(q)
@@ -176,7 +191,12 @@ const ManageReviews = () => {
         <button type="button" style={s.tab(tab === 'vehicles')} aria-pressed={tab === 'vehicles'} onClick={() => setTab('vehicles')}>
           Vehicles ({reviews.length})
         </button>
-        <button type="button" style={s.tab(tab === 'drivers')} aria-pressed={tab === 'drivers'} onClick={() => setTab('drivers')}>
+        <button
+          type="button"
+          style={s.tab(tab === 'drivers')}
+          aria-pressed={tab === 'drivers'}
+          onClick={() => { setTab('drivers'); if (contentFilter === 'photos') setContentFilter('any'); }}
+        >
           Drivers ({driverReviews.length})
         </button>
       </div>
@@ -194,6 +214,14 @@ const ManageReviews = () => {
           <option value="all">All Reviews</option>
           <option value="visible">Visible Only</option>
           <option value="hidden">Hidden Only</option>
+        </select>
+        <select style={s.select} value={contentFilter} aria-label="Filter by content" onChange={(e) => setContentFilter(e.target.value)}>
+          <option value="any">Anything</option>
+          <option value="comments">With Comments</option>
+          {/* A driver review has no photographs to carry, so the option is
+              not offered on that tab rather than offered and always empty. */}
+          {tab === 'vehicles' && <option value="photos">With Photos</option>}
+          <option value="low">1&ndash;2 Stars</option>
         </select>
       </div>
 
