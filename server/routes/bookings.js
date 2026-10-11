@@ -5,7 +5,7 @@ import Car from '../models/Car.js';
 import LongRentalDiscount from '../models/LongRentalDiscount.js';
 import User from '../models/User.js';
 import Driver from '../models/Driver.js';
-import { driverChoiceProblem, isWorking } from '../utils/drivers.js';
+import { driverChoiceProblem } from '../utils/drivers.js';
 import { driverBusy } from './drivers.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
@@ -326,7 +326,7 @@ router.post('/', protect, async (req, res) => {
       const chosen = await Driver.findById(req.body.driver);
       if (!chosen) return res.status(400).json({ message: 'That driver is no longer on our list. Please choose another, or leave it to us.' });
       const problem = driverChoiceProblem(chosen, requestedSpan, (await driverBusy()).get(String(chosen._id)) || []);
-      if (problem) return res.status(400).json({ message: problem });
+      if (problem) return res.status(400).json({ message: `${problem} Please choose another, or leave it to us.` });
       driverId = chosen._id;
     }
 
@@ -388,14 +388,11 @@ router.put('/:id/driver', protect, adminOnly, async (req, res) => {
 
     const chosen = await Driver.findById(req.body.driver);
     if (!chosen) return res.status(404).json({ message: 'Driver not found' });
-    if (!isWorking(chosen)) {
-      return res.status(400).json({ message: `${chosen.name} is marked as not working.` });
-    }
     // Their own current trip is left out, so saving a booking without
     // changing its driver is never refused on the grounds of itself.
-    const trips = (await driverBusy(booking._id)).get(String(chosen._id)) || [];
-    const problem = driverChoiceProblem(chosen, bookingSpan(booking), trips);
-    if (problem) return res.status(400).json({ message: `${chosen.name} is already out on another trip around these dates.` });
+    const busy = (await driverBusy(booking._id)).get(String(chosen._id)) || [];
+    const problem = driverChoiceProblem(chosen, bookingSpan(booking), busy);
+    if (problem) return res.status(400).json({ message: problem });
 
     const changed = String(booking.driver || '') !== String(chosen._id);
     booking.driver = chosen._id;
@@ -594,12 +591,9 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         if (!chosen) {
           return res.status(400).json({ message: 'The driver on this booking is no longer on the list. Assign another, or clear the driver, then accept it.' });
         }
-        if (!isWorking(chosen)) {
-          return res.status(400).json({ message: `${chosen.name} is marked as not working. Assign another driver, or clear the driver, then accept it.` });
-        }
         const problem = driverChoiceProblem(chosen, bookingSpan(booking), trips);
         if (problem) {
-          return res.status(400).json({ message: `${chosen.name} is already out on another trip around these dates. Assign another driver, or clear the driver, then accept it.` });
+          return res.status(400).json({ message: `${problem} Assign another driver, or clear the driver, then accept it.` });
         }
       }
 

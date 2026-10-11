@@ -1109,7 +1109,10 @@ const CarDetail = () => {
                         The office fills the name in afterwards. */}
                     {bookingType === 'with-driver' && (
                       <>
-                        <div style={s.sectionLabel} id="cd-driver-label">Driver</div>
+                        {/* The booking-type cards have no bottom margin of
+                            their own, so this label sat flush against them
+                            and read as part of the card below. */}
+                        <div style={{ ...s.sectionLabel, marginTop: '18px' }} id="cd-driver-label">Driver</div>
                         {drivers === null ? (
                           <p style={s.fieldHint}>Checking who is free…</p>
                         ) : (

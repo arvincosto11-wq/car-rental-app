@@ -1,7 +1,7 @@
 import { suite, group, check } from './harness.mjs';
 import {
   driverProblem, tidyPhone, tidyName, isWorking, publicDriver, MAX_NAME,
-  driverFreeFor, driverChoiceProblem, spansOverlap, DRIVER_GAP_HOURS, ratingLabel,
+  driverFreeFor, driverChoiceProblem, spansOverlap, DRIVER_GAP_HOURS, ratingLabel, clashKind,
 } from '../utils/drivers.js';
 
 export default function run() {
@@ -104,13 +104,27 @@ export default function run() {
 
   group('what the booking form and the server both refuse');
   const free = { name: 'Juan', active: true };
-  const taken = [{ start: at(13, 9), end: at(13, 17) }];
+  const taken = [{ start: at(13, 9), end: at(13, 17), kind: 'trip' }];
+  const off = [{ start: at(13, 0), end: at(14, 0), kind: 'off' }];
   check('a free, working driver passes', driverChoiceProblem(free, trip, []), null);
   check('one who is out that week does not', !!driverChoiceProblem(free, trip, taken), true);
   check('nor does one who is not working', !!driverChoiceProblem({ name: 'Juan', active: false }, trip, []), true);
   // No driver is a legitimate answer: the customer left it to the office,
   // or nobody was free when they booked.
   check('nobody chosen is allowed', driverChoiceProblem(null, trip, taken), null);
+
+  // The reason has to be the real one. "Already out on another trip" when
+  // the man is off sick sends somebody looking through Manage Bookings for
+  // a clash that does not exist — which is exactly what it did.
+  check('a trip says trip', driverChoiceProblem(free, trip, taken), 'Juan is already out on another trip around those dates.');
+  check('a day off says day off', driverChoiceProblem(free, trip, off), 'Juan is marked off around those dates.');
+  check('not working says that', driverChoiceProblem({ name: 'Juan', active: false }, trip, []), 'Juan is not driving for us at the moment.');
+  check('and it names them', driverChoiceProblem({ name: 'Maria', active: true }, trip, off).startsWith('Maria'), true);
+  // A span with no kind on it is a trip: that is what they all were before
+  // days off existed.
+  check('an unlabelled span is a trip', clashKind(trip, [{ start: at(13, 9), end: at(13, 17) }]), 'trip');
+  check('nothing in the way', clashKind(trip, []), null);
+  check('a day off is named', clashKind(trip, off), 'off');
 
   group('spans');
   check('overlapping', spansOverlap({ start: at(12, 9), end: at(14, 9) }, { start: at(13, 9), end: at(15, 9) }), true);

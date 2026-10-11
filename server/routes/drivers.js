@@ -23,7 +23,7 @@ export async function driverTrips(ignoreBookingId = null) {
   for (const row of rows) {
     const key = String(row.driver);
     if (!byDriver.has(key)) byDriver.set(key, []);
-    byDriver.get(key).push(bookingSpan(row));
+    byDriver.get(key).push({ ...bookingSpan(row), kind: 'trip' });
   }
   return byDriver;
 }
@@ -43,7 +43,7 @@ export async function driverBusy(ignoreBookingId = null) {
     const key = String(driver._id);
     if (!trips.has(key)) trips.set(key, []);
     for (const block of driver.blocks || []) {
-      trips.get(key).push({ start: new Date(block.start), end: new Date(block.end) });
+      trips.get(key).push({ start: new Date(block.start), end: new Date(block.end), kind: 'off' });
     }
   }
   return trips;

@@ -116,16 +116,33 @@ export function driverFreeFor(span, trips = []) {
   return !trips.some((trip) => spansOverlap(wanted, widen(trip, DRIVER_GAP_HOURS)));
 }
 
-// Why this driver cannot take this booking, or null.
+// Which kind of busy is in the way, or null.
+//
+// A trip and a day off are both "not free", but they are not the same
+// thing to whoever reads the refusal: one sends somebody to Manage
+// Bookings to move a trip, the other to the driver's calendar. Saying
+// "already out on another trip" when the man is off sick sends them
+// looking for a booking that does not exist.
+export function clashKind(span, busy = []) {
+  if (!span?.start || !span?.end) return null;
+  const wanted = { start: new Date(span.start), end: new Date(span.end) };
+  const hit = busy.find((b) => spansOverlap(wanted, widen(b, DRIVER_GAP_HOURS)));
+  return hit ? (hit.kind || 'trip') : null;
+}
+
+// Why this driver cannot take this booking, or null. One short sentence
+// naming them; the caller adds its own advice, because what to do about it
+// differs between a customer picking a name and admin at the counter.
 //
 // A booking with no driver is allowed on purpose: a customer who does not
 // mind who drives leaves it to the office, and a booking made when nobody
 // was free still has to be takeable. See the booking form.
-export function driverChoiceProblem(driver, span, trips = []) {
+export function driverChoiceProblem(driver, span, busy = []) {
   if (!driver) return null;
-  if (!isWorking(driver)) return 'That driver is not available at the moment. Please choose another, or leave it to us.';
-  if (!driverFreeFor(span, trips)) {
-    return 'That driver is already out on another trip around those dates. Please choose another, or leave it to us.';
-  }
+  const name = driver.name || 'That driver';
+  if (!isWorking(driver)) return `${name} is not driving for us at the moment.`;
+  const kind = clashKind(span, busy);
+  if (kind === 'off') return `${name} is marked off around those dates.`;
+  if (kind) return `${name} is already out on another trip around those dates.`;
   return null;
 }
