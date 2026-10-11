@@ -26,6 +26,24 @@ const toDateValue = (d) => {
   return `${y}-${m}-${day}`;
 };
 
+// "28 – 29 October", or just the one day. Written from the YYYY-MM-DD the
+// calendar hands back, which is already a Philippine calendar day, so it is
+// read as one rather than parsed as an instant and shifted.
+const readableRange = (startYmd, endYmd) => {
+  const day = (ymd) => {
+    const [y, m, d] = ymd.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+  const opts = { month: 'long', day: 'numeric' };
+  if (!endYmd || endYmd === startYmd) return day(startYmd).toLocaleDateString('en-PH', opts);
+  const from = day(startYmd);
+  const to = day(endYmd);
+  // Same month reads better without repeating it.
+  return from.getMonth() === to.getMonth()
+    ? `${from.getDate()} – ${to.toLocaleDateString('en-PH', opts)}`
+    : `${from.toLocaleDateString('en-PH', opts)} – ${to.toLocaleDateString('en-PH', opts)}`;
+};
+
 const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
   const { toast, confirm } = useUIFeedback();
   const modalRef = useModalA11y(onClose);
@@ -117,6 +135,7 @@ const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
     },
     rowSub: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px' },
     empty: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', padding: '10px 0' },
+    chosen: { fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a', margin: '0 0 4px' },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginTop: '10px' },
     label: { display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '5px', color: isDark ? '#e4e6eb' : '#374151' },
     input: {
@@ -174,24 +193,34 @@ const DriverCalendarPanel = ({ driver, isDark, onClose, onChanged }) => {
             />
 
             <div style={s.sectionTitle}>Mark them off</div>
+            {/* No date boxes. The days are picked on the calendar above —
+                two fields saying the same thing as the outlined squares is
+                one more place for the two to disagree. What is chosen is
+                written out instead, so it is never a guess. */}
+            <p style={s.chosen}>
+              {form.startDate
+                ? <>
+                    <strong>{readableRange(form.startDate, form.endDate)}</strong>
+                    {' · '}
+                    <button type="button" style={s.link} onClick={() => setForm({ ...form, startDate: '', endDate: '' })}>
+                      clear
+                    </button>
+                  </>
+                : 'Click a day on the calendar, then the last day if it is more than one.'}
+            </p>
             <div style={s.grid}>
-              <div>
-                <label style={s.label} htmlFor="dc-from">First day</label>
-                <input id="dc-from" type="date" style={s.input} value={form.startDate}
-                  onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
-              </div>
-              <div>
-                <label style={s.label} htmlFor="dc-to">Last day</label>
-                <input id="dc-to" type="date" style={s.input} value={form.endDate}
-                  onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
-              </div>
               <div>
                 <label style={s.label} htmlFor="dc-why">Why (optional)</label>
                 <input id="dc-why" style={s.input} maxLength={200} placeholder="e.g. sick, rest day"
                   value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
               </div>
             </div>
-            <button type="button" style={s.btn} onClick={blockDays} disabled={saving}>
+            <button
+              type="button"
+              style={{ ...s.btn, opacity: saving || !form.startDate ? 0.5 : 1, cursor: saving || !form.startDate ? 'default' : 'pointer' }}
+              onClick={blockDays}
+              disabled={saving || !form.startDate}
+            >
               {saving ? 'Saving…' : 'Mark off these days'}
             </button>
 
