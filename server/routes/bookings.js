@@ -1462,6 +1462,45 @@ router.post('/:id/rate-car', protect, async (req, res) => {
 // Admin hides or unhides a client's car review (moderation) — hidden
 // reviews stay in the database but drop out of the public reviews list
 // and the car's average rating.
+// Admin hides or unhides a review of a DRIVER.
+//
+// Worth having for a reason the vehicle reviews do not have: this one is
+// about a person who works here. A vehicle cannot be defamed.
+//
+// Hidden reviews stay in the database and drop out of the driver's average,
+// the same way a hidden car review does.
+router.put('/:id/rate-driver/moderate', protect, adminOnly, async (req, res) => {
+  try {
+    const { hidden } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!booking.driverRating?.ratedAt) {
+      return res.status(400).json({ message: 'This booking has no driver review to moderate.' });
+    }
+
+    const wasHidden = booking.driverRating.hidden;
+    booking.driverRating.hidden = !!hidden;
+    await booking.save();
+    await recomputeDriverRating(booking.driverRating.driver);
+
+    // Told once, when it goes. Telling somebody their review is back would
+    // be telling them it had been taken down, which they may never have
+    // noticed.
+    if (!!hidden && !wasHidden) {
+      await notifyUser(
+        booking.user,
+        'Your review was removed',
+        'Your review of your driver was removed by an admin for not meeting our guidelines.',
+        '/my-bookings',
+      );
+    }
+
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.put('/:id/rate-car/moderate', protect, adminOnly, async (req, res) => {
   try {
     const { hidden } = req.body;

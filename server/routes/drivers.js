@@ -146,6 +146,41 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
   }
 });
 
+// Every review anybody has left about a driver, newest first.
+//
+// Read off the bookings rather than kept on the driver, for the same reason
+// the trips are: one copy of the truth. The driver only carries the average
+// worked out from these.
+//
+// Hidden ones are included: this is the screen somebody un-hides from.
+router.get('/reviews', protect, adminOnly, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ 'driverRating.ratedAt': { $exists: true } })
+      .populate('user', 'name email')
+      .populate('car', 'brand model')
+      .populate('driverRating.driver', 'name image')
+      .sort({ 'driverRating.ratedAt': -1 })
+      .select('driverRating user car')
+      .lean();
+
+    res.json(bookings.map((b) => ({
+      _id: b._id,
+      driver: b.driverRating.driver
+        ? { _id: b.driverRating.driver._id, name: b.driverRating.driver.name, image: b.driverRating.driver.image }
+        : null,
+      reviewerName: b.user?.name || 'Unknown',
+      reviewerEmail: b.user?.email || '',
+      car: b.car ? `${b.car.brand} ${b.car.model}` : '',
+      rating: b.driverRating.rating,
+      comment: b.driverRating.comment || '',
+      hidden: !!b.driverRating.hidden,
+      ratedAt: b.driverRating.ratedAt,
+    })));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // One driver's diary: the trips they are on and the days they are off.
 //
 // Trips are read from the bookings rather than copied onto the driver, so

@@ -2,16 +2,27 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
+import DriverAvatar from '../../components/DriverAvatar';
 import { SkeletonListCard } from '../../components/Skeleton';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import usePageTitle from '../../hooks/usePageTitle';
+import { GOLD, GOLD_DARK, goldInk } from '../../theme';
 import api from '../../api';
 
+// Reviews of the vehicles and reviews of the people who drive them, on one
+// screen behind a toggle.
+//
+// Together rather than apart because moderation is about catching something
+// you did not know was there. A review of a driver sitting on that driver's
+// own page would only be found by opening every driver in turn, which is
+// not how anybody finds a review they were not looking for.
 const ManageReviews = () => {
   usePageTitle('Manage Reviews');
   const { isDark } = useTheme();
   const { toast, confirm } = useUIFeedback();
   const [reviews, setReviews] = useState([]);
+  const [driverReviews, setDriverReviews] = useState([]);
+  const [tab, setTab] = useState('vehicles');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [visibilityFilter, setVisibilityFilter] = useState('all');
@@ -19,10 +30,16 @@ const ManageReviews = () => {
 
   useEffect(() => { fetchReviews(); }, []);
 
+  // Both lists at once: the counts on the tabs have to be right before
+  // anybody clicks one, or the toggle is just two buttons.
   const fetchReviews = async () => {
     try {
-      const res = await api.get('/cars/reviews/all');
-      setReviews(res.data);
+      const [cars, drivers] = await Promise.all([
+        api.get('/cars/reviews/all'),
+        api.get('/drivers/reviews'),
+      ]);
+      setReviews(cars.data);
+      setDriverReviews(drivers.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -51,6 +68,43 @@ const ManageReviews = () => {
     }
   };
 
+  // A person, not a vehicle, so the warning says so: a driver reads their
+  // own reviews, and one taken down is one they will ask about.
+  const handleToggleDriverHidden = async (review) => {
+    const nextHidden = !review.hidden;
+    if (nextHidden) {
+      const ok = await confirm(
+        `Hide this review of ${review.driver?.name || 'this driver'} from ${review.reviewerName}? `
+        + 'It stops counting toward their rating, and the client is told it was removed.',
+        { confirmLabel: 'Hide Review', danger: true },
+      );
+      if (!ok) return;
+    }
+    setWorkingId(review._id);
+    try {
+      await api.put(`/bookings/${review._id}/rate-driver/moderate`, { hidden: nextHidden });
+      setDriverReviews((prev) => prev.map((r) => (r._id === review._id ? { ...r, hidden: nextHidden } : r)));
+      toast.success(nextHidden ? 'Review hidden.' : 'Review restored.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Something went wrong updating this review.');
+    } finally {
+      setWorkingId(null);
+    }
+  };
+
+  const matchesVisibility = (r) => (
+    visibilityFilter === 'all' ? true : visibilityFilter === 'hidden' ? r.hidden : !r.hidden
+  );
+
+  const filteredDrivers = driverReviews.filter((r) => {
+    const q = search.trim().toLowerCase();
+    return matchesVisibility(r) && (!q
+      || r.driver?.name?.toLowerCase().includes(q)
+      || r.reviewerName?.toLowerCase().includes(q)
+      || r.reviewerEmail?.toLowerCase().includes(q)
+      || r.car?.toLowerCase().includes(q));
+  });
+
   const filtered = reviews.filter((r) => {
     const matchVisibility = visibilityFilter === 'all' ? true : visibilityFilter === 'hidden' ? r.hidden : !r.hidden;
     const q = search.trim().toLowerCase();
@@ -64,6 +118,14 @@ const ManageReviews = () => {
   const s = {
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '20px' },
+    tabRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' },
+    tab: (on) => ({
+      fontSize: '12.5px', fontWeight: '700', padding: '7px 14px', borderRadius: '8px', cursor: 'pointer',
+      fontFamily: 'inherit',
+      border: `1px solid ${on ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      background: on ? (isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.08)') : 'transparent',
+      color: on ? goldInk(isDark) : (isDark ? '#b0b3b8' : '#6b7280'),
+    }),
     filterRow: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '18px' },
     searchInput: {
       flex: '1 1 220px', padding: '9px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px',
@@ -104,13 +166,26 @@ const ManageReviews = () => {
   return (
     <AdminLayout activePage="Manage Reviews">
       <h1 style={s.title}>Manage Reviews</h1>
-      <p style={s.subtitle}>Hide any review that's abusive, spam, or otherwise inappropriate. Hidden reviews stay recorded but drop out of the public car page and the vehicle's average rating.</p>
+      <p style={s.subtitle}>
+        {tab === 'vehicles'
+          ? "Hide any review that's abusive, spam, or otherwise inappropriate. Hidden reviews stay recorded but drop out of the public car page and the vehicle's average rating."
+          : 'Reviews of the people who drive. Hidden ones stay recorded but stop counting toward that driver\u2019s rating, and the client is told theirs was removed.'}
+      </p>
+
+      <div style={s.tabRow} role="group" aria-label="What to moderate">
+        <button type="button" style={s.tab(tab === 'vehicles')} aria-pressed={tab === 'vehicles'} onClick={() => setTab('vehicles')}>
+          Vehicles ({reviews.length})
+        </button>
+        <button type="button" style={s.tab(tab === 'drivers')} aria-pressed={tab === 'drivers'} onClick={() => setTab('drivers')}>
+          Drivers ({driverReviews.length})
+        </button>
+      </div>
 
       <div style={s.filterRow}>
         <input
           style={s.searchInput}
           type="text"
-          placeholder="Search by reviewer, email, or car..."
+          placeholder={tab === 'vehicles' ? 'Search by reviewer, email, or car...' : 'Search by driver, reviewer, or vehicle...'}
           aria-label="Search reviews"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -124,6 +199,43 @@ const ManageReviews = () => {
 
       {loading ? (
         <SkeletonListCard isDark={isDark} />
+      ) : tab === 'drivers' ? (
+        filteredDrivers.length === 0 ? (
+          <div style={s.empty}>
+            {driverReviews.length === 0
+              ? 'Nobody has rated a driver yet. Reviews appear here once a trip with a driver is finished and rated.'
+              : 'No reviews match.'}
+          </div>
+        ) : filteredDrivers.map((r) => (
+          <div key={r._id} style={s.card(r.hidden)}>
+            <DriverAvatar driver={r.driver} isDark={isDark} size={48} />
+            <div style={s.info}>
+              <div style={s.topRow}>
+                <span style={s.carName}>{r.driver?.name || 'Removed driver'}</span>
+                <span style={s.reviewerName}>by {r.reviewerName} ({r.reviewerEmail})</span>
+                {r.hidden && <span style={s.hiddenBadge}>Hidden</span>}
+                <span style={s.date}>{new Date(r.ratedAt).toLocaleDateString()}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <StarRating value={r.rating} size={13} readOnly />
+                <span style={{ fontSize: '12px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' }}>
+                  {Number(r.rating).toFixed(1)}
+                </span>
+                {r.car && <span style={s.reviewerName}>&middot; {r.car}</span>}
+              </div>
+              {r.comment && <p style={s.comment}>{r.comment}</p>}
+              <div style={s.actionsRow}>
+                <button
+                  style={s.hideBtn(r.hidden)}
+                  disabled={workingId === r._id}
+                  onClick={() => handleToggleDriverHidden(r)}
+                >
+                  {workingId === r._id ? 'Working...' : r.hidden ? 'Unhide Review' : 'Hide Review'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))
       ) : filtered.length === 0 ? (
         <div style={s.empty}>No reviews match.</div>
       ) : (
