@@ -60,3 +60,52 @@ export const publicDriver = (driver) => ({
   _id: driver._id,
   name: driver.name,
 });
+
+// --- when somebody is free ------------------------------------------------
+//
+// A driver can be in one place at a time. Two trips that overlap are two
+// trips one person cannot do, which is the whole of the rule.
+//
+// Only a CONFIRMED booking holds a driver. A pending request does not —
+// exactly as a pending request does not hold the vehicle — so several
+// customers can ask for the same driver and whoever is accepted first gets
+// them. The one accepted second is caught at the counter rather than on
+// the day: see the accept handler in routes/bookings.js.
+
+export const spansOverlap = (a, b) => a.start < b.end && a.end > b.start;
+
+// A gap either side of a trip, for the same reason vehicles have a
+// turnaround: somebody who drops off in Tabaco at ten o'clock cannot start
+// another trip in Camalig at ten o'clock. Two hours is what the vehicles
+// use, and a driver has at least as far to travel as the car does.
+export const DRIVER_GAP_HOURS = 2;
+
+const widen = (span, hours) => ({
+  start: new Date(new Date(span.start).getTime() - hours * 3600000),
+  end: new Date(new Date(span.end).getTime() + hours * 3600000),
+});
+
+// Whether a driver can take this trip, given the ones they already have.
+//
+// The gap goes on the trips already booked rather than on the new one, so
+// it is applied once rather than twice — padding both would quietly need
+// four hours between jobs instead of two.
+export function driverFreeFor(span, trips = []) {
+  if (!span?.start || !span?.end) return false;
+  const wanted = { start: new Date(span.start), end: new Date(span.end) };
+  return !trips.some((trip) => spansOverlap(wanted, widen(trip, DRIVER_GAP_HOURS)));
+}
+
+// Why this driver cannot take this booking, or null.
+//
+// A booking with no driver is allowed on purpose: a customer who does not
+// mind who drives leaves it to the office, and a booking made when nobody
+// was free still has to be takeable. See the booking form.
+export function driverChoiceProblem(driver, span, trips = []) {
+  if (!driver) return null;
+  if (!isWorking(driver)) return 'That driver is not available at the moment. Please choose another, or leave it to us.';
+  if (!driverFreeFor(span, trips)) {
+    return 'That driver is already out on another trip around those dates. Please choose another, or leave it to us.';
+  }
+  return null;
+}

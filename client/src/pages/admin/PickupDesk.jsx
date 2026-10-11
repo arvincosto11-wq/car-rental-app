@@ -322,6 +322,13 @@ const PickupDesk = () => {
               {booking.car?.brand} {booking.car?.model}
               {booking.car?.plateNumber ? ` · ${booking.car.plateNumber}` : ''}
               {' · '}{selfDrive ? 'Self-drive' : 'With driver'}
+              {/* Whoever works this desk is the person who finds out at
+                  nine in the morning that nobody was assigned. Better they
+                  see it on the card than discover it with the client
+                  standing there. */}
+              {!selfDrive && (booking.driver?.name
+                ? ` · ${booking.driver.name}`
+                : ' · no driver named yet')}
             </div>
           </div>
           <div style={stale || late ? { ...s.when, color: isDark ? '#f87171' : '#dc2626' } : s.when}>

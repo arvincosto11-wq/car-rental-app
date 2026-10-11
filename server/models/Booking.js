@@ -26,6 +26,15 @@ const bookingSchema = new mongoose.Schema({
   amountPaid: { type: Number, required: true },
   paymentType: { type: String, enum: ['downpayment', 'full'], default: 'downpayment' },
   bookingType: { type: String, enum: ['self-drive', 'with-driver'], default: 'with-driver' },
+
+  // Who is driving, on a with-driver booking.
+  //
+  // Null is a real answer, not a missing one: the customer may have left it
+  // to the office, or nobody may have been free when they booked. Every
+  // with-driver booking made before drivers existed is null too, and those
+  // are finished trips that can never be filled in. So nothing may assume
+  // this is set — see utils/drivers.js.
+  driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver', default: null },
   // Where the vehicle is handed over, and where it is taken back. A place
   // with no coordinates means our own base — the ordinary booking, which
   // costs nothing and must never read as missing data.

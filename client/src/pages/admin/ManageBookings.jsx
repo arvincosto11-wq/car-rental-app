@@ -1462,6 +1462,7 @@ const ManageBookings = () => {
           isDark={isDark}
           onClose={() => setDetailsBookingId(null)}
           onCollectBalance={handleCollectBalance}
+          onAssigned={applyBooking}
         />
       )}
       {/* Closing a booking is the only moment anybody looks at the gauge,

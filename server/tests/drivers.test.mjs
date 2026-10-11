@@ -1,6 +1,7 @@
 import { suite, group, check } from './harness.mjs';
 import {
   driverProblem, tidyPhone, tidyName, isWorking, publicDriver, MAX_NAME,
+  driverFreeFor, driverChoiceProblem, spansOverlap, DRIVER_GAP_HOURS,
 } from '../utils/drivers.js';
 
 export default function run() {
@@ -56,4 +57,55 @@ export default function run() {
   check('the number is not', shown.phone, undefined);
   check('nor is the office note', shown.note, undefined);
   check('and nothing else came along', Object.keys(shown).sort().join(','), '_id,name');
+
+  group('one driver, one trip at a time');
+  // Monday the 12th, 9 AM to Wednesday the 14th, 9 AM in Legazpi. UTC here
+  // because these are compared as instants, which is how they are stored.
+  const at = (day, hour) => new Date(Date.UTC(2026, 9, day, hour - 8));
+  const trip = { start: at(12, 9), end: at(14, 9) };
+
+  check('nobody booked, anybody is free', driverFreeFor(trip, []), true);
+  check('the same days are not free', driverFreeFor(trip, [{ start: at(12, 9), end: at(14, 9) }]), false);
+  check('a day inside it is not either', driverFreeFor(trip, [{ start: at(13, 9), end: at(13, 17) }]), false);
+  check('one that swallows it whole', driverFreeFor(trip, [{ start: at(10, 9), end: at(20, 9) }]), false);
+  // Overlapping at one end is still overlapping.
+  check('a trip that runs into it', driverFreeFor(trip, [{ start: at(11, 9), end: at(13, 9) }]), false);
+  check('and one that starts inside it', driverFreeFor(trip, [{ start: at(13, 9), end: at(16, 9) }]), false);
+  // Somebody else's trip, far away, is nothing to do with this one.
+  check('the week before is fine', driverFreeFor(trip, [{ start: at(5, 9), end: at(7, 9) }]), true);
+  check('the week after too', driverFreeFor(trip, [{ start: at(20, 9), end: at(22, 9) }]), true);
+  check('several trips, none of them clashing', driverFreeFor(trip, [
+    { start: at(5, 9), end: at(7, 9) }, { start: at(20, 9), end: at(22, 9) },
+  ]), true);
+  check('several, one of them clashing', driverFreeFor(trip, [
+    { start: at(5, 9), end: at(7, 9) }, { start: at(13, 9), end: at(16, 9) },
+  ]), false);
+
+  group('the gap between trips');
+  // Somebody dropping off in Tabaco at nine cannot start another trip in
+  // Camalig at nine. Two hours either side, same as the vehicles.
+  check('back to back is not free', driverFreeFor(trip, [{ start: at(9, 9), end: at(12, 9) }]), false);
+  check('an hour before the start is too soon', driverFreeFor(trip, [{ start: at(9, 9), end: at(12, 8) }]), false);
+  check('a clear gap is free', driverFreeFor(trip, [{ start: at(9, 9), end: at(12, 9 - DRIVER_GAP_HOURS - 1) }]), true);
+  check('and the same after it', driverFreeFor(trip, [{ start: at(14, 9 + DRIVER_GAP_HOURS + 1), end: at(16, 9) }]), true);
+  check('exactly the gap is still too tight', driverFreeFor(trip, [{ start: at(14, 9), end: at(16, 9) }]), false);
+
+  group('what the booking form and the server both refuse');
+  const free = { name: 'Juan', active: true };
+  const taken = [{ start: at(13, 9), end: at(13, 17) }];
+  check('a free, working driver passes', driverChoiceProblem(free, trip, []), null);
+  check('one who is out that week does not', !!driverChoiceProblem(free, trip, taken), true);
+  check('nor does one who is not working', !!driverChoiceProblem({ name: 'Juan', active: false }, trip, []), true);
+  // No driver is a legitimate answer: the customer left it to the office,
+  // or nobody was free when they booked.
+  check('nobody chosen is allowed', driverChoiceProblem(null, trip, taken), null);
+
+  group('spans');
+  check('overlapping', spansOverlap({ start: at(12, 9), end: at(14, 9) }, { start: at(13, 9), end: at(15, 9) }), true);
+  // Touching at the edge is not overlapping; the gap above is what keeps
+  // back-to-back trips apart, not this.
+  check('touching is not overlapping', spansOverlap({ start: at(12, 9), end: at(14, 9) }, { start: at(14, 9), end: at(15, 9) }), false);
+  check('apart', spansOverlap({ start: at(12, 9), end: at(13, 9) }, { start: at(15, 9), end: at(16, 9) }), false);
+  // A booking with no dates cannot be checked, so nobody is free for it.
+  check('no dates means nobody is free', driverFreeFor(null, []), false);
 }

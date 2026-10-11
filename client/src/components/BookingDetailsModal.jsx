@@ -1,4 +1,5 @@
 import useModalA11y from '../hooks/useModalA11y';
+import DriverAssign from './DriverAssign';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 
 // Everything about a booking that's reference material rather than
@@ -10,7 +11,7 @@ import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 // downpayment bookings on screen at once it was the same gold button
 // repeated down the whole Actions column, which read as noisier than the
 // stuff we'd just moved out.
-const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance }) => {
+const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance, onAssigned }) => {
   const modalRef = useModalA11y(onClose);
   if (!booking) return null;
 
@@ -124,9 +125,28 @@ const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance }) => 
           </div>
         )}
 
+        {/* Only while there is still a trip to drive. A finished or
+            cancelled booking keeps whoever drove it, as a record. */}
+        {booking.bookingType === 'with-driver' && ['pending', 'confirmed'].includes(booking.status) && (
+          <DriverAssign booking={booking} isDark={isDark} onAssigned={onAssigned} />
+        )}
+
         <div style={s.section}>
           <div style={s.sectionTitle}>Booking Info</div>
           <Row label="Booking type" value={booking.bookingType === 'self-drive' ? 'Self drive' : 'With driver'} />
+          {/* Written out rather than through Row: every Row on this screen
+              is a component made during a render, and the linter counts
+              each one. One more line is not worth another of those. */}
+          {booking.bookingType === 'with-driver' && (
+            <div style={s.row}>
+              <span style={s.label}>Driver</span>
+              <span style={s.value}>
+                {booking.driver
+                  ? `${booking.driver.name}${booking.driver.phone ? ` · ${booking.driver.phone}` : ''}`
+                  : 'Not named'}
+              </span>
+            </div>
+          )}
           <Row label="Booking ID" value={booking._id} mono />
           <Row label="Requested on" value={new Date(booking.createdAt).toLocaleString()} />
         </div>

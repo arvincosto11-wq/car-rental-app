@@ -30,10 +30,23 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
     // one thing that runs reliably.
     await expireAdjustOffers();
     const expiryCutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-    const [pendingBookings, refundRequests, rescheduleRequests, pendingConsignments, openAppointments, pendingAvailability, pendingBlockedDates, expiringRegistrations] = await Promise.all([
+    const [pendingBookings, refundRequests, rescheduleRequests, needsDriver, pendingConsignments, openAppointments, pendingAvailability, pendingBlockedDates, expiringRegistrations] = await Promise.all([
       Booking.countDocuments({ status: 'pending', payment: 'paid', 'adjustOffer.status': { $ne: 'open' } }),
       Booking.countDocuments({ refundStatus: 'requested' }),
       Booking.countDocuments({ 'rescheduleRequest.status': 'pending' }),
+      // A trip that is on, with a driver nobody has named yet.
+      //
+      // Confirmed and not yet collected, deliberately. Counting every
+      // with-driver booking without a driver would light this up with every
+      // finished and cancelled trip in the system — 154 of them on the day
+      // this was written, none of which can ever be filled in — and a badge
+      // that is always on is a badge nobody reads.
+      Booking.countDocuments({
+        status: 'confirmed',
+        bookingType: 'with-driver',
+        driver: null,
+        collectedAt: null,
+      }),
       // Manage Clients no longer carries a badge: there is no ID photo to
       // review any more, so nothing arrives there needing a decision. See
       // models/User.js.
@@ -54,7 +67,7 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
       Car.countDocuments({ archived: { $ne: true }, registrationExpiry: { $ne: null, $lte: expiryCutoff } }),
     ]);
     res.json({
-      '/admin/manage-bookings': pendingBookings + refundRequests + rescheduleRequests,
+      '/admin/manage-bookings': pendingBookings + refundRequests + rescheduleRequests + needsDriver,
       '/admin/manage-consignments': pendingConsignments,
       '/admin/appointments': openAppointments,
       '/admin/availability-requests': pendingAvailability + (pendingBlockedDates[0]?.count || 0),

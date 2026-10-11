@@ -1,9 +1,59 @@
 import express from 'express';
 import Driver from '../models/Driver.js';
+import Booking from '../models/Booking.js';
 import { protect, adminOnly } from '../middleware/auth.js';
-import { driverProblem, tidyName, tidyPhone } from '../utils/drivers.js';
+import { driverProblem, tidyName, tidyPhone, isWorking, publicDriver, driverFreeFor } from '../utils/drivers.js';
+import { bookingSpan } from '../utils/availability.js';
 
 const router = express.Router();
+
+// Every confirmed trip each driver is already on, as { driverId: [spans] }.
+//
+// Confirmed only. A pending request does not hold a driver, exactly as it
+// does not hold the vehicle — see utils/drivers.js.
+export async function driverTrips(ignoreBookingId = null) {
+  const rows = await Booking.find({
+    status: 'confirmed',
+    driver: { $ne: null },
+    ...(ignoreBookingId ? { _id: { $ne: ignoreBookingId } } : {}),
+  }).select('driver startDate endDate hasPickupTime').lean();
+
+  const byDriver = new Map();
+  for (const row of rows) {
+    const key = String(row.driver);
+    if (!byDriver.has(key)) byDriver.set(key, []);
+    byDriver.get(key).push(bookingSpan(row));
+  }
+  return byDriver;
+}
+
+// Who a customer can choose for these dates.
+//
+// Names only, never numbers — this is reachable by anybody with an account
+// and it is read straight into a booking page. See publicDriver.
+//
+// An empty list is a legitimate answer and the booking form says so rather
+// than hiding the option: somebody can still book and leave it to us.
+router.get('/available', protect, async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    const span = { start: new Date(start), end: new Date(end) };
+    if (Number.isNaN(span.start.getTime()) || Number.isNaN(span.end.getTime()) || span.end <= span.start) {
+      return res.status(400).json({ message: 'Please choose your dates first.' });
+    }
+
+    const [drivers, trips] = await Promise.all([Driver.find().lean(), driverTrips()]);
+    res.json(
+      drivers
+        .filter(isWorking)
+        .filter((d) => driverFreeFor(span, trips.get(String(d._id)) || []))
+        .map(publicDriver)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    );
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // The office's own list: names, numbers, who is working.
 router.get('/', protect, adminOnly, async (req, res) => {

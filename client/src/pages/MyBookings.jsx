@@ -1340,10 +1340,15 @@ const MyBookings = () => {
                         {booking.extensions.length > 1 ? ` · ${booking.extensions.length} extensions` : ''}
                       </div>
                     )}
+                    {/* Once somebody is named, name them. "Your driver will
+                        meet you" is true but says nothing a client can act
+                        on, and they paid for a driver. */}
                     <div style={styles.driverNote}>
                       {booking.bookingType === 'self-drive'
                         ? "Bring a valid ID and your driver's license to pick up the vehicle."
-                        : 'Your driver will meet you at the pickup location.'}
+                        : booking.driver?.name
+                          ? `${booking.driver.name} will meet you at the pickup location.`
+                          : 'Your driver will meet you at the pickup location. We will tell you who is coming before then.'}
                     </div>
                   </div>
                 )}

@@ -91,6 +91,14 @@ const CarDetail = () => {
   usePageTitle(car ? `${car.brand} ${car.model}` : 'Vehicle');
   const [paymentType, setPaymentType] = useState('downpayment');
   const [bookingType, setBookingType] = useState('with-driver');
+  // Who they asked for, or null for "whoever you send". Null is a real
+  // answer here rather than an unfinished form — see utils/drivers.js.
+  const [askedFor, setAskedFor] = useState(null);
+  // { key, list } rather than a bare list, so the page can tell a list that
+  // belongs to the dates on screen from one fetched for the dates before
+  // them. That is what says "checking" without a second state to keep in
+  // step, and it means nothing has to be cleared when the dates move.
+  const [driverData, setDriverData] = useState(null);
   const [profile, setProfile] = useState(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
@@ -313,6 +321,39 @@ const CarDetail = () => {
   // bands are measured from. Null until both a day and a workable hour exist.
   const pickupAt = pickupHour !== null && startDate ? instantFrom(startDate, pickupHour) : null;
 
+  // --- who is free to drive -----------------------------------------------
+  //
+  // The answer is about the dates, so it is asked again whenever they move,
+  // and the dates are what the answer is filed under. Self-drive asks
+  // nobody: there is no driver to send.
+  const driverKey = bookingType === 'with-driver' && startDate && endDate
+    ? `${startDate}|${endDate}|${pickupHour ?? 0}`
+    : null;
+
+  useEffect(() => {
+    if (!user || !driverKey) return undefined;
+    const [start, end, hour] = driverKey.split('|');
+    let cancelled = false;
+    api.get('/drivers/available', {
+      params: {
+        start: instantFrom(start, Number(hour)).toISOString(),
+        end: instantFrom(end, Number(hour)).toISOString(),
+      },
+    })
+      .then(({ data }) => { if (!cancelled) setDriverData({ key: driverKey, list: data || [] }); })
+      // A list of names is a convenience, never the thing standing between
+      // somebody and a booking: if this fails they simply leave it to us.
+      .catch(() => { if (!cancelled) setDriverData({ key: driverKey, list: [] }); });
+    return () => { cancelled = true; };
+  }, [user, driverKey]);
+
+  // null while the answer belongs to older dates than the ones on screen.
+  const drivers = driverData && driverData.key === driverKey ? driverData.list : null;
+  // Somebody asked for by name who has since gone off the list is the same
+  // as nobody asked for. Derived rather than cleared, so moving the dates
+  // back and forth does not silently forget who they wanted.
+  const driverId = drivers?.some((d) => d._id === askedFor) ? askedFor : null;
+
   const shortNotice = pickupAt && pickupAt.getTime() - now < SHORT_NOTICE_HOURS * 60 * 60 * 1000;
 
   // Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
@@ -415,6 +456,8 @@ const CarDetail = () => {
         amountPaid: amountToPay,
         totalPrice,
         bookingType,
+        // Null means "whoever you send", which the office fills in later.
+        driver: bookingType === 'with-driver' ? driverId : null,
         // Coordinates and the client's own words for the place. The fee is
         // deliberately not sent: the server works it out, and a fee that
         // arrived from a browser is a request to be charged less.
@@ -616,6 +659,14 @@ const CarDetail = () => {
     }),
     choiceTitle: (active) => ({ fontSize: '13.5px', fontWeight: '700', color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a') }),
     choiceSub: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
+    driverRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' },
+    driverChip: (active) => ({
+      padding: '9px 14px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'inherit',
+      fontSize: '12.5px', fontWeight: '700',
+      border: `1px solid ${active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#2f3031' : '#fff'),
+      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a'),
+    }),
     choiceAmount: (active) => ({ fontSize: '17px', fontWeight: '800', letterSpacing: '-0.01em', color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a') }),
     sameRow: {
       display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px',
@@ -1047,6 +1098,52 @@ const CarDetail = () => {
                       </p>
                     )}
 
+                    {/* Who drives.
+                        Optional on purpose: most people do not mind, and
+                        making them choose a stranger by name before they can
+                        book adds a decision to a form that does not need
+                        one. "Whoever you send" is offered as a real choice
+                        rather than left as an empty field nobody noticed, so
+                        the customer knows what they are getting either way.
+                        The office fills the name in afterwards. */}
+                    {bookingType === 'with-driver' && (
+                      <>
+                        <div style={s.sectionLabel} id="cd-driver-label">Driver</div>
+                        {drivers === null ? (
+                          <p style={s.fieldHint}>Checking who is free…</p>
+                        ) : (
+                          <>
+                            <div role="group" aria-labelledby="cd-driver-label" style={s.driverRow}>
+                              <button
+                                type="button"
+                                aria-pressed={driverId === null}
+                                style={s.driverChip(driverId === null)}
+                                onClick={() => setAskedFor(null)}
+                              >
+                                Whoever you send
+                              </button>
+                              {(drivers || []).map((d) => (
+                                <button
+                                  key={d._id}
+                                  type="button"
+                                  aria-pressed={driverId === d._id}
+                                  style={s.driverChip(driverId === d._id)}
+                                  onClick={() => setAskedFor(d._id)}
+                                >
+                                  {d.name}
+                                </button>
+                              ))}
+                            </div>
+                            <p style={s.fieldHint}>
+                              {(drivers || []).length === 0
+                                ? 'Nobody is free to be requested for these dates, so we will assign a driver for you before pickup.'
+                                : 'Ask for somebody by name, or leave it to us and we will tell you who is coming before pickup.'}
+                            </p>
+                          </>
+                        )}
+                      </>
+                    )}
+
                     {supportedBookingTypes.includes('self-drive') && (
                       <p style={s.noteRow}>
                         <InfoIcon />
@@ -1229,7 +1326,12 @@ const CarDetail = () => {
                           <span style={s.pillIcon}>{bookingType === 'self-drive' ? <DriverIcon /> : <WheelIcon />}</span>
                           <span style={{ minWidth: 0 }}>
                             <span style={s.summaryMain}>{bookingType === 'self-drive' ? 'Self Drive' : 'With Driver'}</span>
-                            <span style={s.summarySub}>{bookingType === 'self-drive' ? 'You drive it yourself' : 'We provide the driver'}</span>
+                            <span style={s.summarySub}>
+                              {bookingType === 'self-drive'
+                                ? 'You drive it yourself'
+                                : ((drivers || []).find((d) => d._id === driverId)?.name
+                                  || 'We will tell you who is driving before pickup')}
+                            </span>
                           </span>
                         </span>
                       </div>

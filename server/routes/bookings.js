@@ -4,6 +4,9 @@ import Booking from '../models/Booking.js';
 import Car from '../models/Car.js';
 import LongRentalDiscount from '../models/LongRentalDiscount.js';
 import User from '../models/User.js';
+import Driver from '../models/Driver.js';
+import { driverChoiceProblem, isWorking } from '../utils/drivers.js';
+import { driverTrips } from './drivers.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { refundBookingPayment } from '../utils/paymongo.js';
@@ -285,9 +288,27 @@ router.post('/', protect, async (req, res) => {
       fee: leg.fee,
     });
 
+    // Who is driving, if the customer picked somebody.
+    //
+    // Optional on purpose: they may have left it to us, or nobody may have
+    // been free. What is NOT allowed is naming a driver who cannot do it —
+    // the list they chose from could be minutes out of date.
+    //
+    // Only checked for a with-driver booking. A self-drive one carrying a
+    // driver id is a confused request, and the id is simply dropped.
+    let driverId = null;
+    if ((bookingType || 'with-driver') === 'with-driver' && req.body.driver) {
+      const chosen = await Driver.findById(req.body.driver);
+      if (!chosen) return res.status(400).json({ message: 'That driver is no longer on our list. Please choose another, or leave it to us.' });
+      const problem = driverChoiceProblem(chosen, requestedSpan, (await driverTrips()).get(String(chosen._id)) || []);
+      if (problem) return res.status(400).json({ message: problem });
+      driverId = chosen._id;
+    }
+
     const booking = await Booking.create({
       user: req.user.id,
       car: carId,
+      driver: driverId,
       startDate: start,
       endDate: end,
       hasPickupTime,
@@ -312,6 +333,63 @@ router.post('/', protect, async (req, res) => {
     // reconcileBookingPayment in routes/payments.js.
 
     res.status(201).json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin naming the driver, or changing one.
+//
+// This is how "leave it to us" is actually honoured, and how a driver who
+// falls sick is replaced. Sending no driver clears it, which is a real
+// thing to want: better an empty slot the office can see than a name that
+// is no longer true.
+router.put('/:id/driver', protect, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.bookingType !== 'with-driver') {
+      return res.status(400).json({ message: 'This is a self-drive booking, so it does not need a driver.' });
+    }
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      return res.status(400).json({ message: 'This booking is finished, so its driver cannot be changed.' });
+    }
+
+    if (!req.body.driver) {
+      booking.driver = null;
+      await booking.save();
+      return res.json(await booking.populate('driver', 'name phone'));
+    }
+
+    const chosen = await Driver.findById(req.body.driver);
+    if (!chosen) return res.status(404).json({ message: 'Driver not found' });
+    if (!isWorking(chosen)) {
+      return res.status(400).json({ message: `${chosen.name} is marked as not working.` });
+    }
+    // Their own current trip is left out, so saving a booking without
+    // changing its driver is never refused on the grounds of itself.
+    const trips = (await driverTrips(booking._id)).get(String(chosen._id)) || [];
+    const problem = driverChoiceProblem(chosen, bookingSpan(booking), trips);
+    if (problem) return res.status(400).json({ message: `${chosen.name} is already out on another trip around these dates.` });
+
+    const changed = String(booking.driver || '') !== String(chosen._id);
+    booking.driver = chosen._id;
+    await booking.save();
+
+    // Only once the booking is actually on. Telling somebody who is driving
+    // them before we have accepted their booking is telling them something
+    // that may not happen.
+    if (changed && booking.status === 'confirmed') {
+      await notifyUser(
+        booking.user,
+        'Your driver',
+        `${chosen.name} will be driving for your booking. You can see the details in My Bookings.`,
+        '/my-bookings',
+        { email: true },
+      );
+    }
+
+    res.json(await booking.populate('driver', 'name phone'));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -355,6 +433,9 @@ router.get('/my', protect, async (req, res) => {
     // description, blocked dates, papers or GPS position shipped with it.
     const bookings = await Booking.find({ user: req.user.id })
       .populate('car', 'brand model year category image pricePerDay')
+      // The name only. A client is told who is driving them; the driver's
+      // mobile number is the office's, not theirs. See utils/drivers.js.
+      .populate('driver', 'name')
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'client' }));
   } catch (err) {
@@ -386,6 +467,9 @@ router.get('/all', protect, adminOnly, async (req, res) => {
       // name, a photo and a plate.
       .populate('car', 'brand model year category image plateNumber pricePerDay owner')
       .populate('user', 'name email image avgRating ratingCount licenseExpiry')
+      // The number too: this is the list somebody works from when a driver
+      // has to be rung on the morning of a pickup.
+      .populate('driver', 'name phone active')
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'admin' }));
   } catch (err) {
@@ -409,6 +493,7 @@ router.get('/owner', protect, consignorOnly, async (req, res) => {
       // name, a photo and a plate.
       .populate('car', 'brand model year category image plateNumber pricePerDay owner')
       .populate('user', 'name')
+      .populate('driver', 'name')
       .sort({ createdAt: -1 });
     // The owner reads this the way admin does: what needs attention on their
     // vehicles first, finished rentals last.
@@ -470,6 +555,28 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       // is per-date-range instead of one blanket flag on the car.
       // Catches an admin-blocked range as well as another reservation — the
       // admin may have blocked this range after the client's request came in.
+      // The driver the customer asked for may have been given to somebody
+      // else since. Refused rather than cancelled: the vehicle and the dates
+      // are fine, only the person is not, and admin is standing right here
+      // and can pick another or clear the choice. Cancelling and refunding a
+      // perfectly good booking over a driver would be wildly out of
+      // proportion — which is why this sits above the conflict check below
+      // rather than being folded into it.
+      if (booking.driver) {
+        const chosen = await Driver.findById(booking.driver);
+        const trips = (await driverTrips(booking._id)).get(String(booking.driver)) || [];
+        if (!chosen) {
+          return res.status(400).json({ message: 'The driver on this booking is no longer on the list. Assign another, or clear the driver, then accept it.' });
+        }
+        if (!isWorking(chosen)) {
+          return res.status(400).json({ message: `${chosen.name} is marked as not working. Assign another driver, or clear the driver, then accept it.` });
+        }
+        const problem = driverChoiceProblem(chosen, bookingSpan(booking), trips);
+        if (problem) {
+          return res.status(400).json({ message: `${chosen.name} is already out on another trip around these dates. Assign another driver, or clear the driver, then accept it.` });
+        }
+      }
+
       const conflict = await findConflict(booking.car, bookingSpan(booking).start, bookingSpan(booking).end, ['confirmed'], booking._id);
       const blockedRange = conflict?.kind === 'block';
 
