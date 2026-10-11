@@ -144,6 +144,22 @@ const Cars = () => {
   // "first" either.
   const onSale = (car) => isPromoVisible(car.promo) || rulesForCar(longRentalRules, car._id).length > 0;
 
+  // What settles two vehicles a sort cannot tell apart.
+  //
+  // Four of these are rated 5.0 and several share a daily price, so without
+  // this they came out in whatever order the database sent — oldest first,
+  // the same thing that buried the newest vehicle on the page.
+  //
+  // Review count stands in for "most booked", which is the honest signal
+  // but not one we can use: only somebody who COMPLETED a trip can leave a
+  // review, so the count is a real tally of finished rentals, and it is
+  // already on the page. A true booking count would mean counting bookings
+  // for every vehicle on every load, and publishing how much business each
+  // one does to anybody who opens the page.
+  //
+  // Newest breaks the last tie, so the order is never left to chance.
+  const mostRented = (a, b) => (b.ratingCount || 0) - (a.ratingCount || 0) || newestFirst(a, b);
+
   const filtered = cars
     .filter((car) => {
       const matchSearch =
@@ -157,9 +173,11 @@ const Cars = () => {
       return matchSearch && matchCategory && matchTransmission && matchMin && matchMax && matchAvailable;
     })
     .sort((a, b) => {
-      if (sortBy === 'price-asc') return a.pricePerDay - b.pricePerDay;
-      if (sortBy === 'price-desc') return b.pricePerDay - a.pricePerDay;
-      if (sortBy === 'rating-desc') return (b.avgRating || 0) - (a.avgRating || 0);
+      if (sortBy === 'price-asc') return a.pricePerDay - b.pricePerDay || mostRented(a, b);
+      if (sortBy === 'price-desc') return b.pricePerDay - a.pricePerDay || mostRented(a, b);
+      // Same rule the admin dashboard's Top Rated list has always used:
+      // equal stars, more reviews wins.
+      if (sortBy === 'rating-desc') return (b.avgRating || 0) - (a.avgRating || 0) || mostRented(a, b);
       if (sortBy === 'name-asc') return `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
       // Discounted vehicles lead, and within each group the newest leads —
       // which is what somebody scrolling a list of deals is looking for.
