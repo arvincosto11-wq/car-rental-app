@@ -131,4 +131,21 @@ export default function run() {
   check('several are not', ratingLabel({ avgRating: 4.8, ratingCount: 12 }), '4.8 · 12 trips');
   // Always one decimal, so a column of them lines up.
   check('a whole number still shows its decimal', ratingLabel({ avgRating: 4, ratingCount: 3 }), '4.0 · 3 trips');
+
+  group('days off count as busy too');
+  // A block is handed to the same rule as a trip, because every caller is
+  // asking one question: can this person do these dates. A rota that only
+  // looked at trips would cheerfully book somebody who is in hospital.
+  const dayOff = { start: at(13, 0), end: at(14, 0) };
+  check('a day off inside the trip', driverFreeFor(trip, [dayOff]), false);
+  check('a day off well clear of it', driverFreeFor(trip, [{ start: at(1, 0), end: at(2, 0) }]), true);
+  check('a trip and a day off together', driverFreeFor(trip, [{ start: at(1, 0), end: at(2, 0) }, dayOff]), false);
+  // "Off the 12th to the 14th" is stored as midnight on the 12th to
+  // midnight on the 15th, so the 14th really is covered.
+  const offTwelfthToFourteenth = { start: at(12, 0), end: at(15, 0) };
+  check('the last day off is included', driverFreeFor({ start: at(14, 9), end: at(14, 17) }, [offTwelfthToFourteenth]), false);
+  check('and the day after is not', driverFreeFor({ start: at(15, 9), end: at(15, 17) }, [offTwelfthToFourteenth]), true);
+  // The gap applies to days off as well: back from leave at midnight does
+  // not mean driving at midnight.
+  check('a trip right after leave ends', driverFreeFor({ start: at(15, 1), end: at(15, 9) }, [offTwelfthToFourteenth]), false);
 }

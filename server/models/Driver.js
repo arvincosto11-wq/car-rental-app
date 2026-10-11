@@ -48,6 +48,25 @@ const driverSchema = new mongoose.Schema({
   avgRating: { type: Number, default: 0 },
   ratingCount: { type: Number, default: 0 },
 
+  // Days this driver is not available, for a reason that is not a trip:
+  // sick, on leave, a rest day, a family thing.
+  //
+  // Stored as real instants rather than calendar dates, worked out from
+  // Philippine midnights when they are written. That keeps the rule that
+  // decides who is free free of any timezone thinking — see
+  // driverFreeFor in utils/drivers.js, which is plain overlap arithmetic
+  // and has no imports to do it with.
+  //
+  // "Not working" is the other way somebody becomes unavailable, and the
+  // two are not the same: that one has no end date and takes them off
+  // every list until somebody puts them back.
+  blocks: [{
+    start: { type: Date, required: true },
+    end: { type: Date, required: true },
+    reason: { type: String, default: '' },
+    createdAt: { type: Date, default: Date.now },
+  }],
+
   // For the office. Never leaves the admin side.
   note: { type: String, default: '' },
 }, { timestamps: true });

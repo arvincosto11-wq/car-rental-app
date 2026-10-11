@@ -4,6 +4,7 @@ import Booking from '../models/Booking.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { driverProblem, tidyName, tidyPhone, isWorking, publicDriver, driverFreeFor } from '../utils/drivers.js';
 import { bookingSpan } from '../utils/availability.js';
+import { instantFrom, addDays } from '../utils/phTime.js';
 
 const router = express.Router();
 
@@ -27,6 +28,27 @@ export async function driverTrips(ignoreBookingId = null) {
   return byDriver;
 }
 
+// Everything that makes a driver unavailable, trips and days off together,
+// as { driverId: [spans] }.
+//
+// One answer rather than two, because every caller wants the same thing:
+// can this person do these dates. A rota that only looked at trips would
+// cheerfully book somebody who is in hospital.
+export async function driverBusy(ignoreBookingId = null) {
+  const [trips, drivers] = await Promise.all([
+    driverTrips(ignoreBookingId),
+    Driver.find().select('blocks').lean(),
+  ]);
+  for (const driver of drivers) {
+    const key = String(driver._id);
+    if (!trips.has(key)) trips.set(key, []);
+    for (const block of driver.blocks || []) {
+      trips.get(key).push({ start: new Date(block.start), end: new Date(block.end) });
+    }
+  }
+  return trips;
+}
+
 // Who a customer can choose for these dates.
 //
 // Names only, never numbers — this is reachable by anybody with an account
@@ -42,11 +64,11 @@ router.get('/available', protect, async (req, res) => {
       return res.status(400).json({ message: 'Please choose your dates first.' });
     }
 
-    const [drivers, trips] = await Promise.all([Driver.find().lean(), driverTrips()]);
+    const [drivers, busy] = await Promise.all([Driver.find().lean(), driverBusy()]);
     res.json(
       drivers
         .filter(isWorking)
-        .filter((d) => driverFreeFor(span, trips.get(String(d._id)) || []))
+        .filter((d) => driverFreeFor(span, busy.get(String(d._id)) || []))
         .map(publicDriver)
         .sort((a, b) => a.name.localeCompare(b.name)),
     );
@@ -120,6 +142,104 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     if (err?.code === 11000) {
       return res.status(409).json({ message: 'Somebody with that number is already on the list.' });
     }
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// One driver's diary: the trips they are on and the days they are off.
+//
+// Trips are read from the bookings rather than copied onto the driver, so
+// this cannot disagree with Manage Bookings about who is driving what.
+router.get('/:id/calendar', protect, adminOnly, async (req, res) => {
+  try {
+    const driver = await Driver.findById(req.params.id).lean();
+    if (!driver) return res.status(404).json({ message: 'Driver not found' });
+
+    const bookings = await Booking.find({ driver: driver._id, status: { $in: ['confirmed', 'completed'] } })
+      .select('startDate endDate hasPickupTime status car user')
+      .populate('car', 'brand model')
+      .populate('user', 'name')
+      .sort({ startDate: 1 })
+      .lean();
+
+    res.json({
+      driver: { _id: driver._id, name: driver.name, image: driver.image, active: driver.active },
+      blocks: driver.blocks || [],
+      trips: bookings.map((b) => ({
+        _id: b._id,
+        ...bookingSpan(b),
+        status: b.status,
+        car: b.car ? `${b.car.brand} ${b.car.model}` : 'Vehicle',
+        customer: b.user?.name || 'Client',
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Marking a driver off for some days.
+//
+// Whole Philippine days: somebody who is sick is sick for the day, not
+// from 14:00. The end date is inclusive — "off the 12th to the 14th"
+// means they are back on the 15th — because that is what somebody means
+// when they say it out loud, and storing it as the following midnight
+// makes every later comparison plain arithmetic.
+router.post('/:id/blocks', protect, adminOnly, async (req, res) => {
+  try {
+    const driver = await Driver.findById(req.params.id);
+    if (!driver) return res.status(404).json({ message: 'Driver not found' });
+
+    const { startDate, endDate } = req.body;
+    if (!startDate || !endDate) return res.status(400).json({ message: 'Please choose the first and last day.' });
+    // Both arrive as YYYY-MM-DD, which is already a Philippine calendar
+    // day, so they are read as one rather than parsed as an instant and
+    // shifted — the bug that costs a day in every timezone ahead of UTC.
+    const ymd = /^\d{4}-\d{2}-\d{2}$/;
+    if (!ymd.test(startDate) || !ymd.test(endDate)) {
+      return res.status(400).json({ message: 'Those dates do not look right. Please pick them again.' });
+    }
+    const start = instantFrom(startDate, 0);
+    const end = addDays(instantFrom(endDate, 0), 1);
+    if (end <= start) return res.status(400).json({ message: 'The last day cannot be before the first.' });
+
+    // A trip already promised to a customer is not something to paper over
+    // by marking somebody off. Refused, with the clash named, so whoever is
+    // doing this moves the booking first and knows which one.
+    const clash = await Booking.find({ driver: driver._id, status: 'confirmed' })
+      .select('startDate endDate hasPickupTime')
+      .populate('user', 'name')
+      .lean();
+    const hit = clash.find((b) => {
+      const span = bookingSpan(b);
+      return span.start < end && span.end > start;
+    });
+    if (hit) {
+      return res.status(400).json({
+        message: `${driver.name} is already driving ${hit.user?.name || 'a client'} on `
+          + `${new Date(hit.startDate).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })}. `
+          + 'Move that booking to another driver first.',
+      });
+    }
+
+    driver.blocks.push({ start, end, reason: String(req.body.reason || '').trim().slice(0, 200) });
+    await driver.save();
+    res.status(201).json(driver);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.delete('/:id/blocks/:blockId', protect, adminOnly, async (req, res) => {
+  try {
+    const driver = await Driver.findById(req.params.id);
+    if (!driver) return res.status(404).json({ message: 'Driver not found' });
+    const before = driver.blocks.length;
+    driver.blocks = driver.blocks.filter((b) => String(b._id) !== req.params.blockId);
+    if (driver.blocks.length === before) return res.status(404).json({ message: 'Those days are not blocked.' });
+    await driver.save();
+    res.json(driver);
+  } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });

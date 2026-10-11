@@ -7,6 +7,7 @@ import usePageTitle from '../../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
 import { driverProblem, tidyPhone, isWorking, ratingLabel } from '../../utils/drivers';
 import DriverAvatar from '../../components/DriverAvatar';
+import DriverCalendarPanel from '../../components/DriverCalendarPanel';
 import api from '../../api';
 
 // The people who drive, for a booking made with a driver.
@@ -25,6 +26,9 @@ const ManageDrivers = () => {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: '', phone: '', note: '', image: '', imageFileId: '' });
   const [uploading, setUploading] = useState(false);
+  // Whose diary is open. Its own panel rather than a page: it is something
+  // you glance at while deciding, not somewhere you go.
+  const [calendarFor, setCalendarFor] = useState(null);
 
   const load = () => api.get('/drivers')
     .then(({ data }) => setDrivers(data))
@@ -246,6 +250,7 @@ const ManageDrivers = () => {
       </div>
       <div style={s.actions}>
         <span style={s.tag(isWorking(driver))}>{isWorking(driver) ? 'Driving' : 'Not working'}</span>
+        <button type="button" style={s.btn()} onClick={() => setCalendarFor(driver)}>Calendar</button>
         <button type="button" style={s.btn()} onClick={() => startEdit(driver)}>Edit</button>
         <button type="button" style={s.btn()} onClick={() => toggleWorking(driver)}>
           {isWorking(driver) ? 'Mark not working' : 'Back to driving'}
@@ -273,6 +278,15 @@ const ManageDrivers = () => {
           ? <p style={s.empty}>Nobody on the list yet.</p>
           : working.map(line)}
       </div>
+
+      {calendarFor && (
+        <DriverCalendarPanel
+          driver={calendarFor}
+          isDark={isDark}
+          onClose={() => setCalendarFor(null)}
+          onChanged={load}
+        />
+      )}
 
       {resting.length > 0 && (
         <div style={s.card}>

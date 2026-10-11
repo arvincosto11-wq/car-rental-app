@@ -6,7 +6,7 @@ import LongRentalDiscount from '../models/LongRentalDiscount.js';
 import User from '../models/User.js';
 import Driver from '../models/Driver.js';
 import { driverChoiceProblem, isWorking } from '../utils/drivers.js';
-import { driverTrips } from './drivers.js';
+import { driverBusy } from './drivers.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { refundBookingPayment } from '../utils/paymongo.js';
@@ -325,7 +325,7 @@ router.post('/', protect, async (req, res) => {
     if ((bookingType || 'with-driver') === 'with-driver' && req.body.driver) {
       const chosen = await Driver.findById(req.body.driver);
       if (!chosen) return res.status(400).json({ message: 'That driver is no longer on our list. Please choose another, or leave it to us.' });
-      const problem = driverChoiceProblem(chosen, requestedSpan, (await driverTrips()).get(String(chosen._id)) || []);
+      const problem = driverChoiceProblem(chosen, requestedSpan, (await driverBusy()).get(String(chosen._id)) || []);
       if (problem) return res.status(400).json({ message: problem });
       driverId = chosen._id;
     }
@@ -393,7 +393,7 @@ router.put('/:id/driver', protect, adminOnly, async (req, res) => {
     }
     // Their own current trip is left out, so saving a booking without
     // changing its driver is never refused on the grounds of itself.
-    const trips = (await driverTrips(booking._id)).get(String(chosen._id)) || [];
+    const trips = (await driverBusy(booking._id)).get(String(chosen._id)) || [];
     const problem = driverChoiceProblem(chosen, bookingSpan(booking), trips);
     if (problem) return res.status(400).json({ message: `${chosen.name} is already out on another trip around these dates.` });
 
@@ -590,7 +590,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       // rather than being folded into it.
       if (booking.driver) {
         const chosen = await Driver.findById(booking.driver);
-        const trips = (await driverTrips(booking._id)).get(String(booking.driver)) || [];
+        const trips = (await driverBusy(booking._id)).get(String(booking.driver)) || [];
         if (!chosen) {
           return res.status(400).json({ message: 'The driver on this booking is no longer on the list. Assign another, or clear the driver, then accept it.' });
         }
