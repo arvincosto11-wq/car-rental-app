@@ -133,7 +133,12 @@ const Cars = () => {
   // — but they are the same thing to somebody scrolling: this one is
   // cheaper. Sorting on only one of them meant a page full of visible
   // discount badges and a sort that claimed to find none.
-  const hasDeal = (car) => isPromoVisible(car.promo) || rulesForCar(longRentalRules, car._id).length > 0;
+  //
+  // Called "on sale" on screen because that is the word Filipino shoppers
+  // actually use for it, and the option sits in a list that names states
+  // rather than rankings — Newest, Highest Rated — so it does not say
+  // "first" either.
+  const onSale = (car) => isPromoVisible(car.promo) || rulesForCar(longRentalRules, car._id).length > 0;
 
   const filtered = cars
     .filter((car) => {
@@ -154,8 +159,8 @@ const Cars = () => {
       if (sortBy === 'name-asc') return `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
       // Discounted vehicles lead, and within each group the newest leads —
       // which is what somebody scrolling a list of deals is looking for.
-      if (sortBy === 'deals-first') {
-        return (hasDeal(b) ? 1 : 0) - (hasDeal(a) ? 1 : 0) || newestFirst(a, b);
+      if (sortBy === 'on-sale') {
+        return (onSale(b) ? 1 : 0) - (onSale(a) ? 1 : 0) || newestFirst(a, b);
       }
       return newestFirst(a, b);
     });
@@ -595,7 +600,7 @@ const Cars = () => {
                 <option value="price-desc">Price: High to Low</option>
                 <option value="rating-desc">Highest Rated</option>
                 <option value="name-asc">Name: A to Z</option>
-                <option value="deals-first">Deals First</option>
+                <option value="on-sale">On Sale</option>
               </select>
               <ChevronDownIcon style={styles.selectArrow} />
             </div>
