@@ -52,11 +52,19 @@ export default function run() {
   group('what a customer is allowed to see');
   // A driver list appears on a booking page. Their mobile numbers have no
   // business being on it.
-  const shown = publicDriver({ _id: 'abc', name: 'Juan', phone: '09171234567', note: 'owes petrol money' });
+  const shown = publicDriver({ _id: 'abc', name: 'Juan', phone: '09171234567', note: 'owes petrol money', image: 'https://x/j.jpg' });
   check('the name is shown', shown.name, 'Juan');
+  // A face is shown on purpose: somebody waiting outside their house needs
+  // to know who has just pulled up.
+  check('and the photo', shown.image, 'https://x/j.jpg');
   check('the number is not', shown.phone, undefined);
   check('nor is the office note', shown.note, undefined);
-  check('and nothing else came along', Object.keys(shown).sort().join(','), '_id,name');
+  check('and nothing else came along', Object.keys(shown).sort().join(','), '_id,image,name');
+  // Named outward rather than deleted inward, so a field added to the
+  // record later cannot leak by being forgotten about here.
+  const future = publicDriver({ _id: 'abc', name: 'Juan', somethingAddedLater: 'secret' });
+  check('a field added later does not leak', future.somethingAddedLater, undefined);
+  check('no photo is an empty string, not undefined', publicDriver({ _id: 'a', name: 'J' }).image, '');
 
   group('one driver, one trip at a time');
   // Monday the 12th, 9 AM to Wednesday the 14th, 9 AM in Legazpi. UTC here

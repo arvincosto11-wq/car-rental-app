@@ -6,6 +6,7 @@ import { useUIFeedback } from '../../context/UIFeedbackContext';
 import usePageTitle from '../../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
 import { driverProblem, tidyPhone, isWorking } from '../../utils/drivers';
+import DriverAvatar from '../../components/DriverAvatar';
 import api from '../../api';
 
 // The people who drive, for a booking made with a driver.
@@ -22,7 +23,8 @@ const ManageDrivers = () => {
   const [saving, setSaving] = useState(false);
   // The id being edited, or 'new' while adding one.
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', phone: '', note: '' });
+  const [form, setForm] = useState({ name: '', phone: '', note: '', image: '', imageFileId: '' });
+  const [uploading, setUploading] = useState(false);
 
   const load = () => api.get('/drivers')
     .then(({ data }) => setDrivers(data))
@@ -33,12 +35,46 @@ const ManageDrivers = () => {
 
   const startNew = () => {
     setEditing('new');
-    setForm({ name: '', phone: '', note: '' });
+    setForm({ name: '', phone: '', note: '', image: '', imageFileId: '' });
   };
 
   const startEdit = (driver) => {
     setEditing(driver._id);
-    setForm({ name: driver.name, phone: driver.phone, note: driver.note || '' });
+    setForm({
+      name: driver.name,
+      phone: driver.phone,
+      note: driver.note || '',
+      image: driver.image || '',
+      imageFileId: driver.imageFileId || '',
+    });
+  };
+
+  // Straight to ImageKit, the same way a vehicle photo goes, so the picture
+  // never passes through our own server. It is put on the form rather than
+  // saved on its own: somebody who uploads a photo and then presses Cancel
+  // has not changed the driver.
+  const uploadPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { data: auth } = await api.get('/imagekit/auth');
+      const body = new FormData();
+      body.append('file', file);
+      body.append('fileName', file.name);
+      body.append('token', auth.token);
+      body.append('expire', auth.expire);
+      body.append('signature', auth.signature);
+      body.append('publicKey', auth.publicKey);
+      const res = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', body });
+      const uploaded = await res.json();
+      if (!uploaded?.url) throw new Error(uploaded?.message || 'Upload failed');
+      setForm((f) => ({ ...f, image: uploaded.url, imageFileId: uploaded.fileId || '' }));
+    } catch (err) {
+      toast.error(err.message || 'Could not upload that photo.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const save = async () => {
@@ -127,6 +163,13 @@ const ManageDrivers = () => {
       background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
     },
     hint: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '4px' },
+    photoRow: { display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' },
+    photoBtn: {
+      display: 'inline-block', fontSize: '12px', fontWeight: '700', padding: '6px 12px', borderRadius: '8px',
+      cursor: 'pointer', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      color: isDark ? '#b0b3b8' : '#6b7280',
+    },
+    fileInput: { position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' },
     empty: { padding: '28px', textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '13.5px' },
   };
 
@@ -141,6 +184,26 @@ const ManageDrivers = () => {
     <div style={{ ...s.card, borderColor: gold }}>
       <h2 style={s.h2}>{editing === 'new' ? 'New driver' : 'Edit driver'}</h2>
       <p style={s.sub}>A name and a number you can ring on the morning they are driving. Nothing else is kept.</p>
+      <div style={s.photoRow}>
+        <DriverAvatar driver={form} isDark={isDark} size={64} />
+        <div>
+          <label style={s.photoBtn} htmlFor="dr-photo">
+            {uploading ? 'Uploading…' : (form.image ? 'Change photo' : 'Add a photo')}
+          </label>
+          <input id="dr-photo" type="file" accept="image/*" style={s.fileInput} onChange={uploadPhoto} />
+          {form.image && (
+            <button
+              type="button"
+              style={{ ...s.btn(), marginLeft: '8px' }}
+              onClick={() => setForm({ ...form, image: '', imageFileId: '' })}
+            >
+              Remove
+            </button>
+          )}
+          <p style={s.hint}>Customers see this when they pick a driver, and again when their booking is on.</p>
+        </div>
+      </div>
+
       <div style={s.grid}>
         <div>
           <label style={s.label} htmlFor="dr-name">Name</label>
@@ -173,10 +236,13 @@ const ManageDrivers = () => {
 
   const line = (driver) => (
     <div key={driver._id} style={s.row}>
-      <div style={{ minWidth: 0 }}>
-        <div style={s.name}>{driver.name}</div>
-        <div style={s.meta}>{tidyPhone(driver.phone)}</div>
-        {driver.note ? <div style={s.note}>{driver.note}</div> : null}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+        <DriverAvatar driver={driver} isDark={isDark} size={40} />
+        <div style={{ minWidth: 0 }}>
+          <div style={s.name}>{driver.name}</div>
+          <div style={s.meta}>{tidyPhone(driver.phone)}</div>
+          {driver.note ? <div style={s.note}>{driver.note}</div> : null}
+        </div>
       </div>
       <div style={s.actions}>
         <span style={s.tag(isWorking(driver))}>{isWorking(driver) ? 'Driving' : 'Not working'}</span>

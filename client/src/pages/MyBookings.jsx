@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useUIFeedback } from '../context/UIFeedbackContext';
 import { useNotifications } from '../context/NotificationContext';
 import api from '../api';
+import DriverAvatar from '../components/DriverAvatar';
 import StarRating from '../components/StarRating';
 import RatingModal from '../components/RatingModal';
 import BookingConfirmationModal from '../components/BookingConfirmationModal';
@@ -1343,12 +1344,17 @@ const MyBookings = () => {
                     {/* Once somebody is named, name them. "Your driver will
                         meet you" is true but says nothing a client can act
                         on, and they paid for a driver. */}
-                    <div style={styles.driverNote}>
-                      {booking.bookingType === 'self-drive'
-                        ? "Bring a valid ID and your driver's license to pick up the vehicle."
-                        : booking.driver?.name
-                          ? `${booking.driver.name} will meet you at the pickup location.`
-                          : 'Your driver will meet you at the pickup location. We will tell you who is coming before then.'}
+                    <div style={{ ...styles.driverNote, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {booking.bookingType === 'with-driver' && booking.driver?.name && (
+                        <DriverAvatar driver={booking.driver} isDark={isDark} size={28} />
+                      )}
+                      <span>
+                        {booking.bookingType === 'self-drive'
+                          ? "Bring a valid ID and your driver's license to pick up the vehicle."
+                          : booking.driver?.name
+                            ? `${booking.driver.name} will meet you at the pickup location.`
+                            : 'Your driver will meet you at the pickup location. We will tell you who is coming before then.'}
+                      </span>
                     </div>
                   </div>
                 )}

@@ -358,7 +358,7 @@ router.put('/:id/driver', protect, adminOnly, async (req, res) => {
     if (!req.body.driver) {
       booking.driver = null;
       await booking.save();
-      return res.json(await booking.populate('driver', 'name phone'));
+      return res.json(await booking.populate('driver', 'name phone image'));
     }
 
     const chosen = await Driver.findById(req.body.driver);
@@ -389,7 +389,7 @@ router.put('/:id/driver', protect, adminOnly, async (req, res) => {
       );
     }
 
-    res.json(await booking.populate('driver', 'name phone'));
+    res.json(await booking.populate('driver', 'name phone image'));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -433,9 +433,10 @@ router.get('/my', protect, async (req, res) => {
     // description, blocked dates, papers or GPS position shipped with it.
     const bookings = await Booking.find({ user: req.user.id })
       .populate('car', 'brand model year category image pricePerDay')
-      // The name only. A client is told who is driving them; the driver's
-      // mobile number is the office's, not theirs. See utils/drivers.js.
-      .populate('driver', 'name')
+      // Name and face. A client is told who is driving them and shown who
+      // to look for; the mobile number is the office's, not theirs. See
+      // utils/drivers.js.
+      .populate('driver', 'name image')
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'client' }));
   } catch (err) {
@@ -469,7 +470,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
       .populate('user', 'name email image avgRating ratingCount licenseExpiry')
       // The number too: this is the list somebody works from when a driver
       // has to be rung on the morning of a pickup.
-      .populate('driver', 'name phone active')
+      .populate('driver', 'name phone image active')
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'admin' }));
   } catch (err) {
@@ -493,7 +494,7 @@ router.get('/owner', protect, consignorOnly, async (req, res) => {
       // name, a photo and a plate.
       .populate('car', 'brand model year category image plateNumber pricePerDay owner')
       .populate('user', 'name')
-      .populate('driver', 'name')
+      .populate('driver', 'name image')
       .sort({ createdAt: -1 });
     // The owner reads this the way admin does: what needs attention on their
     // vehicles first, finished rentals last.

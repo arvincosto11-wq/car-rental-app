@@ -15,6 +15,7 @@ import PromoBadge from '../components/PromoBadge';
 import useLongRentalRules from '../hooks/useLongRentalRules';
 import { bestLongRentalRule, longRentalDiscountOn, rulesForCar } from '../utils/longRental';
 import { instantFrom, phDayStart, pickupHours, formatHour, formatPhDate, formatMoment, SHORT_NOTICE_HOURS } from '../utils/phTime';
+import DriverAvatar from '../components/DriverAvatar';
 import RefundNoticeLine from '../components/RefundNoticeLine';
 import PlacePicker from '../components/PlacePicker';
 import { deliveryQuote } from '../utils/delivery';
@@ -661,7 +662,8 @@ const CarDetail = () => {
     choiceSub: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
     driverRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' },
     driverChip: (active) => ({
-      padding: '9px 14px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'inherit',
+      display: 'flex', alignItems: 'center', gap: '8px',
+      padding: '7px 14px 7px 7px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'inherit',
       fontSize: '12.5px', fontWeight: '700',
       border: `1px solid ${active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
       background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#2f3031' : '#fff'),
@@ -1117,7 +1119,7 @@ const CarDetail = () => {
                               <button
                                 type="button"
                                 aria-pressed={driverId === null}
-                                style={s.driverChip(driverId === null)}
+                                style={{ ...s.driverChip(driverId === null), padding: '9px 14px' }}
                                 onClick={() => setAskedFor(null)}
                               >
                                 Whoever you send
@@ -1130,6 +1132,7 @@ const CarDetail = () => {
                                   style={s.driverChip(driverId === d._id)}
                                   onClick={() => setAskedFor(d._id)}
                                 >
+                                  <DriverAvatar driver={d} isDark={isDark} size={28} />
                                   {d.name}
                                 </button>
                               ))}

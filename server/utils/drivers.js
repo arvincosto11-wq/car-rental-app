@@ -53,12 +53,17 @@ export function driverProblem({ name, phone } = {}) {
 // or is off indefinitely, is not offered to anybody.
 export const isWorking = (driver) => !!driver && driver.active !== false;
 
-// How a driver reads to a customer: the name, never the number. The phone
-// is for the office. A list of drivers is shown on a public booking page,
-// and their mobile numbers have no business being on it.
+// How a driver reads to a customer: a name and a face, never the number.
+// The phone is for the office. A list of drivers is shown on a booking
+// page, and their mobile numbers have no business being on it.
+//
+// Built by naming what goes OUT rather than by deleting what must not, so
+// a field added to the record later cannot leak by being forgotten about
+// here.
 export const publicDriver = (driver) => ({
   _id: driver._id,
   name: driver.name,
+  image: driver.image || '',
 });
 
 // --- when somebody is free ------------------------------------------------

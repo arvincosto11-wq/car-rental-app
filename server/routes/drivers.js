@@ -74,6 +74,8 @@ router.post('/', protect, adminOnly, async (req, res) => {
     const driver = await Driver.create({
       name: tidyName(req.body.name),
       phone: tidyPhone(req.body.phone),
+      image: String(req.body.image || ''),
+      imageFileId: String(req.body.imageFileId || ''),
       note: String(req.body.note || '').trim().slice(0, 300),
     });
     res.status(201).json(driver);
@@ -103,6 +105,13 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 
     driver.name = tidyName(req.body.name);
     driver.phone = tidyPhone(req.body.phone);
+    // Left out entirely means "unchanged"; an empty string means "taken
+    // off". A photo that vanished because the form did not send the field
+    // would be a photo somebody has to upload twice.
+    if (req.body.image !== undefined) {
+      driver.image = String(req.body.image || '');
+      driver.imageFileId = String(req.body.imageFileId || '');
+    }
     if (req.body.note !== undefined) driver.note = String(req.body.note || '').trim().slice(0, 300);
     if (req.body.active !== undefined) driver.active = !!req.body.active;
     await driver.save();

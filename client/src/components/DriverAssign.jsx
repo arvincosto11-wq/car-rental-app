@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
+import DriverAvatar from './DriverAvatar';
 
 // Naming the driver on a booking, or changing one.
 //
@@ -78,7 +79,12 @@ const DriverAssign = ({ booking, isDark, onAssigned }) => {
       <div style={s.title}>Driver</div>
       <div style={s.current}>
         {booking.driver
-          ? <>{booking.driver.name}{booking.driver.phone ? ` · ${booking.driver.phone}` : ''}</>
+          ? (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <DriverAvatar driver={booking.driver} isDark={isDark} size={34} />
+              <span>{booking.driver.name}{booking.driver.phone ? ` · ${booking.driver.phone}` : ''}</span>
+            </span>
+          )
           : 'Nobody named yet — the customer left it to you.'}
       </div>
       {free === null ? (
