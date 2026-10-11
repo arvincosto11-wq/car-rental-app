@@ -28,6 +28,7 @@ import NotFound from './pages/NotFound';
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
 const Analytics = lazy(() => import('./pages/admin/Analytics'));
 const AddCar = lazy(() => import('./pages/admin/AddCar'));
+const ManageDrivers = lazy(() => import('./pages/admin/ManageDrivers'));
 const ManageCars = lazy(() => import('./pages/admin/ManageCars'));
 const ManageArchivedCars = lazy(() => import('./pages/admin/ManageArchivedCars'));
 const ManageBookings = lazy(() => import('./pages/admin/ManageBookings'));
@@ -157,6 +158,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AddCar />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/drivers"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ManageDrivers />
                 </ProtectedRoute>
               }
             />
