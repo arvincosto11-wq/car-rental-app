@@ -113,6 +113,19 @@ const Cars = () => {
     if (!loading) setCardBurst(Date.now());
   }, [loading]);
 
+  // "Newest" used to mean nothing. The comparator below returned 0 for it,
+  // which left the list in the order the server happened to send — and that
+  // endpoint does not sort, so MongoDB's own order put the newest vehicle
+  // last. Every vehicle added was quietly going to the bottom of the list.
+  //
+  // createdAt first, with the id as a fallback: a MongoDB id begins with the
+  // second it was made in, so it still orders correctly for any row stored
+  // before timestamps existed.
+  const newestFirst = (a, b) => {
+    const made = (c) => (c.createdAt ? new Date(c.createdAt).getTime() : 0);
+    return made(b) - made(a) || String(b._id).localeCompare(String(a._id));
+  };
+
   const filtered = cars
     .filter((car) => {
       const matchSearch =
@@ -130,10 +143,12 @@ const Cars = () => {
       if (sortBy === 'price-desc') return b.pricePerDay - a.pricePerDay;
       if (sortBy === 'rating-desc') return (b.avgRating || 0) - (a.avgRating || 0);
       if (sortBy === 'name-asc') return `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
-      // Array.sort is stable, so vehicles within each group keep the order
-      // they arrived in rather than being shuffled.
-      if (sortBy === 'promo-first') return (isPromoVisible(b.promo) ? 1 : 0) - (isPromoVisible(a.promo) ? 1 : 0);
-      return 0;
+      // Promoted vehicles lead, and within each group the newest leads —
+      // which is what somebody scrolling a promo list is looking for.
+      if (sortBy === 'promo-first') {
+        return (isPromoVisible(b.promo) ? 1 : 0) - (isPromoVisible(a.promo) ? 1 : 0) || newestFirst(a, b);
+      }
+      return newestFirst(a, b);
     });
 
   const promoOrder = filtered.filter((c) => isPromoVisible(c.promo)).map((c) => c._id);
