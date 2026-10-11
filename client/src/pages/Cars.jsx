@@ -179,10 +179,11 @@ const Cars = () => {
       // equal stars, more reviews wins.
       if (sortBy === 'rating-desc') return (b.avgRating || 0) - (a.avgRating || 0) || mostRented(a, b);
       if (sortBy === 'name-asc') return `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
-      // Discounted vehicles lead, and within each group the newest leads —
-      // which is what somebody scrolling a list of deals is looking for.
+      // Discounted vehicles lead, and within each group the most-rented
+      // leads — same rule as every other sort here, so a tie is never left
+      // to the order the database happened to send.
       if (sortBy === 'on-sale') {
-        return (onSale(b) ? 1 : 0) - (onSale(a) ? 1 : 0) || newestFirst(a, b);
+        return (onSale(b) ? 1 : 0) - (onSale(a) ? 1 : 0) || mostRented(a, b);
       }
       return newestFirst(a, b);
     });

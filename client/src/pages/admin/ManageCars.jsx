@@ -655,7 +655,16 @@ const ManageCars = ({ view = 'active' }) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return `${car.brand} ${car.model}`.toLowerCase().includes(q);
-  });
+  })
+    // Newest first. This list had no order at all, so it came out however
+    // MongoDB handed it over — oldest first — which put the vehicle you
+    // just added at the bottom of the last page. The id is the fallback
+    // because it begins with the second the row was made, so it still
+    // orders correctly for anything stored before timestamps.
+    .sort((a, b) => {
+      const made = (c) => (c.createdAt ? new Date(c.createdAt).getTime() : 0);
+      return made(b) - made(a) || String(b._id).localeCompare(String(a._id));
+    });
 
   // Each card is several times taller than the old row now that it carries
   // a real photo, so a long fleet paginates instead of scrolling forever.
