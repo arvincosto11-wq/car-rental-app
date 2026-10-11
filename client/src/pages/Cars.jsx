@@ -126,6 +126,15 @@ const Cars = () => {
     return made(b) - made(a) || String(b._id).localeCompare(String(a._id));
   };
 
+  // A vehicle with money off it, by either route we have.
+  //
+  // These are two different things in the system — a promo is a dated price
+  // cut on one vehicle, a long-rental rule is a standing "7+ days, 10% off"
+  // — but they are the same thing to somebody scrolling: this one is
+  // cheaper. Sorting on only one of them meant a page full of visible
+  // discount badges and a sort that claimed to find none.
+  const hasDeal = (car) => isPromoVisible(car.promo) || rulesForCar(longRentalRules, car._id).length > 0;
+
   const filtered = cars
     .filter((car) => {
       const matchSearch =
@@ -143,10 +152,10 @@ const Cars = () => {
       if (sortBy === 'price-desc') return b.pricePerDay - a.pricePerDay;
       if (sortBy === 'rating-desc') return (b.avgRating || 0) - (a.avgRating || 0);
       if (sortBy === 'name-asc') return `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
-      // Promoted vehicles lead, and within each group the newest leads —
-      // which is what somebody scrolling a promo list is looking for.
-      if (sortBy === 'promo-first') {
-        return (isPromoVisible(b.promo) ? 1 : 0) - (isPromoVisible(a.promo) ? 1 : 0) || newestFirst(a, b);
+      // Discounted vehicles lead, and within each group the newest leads —
+      // which is what somebody scrolling a list of deals is looking for.
+      if (sortBy === 'deals-first') {
+        return (hasDeal(b) ? 1 : 0) - (hasDeal(a) ? 1 : 0) || newestFirst(a, b);
       }
       return newestFirst(a, b);
     });
@@ -586,7 +595,7 @@ const Cars = () => {
                 <option value="price-desc">Price: High to Low</option>
                 <option value="rating-desc">Highest Rated</option>
                 <option value="name-asc">Name: A to Z</option>
-                <option value="promo-first">On Promo First</option>
+                <option value="deals-first">Deals First</option>
               </select>
               <ChevronDownIcon style={styles.selectArrow} />
             </div>
