@@ -5,7 +5,7 @@ import Car from '../models/Car.js';
 import LongRentalDiscount from '../models/LongRentalDiscount.js';
 import User from '../models/User.js';
 import Driver from '../models/Driver.js';
-import { driverChoiceProblem } from '../utils/drivers.js';
+import { driverChoiceProblem, driverFreeFor, isWorking } from '../utils/drivers.js';
 import { driverBusy } from './drivers.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
@@ -693,7 +693,33 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         await notifyUser(car.owner, 'Vehicle Booked', `Your vehicle ${car.brand} ${car.model} has a new confirmed booking.`, '/consignor');
       }
 
-      return res.json(booking);
+      // A with-driver booking that is now on, with nobody to drive it.
+      //
+      // Said rather than refused. Accepting is a promise about the vehicle
+      // and the dates: the client has paid, the vehicle is free, and
+      // turning them down over a staffing problem on our side would punish
+      // them for something they cannot see or fix. But finding out now
+      // beats finding out on the morning, when the only thing left to do
+      // about it is apologise.
+      //
+      // Worked out after the save, so it is the real answer: who is left
+      // once this booking is on the books.
+      let driverWarning = '';
+      if (booking.bookingType === 'with-driver' && !booking.driver) {
+        const span = bookingSpan(booking);
+        const [drivers, busy] = await Promise.all([Driver.find().lean(), driverBusy(booking._id)]);
+        const free = drivers.filter(isWorking).filter((d) => driverFreeFor(span, busy.get(String(d._id)) || []));
+        if (!free.length) {
+          driverWarning = drivers.length
+            ? 'This booking needs a driver and nobody is free for those dates. Free somebody up, or add a driver, before pickup day.'
+            : 'This booking needs a driver and there are none on the list yet. Add one under Drivers before pickup day.';
+        }
+      }
+
+      // Spread rather than attached to the document: this is something
+      // about the save, not a field of the booking, and nothing should be
+      // able to store it by accident.
+      return res.json(driverWarning ? { ...booking.toObject(), driverWarning } : booking);
     }
 
     // Can't return a vehicle that hasn't even been picked up yet — this is

@@ -167,6 +167,11 @@ const ManageBookings = () => {
   const applyBooking = (updated) => {
     if (!updated?._id) return;
     setBookings((prev) => prev.map((b) => (b._id === updated._id ? { ...b, ...updated } : b)));
+    // Something the server wants said about what just happened, rather
+    // than a field of the booking — a with-driver booking accepted with
+    // nobody free to drive it. It is not an error: the booking is on, and
+    // this is a job to do before pickup day.
+    if (updated.driverWarning) toast.info(updated.driverWarning);
   };
 
   // Some actions reach beyond the booking they were aimed at: confirming one
