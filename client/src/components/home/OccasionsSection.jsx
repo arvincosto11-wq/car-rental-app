@@ -129,7 +129,10 @@ const OccasionsSection = ({ cars }) => {
       color: on ? goldInk(isDark) : (isDark ? '#8a8d91' : '#6b7280'),
     }),
     link: {
-      fontSize: '13.5px', fontWeight: '700', textDecoration: 'none',
+      // A shade smaller than the price beside it: the number is longer
+      // than the word it replaced, and on a narrow card the two share one
+      // line until they cannot.
+      fontSize: '13px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap',
       color: goldInk(isDark), minHeight: '44px', display: 'inline-flex', alignItems: 'center',
     },
   };
@@ -167,8 +170,15 @@ const OccasionsSection = ({ cars }) => {
                   <p style={s.text}>{o.text}</p>
                   <div style={s.foot}>
                     <span style={s.price(o.highlight)}>{o.price}</span>
+                    {/* The number itself, not the word "Call".
+                        On a phone this still opens the dialler. On a
+                        laptop a tel: link usually opens nothing — Windows
+                        asks which application should handle it, which is
+                        a dead end — so the number has to be readable
+                        without clicking anything. Dialling is the
+                        convenience on top, never the only way to get it. */}
                     <a href={TEL} style={s.link} aria-label={`Call to arrange ${o.title.toLowerCase()}: ${PHONE}`}>
-                      Call <span aria-hidden="true">→</span>
+                      {PHONE} <span aria-hidden="true">→</span>
                     </a>
                   </div>
                 </div>
