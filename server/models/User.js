@@ -41,6 +41,21 @@ const userSchema = new mongoose.Schema({
   emergencyContactName: { type: String, default: '' },
   emergencyContactNumber: { type: String, default: '' },
   isBlocked: { type: Boolean, default: false },
+
+  // A vehicle owner whose contract is on hold.
+  //
+  // Not a deletion and not a block: they can still sign in, see their
+  // vehicles and their history, and read why. What stops is the business —
+  // no new vehicles, no new inspections, no asking for dates. Deleting
+  // them instead would leave their name on every past booking of their
+  // cars and make the records stop making sense.
+  //
+  // `at` being set is what suspended means; the reason is shown to them,
+  // so it is written for them to read rather than as an internal note.
+  suspension: {
+    at: { type: Date, default: null },
+    reason: { type: String, default: '' },
+  },
   avgRating: { type: Number, default: 0 },
   ratingCount: { type: Number, default: 0 },
   favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Car' }]

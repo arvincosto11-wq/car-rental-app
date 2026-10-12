@@ -5,7 +5,7 @@ import User from '../models/User.js';
 import EmailVerification from '../models/EmailVerification.js';
 import Car from '../models/Car.js';
 import Consignment from '../models/Consignment.js';
-import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
+import { protect, adminOnly, consignorOnly, activeAccount } from '../middleware/auth.js';
 import { sameEmail } from '../middleware/email.js';
 import { registerLimiter } from '../middleware/rateLimit.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
@@ -96,7 +96,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 });
 
 // Submit an additional vehicle (owner already has an account and is logged in)
-router.post('/', protect, consignorOnly, async (req, res) => {
+router.post('/', protect, consignorOnly, activeAccount, async (req, res) => {
   try {
     const {
       brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,

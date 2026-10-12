@@ -50,7 +50,16 @@ const ConsignorDashboard = () => {
   // they own a listed vehicle rather than stored as a flag — see
   // routes/appointments.js. Null while it is still being asked.
   const [stage, setStage] = useState(null);
+  // Their own account, for the one thing the dashboard cannot work out from
+  // vehicles and bookings: whether their contract is on hold.
+  const [account, setAccount] = useState(null);
   const requestModalRef = useModalA11y(() => setRequestModalCarId(null), !!requestModalCarId);
+
+  const loadAccount = () => api.get('/auth/me')
+    .then(({ data }) => setAccount(data))
+    // A dashboard that will not load because it could not read one flag is
+    // worse than a dashboard that does not know about the flag.
+    .catch(() => setAccount(null));
 
   const loadStage = () => api.get('/appointments/stage')
     .then((res) => setStage(res.data))
@@ -62,6 +71,7 @@ const ConsignorDashboard = () => {
   useEffect(() => {
     if (!user) return navigate('/login');
     loadStage();
+    loadAccount();
     fetchConsignments();
     fetchBookings();
   }, [user]);
@@ -177,6 +187,18 @@ const ConsignorDashboard = () => {
     addBtn: { padding: '10px 20px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', textDecoration: 'none', whiteSpace: 'nowrap' },
     headerBtnGroup: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
     gpsBtn: { padding: '10px 20px', background: 'transparent', color: isDark ? '#e4e6eb' : '#1a1a1a', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', textDecoration: 'none', whiteSpace: 'nowrap' },
+    holdBox: {
+      border: `1px solid ${isDark ? 'rgba(220,38,38,0.35)' : '#fca5a5'}`,
+      background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2',
+      borderRadius: '12px', padding: '18px 20px', marginBottom: '20px',
+    },
+    holdTitle: { fontSize: '15px', fontWeight: '700', color: isDark ? '#fca5a5' : '#991b1b', marginBottom: '8px' },
+    holdReason: {
+      fontSize: '14px', lineHeight: 1.6, margin: '0 0 10px',
+      color: isDark ? '#e4e6eb' : '#1a1a1a', fontWeight: '600',
+    },
+    holdNote: { fontSize: '13px', lineHeight: 1.6, margin: '0 0 8px', color: isDark ? '#b0b3b8' : '#4b5563' },
+    holdStrong: { color: isDark ? '#e4e6eb' : '#1a1a1a' },
     statsRow: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px', marginBottom: '28px' },
     statCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', padding: '18px' },
     statLabel: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px' },
@@ -331,6 +353,8 @@ const ConsignorDashboard = () => {
     return <BookInspection stage={stage} onBooked={loadStage} />;
   }
 
+  const onHold = !!account?.suspension?.at;
+
   return (
     <div style={s.page}>
       <div style={s.container}>
@@ -339,11 +363,35 @@ const ConsignorDashboard = () => {
             <h1 style={s.title}>My Vehicles</h1>
             <p style={s.subtitle}>Track the status of your consignment applications.</p>
           </div>
-          <div style={s.headerBtnGroup}>
-            <Link className="btn-like" to="/consignor/gps-tracking" style={s.gpsBtn}>GPS Tracking</Link>
-            <Link className="btn-like" to="/consignor/add-vehicle" style={s.addBtn}>+ Book Another Inspection</Link>
-          </div>
+          {/* The buttons go while the contract is on hold. Leaving them
+              there would be offering something the server will refuse, and
+              a refusal somebody did not expect reads as a broken site. */}
+          {!onHold && (
+            <div style={s.headerBtnGroup}>
+              <Link className="btn-like" to="/consignor/gps-tracking" style={s.gpsBtn}>GPS Tracking</Link>
+              <Link className="btn-like" to="/consignor/add-vehicle" style={s.addBtn}>+ Book Another Inspection</Link>
+            </div>
+          )}
         </div>
+
+        {/* Said here rather than at the door. Somebody locked out assumes
+            the site is broken, tries again, and rings to ask why. Somebody
+            who can sign in and read this knows what happened, what it means
+            for the bookings they already have, and who to call. */}
+        {onHold && (
+          <div style={s.holdBox}>
+            <div style={s.holdTitle}>Your contract is on hold</div>
+            <p style={s.holdReason}>{account.suspension.reason}</p>
+            <p style={s.holdNote}>
+              Your vehicles have been taken off the site, so nobody new can book them. Bookings already
+              made will go ahead as normal, and you can see them below. Nothing has been deleted.
+            </p>
+            <p style={s.holdNote}>
+              To sort this out, please call us on <strong style={s.holdStrong}>0950-651-0479</strong> or
+              reply to the email we sent you.
+            </p>
+          </div>
+        )}
 
         <div style={s.statsRow}>
           <div style={s.statCard}>

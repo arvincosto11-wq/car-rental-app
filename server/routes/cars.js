@@ -2,7 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import Car from '../models/Car.js';
 import Booking from '../models/Booking.js';
-import { protect, adminOnly, consignorOnly, adminOrConsignor } from '../middleware/auth.js';
+import { protect, adminOnly, consignorOnly, adminOrConsignor, activeAccount } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { fetchAikaGps } from '../utils/aikaGps.js';
 import { trackDwell } from '../utils/dwell.js';
@@ -164,7 +164,7 @@ router.get('/:id/booked-dates', async (req, res) => {
 // PUT /:id/blocked-dates/:blockId/decision below. Either way, refuses if a
 // confirmed booking already overlaps, since that would contradict an
 // existing commitment rather than prevent one.
-router.post('/:id/blocked-dates', protect, async (req, res) => {
+router.post('/:id/blocked-dates', protect, activeAccount, async (req, res) => {
   try {
     const car = await Car.findById(req.params.id);
     if (!car) return res.status(404).json({ message: 'Car not found' });
@@ -1105,7 +1105,7 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
 // Both directions (going unavailable AND coming back available) need admin
 // sign-off — a consignor can't unilaterally pull a car off the platform or
 // put it back into public listings without review.
-router.put('/:id/toggle', protect, consignorOnly, async (req, res) => {
+router.put('/:id/toggle', protect, consignorOnly, activeAccount, async (req, res) => {
   try {
     const car = await Car.findById(req.params.id);
     if (!car) return res.status(404).json({ message: 'Car not found' });

@@ -16,8 +16,15 @@ const PAGE_SIZE = 10;
 const ManageClients = () => {
   usePageTitle('Manage Clients');
   const { isDark } = useTheme();
-  const { confirm } = useUIFeedback();
+  const { confirm, toast } = useUIFeedback();
+  // Clients or vehicle owners. Two lists of people with the same columns,
+  // so one screen with a switch rather than two pages that drift apart.
+  const [tab, setTab] = useState('clients');
   const [clients, setClients] = useState([]);
+  const [owners, setOwners] = useState([]);
+  const [holdFor, setHoldFor] = useState(null);
+  const [holdReason, setHoldReason] = useState('');
+  const [working, setWorking] = useState('');
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -28,11 +35,13 @@ const ManageClients = () => {
 
   const fetchData = async () => {
     try {
-      const [clientsRes, bookingsRes] = await Promise.all([
+      const [clientsRes, ownersRes, bookingsRes] = await Promise.all([
         api.get('/users'),
+        api.get('/users', { params: { role: 'consignor' } }),
         api.get('/bookings/all'),
       ]);
       setClients(clientsRes.data);
+      setOwners(ownersRes.data);
       setBookings(bookingsRes.data);
     } catch (err) {
       console.error(err);
@@ -57,6 +66,51 @@ const ManageClients = () => {
       fetchData();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // Putting an owner's contract on hold, or taking it off.
+  //
+  // The reason is typed rather than picked from a list, because the owner
+  // reads it on their own page and no list of reasons would fit the one
+  // that actually happened.
+  const hold = async (owner) => {
+    if (!holdReason.trim()) return;
+    setWorking(owner._id);
+    try {
+      const { data } = await api.put(`/users/${owner._id}/suspend`, {
+        suspended: true, reason: holdReason.trim(),
+      });
+      setHoldFor(null);
+      setHoldReason('');
+      await fetchData();
+      toast.success(data.vehiclesArchived
+        ? `On hold. ${data.vehiclesArchived} vehicle${data.vehiclesArchived === 1 ? '' : 's'} taken off the site.`
+        : 'On hold. They had no vehicles listed.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not do that.');
+    } finally {
+      setWorking('');
+    }
+  };
+
+  const lift = async (owner) => {
+    const ok = await confirm(
+      `Take ${owner.name} off hold? Their vehicles go back on the site and they can list more.`,
+      { confirmLabel: 'Take off hold', cancelLabel: 'Leave it' },
+    );
+    if (!ok) return;
+    setWorking(owner._id);
+    try {
+      const { data } = await api.put(`/users/${owner._id}/suspend`, { suspended: false });
+      await fetchData();
+      toast.success(data.vehiclesRestored
+        ? `Back on. ${data.vehiclesRestored} vehicle${data.vehiclesRestored === 1 ? '' : 's'} returned to the site.`
+        : 'Back on.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not do that.');
+    } finally {
+      setWorking('');
     }
   };
 
@@ -91,7 +145,8 @@ const ManageClients = () => {
   const lateReturnsFor = (clientId) =>
     finishedTripsFor(clientId).filter((b) => b.lateFee?.days > 0);
 
-  const filtered = clients.filter((c) =>
+  const people = tab === 'owners' ? owners : clients;
+  const filtered = people.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.email.toLowerCase().includes(search.toLowerCase())
   );
@@ -99,7 +154,7 @@ const ManageClients = () => {
   const pageClients = paginate(filtered, page, PAGE_SIZE);
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
-  const selectedClient = clients.find((c) => c._id === selectedClientId);
+  const selectedClient = people.find((c) => c._id === selectedClientId);
   const finishedTrips = selectedClient ? finishedTripsFor(selectedClient._id).length : 0;
   const lateReturns = selectedClient ? lateReturnsFor(selectedClient._id).length : 0;
   const clientModalRef = useModalA11y(() => setSelectedClientId(null), !!selectedClient);
@@ -136,6 +191,31 @@ const ManageClients = () => {
       fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
     },
     viewBtn: { padding: '5px 12px', fontSize: '12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', background: 'none', color: isDark ? '#e4e6eb' : '#1a1a1a', cursor: 'pointer' },
+    tabRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' },
+    tab: (on) => ({
+      fontSize: '12.5px', fontWeight: '700', padding: '7px 14px', borderRadius: '8px', cursor: 'pointer',
+      fontFamily: 'inherit',
+      border: `1px solid ${on ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      background: on ? (isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.08)') : 'transparent',
+      color: on ? goldInk(isDark) : (isDark ? '#b0b3b8' : '#6b7280'),
+    }),
+    holdBtn: {
+      padding: '5px 12px', fontSize: '12px', borderRadius: '6px', cursor: 'pointer',
+      border: `1px solid ${isDark ? '#7f1d1d' : '#fca5a5'}`, background: 'none',
+      color: isDark ? '#fca5a5' : '#991b1b', fontFamily: 'inherit',
+    },
+    reasonRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '8px' },
+    reasonInput: {
+      flex: '1 1 220px', padding: '7px 10px', fontSize: '12.5px', borderRadius: '6px',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
+    },
+    onHold: {
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
+      fontSize: '11px', padding: '2px 10px', borderRadius: '20px',
+      border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
+    },
+    holdWhy: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '3px', maxWidth: '280px' },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
     modalContent: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '600px', width: '100%', maxHeight: '85vh', overflow: 'auto', position: 'relative' },
     // The card and the scrolling area used to be the same element, so the
@@ -180,7 +260,22 @@ const ManageClients = () => {
   return (
     <AdminLayout activePage="Manage Clients">
       <h1 style={s.title}>Manage Clients</h1>
-      <p style={s.subtitle}>View client profiles, correct document dates, and manage booking history.</p>
+      <p style={s.subtitle}>
+        {tab === 'owners'
+          ? 'The people whose vehicles you rent out. Putting a contract on hold takes their vehicles off the site; bookings already made still go ahead.'
+          : 'View client profiles, correct document dates, and manage booking history.'}
+      </p>
+
+      <div style={s.tabRow} role="group" aria-label="Which people to show">
+        <button type="button" style={s.tab(tab === 'clients')} aria-pressed={tab === 'clients'}
+          onClick={() => { setTab('clients'); setPage(1); setHoldFor(null); }}>
+          Clients ({clients.length})
+        </button>
+        <button type="button" style={s.tab(tab === 'owners')} aria-pressed={tab === 'owners'}
+          onClick={() => { setTab('owners'); setPage(1); }}>
+          Vehicle Owners ({owners.length})
+        </button>
+      </div>
 
       <input
         style={s.searchInput}
@@ -195,11 +290,11 @@ const ManageClients = () => {
         <table style={s.table}>
           <thead>
             <tr>
-              <th style={s.th}>Client</th>
+              <th style={s.th}>{tab === 'owners' ? 'Owner' : 'Client'}</th>
               <th style={s.th}>Phone</th>
               <th style={s.th}>Joined</th>
-              <th style={s.th}>Bookings</th>
-              <th style={s.th}>Account</th>
+              <th style={s.th}>{tab === 'owners' ? 'Vehicles' : 'Bookings'}</th>
+              <th style={s.th}>{tab === 'owners' ? 'Contract' : 'Account'}</th>
               <th style={s.th}>Actions</th>
             </tr>
           </thead>
@@ -223,25 +318,67 @@ const ManageClients = () => {
                 </td>
                 <td style={s.td}>{client.phone || '—'}</td>
                 <td style={s.td}>{new Date(client.createdAt).toLocaleDateString()}</td>
-                <td style={s.td}>{bookingsForClient(client._id).length}</td>
                 <td style={s.td}>
-                  <span style={client.isBlocked ? s.blocked : s.active}>
-                    {client.isBlocked ? 'Blocked' : 'Active'}
-                  </span>
+                  {tab === 'owners'
+                    ? `${client.liveVehicleCount || 0} listed${client.vehicleCount !== client.liveVehicleCount ? ` of ${client.vehicleCount}` : ''}`
+                    : bookingsForClient(client._id).length}
                 </td>
                 <td style={s.td}>
-                  <button
-                    style={s.viewBtn}
-                    onClick={() => {
-                      // Seeded from what is on file, so admin edits a date
-                      // rather than retyping one from scratch.
-                      const ymd = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
-                      setDocDates({ licenseExpiry: ymd(client.licenseExpiry) });
-                      setSelectedClientId(client._id);
-                    }}
-                  >
-                    View Details
-                  </button>
+                  {tab === 'owners' ? (
+                    <>
+                      <span style={client.suspension?.at ? s.onHold : s.active}>
+                        {client.suspension?.at ? 'On hold' : 'Active'}
+                      </span>
+                      {client.suspension?.at && (
+                        <div style={s.holdWhy}>{client.suspension.reason}</div>
+                      )}
+                    </>
+                  ) : (
+                    <span style={client.isBlocked ? s.blocked : s.active}>
+                      {client.isBlocked ? 'Blocked' : 'Active'}
+                    </span>
+                  )}
+                </td>
+                <td style={s.td}>
+                  {tab === 'owners' ? (
+                    client.suspension?.at ? (
+                      <button style={s.viewBtn} disabled={working === client._id} onClick={() => lift(client)}>
+                        {working === client._id ? 'Working…' : 'Take off hold'}
+                      </button>
+                    ) : holdFor === client._id ? (
+                      <div style={s.reasonRow}>
+                        <input
+                          style={s.reasonInput}
+                          autoFocus
+                          maxLength={300}
+                          placeholder="Why — they read this"
+                          value={holdReason}
+                          onChange={(e) => setHoldReason(e.target.value)}
+                        />
+                        <button style={s.holdBtn} disabled={working === client._id || !holdReason.trim()} onClick={() => hold(client)}>
+                          {working === client._id ? 'Working…' : 'Put on hold'}
+                        </button>
+                        <button style={s.viewBtn} onClick={() => { setHoldFor(null); setHoldReason(''); }}>Cancel</button>
+                      </div>
+                    ) : (
+                      <button style={s.holdBtn} onClick={() => { setHoldFor(client._id); setHoldReason(''); }}>
+                        Put contract on hold
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      style={s.viewBtn}
+                      onClick={() => {
+                        // Seeded from what is on file, so admin edits a date
+                        // rather than retyping one from scratch.
+                        const ymd = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
+                        setDocDates({ licenseExpiry: ymd(client.licenseExpiry) });
+                        setSelectedClientId(client._id);
+                      }}
+                    >
+                      View Details
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

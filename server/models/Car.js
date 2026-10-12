@@ -57,6 +57,11 @@ const carSchema = new mongoose.Schema({
   ratingCount: { type: Number, default: 0 },
   archived: { type: Boolean, default: false },
   archivedAt: { type: Date },
+  // Archived because its owner's contract was put on hold, rather than by
+  // somebody choosing to archive this vehicle. Kept apart so that lifting a
+  // suspension brings back only the cars the suspension took down, and not
+  // one archived months ago for its own reasons.
+  archivedBySuspension: { type: Boolean, default: false },
   // Admin-curated pick for the homepage stacked carousel. When no car has
   // this set, the carousel falls back to auto-picking top-rated cars
   // instead — see GET /cars/featured.

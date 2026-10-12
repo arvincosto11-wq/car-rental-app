@@ -3,7 +3,7 @@ import Appointment from '../models/Appointment.js';
 import Car from '../models/Car.js';
 import Settings from '../models/Settings.js';
 import User from '../models/User.js';
-import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
+import { protect, adminOnly, consignorOnly, activeAccount } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import {
   openSlots, slotProblem, appointmentSettings, slotLabel, vehicleNoteProblem, outcomeTooEarly,
@@ -61,7 +61,7 @@ router.get('/mine', protect, async (req, res) => {
 // have been open for an hour. Even so the unique index is what actually
 // decides it: two people pressing Book in the same second both pass this
 // check, and only one of them gets the row.
-router.post('/', protect, consignorOnly, async (req, res) => {
+router.post('/', protect, consignorOnly, activeAccount, async (req, res) => {
   try {
     // Checked here as well as in the form, because the form is a courtesy
     // and this is the gate. See utils/appointments.js for what it can and
