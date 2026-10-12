@@ -346,14 +346,18 @@ const ConsignorDashboard = () => {
     );
   }
 
+  const onHold = !!account?.suspension?.at;
+
   // Stage one: no vehicle has passed its check yet, so there is no dashboard
   // to show. Not the real one in an empty state — that would be a room full
   // of things that are not theirs.
+  //
+  // Somebody on hold is told so even here. It can happen to an applicant
+  // who has never had a vehicle listed, and being invited to book a visit
+  // that the server will refuse is worse than being told why.
   if (stage.stage === 'applicant') {
-    return <BookInspection stage={stage} onBooked={loadStage} />;
+    return <BookInspection stage={stage} onBooked={loadStage} suspension={onHold ? account.suspension : null} />;
   }
-
-  const onHold = !!account?.suspension?.at;
 
   return (
     <div style={s.page}>

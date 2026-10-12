@@ -22,7 +22,7 @@ const DAY_LABEL = { weekday: 'short', month: 'short', day: 'numeric' };
 // is no dashboard to show: no vehicles, no bookings, no earnings. Showing
 // the real dashboard empty would be showing somebody a room full of things
 // that are not theirs yet.
-const BookInspection = ({ stage, onBooked }) => {
+const BookInspection = ({ stage, onBooked, suspension }) => {
   usePageTitle('Book an inspection');
   const { isDark } = useTheme();
   const { toast, confirm } = useUIFeedback();
@@ -142,6 +142,12 @@ const BookInspection = ({ stage, onBooked }) => {
     },
     error: { fontSize: '13px', color: isDark ? '#f87171' : '#dc2626', marginBottom: '12px' },
     when: { fontSize: '19px', fontWeight: '700', color: goldInk(isDark), margin: '0 0 4px' },
+    holdReason: {
+      fontSize: '14.5px', lineHeight: 1.6, fontWeight: '600', margin: '0 0 18px',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    holdNote: { fontSize: '13.5px', lineHeight: 1.65, margin: '0 0 10px', color: isDark ? '#b0b3b8' : '#4b5563' },
+    holdStrong: { color: isDark ? '#e4e6eb' : '#1a1a1a' },
     outcome: {
       margin: '0 0 18px', padding: '14px 16px', borderRadius: '10px', fontSize: '13.5px', lineHeight: 1.7,
       background: isDark ? '#3a2f10' : '#fff7e6', border: `1px solid ${isDark ? '#5a4a1a' : '#f3d98b'}`,
@@ -288,6 +294,32 @@ const BookInspection = ({ stage, onBooked }) => {
             <button type="button" style={s.cancel} onClick={cancelBooking}>Cancel this appointment</button>
           </div>
           {whatToBring}
+          {pastVisits}
+        </div>
+      </div>
+    );
+  }
+
+  // A contract on hold outranks everything this page offers. Shown instead
+  // of the form rather than above it: leaving a Book button underneath
+  // would be inviting somebody to do the one thing we have just said they
+  // cannot, and the server would refuse it anyway.
+  if (suspension) {
+    return (
+      <div style={s.page}>
+        <div style={s.wrap}>
+          <h1 style={s.title}>Your contract is on hold</h1>
+          <p style={s.holdReason}>{suspension.reason}</p>
+          <div style={s.card}>
+            <p style={s.holdNote}>
+              Your vehicles have been taken off the site, so nobody new can book them. Bookings already
+              made will go ahead as normal. Nothing has been deleted.
+            </p>
+            <p style={s.holdNote}>
+              To sort this out, please call us on <strong style={s.holdStrong}>0950-651-0479</strong> or
+              reply to the email we sent you.
+            </p>
+          </div>
           {pastVisits}
         </div>
       </div>

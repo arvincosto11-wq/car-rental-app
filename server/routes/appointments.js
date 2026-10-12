@@ -268,7 +268,15 @@ router.put('/:id/outcome', protect, adminOnly, async (req, res) => {
 // archived one.
 router.get('/stage', protect, async (req, res) => {
   try {
-    const vehicles = await Car.countDocuments({ owner: req.user.id, archived: { $ne: true } });
+    // Vehicles taken down by a contract hold still count. Archiving their
+    // cars is how a hold works, and without this the owner would read as a
+    // brand new applicant: dashboard gone, invited to book an inspection
+    // the server is about to refuse, and no sign anywhere of why. Their
+    // cars are still theirs; they are off the site, not given back.
+    const vehicles = await Car.countDocuments({
+      owner: req.user.id,
+      $or: [{ archived: { $ne: true } }, { archivedBySuspension: true }],
+    });
     const appointment = await Appointment.findOne({ owner: req.user.id, status: { $in: APPOINTMENT_OPEN } }).lean();
     const last = await Appointment.findOne({ owner: req.user.id }).sort({ at: -1 }).lean();
     res.json({
