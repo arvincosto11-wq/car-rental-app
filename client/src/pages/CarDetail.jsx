@@ -97,6 +97,10 @@ const CarDetail = () => {
   // Who they asked for, or null for "whoever you send". Null is a real
   // answer here rather than an unfinished form — see utils/drivers.js.
   const [askedFor, setAskedFor] = useState(null);
+  // Which question is on screen, not what was chosen. 'any' or 'pick', or
+  // null until somebody says — see the derived `mode` below, which is what
+  // anything renders from.
+  const [driverMode, setDriverMode] = useState(null);
   // { key, list } rather than a bare list, so the page can tell a list that
   // belongs to the dates on screen from one fetched for the dates before
   // them. That is what says "checking" without a second state to keep in
@@ -356,6 +360,10 @@ const CarDetail = () => {
   // as nobody asked for. Derived rather than cleared, so moving the dates
   // back and forth does not silently forget who they wanted.
   const driverId = drivers?.some((d) => d._id === askedFor) ? askedFor : null;
+  // Derived rather than stored, so the switch cannot say "Request someone"
+  // while nobody is requested: with nobody free there is only one honest
+  // answer, and otherwise an existing choice puts it on the right side.
+  const driverMode_ = (drivers || []).length === 0 ? 'any' : (driverMode || (driverId ? 'pick' : 'any'));
 
   const shortNotice = pickupAt && pickupAt.getTime() - now < SHORT_NOTICE_HOURS * 60 * 60 * 1000;
 
@@ -657,17 +665,68 @@ const CarDetail = () => {
     }),
     choiceTitle: (active) => ({ fontSize: '13.5px', fontWeight: '700', color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a') }),
     choiceSub: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
-    driverRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' },
-    chipText: { display: 'grid', justifyItems: 'start', lineHeight: 1.25 },
-    chipRating: { fontSize: '10.5px', fontWeight: '600', opacity: 0.75 },
-    driverChip: (active) => ({
-      display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '7px 14px 7px 7px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'inherit',
-      fontSize: '12.5px', fontWeight: '700',
-      border: `1px solid ${active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
-      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#2f3031' : '#fff'),
-      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a'),
+    // --- the driver block ------------------------------------------------
+    driverSwitch: {
+      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', padding: '4px',
+      borderRadius: '12px', marginBottom: '12px',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e3e5e8'}`,
+      background: isDark ? '#1e1f20' : '#f8f9fa',
+    },
+    driverSwitchBtn: (on, off) => ({
+      height: '38px', borderRadius: '9px', border: 'none', fontFamily: 'inherit',
+      fontSize: '13px', fontWeight: '700',
+      cursor: off ? 'not-allowed' : 'pointer',
+      opacity: off ? 0.5 : 1,
+      background: on ? (isDark ? '#242526' : '#fff') : 'transparent',
+      color: on ? (isDark ? '#e4e6eb' : '#1a1a1a') : (isDark ? '#8a8d91' : '#6b7280'),
     }),
+    driverAnyRow: {
+      display: 'flex', gap: '14px', alignItems: 'center', padding: '14px 16px',
+      borderRadius: '12px', marginBottom: '14px',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e3e5e8'}`,
+    },
+    faceStack: { display: 'flex', flexShrink: 0 },
+    // Overlapped, so a row of faces reads as "these people" rather than as
+    // a list somebody has to count.
+    faceWrap: (i) => ({
+      display: 'flex', borderRadius: '50%',
+      marginLeft: i === 0 ? 0 : '-9px',
+      boxShadow: `0 0 0 2px ${isDark ? '#242526' : '#fff'}`,
+    }),
+    faceSkeleton: {
+      width: '34px', height: '34px', borderRadius: '50%', display: 'block',
+      background: isDark ? '#3a3b3c' : '#e5e7eb',
+    },
+    driverAnyText: { fontSize: '12.5px', lineHeight: 1.55, margin: 0, color: isDark ? '#b0b3b8' : '#4b5563' },
+    driverGrid: {
+      display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', marginBottom: '10px',
+    },
+    driverCard: (on) => ({
+      position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+      padding: '18px 10px 14px', borderRadius: '14px', textAlign: 'center', cursor: 'pointer',
+      fontFamily: 'inherit',
+      border: `1px solid ${on ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e3e5e8')}`,
+      background: on ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : 'transparent',
+    }),
+    driverCheck: {
+      position: 'absolute', top: '8px', right: '8px', width: '20px', height: '20px',
+      borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: isDark ? GOLD_DARK : GOLD,
+    },
+    driverCardName: { fontSize: '13px', fontWeight: '700', lineHeight: 1.25, color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    driverCardRating: {
+      display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11.5px',
+      color: isDark ? '#8a8d91' : '#6b7280',
+    },
+    driverCardScore: { color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    // A driver in their first week has not been judged badly, and an empty
+    // row of stars says they have.
+    newDriverPill: {
+      fontSize: '10px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase',
+      padding: '2px 7px', borderRadius: '99px',
+      background: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe',
+      color: isDark ? '#93c5fd' : '#1e40af',
+    },
     choiceAmount: (active) => ({ fontSize: '17px', fontWeight: '800', letterSpacing: '-0.01em', color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#e4e6eb' : '#1a1a1a') }),
     sameRow: {
       display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px',
@@ -1100,57 +1159,111 @@ const CarDetail = () => {
                     )}
 
                     {/* Who drives.
-                        Optional on purpose: most people do not mind, and
-                        making them choose a stranger by name before they can
-                        book adds a decision to a form that does not need
-                        one. "Whoever you send" is offered as a real choice
-                        rather than left as an empty field nobody noticed, so
-                        the customer knows what they are getting either way.
-                        The office fills the name in afterwards. */}
+                        One question at a time. Most people do not mind who
+                        comes, and making them read a row of strangers'
+                        names before they can book is a decision the form
+                        does not need. So the first question is whether they
+                        care; only somebody who says yes is shown the names.
+                        Either way the office knows what was asked for.
+                        A driver costs nothing extra: the company pays
+                        them, so nothing here touches the breakdown. */}
                     {bookingType === 'with-driver' && (
                       <>
                         {/* The booking-type cards have no bottom margin of
                             their own, so this label sat flush against them
                             and read as part of the card below. */}
                         <div style={{ ...s.sectionLabel, marginTop: '18px' }} id="cd-driver-label">Driver</div>
-                        {drivers === null ? (
-                          <p style={s.fieldHint}>Checking who is free…</p>
+
+                        {/* Shown while checking too, so the block does not
+                            change height when the answer lands. */}
+                        <div role="group" aria-labelledby="cd-driver-label" style={s.driverSwitch}>
+                          <button
+                            type="button"
+                            aria-pressed={driverMode_ === 'any'}
+                            style={s.driverSwitchBtn(driverMode_ === 'any')}
+                            onClick={() => { setDriverMode('any'); setAskedFor(null); }}
+                          >
+                            Any available driver
+                          </button>
+                          <button
+                            type="button"
+                            aria-pressed={driverMode_ === 'pick'}
+                            disabled={drivers !== null && drivers.length === 0}
+                            style={s.driverSwitchBtn(driverMode_ === 'pick', drivers !== null && drivers.length === 0)}
+                            onClick={() => {
+                              setDriverMode('pick');
+                              // Never leave "Request someone" chosen with
+                              // nobody requested.
+                              if (!driverId && drivers?.length) setAskedFor(drivers[0]._id);
+                            }}
+                          >
+                            {drivers !== null && drivers.length === 0 ? 'Request someone \u00b7 none free' : 'Request someone'}
+                          </button>
+                        </div>
+
+                        {driverMode_ === 'any' ? (
+                          <div style={s.driverAnyRow}>
+                            <div style={s.faceStack}>
+                              {drivers === null ? (
+                                <span style={s.faceSkeleton} />
+                              ) : (
+                                drivers.slice(0, 5).map((d, i) => (
+                                  <span key={d._id} style={s.faceWrap(i)}>
+                                    <DriverAvatar driver={d} isDark={isDark} size={34} />
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                            <p style={s.driverAnyText}>
+                              {drivers === null
+                                ? 'Checking who is free on your dates\u2026'
+                                : drivers.length === 0
+                                  ? 'Nobody is free to be requested for these dates, so we will assign a driver for you before pickup.'
+                                  : `${drivers.length} driver${drivers.length === 1 ? ' is' : 's are'} free on your dates. We\u2019ll pick one and tell you who is coming before pickup.`}
+                            </p>
+                          </div>
                         ) : (
                           <>
-                            <div role="group" aria-labelledby="cd-driver-label" style={s.driverRow}>
-                              <button
-                                type="button"
-                                aria-pressed={driverId === null}
-                                style={{ ...s.driverChip(driverId === null), padding: '9px 14px' }}
-                                onClick={() => setAskedFor(null)}
-                              >
-                                Whoever you send
-                              </button>
+                            <div role="radiogroup" aria-labelledby="cd-driver-label" style={s.driverGrid}>
                               {(drivers || []).map((d) => (
                                 <button
                                   key={d._id}
                                   type="button"
-                                  aria-pressed={driverId === d._id}
-                                  style={s.driverChip(driverId === d._id)}
+                                  role="radio"
+                                  aria-checked={driverId === d._id}
+                                  style={s.driverCard(driverId === d._id)}
                                   onClick={() => setAskedFor(d._id)}
                                 >
-                                  <DriverAvatar driver={d} isDark={isDark} size={28} />
-                                  <span style={s.chipText}>
-                                    <span>{d.name}</span>
-                                    {/* The rating sits on the chip itself:
-                                        a row of unfamiliar names is not a
-                                        choice anybody can make. */}
-                                    <span style={s.chipRating}>
-                                      {d.ratingCount ? `★ ${ratingLabel(d)}` : ratingLabel(d)}
+                                  {driverId === d._id && (
+                                    <span style={s.driverCheck}>
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={ON_GOLD} strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                        <polyline points="20 6 9 17 4 12" />
+                                      </svg>
                                     </span>
-                                  </span>
+                                  )}
+                                  <DriverAvatar driver={d} isDark={isDark} size={54} />
+                                  <span style={s.driverCardName}>{d.name}</span>
+                                  {d.ratingCount > 0 ? (
+                                    <span style={s.driverCardRating}>
+                                      <svg width="11" height="11" viewBox="0 0 24 24" fill={isDark ? GOLD_DARK : GOLD} aria-hidden="true">
+                                        <polygon points="12 2 15.1 8.6 22 9.5 17 14.4 18.3 21.5 12 18.1 5.7 21.5 7 14.4 2 9.5 8.9 8.6" />
+                                      </svg>
+                                      <strong style={s.driverCardScore}>{(d.avgRating || 0).toFixed(1)}</strong>
+                                      {` \u00b7 ${d.ratingCount} trip${d.ratingCount === 1 ? '' : 's'}`}
+                                    </span>
+                                  ) : (
+                                    <span style={s.newDriverPill}>New driver</span>
+                                  )}
                                 </button>
                               ))}
                             </div>
+                            {/* Only a confirmed booking holds a driver \u2014 see
+                                utils/drivers.js \u2014 so a request is a request
+                                until then, and saying otherwise would be a
+                                promise the rota does not keep. */}
                             <p style={s.fieldHint}>
-                              {(drivers || []).length === 0
-                                ? 'Nobody is free to be requested for these dates, so we will assign a driver for you before pickup.'
-                                : 'Ask for somebody by name, or leave it to us and we will tell you who is coming before pickup.'}
+                              Your request is held once we confirm the booking. If they&apos;re taken by then,
+                              we&apos;ll send someone else and tell you before pickup.
                             </p>
                           </>
                         )}
