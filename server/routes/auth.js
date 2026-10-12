@@ -9,6 +9,7 @@ import { loginLimiter, registerLimiter, verificationLimiter, emailCheckLimiter }
 import { sendVerificationCodeEmail } from '../utils/email.js';
 import { notifyAdmins } from '../utils/notify.js';
 import { checkAndNotifyExpiringDocs } from '../utils/expiryNotify.js';
+import { fail } from '../utils/respond.js';
 
 const router = express.Router();
 
@@ -37,7 +38,7 @@ router.get('/me', protect, async (req, res) => {
     await checkAndNotifyExpiringDocs(user);
     res.json(user);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -92,7 +93,7 @@ router.put('/me', protect, async (req, res) => {
     const { password, ...safeUser } = user.toObject();
     res.json(safeUser);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -117,7 +118,7 @@ router.post('/change-password/send-code', protect, verificationLimiter, async (r
     await sendVerificationCodeEmail(user.email, code, 'change-password');
     res.json({ message: 'Verification code sent.' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -144,7 +145,7 @@ router.post('/forgot-password', verificationLimiter, async (req, res) => {
 
     res.json({ message: 'If an account exists with that email, a verification code has been sent.' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -170,7 +171,7 @@ router.post('/reset-password', async (req, res) => {
     await EmailVerification.deleteOne({ email });
     res.json({ message: 'Password reset successfully.' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -201,7 +202,7 @@ router.put('/change-password', protect, async (req, res) => {
     await EmailVerification.deleteOne({ email: user.email });
     res.json({ message: 'Password updated successfully.' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -246,7 +247,7 @@ router.post('/change-email/send-code', protect, verificationLimiter, async (req,
     await sendVerificationCodeEmail(email, code, 'change-email');
     res.json({ message: 'Verification code sent to the new address.' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -281,7 +282,7 @@ router.put('/change-email', protect, async (req, res) => {
     await EmailVerification.deleteOne({ email });
     res.json({ message: 'Email updated successfully.', email });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -309,7 +310,7 @@ router.post('/send-verification-code', verificationLimiter, async (req, res) => 
     await sendVerificationCodeEmail(email, code);
     res.json({ message: 'Verification code sent.' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -339,7 +340,7 @@ router.post('/verify-email-code', async (req, res) => {
     await record.save();
     res.json({ message: 'Email verified.' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -422,7 +423,7 @@ router.post('/register', registerLimiter, async (req, res) => {
       user: { id: user._id, name, email, role: user.role }
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -447,7 +448,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       user: { id: user._id, name: user.name, email, role: user.role }
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 

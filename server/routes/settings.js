@@ -3,6 +3,7 @@ import Settings from '../models/Settings.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { deliverySettings, DEFAULTS } from '../utils/delivery.js';
 import { appointmentSettings } from '../utils/appointments.js';
+import { fail } from '../utils/respond.js';
 
 const router = express.Router();
 
@@ -36,7 +37,7 @@ router.get('/', protect, adminOnly, async (req, res) => {
   try {
     res.json(await Settings.current());
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -103,7 +104,7 @@ router.put('/', protect, adminOnly, async (req, res) => {
     await current.save();
     res.json(current);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 

@@ -5,6 +5,7 @@ import { protect, adminOnly } from '../middleware/auth.js';
 import { driverProblem, tidyName, tidyPhone, isWorking, publicDriver, driverFreeFor } from '../utils/drivers.js';
 import { bookingSpan } from '../utils/availability.js';
 import { instantFrom, addDays } from '../utils/phTime.js';
+import { fail } from '../utils/respond.js';
 
 const router = express.Router();
 
@@ -73,7 +74,7 @@ router.get('/available', protect, async (req, res) => {
         .sort((a, b) => a.name.localeCompare(b.name)),
     );
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -82,7 +83,7 @@ router.get('/', protect, adminOnly, async (req, res) => {
   try {
     res.json(await Driver.find().sort({ active: -1, name: 1 }).lean());
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -105,7 +106,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
     if (err?.code === 11000) {
       return res.status(409).json({ message: 'Somebody with that number is already on the list.' });
     }
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -142,7 +143,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     if (err?.code === 11000) {
       return res.status(409).json({ message: 'Somebody with that number is already on the list.' });
     }
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -177,7 +178,7 @@ router.get('/reviews', protect, adminOnly, async (req, res) => {
       ratedAt: b.driverRating.ratedAt,
     })));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -209,7 +210,7 @@ router.get('/:id/calendar', protect, adminOnly, async (req, res) => {
       })),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -302,7 +303,7 @@ router.post('/:id/blocks', protect, adminOnly, async (req, res) => {
 
     res.status(201).json({ driver, warnings });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -316,7 +317,7 @@ router.delete('/:id/blocks/:blockId', protect, adminOnly, async (req, res) => {
     await driver.save();
     res.json(driver);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -333,7 +334,7 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
     if (!driver) return res.status(404).json({ message: 'Driver not found' });
     res.json({ message: 'Driver removed' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 

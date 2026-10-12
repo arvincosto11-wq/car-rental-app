@@ -9,6 +9,7 @@ import { protect, adminOnly, consignorOnly, activeAccount } from '../middleware/
 import { sameEmail } from '../middleware/email.js';
 import { registerLimiter } from '../middleware/rateLimit.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
+import { fail } from '../utils/respond.js';
 
 const router = express.Router();
 
@@ -91,7 +92,7 @@ router.post('/register', registerLimiter, async (req, res) => {
       user: { id: user._id, name, email, role: user.role },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -115,7 +116,7 @@ router.post('/', protect, consignorOnly, activeAccount, async (req, res) => {
 
     res.status(201).json(consignment);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -127,7 +128,7 @@ router.get('/my', protect, consignorOnly, async (req, res) => {
       .sort({ createdAt: -1 });
     res.json(consignments);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -140,7 +141,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
       .sort({ createdAt: -1 });
     res.json(consignments);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -194,7 +195,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 
     res.json(consignment);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 

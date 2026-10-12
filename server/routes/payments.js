@@ -4,6 +4,7 @@ import Booking from '../models/Booking.js';
 import { protect } from '../middleware/auth.js';
 import { notifyUser, notifyAdmins } from '../utils/notify.js';
 import { paymongoFetch } from '../utils/paymongo.js';
+import { fail } from '../utils/respond.js';
 
 const router = express.Router();
 
@@ -53,7 +54,7 @@ router.post('/gcash/checkout-session', protect, async (req, res) => {
 
     res.json({ checkoutUrl: session.data.attributes.checkout_url });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -125,7 +126,7 @@ router.get('/gcash/status/:bookingId', protect, async (req, res) => {
     const updated = await reconcileBookingPayment(req.params.bookingId);
     res.json({ payment: updated ? updated.payment : booking.payment });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 

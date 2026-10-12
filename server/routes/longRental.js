@@ -3,6 +3,7 @@ import LongRentalDiscount from '../models/LongRentalDiscount.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import Car from '../models/Car.js';
 import { validateLongRentalRule, findRuleConflicts, conflictMessage } from '../utils/longRental.js';
+import { fail } from '../utils/respond.js';
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.get('/', async (req, res) => {
     const rules = await LongRentalDiscount.find({ active: true }).sort({ minDays: 1 }).lean();
     res.json(rules);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -24,7 +25,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
     const rules = await LongRentalDiscount.find().sort({ minDays: 1 }).lean();
     res.json(rules);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -62,7 +63,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
     const rule = await LongRentalDiscount.create(clean);
     res.status(201).json(rule);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -77,7 +78,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     if (!rule) return res.status(404).json({ message: 'Rule not found' });
     res.json(rule);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -89,7 +90,7 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
     if (!rule) return res.status(404).json({ message: 'Rule not found' });
     res.json({ message: 'Rule deleted' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 

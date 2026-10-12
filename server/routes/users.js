@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import Car from '../models/Car.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { notifyUser } from '../utils/notify.js';
+import { fail } from '../utils/respond.js';
 
 const router = express.Router();
 
@@ -36,7 +37,7 @@ router.get('/', protect, adminOnly, async (req, res) => {
       liveVehicleCount: byOwner.get(String(u._id))?.live || 0,
     })));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -100,7 +101,7 @@ router.put('/:id/suspend', protect, adminOnly, async (req, res) => {
     );
     res.json({ suspension: user.suspension, vehiclesRestored: modifiedCount });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -116,7 +117,7 @@ router.put('/:id/document-dates', protect, adminOnly, async (req, res) => {
     await user.save();
     res.json({ licenseExpiry: user.licenseExpiry });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -132,7 +133,7 @@ router.put('/:id/block', protect, adminOnly, async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -142,7 +143,7 @@ router.get('/favorites', protect, async (req, res) => {
     const user = await User.findById(req.user.id).populate('favorites');
     res.json(user?.favorites || []);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -164,7 +165,7 @@ router.put('/favorites/:carId/toggle', protect, async (req, res) => {
     await user.save();
     res.json({ favorited });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 

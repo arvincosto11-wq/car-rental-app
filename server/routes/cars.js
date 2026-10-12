@@ -16,6 +16,7 @@ import User from '../models/User.js';
 import Appointment from '../models/Appointment.js';
 import Consignment from '../models/Consignment.js';
 import { INSPECTION_CHECKS, isInspectionCheck } from '../utils/appointments.js';
+import { fail } from '../utils/respond.js';
 
 const router = express.Router();
 
@@ -73,7 +74,7 @@ router.get('/', async (req, res) => {
 
     res.json(cars);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -83,7 +84,7 @@ router.get('/archived', protect, adminOnly, async (req, res) => {
     const cars = await Car.find({ archived: true }).sort({ archivedAt: -1 });
     res.json(cars);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -154,7 +155,7 @@ router.get('/:id/booked-dates', async (req, res) => {
     }
     res.json(ranges);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -318,7 +319,7 @@ router.post('/:id/blocked-dates', protect, activeAccount, async (req, res) => {
 
     res.json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -448,7 +449,7 @@ router.put('/:id/off-road', protect, adminOnly, async (req, res) => {
       offered: upcoming.length,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -476,7 +477,7 @@ router.delete('/:id/off-road', protect, adminOnly, async (req, res) => {
 
     res.json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -513,7 +514,7 @@ router.put('/:id/blocked-dates/:blockId/decision', protect, adminOnly, async (re
 
     res.json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -543,7 +544,7 @@ router.get('/blocked-date-requests', protect, adminOnly, async (req, res) => {
     });
     res.json(requests);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -560,7 +561,7 @@ router.delete('/:id/blocked-dates/:blockId', protect, async (req, res) => {
     await car.save();
     res.json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -570,7 +571,7 @@ router.get('/availability-requests', protect, adminOnly, async (req, res) => {
     const cars = await Car.find({ 'availabilityRequest.status': 'pending' }).populate('owner', 'name email');
     res.json(cars);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -602,7 +603,7 @@ router.get('/reviews/all', protect, adminOnly, async (req, res) => {
 
     res.json(reviews);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -634,7 +635,7 @@ router.get('/reviews/featured', async (req, res) => {
 
     res.json(reviews);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -660,7 +661,7 @@ router.get('/featured', async (req, res) => {
 
     res.json(cars);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -756,7 +757,7 @@ router.get('/gps-fleet', protect, adminOrConsignor, async (req, res) => {
 
     res.json(withGps);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -769,7 +770,7 @@ router.get('/:id', async (req, res) => {
     if (car.status === 'draft' && role !== 'admin') return res.status(404).json({ message: 'Car not found' });
     res.json(role === 'admin' ? car : hidePlateNumber(car));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -803,7 +804,7 @@ router.get('/:id/reviews', async (req, res) => {
 
     res.json(reviews);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -902,7 +903,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
 
     res.status(201).json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -932,7 +933,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     );
     res.json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -949,7 +950,7 @@ router.put('/:id/archive', protect, adminOnly, async (req, res) => {
     if (!car) return res.status(404).json({ message: 'Car not found' });
     res.json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -962,7 +963,7 @@ router.put('/:id/feature', protect, adminOnly, async (req, res) => {
     await car.save();
     res.json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1042,7 +1043,7 @@ router.put('/:id/promo', protect, adminOnly, async (req, res) => {
 
     res.json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1056,7 +1057,7 @@ router.delete('/:id/promo', protect, adminOnly, async (req, res) => {
     await car.save();
     res.json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1071,7 +1072,7 @@ router.put('/:id/restore', protect, adminOnly, async (req, res) => {
     if (!car) return res.status(404).json({ message: 'Car not found' });
     res.json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1096,7 +1097,7 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
     await Car.findByIdAndDelete(req.params.id);
     res.json({ message: 'Car permanently deleted' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1122,7 +1123,7 @@ router.put('/:id/toggle', protect, consignorOnly, activeAccount, async (req, res
     await notifyAdmins('New Availability Request', `A consignor requested to mark "${car.brand} ${car.model}" ${requestType}.`, '/admin/availability-requests');
     res.json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1156,7 +1157,7 @@ router.put('/:id/availability-request', protect, adminOnly, async (req, res) => 
 
     res.json(car);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 

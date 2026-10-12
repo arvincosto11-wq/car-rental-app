@@ -26,6 +26,7 @@ import { licenceProblem, licenceMessage } from '../utils/documents.js';
 import { byUrgency } from '../utils/priority.js';
 import { recordActivity } from '../utils/priority.js';
 import { vehiclesForSwap, remainingSpan, repriceForSwap } from '../utils/moveVehicle.js';
+import { fail } from '../utils/respond.js';
 
 const router = express.Router();
 
@@ -359,7 +360,7 @@ router.post('/', protect, async (req, res) => {
 
     res.status(201).json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -413,7 +414,7 @@ router.put('/:id/driver', protect, adminOnly, async (req, res) => {
 
     res.json(await booking.populate('driver', 'name phone image avgRating ratingCount'));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -462,7 +463,7 @@ router.get('/my', protect, async (req, res) => {
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'client' }));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -496,7 +497,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
       .sort({ createdAt: -1 });
     res.json(byUrgency(bookings, { role: 'admin' }));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -522,7 +523,7 @@ router.get('/owner', protect, consignorOnly, async (req, res) => {
     // vehicles first, finished rentals last.
     res.json(byUrgency(bookings, { role: 'admin' }));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -832,7 +833,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -865,7 +866,7 @@ router.put('/:id/collect-balance', protect, adminOnly, async (req, res) => {
 
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -880,7 +881,7 @@ router.get('/:id/vehicle-options', protect, adminOnly, async (req, res) => {
     }
     res.json({ options: await vehiclesForSwap(booking) });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -948,7 +949,7 @@ router.put('/:id/move-vehicle', protect, adminOnly, async (req, res) => {
 
     res.json({ booking, priced });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -967,7 +968,7 @@ router.put('/:id/damage-charge/collected', protect, adminOnly, async (req, res) 
     await booking.save();
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -987,7 +988,7 @@ router.put('/:id/fuel-charge/collected', protect, adminOnly, async (req, res) =>
     await booking.save();
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1008,7 +1009,7 @@ router.put('/:id/late-fee/collected', protect, adminOnly, async (req, res) => {
     await booking.save();
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1056,7 +1057,7 @@ router.put('/:id/collect', protect, adminOnly, async (req, res) => {
     await booking.save();
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1114,7 +1115,7 @@ router.put('/:id/no-show', protect, adminOnly, async (req, res) => {
 
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1158,7 +1159,7 @@ router.post('/:id/refund', protect, async (req, res) => {
 
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1194,7 +1195,7 @@ router.delete('/:id/refund', protect, async (req, res) => {
     await notifyAdmins('Refund Request Withdrawn', 'A client has withdrawn their refund request.', '/admin/manage-bookings');
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1219,7 +1220,7 @@ router.delete('/:id/reschedule', protect, async (req, res) => {
     await notifyAdmins('Reschedule Request Withdrawn', 'A client has withdrawn their reschedule request.', '/admin/manage-bookings');
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1264,7 +1265,7 @@ router.put('/:id/refund', protect, adminOnly, async (req, res) => {
 
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1361,7 +1362,7 @@ router.post('/:id/reschedule', protect, async (req, res) => {
 
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1414,7 +1415,7 @@ router.put('/:id/reschedule', protect, adminOnly, async (req, res) => {
 
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1481,7 +1482,7 @@ router.post('/:id/rate-car', protect, async (req, res) => {
 
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1523,7 +1524,7 @@ router.put('/:id/rate-driver/moderate', protect, adminOnly, async (req, res) => 
 
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1553,7 +1554,7 @@ router.put('/:id/rate-car/moderate', protect, adminOnly, async (req, res) => {
 
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1578,7 +1579,7 @@ router.post('/:id/rate-client', protect, adminOnly, async (req, res) => {
 
     res.json(booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1645,7 +1646,7 @@ router.put('/:id/adjust', protect, async (req, res) => {
 
     return res.status(400).json({ message: 'Choose either new dates or a refund.' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1678,7 +1679,7 @@ router.post('/:id/adjust/top-up', protect, async (req, res) => {
     if (!result.ok) return res.status(400).json({ message: result.message });
     return res.json({ checkoutUrl: result.checkoutUrl });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1696,7 +1697,7 @@ router.put('/:id/adjust/top-up/confirm', protect, async (req, res) => {
     if (!result.ok) return res.status(400).json({ message: result.message });
     return res.json(result.booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1735,7 +1736,7 @@ router.get('/:id/extension', protect, async (req, res) => {
       quote,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1755,7 +1756,7 @@ router.post('/:id/extension', protect, async (req, res) => {
     if (!result.ok) return res.status(400).json({ message: result.message });
     res.json({ checkoutUrl: result.checkoutUrl });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -1772,7 +1773,7 @@ router.put('/:id/extension/confirm', protect, async (req, res) => {
     if (!result.ok) return res.status(400).json({ message: result.message });
     res.json(result.booking);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 

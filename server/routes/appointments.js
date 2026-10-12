@@ -9,6 +9,7 @@ import {
   openSlots, slotProblem, appointmentSettings, slotLabel, vehicleNoteProblem, outcomeTooEarly,
   APPOINTMENT_OPEN, isAppointmentOpen,
 } from '../utils/appointments.js';
+import { fail } from '../utils/respond.js';
 
 const router = express.Router();
 
@@ -43,7 +44,7 @@ router.get('/slots', protect, async (req, res) => {
       }, []),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -51,7 +52,7 @@ router.get('/mine', protect, async (req, res) => {
   try {
     res.json(await Appointment.find({ owner: req.user.id }).sort({ at: -1 }).lean());
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -121,7 +122,7 @@ router.post('/', protect, consignorOnly, activeAccount, async (req, res) => {
     if (err?.code === 11000) {
       return res.status(409).json({ message: 'Somebody has just taken that time. Please pick another.' });
     }
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -158,7 +159,7 @@ router.delete('/:id', protect, async (req, res) => {
 
     res.json(appointment);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -172,7 +173,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
       .lean();
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -206,7 +207,7 @@ router.put('/:id/accept', protect, adminOnly, async (req, res) => {
 
     res.json(appointment);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -256,7 +257,7 @@ router.put('/:id/outcome', protect, adminOnly, async (req, res) => {
 
     res.json(appointment);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -286,7 +287,7 @@ router.get('/stage', protect, async (req, res) => {
       last: last || null,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -300,7 +301,7 @@ router.get('/:id', protect, adminOnly, async (req, res) => {
     if (!row) return res.status(404).json({ message: 'Appointment not found' });
     res.json(row);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 

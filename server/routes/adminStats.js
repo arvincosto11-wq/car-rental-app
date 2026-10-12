@@ -8,6 +8,7 @@ import { protect, adminOnly } from '../middleware/auth.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { expireAdjustOffers } from '../utils/adjustOffer.js';
 import { APPOINTMENT_OPEN } from '../utils/appointments.js';
+import { fail } from '../utils/respond.js';
 
 const router = express.Router();
 
@@ -74,7 +75,7 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
       '/admin/expiring-documents': expiringRegistrations,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -107,7 +108,7 @@ router.get('/expiring-documents', protect, adminOnly, async (req, res) => {
       })),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
@@ -206,7 +207,7 @@ router.get('/dashboard', protect, adminOnly, async (req, res) => {
       periods: { weekStart: startOfWeek, monthStart: startOfMonth, today: now },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    fail(res, err);
   }
 });
 
