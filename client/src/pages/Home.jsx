@@ -5,6 +5,10 @@ import { useUIFeedback } from '../context/UIFeedbackContext';
 import StarRating from '../components/StarRating';
 import StackedCarCarousel from '../components/StackedCarCarousel';
 import Footer from '../components/Footer';
+import ExperienceSection from '../components/home/ExperienceSection';
+import HowItWorks from '../components/home/HowItWorks';
+import OccasionsSection from '../components/home/OccasionsSection';
+import ReviewsSection from '../components/home/ReviewsSection';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 import usePageTitle from '../hooks/usePageTitle';
 import api from '../api';
@@ -33,6 +37,7 @@ const ChevronIcon = () => (
 const Home = () => {
   const [testimonials, setTestimonials] = useState([]);
   const [fleetRating, setFleetRating] = useState(null);
+  const [cars, setCars] = useState([]);
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const [searchCategory, setSearchCategory] = useState('');
@@ -62,6 +67,10 @@ const Home = () => {
     const fetchFleetRating = async () => {
       try {
         const res = await api.get('/cars');
+        // Kept, not just measured: the occasions section picks a vehicle
+        // photo per occasion out of the same list, so this one request
+        // feeds both and nothing extra is fetched.
+        setCars(res.data);
         const rated = res.data.filter((c) => c.ratingCount > 0);
         const count = rated.reduce((sum, c) => sum + c.ratingCount, 0);
         if (!count) return;
@@ -236,24 +245,6 @@ const Home = () => {
       display: 'inline-flex', alignItems: 'center', gap: '5px',
       fontWeight: '800', color: goldInk(isDark),
     },
-    section: {
-      padding: '48px 32px',
-      maxWidth: '1400px',
-      margin: '0 auto',
-    },
-    sectionTitle: {
-      fontSize: '28px',
-      fontWeight: '700',
-      color: isDark ? '#e4e6eb' : '#1a1a1a',
-      textAlign: 'center',
-      marginBottom: '8px',
-    },
-    sectionSubtitle: {
-      fontSize: '14px',
-      color: isDark ? '#b0b3b8' : '#6b7280',
-      textAlign: 'center',
-      marginBottom: '32px',
-    },
     grid: {
       gap: '20px',
     },
@@ -330,191 +321,17 @@ const Home = () => {
       fontSize: '12px',
       color: isDark ? '#b0b3b8' : '#6b7280',
     },
-    viewAllBtn: {
-      padding: '12px 32px',
-      background: isDark ? GOLD_DARK : GOLD,
-      color: ON_GOLD,
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: '500',
-      cursor: 'pointer',
-    },
-    testimonialsSection: {
-      background: isDark ? '#242526' : '#f9fafb',
-      borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-    },
-    testimonialGrid: { gap: '20px' },
-    testimonialCard: {
-      background: isDark ? '#18191a' : '#fff',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '12px',
-      padding: '20px',
-    },
-    testimonialComment: {
-      fontSize: '14px',
-      color: isDark ? '#cbd5e1' : '#374151',
-      lineHeight: '1.6',
-      margin: '10px 0 14px',
-    },
-    testimonialFooter: { display: 'flex', alignItems: 'center', gap: '10px' },
-    testimonialAvatar: {
-      width: '34px', height: '34px', borderRadius: '50%',
-      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-      fontSize: '14px', fontWeight: '700', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    },
-    testimonialName: { fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    testimonialCar: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    aboutSection: {
-      background: isDark ? '#242526' : '#f9fafb',
-      borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-    },
-    aboutInner: { gap: '48px', alignItems: 'center' },
-    featureGrid: { gap: '16px' },
-    featureCard: {
-      textAlign: 'left',
-      background: isDark ? '#18191a' : '#fff',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '12px',
-      padding: '18px',
-    },
-    featureIcon: {
-      width: '42px',
-      height: '42px',
-      borderRadius: '10px',
-      background: isDark ? GOLD_DARK : GOLD,
-      color: ON_GOLD,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '19px',
-      marginBottom: '12px',
-    },
-    featureTitle: {
-      fontSize: '14px',
-      fontWeight: '700',
-      color: isDark ? '#e4e6eb' : '#1a1a1a',
-      marginBottom: '4px',
-    },
-    featureText: {
-      fontSize: '12.5px',
-      color: isDark ? '#b0b3b8' : '#6b7280',
-      lineHeight: '1.5',
-    },
-    aboutPhoto: {
-      display: 'block', width: '100%', aspectRatio: '2 / 1', objectFit: 'cover',
-      objectPosition: 'center 45%', borderRadius: '20px', marginBottom: '22px',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-    },
-    aboutTagline: {
-      fontSize: '13px',
-      fontWeight: '700',
-      letterSpacing: '0.03em',
-      color: goldInk(isDark),
-      marginBottom: '6px',
-    },
-    aboutHeading: {
-      fontSize: '26px',
-      fontWeight: '700',
-      color: isDark ? '#e4e6eb' : '#1a1a1a',
-      marginBottom: '14px',
-    },
-    aboutText: {
-      fontSize: '14px',
-      lineHeight: '1.7',
-      color: isDark ? '#cbd5e1' : '#4b5563',
-      marginBottom: '20px',
-    },
-    checklist: { listStyle: 'none', padding: 0, margin: '0 0 24px', display: 'flex', flexDirection: 'column', gap: '12px' },
-    checklistItem: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: '500', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    checkBadge: {
-      width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
-      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700',
-    },
-    contactSection: {
-      background: isDark ? '#18191a' : '#17130e',
-      padding: '48px 32px',
-      color: '#f2eee6',
-    },
-    contactInner: {
-      maxWidth: '1000px',
-      margin: '0 auto',
-      gap: '40px',
-      alignItems: 'start',
-    },
-    contactTagline: {
-      fontSize: '13px',
-      fontWeight: '700',
-      letterSpacing: '0.03em',
-      color: isDark ? GOLD_DARK : '#e8a100',
-      marginBottom: '6px',
-    },
-    contactTitle: {
-      fontSize: '26px',
-      fontWeight: '700',
-      marginBottom: '10px',
-      color: '#f2eee6',
-    },
-    contactSub: {
-      fontSize: '14px',
-      color: '#a79e8d',
-      lineHeight: '1.6',
-      maxWidth: '46ch',
-    },
-    contactList: { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' },
-    contactRow: { display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px' },
-    contactIcon: {
-      width: '36px',
-      height: '36px',
-      borderRadius: '50%',
-      background: 'rgba(232,161,0,0.15)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '16px',
-      flexShrink: 0,
-    },
-    socialRow: { display: 'flex', gap: '10px', marginTop: '18px', flexWrap: 'wrap' },
-    socialTag: {
-      fontSize: '12px',
-      fontWeight: '600',
-      color: '#f2eee6',
-      background: 'rgba(255,255,255,0.08)',
-      padding: '6px 14px',
-      borderRadius: '20px',
-    },
-    socialLink: {
-      fontSize: '12px',
-      fontWeight: '600',
-      color: '#f2eee6',
-      background: 'rgba(255,255,255,0.08)',
-      padding: '6px 14px',
-      borderRadius: '20px',
-      textDecoration: 'none',
-      cursor: 'pointer',
-    },
-    hashtagBadge: {
-      display: 'inline-block',
-      marginTop: '24px',
-      background: isDark ? GOLD_DARK : '#e8a100',
-      color: '#17130e',
-      fontSize: '12px',
-      fontWeight: '700',
-      letterSpacing: '0.02em',
-      padding: '6px 16px',
-      borderRadius: '20px',
-    },
   };
 
   return (
     <div>
       {/* Hero Section — plain theme-aware background (no photo), text and
           search on the left, the featured-cars carousel on the right. */}
-      <div style={styles.hero}>
+      {/* The id is the only change to the hero: "Pick your dates" further
+          down scrolls back to this search rather than offering a second
+          one, since two search fields on a page is two places to start
+          and one of them always falls behind. */}
+      <div id="home-hero" style={styles.hero}>
         <div aria-hidden="true" style={styles.glowOrb({
           size: '620px', at: { top: '-14%', left: '-8%' },
           dark: 'rgba(232,161,0,0.20)', light: 'rgba(184,121,10,0.09)',
@@ -594,135 +411,18 @@ const Home = () => {
         </div>
       </div>
 
-      {/* About */}
-      <div style={{ ...styles.section, ...styles.aboutSection }}>
-        <div className="responsive-row-2" style={styles.aboutInner}>
-          <div className="responsive-row-2" style={styles.featureGrid}>
-            <div style={styles.featureCard}>
-              <div style={styles.featureIcon}>🚗</div>
-              <div style={styles.featureTitle}>Well-Maintained Vehicles</div>
-              <div style={styles.featureText}>Quality and safety you can trust.</div>
-            </div>
-            <div style={styles.featureCard}>
-              <div style={styles.featureIcon}>💰</div>
-              <div style={styles.featureTitle}>Affordable Rates</div>
-              <div style={styles.featureText}>Transparent pricing with no hidden fees.</div>
-            </div>
-            {/* "Flexible Bookings": any rental length books normally, and
-                admin can add long-rental discounts (e.g. 7+ days, 10% off)
-                from Manage Cars — see utils/longRental.js. */}
-            <div style={styles.featureCard}>
-              <div style={styles.featureIcon}>📅</div>
-              <div style={styles.featureTitle}>Flexible Bookings</div>
-              <div style={styles.featureText}>Daily, weekly, or monthly — it's up to you!</div>
-            </div>
-            <div style={styles.featureCard}>
-              <div style={styles.featureIcon}>🎧</div>
-              <div style={styles.featureTitle}>Excellent Customer Service</div>
-              <div style={styles.featureText}>We're here to assist you every step of the way.</div>
-            </div>
-          </div>
+      <ExperienceSection />
 
-          <div>
-            {/* A key handover is the one moment every rental shares, so it
-                says what the business does before a word is read. */}
-            <img
-              src="/handling-keys.jpg"
-              alt="Car keys being handed over to a customer"
-              loading="lazy"
-              style={styles.aboutPhoto}
-            />
-            <div style={styles.aboutTagline}>ABOUT US</div>
-            <h2 style={styles.aboutHeading}>The complete Albay rental experience.</h2>
-            <p style={styles.aboutText}>
-              Serving Camalig and the greater Albay area since 2018, Rent-A-Ride Albay has helped
-              travelers and locals alike explore the region in well-maintained, affordable vehicles —
-              with a team that treats every trip like it's our own.
-            </p>
-            <ul style={styles.checklist}>
-              <li style={styles.checklistItem}><span style={styles.checkBadge}>✓</span> Digital-first booking and ID verification</li>
-              <li style={styles.checklistItem}><span style={styles.checkBadge}>✓</span> Live GPS tracking on select vehicles</li>
-              <li style={styles.checklistItem}><span style={styles.checkBadge}>✓</span> Transparent, no-hidden-fee pricing</li>
-            </ul>
-            <button style={styles.viewAllBtn} onClick={() => navigate('/cars')}>
-              Browse All Vehicles
-            </button>
-          </div>
-        </div>
-      </div>
+      <HowItWorks
+        onPickDates={() => {
+          const hero = document.getElementById('home-hero');
+          if (hero) hero.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+      />
 
-      {/* Testimonials */}
-      {testimonials.length > 0 && (
-        <div style={{ ...styles.section, ...styles.testimonialsSection }}>
-          <h2 style={styles.sectionTitle}>What Renters Are Saying</h2>
-          <p style={styles.sectionSubtitle}>Real feedback from real trips across Albay.</p>
+      <OccasionsSection cars={cars} />
 
-          <div className="responsive-grid-3" style={styles.testimonialGrid}>
-            {testimonials.map((t) => (
-              <div key={t._id} style={styles.testimonialCard}>
-                <StarRating value={t.overall} size={13} readOnly />
-                <p style={styles.testimonialComment}>"{t.comment}"</p>
-                <div style={styles.testimonialFooter}>
-                  <span style={styles.testimonialAvatar}>{t.reviewerName.charAt(0)}</span>
-                  <div>
-                    <div style={styles.testimonialName}>{t.reviewerName}</div>
-                    {t.car && <div style={styles.testimonialCar}>{t.car.brand} {t.car.model}</div>}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Contact */}
-      <div style={styles.contactSection}>
-        <div className="responsive-row-2" style={styles.contactInner}>
-          <div>
-            <div style={styles.contactTagline}>#DRIVEBEYONDLIMITS</div>
-            <h2 className="display-heading" style={styles.contactTitle}>Get In Touch</h2>
-            <p style={styles.contactSub}>
-              Have a question about a booking or want to reserve over the phone?
-              Reach out — we're here to help.
-            </p>
-            <div style={styles.hashtagBadge}>Your Journey. Our Commitment.</div>
-          </div>
-          <div>
-            <ul style={styles.contactList}>
-              <li style={styles.contactRow}>
-                <span style={styles.contactIcon}>📞</span>
-                <span>0950-651-0479</span>
-              </li>
-              <li>
-                <a
-                  href="https://www.google.com/maps/search/?api=1&query=Salugan%2C+Camalig%2C+Albay"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ ...styles.contactRow, textDecoration: 'none', color: 'inherit' }}
-                >
-                  <span style={styles.contactIcon}>📍</span>
-                  <span>Salugan, Camalig, Albay</span>
-                </a>
-              </li>
-              <li style={styles.contactRow}>
-                <span style={styles.contactIcon}>🕒</span>
-                <span>24/7 Customer Support</span>
-              </li>
-            </ul>
-            <div style={styles.socialRow}>
-              <a
-                href="https://www.facebook.com/rentaridealbaybranch"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={styles.socialLink}
-              >
-                Facebook: Rent-A-Ride Albay
-              </a>
-              <span style={styles.socialTag}>@rentaridealbay</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ReviewsSection testimonials={testimonials} />
 
       <Footer />
     </div>
