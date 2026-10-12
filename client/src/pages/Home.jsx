@@ -11,6 +11,7 @@ import OccasionsSection from '../components/home/OccasionsSection';
 import ReviewsSection from '../components/home/ReviewsSection';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 import usePageTitle from '../hooks/usePageTitle';
+import useScrollMemory from '../hooks/useScrollMemory';
 import api from '../api';
 
 const CATEGORIES = ['Sedan', 'SUV', 'Hatchback', 'Van', 'Truck', 'Coupe', 'Motorcycle'];
@@ -36,6 +37,10 @@ const ChevronIcon = () => (
 
 const Home = () => {
   const [testimonials, setTestimonials] = useState([]);
+  // Whether the reviews have settled, either way. The page grows by about
+  // 900px when they arrive, so nothing can be said about where somebody
+  // was reading until this is true — see useScrollMemory.
+  const [reviewsSettled, setReviewsSettled] = useState(false);
   const [fleetRating, setFleetRating] = useState(null);
   const [cars, setCars] = useState([]);
   const [pickupDate, setPickupDate] = useState('');
@@ -45,6 +50,7 @@ const Home = () => {
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
   usePageTitle();
+  useScrollMemory('home', reviewsSettled);
 
   useEffect(() => {
     const fetchTestimonials = async () => {
@@ -53,6 +59,10 @@ const Home = () => {
         setTestimonials(res.data);
       } catch (err) {
         console.error(err);
+      } finally {
+        // Settled, not succeeded: a failed fetch gives a shorter page, but
+        // it is a page of a known height, which is all the restore needs.
+        setReviewsSettled(true);
       }
     };
     fetchTestimonials();

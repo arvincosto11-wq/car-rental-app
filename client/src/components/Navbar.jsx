@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { isReturningVisit } from '../utils/navigationType';
 import { useNotifications } from '../context/NotificationContext';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
 import NotificationBell from './NotificationBell';
@@ -56,7 +57,12 @@ const Navbar = () => {
       setScrolled(true);
       return;
     }
-    window.scrollTo(0, 0);
+    // Landing on the homepage should start at the top — but not when the
+    // page is being reloaded or stepped back to, where somebody is
+    // returning to a place they had already found. Home remembers that
+    // position and puts them back once the reviews are in; jumping to the
+    // top here would be a visible fight between the two.
+    if (!isReturningVisit()) window.scrollTo(0, 0);
     setScrolled(false);
     const handleScroll = () => setScrolled(window.scrollY > 60);
     window.addEventListener('scroll', handleScroll);
