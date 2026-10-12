@@ -1396,3 +1396,44 @@ button.seg-tab:not(:disabled):hover {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
 }
+
+/* The "Call" link on the occasion cards shows the number when a mouse rests
+   on it, so somebody on a laptop can read it and dial from their phone
+   without clicking. Clicking is still a tel: link, which is what a phone
+   wants — on a desktop with no phone app Windows answers that with its own
+   "pick an app" dialog, which no page can style or suppress, so the point of
+   this is that a laptop visitor never needs to click at all.
+
+   It is a bubble floating above the link rather than text in the row: the
+   number is wider than the word it would replace, and growing the row would
+   push the price onto a second line every time the pointer passed over. */
+.occasion-call {
+  position: relative;
+}
+.occasion-call .occasion-call-number {
+  position: absolute;
+  bottom: calc(100% - 6px);
+  right: 0;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  background: #17130e;
+  color: #e8a100;
+  border: 1px solid #b8790a;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 140ms ease, transform 140ms ease;
+  pointer-events: none;
+}
+.occasion-call:hover .occasion-call-number,
+.occasion-call:focus-visible .occasion-call-number {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .occasion-call .occasion-call-number { transition: none; transform: none; }
+}

@@ -12,6 +12,12 @@ import useReveal from '../../hooks/useReveal';
 // can only price whole days. So every action here is a phone call. A Book
 // button would send somebody to a form that asks for a return date and
 // charges by the day, which is not what they are buying.
+//
+// Resting a mouse on a card's Call link shows the number (see
+// .occasion-call in index.css). A laptop has no phone app, so following a
+// tel: link there only gets somebody the operating system's own
+// "pick an app" dialog; reading the number off the card instead is the
+// whole point. A tap on a phone still dials, as it always did.
 const PHONE = '0950-651-0479';
 const TEL = 'tel:09506510479';
 
@@ -167,8 +173,14 @@ const OccasionsSection = ({ cars }) => {
                   <p style={s.text}>{o.text}</p>
                   <div style={s.foot}>
                     <span style={s.price(o.highlight)}>{o.price}</span>
-                    <a href={TEL} style={s.link} aria-label={`Call to arrange ${o.title.toLowerCase()}: ${PHONE}`}>
+                    <a
+                      href={TEL}
+                      className="occasion-call"
+                      style={s.link}
+                      aria-label={`Call to arrange ${o.title.toLowerCase()}: ${PHONE}`}
+                    >
                       Call <span aria-hidden="true">→</span>
+                      <span className="occasion-call-number" aria-hidden="true">{PHONE}</span>
                     </a>
                   </div>
                 </div>
