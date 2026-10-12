@@ -27,6 +27,7 @@ import { byUrgency } from '../utils/priority.js';
 import { recordActivity } from '../utils/priority.js';
 import { vehiclesForSwap, remainingSpan, repriceForSwap } from '../utils/moveVehicle.js';
 import { fail } from '../utils/respond.js';
+import { isAbandoned, NO_SHOW_REASON } from '../utils/noShow.js';
 
 const router = express.Router();
 
@@ -84,6 +85,60 @@ async function recomputeDriverRating(driverId) {
     avgRating: result ? Math.round(result.avg * 10) / 10 : 0,
     ratingCount: result ? result.count : 0,
   });
+}
+
+// Bookings whose dates have gone by with nobody ever collecting the
+// vehicle.
+//
+// Runs BEFORE the completion sweep below, and that order is the whole
+// point: left to itself, that sweep sees a booking past its dates with no
+// return recorded, decides the trip ran its course, invents a collection
+// time and marks it completed. A customer who never came was then asked to
+// rate the journey, the owner was credited for it, and it counted as
+// money earned.
+//
+// See utils/noShow.js for why this waits for the dates to run out rather
+// than firing when the counter's own window shuts.
+async function autoNoShowAbandonedBookings() {
+  const startOfToday = phDayStart(new Date());
+
+  // The same shape the counter writes: cancelled, refund refused, nothing
+  // returned. It is the booking terms' answer, not a new one.
+  const abandoned = await Booking.find({ status: 'confirmed', endDate: { $lt: startOfToday } })
+    .populate('car', 'brand model');
+
+  for (const booking of abandoned) {
+    if (!isAbandoned(booking, startOfToday)) continue;
+
+    booking.status = 'cancelled';
+    booking.refundStatus = 'declined';
+    booking.refundReason = NO_SHOW_REASON;
+    booking.refundAmount = 0;
+    await booking.save();
+
+    await notifyUser(
+      booking.user,
+      'Booking Marked as No-Show',
+      'Your booking was cancelled because the vehicle was never picked up. The amount you paid has been '
+      + 'forfeited as a no-show fee, per our booking terms.',
+      '/my-bookings',
+      // Their money is gone. A line in a notification bell they may never
+      // open is not enough notice of that.
+      { email: true },
+    );
+
+    // And somebody here is told, because this one was decided by a clock
+    // rather than by a person. If it was wrong — the keys were handed over
+    // and nobody wrote it down — this is the only chance anyone gets to
+    // notice.
+    await notifyAdmins(
+      'Booking closed as a no-show',
+      `${booking.car ? `${booking.car.brand} ${booking.car.model}` : 'A vehicle'} was never collected and its `
+      + 'dates have passed, so the booking was closed as a no-show and the payment forfeited. '
+      + 'If the vehicle did go out, this needs putting right by hand.',
+      '/admin/manage-bookings',
+    );
+  }
 }
 
 // A confirmed booking is auto-completed the day after its return date, so
@@ -441,6 +496,7 @@ function sweepInBackground(...jobs) {
 
 router.get('/my', protect, async (req, res) => {
   try {
+    await autoNoShowAbandonedBookings();
     await autoCompleteExpiredBookings();
     await expireAdjustOffers();
     // Scoped to this client, so somebody who is late — or about to be —
@@ -473,6 +529,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
     // These two change what the list is about to show — a trip that ended
     // yesterday should already read as completed, and an offer that ran out
     // should already be settled — so they are worth waiting for.
+    await autoNoShowAbandonedBookings();
     await autoCompleteExpiredBookings();
     await expireAdjustOffers();
     // These only decide who gets told what. See sweepInBackground above.
@@ -505,6 +562,7 @@ router.get('/all', protect, adminOnly, async (req, res) => {
 // consignors can track bookings but cannot approve/decline them)
 router.get('/owner', protect, consignorOnly, async (req, res) => {
   try {
+    await autoNoShowAbandonedBookings();
     await autoCompleteExpiredBookings();
     await remindStalePendingBookings();
     await expireAdjustOffers();
