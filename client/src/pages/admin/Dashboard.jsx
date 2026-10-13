@@ -62,6 +62,16 @@ const Dashboard = () => {
     return () => clearInterval(t);
   }, []);
 
+  // The page says the figures refresh, so they do. Half a minute is the
+  // same cadence the sidebar badges already use, and this is an operations
+  // screen: a pickup booked while somebody is looking at it should appear.
+  useEffect(() => {
+    const t = setInterval(() => {
+      api.get('/admin/today').then(({ data }) => setToday(data)).catch(() => {});
+    }, 30000);
+    return () => clearInterval(t);
+  }, []);
+
   useEffect(() => {
     if (!user || user.role !== 'admin') return navigate('/login');
     fetchData();
@@ -123,8 +133,20 @@ const Dashboard = () => {
   };
 
   const s = {
+    pageHead: {
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+      gap: '16px', flexWrap: 'wrap', marginBottom: '24px',
+    },
     title: { fontSize: '22px', fontWeight: '700', color: text, marginBottom: '4px' },
-    subtitle: { fontSize: '13px', color: text2, marginBottom: '24px' },
+    subtitle: { fontSize: '13px', color: text2, margin: 0 },
+    liveTag: {
+      display: 'inline-flex', alignItems: 'center', gap: '7px', whiteSpace: 'nowrap',
+      fontSize: '12px', color: text3,
+    },
+    liveDot: {
+      width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0,
+      background: isDark ? '#22c55e' : '#16a34a',
+    },
     stack: { display: 'flex', flexDirection: 'column', gap: '16px' },
     card: { background: isDark ? '#242526' : '#fff', border: `1px solid ${line}`, borderRadius: '12px' },
 
@@ -390,6 +412,12 @@ const Dashboard = () => {
     ? <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     : null);
 
+  // Legazpi's hour, not the browser's: an admin abroad still runs a
+  // business that opens at seven in Albay.
+  const phHourNow = Number(clock.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));
+  const greeting = phHourNow < 12 ? 'Good morning' : phHourNow < 18 ? 'Good afternoon' : 'Good evening';
+  const stamp = `${clock.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })} · ${clock.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })} in Legazpi`;
+
   // ── today, worked out for the timeline ──────────────────────────────
   const schedule = today?.schedule || { pickups: [], returns: [], deliveries: [], inspections: [] };
   const overdue = today?.overdue || [];
@@ -519,8 +547,16 @@ const Dashboard = () => {
 
   return (
     <AdminLayout activePage="Dashboard">
-      <h1 style={s.title}>Admin Dashboard</h1>
-      <p style={s.subtitle}>Monitor overall platform performance</p>
+      <div style={s.pageHead}>
+        <div>
+          <h1 style={s.title}>{greeting}</h1>
+          <p style={s.subtitle}>{stamp}</p>
+        </div>
+        <span style={s.liveTag}>
+          <span style={s.liveDot} aria-hidden="true" />
+          Refreshes every 30 seconds
+        </span>
+      </div>
       {loading ? (
         <div style={s.stack}>
           <div style={{ ...s.card, ...s.todayCard }}>
