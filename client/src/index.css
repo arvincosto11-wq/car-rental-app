@@ -1522,3 +1522,38 @@ body.dark .profile-menu-btn:focus-visible,
 body.dark .profile-avatar-outer:focus-within .profile-avatar-badge {
   outline-color: #e8a100;
 }
+
+/* ── Consignor My Vehicles: sidebar + one panel ────────────────────────── */
+
+/* Follows you down a long booking history, but only while it is beside one.
+   Once it wraps above the panel, sticking would park it over the content. */
+.consignor-sidebar {
+  position: sticky;
+  top: 20px;
+}
+@media (max-width: 900px) {
+  .consignor-sidebar { position: static; }
+}
+
+/* Same hover as the admin sidebar and the profile menu: a tint and a small
+   lean, never the page-wide button lift, which pulls a full-width row out
+   of its card and drops a shadow on its neighbours. */
+.consignor-menu-btn {
+  background: transparent;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.2s ease;
+}
+.consignor-menu-btn:not(:disabled):hover {
+  filter: none;
+  background: rgba(232, 161, 0, 0.08);
+  box-shadow: 0 0 0 1px rgba(232, 161, 0, 0.25), 0 0 16px rgba(232, 161, 0, 0.15);
+  transform: translateX(3px);
+}
+.consignor-menu-btn:focus-visible {
+  outline: 2px solid #b8790a;
+  outline-offset: 2px;
+}
+body.dark .consignor-menu-btn:focus-visible { outline-color: #e8a100; }
+@media (prefers-reduced-motion: reduce) {
+  .consignor-menu-btn { transition: none; }
+  .consignor-menu-btn:not(:disabled):hover { transform: none; }
+}
