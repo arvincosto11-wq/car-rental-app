@@ -26,7 +26,16 @@ import ModalClose from '../../components/ModalClose';
 const DASH_CH = '—';
 
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 12;
+
+// What each state is called on a card. Status is never colour alone.
+const PILL_TEXT = {
+  available: 'Available',
+  hidden: 'Hidden',
+  'off-road': 'Off the road',
+  papers: 'Papers expired',
+  draft: 'Draft',
+};
 
 // Spec-row and header icons — hand-drawn inline SVG like the rest of the
 // site, so they read as one family rather than an imported pack.
@@ -44,6 +53,11 @@ const SearchIcon = () => <LineIcon size={15}><circle cx="11" cy="11" r="7" /><li
 const DraftIcon = () => <LineIcon size={15}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M9 15l5.5-5.5 1.5 1.5L10.5 16.5H9z" /></LineIcon>;
 const DiscountIcon = () => <LineIcon size={15}><line x1="19" y1="5" x2="5" y2="19" /><circle cx="6.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="17.5" r="2.5" /></LineIcon>;
 const ArchiveIcon = () => <LineIcon size={15}><rect x="3" y="4" width="18" height="5" rx="1.5" /><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9" /><line x1="10" y1="13" x2="14" y2="13" /></LineIcon>;
+const MoreIcon = () => <LineIcon size={16}><circle cx="5" cy="12" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="19" cy="12" r="1.4" /></LineIcon>;
+const EyeIcon = () => <LineIcon size={15}><path d="M1.8 12S5.5 5 12 5s10.2 7 10.2 7-3.7 7-10.2 7S1.8 12 1.8 12z" /><circle cx="12" cy="12" r="3" /></LineIcon>;
+const EyeOffIcon = () => <LineIcon size={15}><path d="M9.9 5.2A9.6 9.6 0 0 1 12 5c6.5 0 10.2 7 10.2 7a17 17 0 0 1-3.3 4.1M6.3 6.5A17 17 0 0 0 1.8 12S5.5 19 12 19a9.8 9.8 0 0 0 4-.8" /><line x1="3" y1="3" x2="21" y2="21" /></LineIcon>;
+const StarIcon = () => <LineIcon size={15}><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></LineIcon>;
+const WrenchIcon = () => <LineIcon size={15}><path d="M20 6.5a5 5 0 0 1-6.6 6.2L6.8 19.3a2 2 0 1 1-2.8-2.8l6.6-6.6A5 5 0 0 1 17.5 4L15 6.5l1.2 2.3L18.5 10z" /></LineIcon>;
 
 
 
@@ -67,6 +81,10 @@ const ManageCars = ({ view = 'active' }) => {
   const [updating, setUpdating] = useState(false);
   const [editVehicleType, setEditVehicleType] = useState('car');
   const [search, setSearch] = useState('');
+  // Which card's ⋯ menu is open, and which status chip is selected. Both
+  // are about looking at the list, so neither survives a reload.
+  const [menuCarId, setMenuCarId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [blockPanelCarId, setBlockPanelCarId] = useState(null);
   const [offRoadTarget, setOffRoadTarget] = useState(null);
   const [offRoadNote, setOffRoadNote] = useState('');
@@ -87,6 +105,23 @@ const ManageCars = ({ view = 'active' }) => {
     }
   };
   useEffect(() => { loadRuleCount(); }, []);
+
+  // One open menu at a time, closed by a click anywhere else or by Esc.
+  // Bound only while a menu is actually open, so the page carries no
+  // listeners the rest of the time.
+  useEffect(() => {
+    if (!menuCarId) return undefined;
+    const close = () => setMenuCarId(null);
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    // Capture, so a click on another card's button closes this one first
+    // and then opens that one.
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuCarId]);
 
   const editingCarData = cars.find((c) => c._id === editingCar) || null;
   const closeEditModal = () => setEditingCar(null);
@@ -384,6 +419,10 @@ const ManageCars = ({ view = 'active' }) => {
     }
   };
 
+  // The two the card styles below lean on most.
+  const card = isDark ? '#242526' : '#ffffff';
+  const line = isDark ? '#3a3b3c' : '#e3e5e8';
+
   const styles = {
     // isolation keeps the glow orb's negative z-index inside this page, so
     // it sits behind the cards without slipping behind the layout itself.
@@ -396,6 +435,159 @@ const ManageCars = ({ view = 'active' }) => {
     title: { fontSize: '26px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280' },
     cardList: { display: 'flex', flexDirection: 'column', gap: '16px' },
+
+    // ── Photo cards ────────────────────────────────────────────────────
+    // Four columns on a 1440px screen, fewer as it narrows. Admin is a
+    // desktop screen, so this never has to reach phone width.
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '18px' },
+    card: {
+      background: card, border: `1px solid ${line}`, borderRadius: '16px',
+      display: 'flex', flexDirection: 'column', minWidth: 0,
+    },
+    // The photo sits on a lit stage rather than a flat panel, so a cut-out
+    // car on a white background still reads as an object. A vehicle that
+    // cannot go out is dimmed — the one place colour is allowed to carry
+    // meaning, because the pill says it in words as well.
+    stage: (state) => ({
+      position: 'relative', aspectRatio: '16 / 9', borderRadius: '15px 15px 0 0',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px',
+      boxSizing: 'border-box', overflow: 'hidden',
+      background: isDark
+        ? 'radial-gradient(circle at 50% 35%, #2c2d30, #1b1c1e)'
+        : 'radial-gradient(circle at 50% 35%, #ffffff, #e9ebee)',
+      opacity: state === 'available' ? 1 : 0.78,
+    }),
+    stageImg: { maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' },
+    stageEmpty: {
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+      fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af',
+    },
+    pill: (state) => ({
+      position: 'absolute', top: '10px', left: '10px',
+      fontSize: '10.5px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase',
+      padding: '4px 10px', borderRadius: '20px',
+      background: state === 'available'
+        ? (isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5')
+        : state === 'off-road' || state === 'papers'
+          ? (isDark ? 'rgba(248,113,113,0.15)' : '#fef2f2')
+          : (isDark ? '#303132' : '#f1f2f4'),
+      color: state === 'available'
+        ? (isDark ? '#86efac' : '#065f46')
+        : state === 'off-road' || state === 'papers'
+          ? (isDark ? '#f87171' : '#b91c1c')
+          : (isDark ? '#b0b3b8' : '#4b5563'),
+      border: `1px solid ${state === 'available'
+        ? (isDark ? 'rgba(22,163,74,0.4)' : '#86efac')
+        : state === 'off-road' || state === 'papers'
+          ? (isDark ? 'rgba(248,113,113,0.35)' : '#fecaca')
+          : 'transparent'}`,
+    }),
+    // Sits under the status pill, not beside it: it is a doubt about the
+    // hide, not a state of the vehicle.
+    checkPill: {
+      position: 'absolute', top: '38px', left: '10px',
+      fontSize: '10px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase',
+      padding: '3px 9px', borderRadius: '20px', cursor: 'help',
+      background: isDark ? 'rgba(234,179,8,0.15)' : '#fef9c3',
+      color: isDark ? '#fde047' : '#854d0e',
+    },
+    featuredPill: {
+      position: 'absolute', top: '10px', right: '10px',
+      display: 'inline-flex', alignItems: 'center', gap: '5px',
+      fontSize: '10.5px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase',
+      padding: '4px 10px', borderRadius: '20px',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+    },
+    cardBody: { padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minWidth: 0 },
+    cardTopRow: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px' },
+    cardName: { fontSize: '16px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a', minWidth: 0 },
+    cardPrice: {
+      fontSize: '16px', fontWeight: '800', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    cardPriceUnit: { fontSize: '11px', fontWeight: '600', color: isDark ? '#8a8d91' : '#6b7280' },
+    cardSpecs: { fontSize: '12.5px', color: isDark ? '#b0b3b8' : '#4b5563' },
+    cardMetaRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' },
+    cardRating: {
+      display: 'inline-flex', alignItems: 'center', gap: '6px',
+      fontSize: '12.5px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    cardRatingCount: { fontSize: '12.5px', fontWeight: '500', color: isDark ? '#8a8d91' : '#6b7280' },
+    cardPlate: {
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '12px',
+      color: isDark ? '#b0b3b8' : '#4b5563',
+    },
+    cardPlateMissing: { fontSize: '12px', fontStyle: 'italic', color: isDark ? '#8a8d91' : '#9ca3af' },
+    blockedChip: {
+      alignSelf: 'flex-start', fontSize: '11.5px', fontWeight: '700',
+      padding: '3px 9px', borderRadius: '7px',
+      background: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe',
+      color: isDark ? '#93c5fd' : '#1e40af',
+    },
+    cardFoot: {
+      borderTop: `1px solid ${isDark ? '#303132' : '#eef0f2'}`,
+      padding: '12px 14px', display: 'flex', gap: '6px', alignItems: 'center',
+    },
+    footPrimary: {
+      flex: 1, minHeight: '36px', borderRadius: '9px', border: 'none',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+      fontSize: '12.5px', fontWeight: '800', cursor: 'pointer',
+    },
+    footGhost: {
+      flex: 1, minHeight: '36px', borderRadius: '9px',
+      border: `1px solid ${line}`, background: 'transparent',
+      color: isDark ? '#e4e6eb' : '#374151', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer',
+    },
+    footDanger: {
+      flex: 1, minHeight: '36px', borderRadius: '9px',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`, background: 'transparent',
+      color: isDark ? '#f87171' : '#b91c1c', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer',
+    },
+    menuWrap: { position: 'relative', flexShrink: 0 },
+    footMore: {
+      width: '36px', height: '36px', borderRadius: '9px', border: `1px solid ${line}`,
+      background: 'transparent', color: isDark ? '#e4e6eb' : '#374151',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+    },
+    // Opens upward: these cards sit in a grid and a menu dropping down
+    // would fall outside the last row and off the page.
+    menu: {
+      position: 'absolute', bottom: 'calc(100% + 6px)', right: 0, zIndex: 30,
+      width: '232px', padding: '6px', borderRadius: '12px',
+      background: card, border: `1px solid ${line}`,
+      boxShadow: '0 12px 28px rgba(0,0,0,0.22)',
+      display: 'flex', flexDirection: 'column', gap: '2px',
+    },
+    menuItem: (tone) => ({
+      display: 'flex', alignItems: 'flex-start', gap: '9px', width: '100%',
+      minHeight: '38px', padding: '7px 9px', borderRadius: '8px', border: 'none',
+      background: 'transparent', textAlign: 'left', cursor: 'pointer',
+      color: tone === 'danger' ? (isDark ? '#f87171' : '#b91c1c') : (isDark ? '#e4e6eb' : '#1a1a1a'),
+    }),
+    menuIcon: { display: 'flex', flexShrink: 0, marginTop: '2px' },
+    menuTitle: { display: 'block', fontSize: '12.5px', fontWeight: '700' },
+    menuSub: { display: 'block', fontSize: '11px', color: isDark ? '#8a8d91' : '#6b7280', marginTop: '1px' },
+    menuDivider: { height: '1px', background: isDark ? '#303132' : '#eef0f2', margin: '4px 2px' },
+
+    toolbar: {
+      display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', marginBottom: '22px',
+    },
+    filterStrip: {
+      display: 'inline-flex', gap: '2px', padding: '3px', borderRadius: '11px',
+      background: isDark ? '#1e1f20' : '#f1f2f4', border: `1px solid ${line}`,
+    },
+    filterChip: (on) => ({
+      display: 'inline-flex', alignItems: 'center', gap: '6px',
+      minHeight: '34px', padding: '0 12px', borderRadius: '9px', border: 'none',
+      fontSize: '12.5px', fontWeight: on ? '800' : '600', cursor: 'pointer',
+      background: on ? card : 'transparent',
+      color: on ? (isDark ? '#e4e6eb' : '#1a1a1a') : (isDark ? '#b0b3b8' : '#4b5563'),
+      boxShadow: on ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+    }),
+    filterCount: (on) => ({
+      fontSize: '11px', fontWeight: '800', fontVariantNumeric: 'tabular-nums',
+      color: on ? goldInk(isDark) : (isDark ? '#8a8d91' : '#9ca3af'),
+    }),
     // Photo | details | price-and-actions. The side column is capped so a
     // long action strip wraps under itself instead of squeezing the details.
     carCard: {
@@ -657,11 +849,41 @@ const ManageCars = ({ view = 'active' }) => {
   // shows vehicles that are actually live.
   const draftCount = cars.filter((car) => car.status === 'draft').length;
   const activePromoCount = cars.filter((car) => isPromoVisible(car.promo)).length;
+  // What state a vehicle is in, as one word. The order matters: a car in
+  // the workshop with expired papers is reported as off the road, because
+  // that is the one somebody has to act on first.
+  const stateOf = (car) => {
+    if (car.offRoad?.since) return 'off-road';
+    if (registrationLapsed(car)) return 'papers';
+    if (!car.isAvailable) return 'hidden';
+    return 'available';
+  };
+
+  const listCars = cars.filter((car) => (isDraftsView ? car.status === 'draft' : car.status !== 'draft'));
+  const countOf = (key) => (key === 'featured'
+    ? listCars.filter((c) => c.featured).length
+    : listCars.filter((c) => stateOf(c) === key).length);
+
+  // Featured sits beside the states although it isn't one: it is the other
+  // thing somebody opens this page to check.
+  const statusFilters = [
+    { key: 'all', label: 'All', count: listCars.length },
+    { key: 'available', label: 'Available', count: countOf('available') },
+    { key: 'hidden', label: 'Hidden', count: countOf('hidden') },
+    { key: 'off-road', label: 'Off the road', count: countOf('off-road') },
+    { key: 'papers', label: 'Papers expired', count: countOf('papers') },
+    { key: 'featured', label: 'Featured', count: countOf('featured') },
+  ];
+
   const filteredCars = cars.filter((car) => {
     if (isDraftsView ? car.status !== 'draft' : car.status === 'draft') return false;
+    if (statusFilter === 'featured' && !car.featured) return false;
+    if (statusFilter !== 'all' && statusFilter !== 'featured' && stateOf(car) !== statusFilter) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
-    return `${car.brand} ${car.model}`.toLowerCase().includes(q);
+    // Plate too: the office has the plate in front of them more often than
+    // the model, and typing it used to return nothing.
+    return `${car.brand} ${car.model} ${car.plateNumber || ''}`.toLowerCase().includes(q);
   })
     // Newest first. This list had no order at all, so it came out however
     // MongoDB handed it over — oldest first — which put the vehicle you
@@ -732,165 +954,210 @@ const ManageCars = ({ view = 'active' }) => {
           )}
         </div>
 
-        <div style={styles.searchWrap}>
-          <span style={styles.searchIcon}><SearchIcon /></span>
-          <input
-            style={styles.searchInput}
-            type="text"
-            placeholder="Search by brand or model..."
-            aria-label="Search cars"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          />
+        <div style={styles.toolbar}>
+          <div style={styles.searchWrap}>
+            <span style={styles.searchIcon}><SearchIcon /></span>
+            <input
+              style={styles.searchInput}
+              type="text"
+              placeholder="Search by brand, model or plate..."
+              aria-label="Search cars"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            />
+          </div>
+          {!isDraftsView && (
+            <div style={styles.filterStrip} role="tablist" aria-label="Filter by status">
+              {statusFilters.map((f) => (
+                <button
+                  key={f.key}
+                  role="tab"
+                  type="button"
+                  className="mc-filter-chip"
+                  aria-selected={statusFilter === f.key}
+                  style={styles.filterChip(statusFilter === f.key)}
+                  onClick={() => { setStatusFilter(f.key); setPage(1); }}
+                >
+                  {f.label}
+                  <span style={styles.filterCount(statusFilter === f.key)}>{f.count}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {loading ? <SkeletonListCard isDark={isDark} count={4} /> : filteredCars.length === 0 ? (
           <p style={styles.emptyText}>
-            {search.trim()
-              ? 'No cars match.'
+            {search.trim() || statusFilter !== 'all'
+              ? 'No vehicles match.'
               : isDraftsView
                 ? 'No drafts. Vehicles saved with Save Draft in Add Vehicle appear here.'
                 : 'No published vehicles yet.'}
           </p>
         ) : (
           <>
-            <div style={styles.cardList}>
-              {pageCars.map((car) => (
-                <div key={car._id} className="mc-card" style={styles.carCard}>
-                  <div className="mc-thumb" style={styles.carThumbWrap}>
-                    {car.image ? (
-                      <img src={car.image} alt={`${car.brand} ${car.model}`} style={styles.carThumbImg} />
-                    ) : (
-                      <div style={styles.carThumbEmpty}>
-                        {car.category === 'Motorcycle' ? <MotoIcon /> : <CarIcon />}
-                        <span>No photo</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={styles.carInfo}>
-                    <div style={styles.carNameRow}>
-                      <span style={styles.carName}>{car.brand} {car.model}</span>
-                      {car.status === 'draft' ? (
-                        <span style={styles.draftFlag}>Draft</span>
-                      ) : car.offRoad?.since ? (
-                        /* It said AVAILABLE while sitting at a workshop. The
-                           state of the vehicle is the thing worth shouting
-                           about; the button to fix it is not. */
-                        <span style={styles.offRoadFlag} title={car.offRoad.note || 'Off the road for repairs'}>
-                          Off the Road
-                        </span>
-                      ) : registrationLapsed(car) ? (
-                        /* Papers that have run out stop the vehicle just as
-                           surely as a workshop does, and this list used to
-                           call it AVAILABLE in green. */
-                        <span
-                          style={styles.papersFlag}
-                          title={`Registration expired ${new Date(car.registrationExpiry).toLocaleDateString()} — renew it on Expiring Documents.`}
-                        >
-                          Papers Expired
-                        </span>
+            <div style={styles.grid}>
+              {pageCars.map((car) => {
+                const state = stateOf(car);
+                const blocked = upcomingBlockCount(car.blockedDates);
+                const menuOpen = menuCarId === car._id;
+                return (
+                  <div key={car._id} style={styles.card}>
+                    <div style={styles.stage(state)}>
+                      {car.image ? (
+                        <img src={car.image} alt={`${car.brand} ${car.model}`} style={styles.stageImg} />
                       ) : (
-                        <span style={car.isAvailable ? styles.available : styles.unavailable}>
-                          {car.isAvailable ? 'Available' : 'Unavailable'}
-                        </span>
+                        <div style={styles.stageEmpty}>
+                          {car.category === 'Motorcycle' ? <MotoIcon /> : <CarIcon />}
+                          <span>No photo</span>
+                        </div>
                       )}
-                      {!car.isAvailable && !car.availabilityRequest?.requestedAt && (
+                      {/* Never colour alone — the pill always says the word. */}
+                      <span style={styles.pill(car.status === 'draft' ? 'draft' : state)}>
+                        {car.status === 'draft' ? 'Draft' : PILL_TEXT[state]}
+                      </span>
+                      {!car.isAvailable && !car.availabilityRequest?.requestedAt && car.status !== 'draft' && (
                         <span
-                          style={styles.staleFlag}
+                          style={styles.checkPill}
                           title="Hidden without a consignor unavailability request on file — worth double-checking this isn't left over from a past bug rather than a deliberate hide."
                         >
-                          ⚠ Check
+                          Check
+                        </span>
+                      )}
+                      {car.featured && (
+                        <span style={styles.featuredPill}><StarIcon /> Featured</span>
+                      )}
+                    </div>
+
+                    <div style={styles.cardBody}>
+                      <div style={styles.cardTopRow}>
+                        <span style={styles.cardName}>{car.brand} {car.model}</span>
+                        <span style={styles.cardPrice}>
+                          ₱{car.pricePerDay.toLocaleString()}<span style={styles.cardPriceUnit}> /day</span>
+                        </span>
+                      </div>
+
+                      <div style={styles.cardSpecs}>
+                        {car.category} · {car.seats} seats · {car.transmission}
+                      </div>
+
+                      <div style={styles.cardMetaRow}>
+                        {car.ratingCount > 0 ? (
+                          <span style={styles.cardRating}>
+                            <StarRating value={car.avgRating} size={13} readOnly />
+                            {car.avgRating.toFixed(1)} <span style={styles.cardRatingCount}>({car.ratingCount})</span>
+                          </span>
+                        ) : (
+                          <span style={styles.cardRatingCount}>No reviews yet</span>
+                        )}
+                        <span style={car.plateNumber ? styles.cardPlate : styles.cardPlateMissing}>
+                          {car.plateNumber || 'No plate on file'}
+                        </span>
+                      </div>
+
+                      {isPromoVisible(car.promo) && (
+                        <span style={styles.promoRowTag}>
+                          {car.promo.label} · {promoOffer(car.promo)} · {promoDateRange(car.promo)}
+                        </span>
+                      )}
+
+                      {blocked > 0 && (
+                        <span style={styles.blockedChip}>
+                          {blocked} blocked range{blocked === 1 ? '' : 's'} ahead
                         </span>
                       )}
                     </div>
-                    {isPromoVisible(car.promo) && (
-                      <span style={styles.promoRowTag}>
-                        {car.promo.label} · {promoOffer(car.promo)} · {promoDateRange(car.promo)}
-                      </span>
-                    )}
 
-                    <div style={styles.specGrid}>
-                      <span style={styles.spec}><SeatsIcon />{car.seats} Seats</span>
-                      <span style={styles.spec}><GearIcon />{car.transmission}</span>
-                      <span style={styles.spec}>{car.category === 'Motorcycle' ? <MotoIcon /> : <CarIcon />}{car.category}</span>
-                      <span style={car.plateNumber ? styles.spec : { ...styles.spec, ...styles.specMissing }}>
-                        <PlateIcon />{car.plateNumber || 'No plate on file'}
-                      </span>
-                    </div>
-
-                    {car.ratingCount > 0 ? (
-                      <div style={styles.ratingRow}>
-                        <StarRating value={car.avgRating} size={13} readOnly />
-                        <span style={styles.carRatingText}>{car.avgRating.toFixed(1)} ({car.ratingCount})</span>
-                      </div>
-                    ) : (
-                      <div style={{ ...styles.ratingRow, ...styles.carRatingText }}>No reviews yet</div>
-                    )}
-                  </div>
-
-                  <div className="mc-side" style={styles.carSide}>
-                    <div style={styles.carPriceWrap}>
-                      <div style={styles.carPrice}>₱{car.pricePerDay.toLocaleString()}</div>
-                      <div style={styles.carPriceUnit}>/ day</div>
-                    </div>
                     {isDraftsView ? (
-                      // Feature, promo, availability and blocked dates only mean
-                      // anything once a car is live, so a draft shows just the
-                      // three things you can actually do with it.
-                      <div style={styles.actions}>
-                        <button className="mc-btn" style={styles.toggleBtn} onClick={() => handleEdit(car)}>Edit</button>
-                        <button className="mc-btn-primary" style={styles.publishBtn} onClick={() => handlePublish(car)}>Publish</button>
-                        <button className="mc-btn" style={styles.deleteBtn} onClick={() => handleDeleteDraft(car)}>Delete</button>
+                      <div style={styles.cardFoot}>
+                        <button className="mc-btn-primary" style={styles.footPrimary} onClick={() => handlePublish(car)}>Publish</button>
+                        <button className="mc-btn" style={styles.footGhost} onClick={() => handleEdit(car)}>Edit</button>
+                        <button className="mc-btn" style={styles.footDanger} onClick={() => handleDeleteDraft(car)}>Delete</button>
                       </div>
                     ) : (
-                      <div style={styles.actions}>
-                        <button className="mc-btn-primary" style={styles.editBtn} onClick={() => handleEdit(car)}>Edit</button>
-                        {car.status === 'draft' ? (
-                          <button className="mc-btn-primary" style={styles.publishBtn} onClick={() => handlePublish(car)}>Publish</button>
-                        ) : (
-                          <button className="mc-btn" style={styles.toggleBtn} onClick={() => handleToggle(car)}>
-                            {car.isAvailable ? 'Hide' : 'Show'}
-                          </button>
-                        )}
+                      <div style={styles.cardFoot}>
+                        <button className="mc-btn-primary" style={styles.footPrimary} onClick={() => handleEdit(car)}>Edit</button>
                         <button
                           className="mc-btn"
-                          style={styles.featureBtn(car.featured)}
-                          onClick={() => handleFeature(car)}
-                          title={car.featured ? 'Shown in the homepage carousel' : 'Add to the homepage carousel'}
-                        >
-                          {car.featured ? '★ Featured' : '☆ Feature'}
-                        </button>
-                        <button
-                          className="mc-btn"
-                          style={styles.blockDatesBtn(upcomingBlockCount(car.blockedDates) > 0)}
+                          style={styles.footGhost}
                           onClick={() => setBlockPanelCarId(car._id)}
                           title="Take this vehicle off the road for a range of dates"
                         >
-                          {upcomingBlockCount(car.blockedDates) > 0
-                            ? `Block Dates · ${upcomingBlockCount(car.blockedDates)}`
-                            : 'Block Dates'}
+                          Block dates
                         </button>
-                        {/* A breakdown is not a date range. Nobody knows on
-                            the day how long a workshop will take, so this is
-                            a state you clear when the car is back rather
-                            than an end date somebody has to guess. */}
-                        <button
-                          className="mc-btn"
-                          style={car.offRoad?.since ? styles.backOnRoadBtn : styles.offRoadBtn}
-                          onClick={() => (car.offRoad?.since ? handleBackOnRoad(car) : handleOffRoad(car))}
-                          title={car.offRoad?.since
-                            ? 'This vehicle is taking no bookings. Put it back on the road.'
-                            : 'Broken down or not fit to rent — blocks all future dates until you clear it.'}
-                        >
-                          {car.offRoad?.since ? 'Back on the Road' : 'Off the Road'}
-                        </button>
-                        <button className="mc-btn" style={styles.archiveBtn} onClick={() => handleArchive(car._id)}>Archive</button>
+                        {/* The page-wide close listener runs on pointerdown,
+                            which would tear the menu out from under a click
+                            on one of its own items before the click landed. */}
+                        <div style={styles.menuWrap} onPointerDown={(e) => e.stopPropagation()}>
+                          <button
+                            className="mc-btn"
+                            style={styles.footMore}
+                            aria-label={`More actions for ${car.brand} ${car.model}`}
+                            aria-expanded={menuOpen}
+                            aria-haspopup="menu"
+                            onClick={() => setMenuCarId(menuOpen ? null : car._id)}
+                          >
+                            <MoreIcon />
+                          </button>
+                          {menuOpen && (
+                            <div style={styles.menu} role="menu">
+                              <button
+                                style={styles.menuItem()}
+                                role="menuitem"
+                                onClick={() => { setMenuCarId(null); handleToggle(car); }}
+                              >
+                                <span style={styles.menuIcon}>{car.isAvailable ? <EyeOffIcon /> : <EyeIcon />}</span>
+                                <span>
+                                  <span style={styles.menuTitle}>{car.isAvailable ? 'Hide from site' : 'Show on site'}</span>
+                                  <span style={styles.menuSub}>
+                                    {car.isAvailable ? 'Clients stop seeing it; bookings stay' : 'Clients can find and book it again'}
+                                  </span>
+                                </span>
+                              </button>
+                              <button
+                                style={styles.menuItem()}
+                                role="menuitem"
+                                onClick={() => { setMenuCarId(null); handleFeature(car); }}
+                              >
+                                <span style={styles.menuIcon}><StarIcon /></span>
+                                <span>
+                                  <span style={styles.menuTitle}>{car.featured ? 'Remove from featured' : 'Feature on homepage'}</span>
+                                  <span style={styles.menuSub}>Shown in the hero carousel</span>
+                                </span>
+                              </button>
+                              <div style={styles.menuDivider} />
+                              <button
+                                style={styles.menuItem('danger')}
+                                role="menuitem"
+                                onClick={() => { setMenuCarId(null); (car.offRoad?.since ? handleBackOnRoad(car) : handleOffRoad(car)); }}
+                              >
+                                <span style={styles.menuIcon}><WrenchIcon /></span>
+                                <span>
+                                  <span style={styles.menuTitle}>{car.offRoad?.since ? 'Back on the road' : 'Take off the road'}</span>
+                                  <span style={styles.menuSub}>
+                                    {car.offRoad?.since ? 'Starts taking bookings again' : 'Repairs, or no longer available'}
+                                  </span>
+                                </span>
+                              </button>
+                              <button
+                                style={styles.menuItem()}
+                                role="menuitem"
+                                onClick={() => { setMenuCarId(null); handleArchive(car._id); }}
+                              >
+                                <span style={styles.menuIcon}><ArchiveIcon /></span>
+                                <span>
+                                  <span style={styles.menuTitle}>Archive</span>
+                                  <span style={styles.menuSub}>Moves it to Archived Cars</span>
+                                </span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div style={styles.listFooter}>
