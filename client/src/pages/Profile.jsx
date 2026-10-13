@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../theme';
 import Skeleton from '../components/Skeleton';
 import PasswordInput from '../components/PasswordInput';
 import OtpInput from '../components/OtpInput';
@@ -10,37 +10,26 @@ import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
 import api from '../api';
 
-// A real check-circle glyph, not a plain "✓" character — matches the
-// hand-drawn inline-SVG icon convention used elsewhere on the site.
-const CheckCircleIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-    <circle cx="12" cy="12" r="10" />
-    <polyline points="8 12.5 10.8 15.3 16 9.5" />
-  </svg>
-);
+// My Profile, as a settings page: a sidebar saying who you are and what
+// there is to change, and one panel at a time beside it. The three things
+// this page does — your details, your licence date, your password — used to
+// be three cards stacked down one column, so somebody who came only to
+// change their password had to scroll past everything else to reach it.
 const EditPencilIcon = ({ size = 13 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 20h9" />
-    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-  </svg>
-);
-const EyeIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-    <circle cx="12" cy="12" r="3" />
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16.5 3.5l4 4L8 20H4v-4z" />
   </svg>
 );
 
-// A reusable ID/license photo thumbnail with a "View Full Document" hover
-// overlay — opens the full-size image in a new tab, no custom lightbox
-// needed since we already have the real full-resolution URL.
-const IdImageThumb = ({ src, alt, thumbStyle, overlayStyle }) => (
-  <a href={src} target="_blank" rel="noreferrer" className="id-thumb-wrap" style={{ position: 'relative', display: 'block', width: '100%', maxWidth: '260px' }}>
-    <img src={src} alt={alt} style={thumbStyle} />
-    <span className="id-thumb-overlay" style={overlayStyle}>
-      <EyeIcon /> View Full Document
-    </span>
-  </a>
+// A licence card: portrait on the left, lines of text on the right.
+const LicenceCardIcon = ({ size = 22 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <circle cx="8.5" cy="11" r="2" />
+    <path d="M5.5 16c.6-1.6 1.7-2.4 3-2.4s2.4.8 3 2.4" />
+    <line x1="14" y1="10" x2="18" y2="10" />
+    <line x1="14" y1="13.5" x2="17" y2="13.5" />
+  </svg>
 );
 
 const MIN_AGE_YEARS = 18;
@@ -50,6 +39,27 @@ const maxBirthDate = () => {
   return d.toISOString().split('T')[0];
 };
 
+// The same 30 days the renewal reminder uses (server/utils/expiryNotify.js),
+// so the dot in the menu and the email somebody gets agree with each other.
+const LICENCE_SOON_DAYS = 30;
+
+// Whole days from today to that date, counted midnight to midnight so a
+// licence expiring tomorrow doesn't read as "in 0 days" late in the evening.
+const daysUntil = (date) => {
+  const then = new Date(date).setHours(0, 0, 0, 0);
+  const today = new Date().setHours(0, 0, 0, 0);
+  return Math.round((then - today) / 86400000);
+};
+
+// First + last initials (e.g. "John Doe" -> "JD"), not just one letter.
+const initialsOf = (name) => {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  const first = parts[0].charAt(0);
+  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+  return (first + last).toUpperCase();
+};
+
 const Profile = () => {
   usePageTitle('My Profile');
   const { user, updateUser } = useAuth();
@@ -57,6 +67,7 @@ const Profile = () => {
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
+  const [section, setSection] = useState('details');
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
@@ -241,423 +252,468 @@ const Profile = () => {
     setPwError('');
   };
 
+  const gold = isDark ? GOLD_DARK : GOLD;
+  const ink = goldInk(isDark);
+  const goldTint = isDark ? 'rgba(232,161,0,0.12)' : '#fbf1d6';
+  const goldLine = isDark ? 'rgba(232,161,0,0.45)' : '#e6c77a';
+  const red = isDark ? '#fca5a5' : '#b91c1c';
+  const redTint = isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2';
+  const redLine = isDark ? 'rgba(220,38,38,0.4)' : '#fecaca';
+  const border = isDark ? '#3a3b3c' : '#e5e7eb';
+  const divider = isDark ? '#303132' : '#eef0f2';
+  const card = isDark ? '#242526' : '#ffffff';
+  const text = isDark ? '#e4e6eb' : '#1a1a1a';
+  const text2 = isDark ? '#b0b3b8' : '#4b5563';
+  const text3 = isDark ? '#8a8d91' : '#6b7280';
+  const inset = isDark ? '#1e1f20' : '#f8f9fa';
+  const page = isDark ? '#18191a' : '#f4f5f6';
+
   const s = {
-    page: { minHeight: '100vh', background: isDark ? '#18191a' : '#f9fafb' },
-    container: { maxWidth: '760px', margin: '0 auto', padding: '32px' },
-    title: {
-      fontSize: 'clamp(26px, 3.4vw, 34px)', fontWeight: '900', letterSpacing: '-0.01em',
-      textTransform: 'uppercase', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px',
+    page: { minHeight: '100vh', background: page },
+    main: {
+      maxWidth: '1100px', margin: '0 auto', padding: '40px clamp(16px, 3vw, 32px) 72px',
+      display: 'flex', flexWrap: 'wrap', gap: '28px', alignItems: 'flex-start',
     },
-    subtitle: { fontSize: '14px', fontStyle: 'italic', color: goldInk(isDark), marginBottom: '24px' },
-    profileCard: { background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '20px', padding: '24px' },
-    sectionDivider: { border: 'none', borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, margin: '20px 0' },
-    profileHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' },
-    sectionTitle: {
-      fontSize: '15px', fontWeight: '800', letterSpacing: '0.02em', textTransform: 'uppercase',
-      color: isDark ? '#e4e6eb' : '#1a1a1a',
-    },
-    // Subdued outline, not a solid gold fill — gold stays reserved for
-    // primary conversion CTAs (Reserve Now, Book Now); editing your own
-    // settings is a lower-stakes secondary action.
-    editBtn: {
-      padding: '8px 18px', fontSize: '11px', fontWeight: '800', letterSpacing: '0.04em', textTransform: 'uppercase',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '999px',
-      background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#374151', cursor: 'pointer',
-    },
-    cancelBtn: { padding: '9px 18px', fontSize: '13px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', background: 'none', color: isDark ? '#e4e6eb' : '#374151', cursor: 'pointer', fontWeight: '500' },
-    saveBtn: { padding: '9px 18px', fontSize: '13px', border: 'none', borderRadius: '8px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '600' },
-    profileGrid: { gap: '14px' },
-    profileItem: { background: isDark ? '#18191a' : '#f9fafb', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
-    // Muted slate-blue, not gold — gold is reserved for accents/CTAs
-    // elsewhere on the site; these are just field labels.
-    profileLabel: {
-      display: 'block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase',
-      color: isDark ? '#94a3b8' : '#64748b', marginBottom: '4px',
-    },
-    profileValue: { fontSize: '14px', color: isDark ? '#e4e6eb' : '#1a1a1a', fontWeight: '700' },
-    // Dark mode uses a translucent tint + matching border (a "glowing
-    // chip" look), matching the badge treatment already used on My
-    // Bookings and Cars — the flat pastel fill read as washed-out on a
-    // dark card.
-    roleTag: {
-      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
-      background: isDark ? '#3a3b3c' : '#e5e7eb', color: isDark ? '#e4e6eb' : '#374151',
-    },
-    // Translucent tint + border (same "glowing chip" language as the
-    // other tags), not a solid fill — an earlier pass tried a solid green
-    // here and that was a miss.
-    verifiedTag: {
-      display: 'inline-flex', alignItems: 'center', gap: '5px',
-      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '4px 12px', borderRadius: '20px',
-      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
-      border: `1px solid ${isDark ? 'rgba(22,163,74,0.4)' : '#86efac'}`,
-    },
-    unverifiedTag: {
-      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
-      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fbbf24' : '#92400e',
-      border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
-    },
-    expiredTag: {
-      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
-      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
-      border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
-    },
-    idThumb: { width: '100%', maxWidth: '260px', height: '130px', objectFit: 'cover', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, marginTop: '8px' },
-    paperGroup: { marginTop: '16px' },
-    paperVehicle: { fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    paperPlate: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px' },
-    paperRow: { marginTop: '8px', display: 'flex', gap: '10px', flexWrap: 'wrap' },
-    paperItem: { display: 'flex', flexDirection: 'column' },
-    paperCaption: { fontSize: '10px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '5px' },
-    field: { marginBottom: '14px' },
-    readOnlyValue: {
-      margin: 0, padding: '10px 0 0', fontSize: '13px',
-      color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic',
-    },
-    label: { display: 'block', fontSize: '13px', color: isDark ? '#b0b3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
-    input: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    uploadHint: { fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280' },
-    fieldError: { fontSize: '11px', color: isDark ? '#fca5a5' : '#dc2626', marginTop: '4px' },
-    row: { gap: '12px' },
-    upload: { position: 'relative', width: '100%', maxWidth: '280px', height: '130px', border: `2px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#18191a' : '#fff' },
-    uploadPlaceholder: { textAlign: 'center', padding: '12px', fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280' },
-    uploadPreview: { width: '100%', height: '100%', objectFit: 'cover' },
-    fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
-    formError: { background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
-    formSuccess: { background: isDark ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: isDark ? '#86efac' : '#166534', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
-    avatarRow: { display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '24px' },
-    // No overflow:hidden here — that lives on avatarWrap instead, so the
-    // edit badge (a child of THIS element, not avatarWrap) can sit outside
-    // the box's edge without getting clipped by the box's own rounded-
-    // corner mask.
-    avatarOuter: { position: 'relative', width: '96px', height: '96px', flexShrink: 0 },
-    // Rounded square, not a circle — matches the corner radius used on
-    // every other image/card on the site (booking thumbs, car photos)
-    // rather than introducing a one-off circular shape. Dashed border when
-    // empty (an "upload here" cue), solid once a real photo is set — see
-    // the border override applied inline where this is used.
+    sidebar: { flex: '0 1 260px', display: 'flex', flexDirection: 'column', gap: '18px', minWidth: 0 },
+
+    identity: { display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 },
+    avatarOuter: { position: 'relative', width: '64px', height: '64px', flexShrink: 0 },
     avatarWrap: {
-      position: 'relative', width: '100%', height: '100%', borderRadius: '18px',
-      overflow: 'hidden', background: isDark ? '#18191a' : '#f3f4f6',
+      width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', background: goldTint,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
     },
     avatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
-    // Shown in place of the photo when none is set yet.
-    avatarEmpty: {
-      width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '30px', fontWeight: '700', color: isDark ? '#8a6d1f' : '#a68a3f',
+    avatarInitials: { fontSize: '22px', fontWeight: '800', color: ink },
+    // Over the bottom-right of the circle, ringed in the page colour so it
+    // reads as its own control rather than part of the photograph.
+    avatarBadge: {
+      position: 'absolute', bottom: '-2px', right: '-2px', width: '26px', height: '26px',
+      borderRadius: '50%', background: gold, color: ON_GOLD,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      border: `2px solid ${page}`, cursor: avatarUploading ? 'default' : 'pointer',
     },
-    // Covers the whole avatar as the actual click target (bigger, easier to
-    // hit than just the small pencil badge) — the pencil below is purely a
-    // visual affordance layered on top, not a separate interactive element.
-    avatarFileInput: { position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', zIndex: 2 },
-    // Positioned relative to avatarOuter (not avatarWrap), so most of the
-    // circle sits outside the box's edge instead of being clipped by
-    // avatarWrap's overflow:hidden.
-    avatarEditBadge: {
-      position: 'absolute', bottom: '-10px', right: '-10px', width: '30px', height: '30px', borderRadius: '50%',
-      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      border: `2px solid ${isDark ? '#18191a' : '#f9fafb'}`, pointerEvents: 'none',
+    identityMeta: { display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 },
+    identityName: { fontSize: '17px', fontWeight: '800', color: text, wordBreak: 'break-word' },
+    identityHint: { fontSize: '12.5px', color: text3 },
+
+    menuCard: { background: card, border: `1px solid ${border}`, borderRadius: '14px', padding: '6px' },
+    menuBtn: (on) => ({
+      width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+      minHeight: '42px', padding: '0 12px', borderRadius: '10px', border: 'none',
+      fontSize: '14px', fontWeight: on ? '800' : '500', textAlign: 'left', cursor: 'pointer',
+      background: on ? goldTint : 'transparent', color: on ? ink : text,
+    }),
+    menuDot: { width: '8px', height: '8px', borderRadius: '50%', background: gold, marginLeft: 'auto', flexShrink: 0 },
+
+    help: { fontSize: '12.5px', lineHeight: 1.5, color: text3, margin: 0 },
+    helpLink: { color: ink, fontWeight: '700', textDecoration: 'none' },
+
+    panel: {
+      flex: '1 1 520px', minWidth: 0, background: card,
+      border: `1px solid ${border}`, borderRadius: '18px', padding: 'clamp(20px, 3vw, 32px)',
+      display: 'flex', flexDirection: 'column', gap: '22px',
     },
-    avatarMeta: { display: 'flex', flexDirection: 'column', gap: '4px' },
-    avatarName: { fontSize: '19px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    avatarHint: { fontSize: '12.5px', color: isDark ? '#8a8d91' : '#6b7280' },
-    avatarBadgeRow: { display: 'flex', gap: '8px', marginTop: '4px' },
-    // Small colored bar before a card's heading — purely a visual accent to
-    // tell the Account Details and Identity Verification cards apart at a
-    // glance, no meaning attached to the specific color.
-    sectionTitleRow: { display: 'flex', alignItems: 'center', gap: '10px' },
-    accentBar: (color) => ({ width: '4px', height: '16px', borderRadius: '2px', background: color, flexShrink: 0 }),
-    idThumbWrap: { marginTop: '8px' },
-    idThumbOverlay: {
-      position: 'absolute', left: 0, right: 0, bottom: 0, padding: '8px 10px',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-      background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: '11px', fontWeight: '600',
-      opacity: 0, transition: 'opacity 0.15s',
+    panelHead: { display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-start', justifyContent: 'space-between' },
+    h1: { fontSize: '22px', fontWeight: '800', color: text, margin: 0 },
+    lead: { fontSize: '13.5px', color: text3, margin: '4px 0 0', maxWidth: '54ch', lineHeight: 1.5 },
+    headActions: { display: 'flex', gap: '8px', flexShrink: 0 },
+    btn: {
+      minHeight: '38px', padding: '0 16px', borderRadius: '10px', border: `1px solid ${border}`,
+      background: 'transparent', color: text, fontSize: '13px', fontWeight: '800', cursor: 'pointer',
     },
-    helpFooter: { textAlign: 'center', marginTop: '28px', fontSize: '13px', color: isDark ? '#8a8d91' : '#6b7280' },
-    helpLink: { color: goldInk(isDark), fontWeight: '600', textDecoration: 'none' },
+    btnGold: {
+      minHeight: '38px', padding: '0 16px', borderRadius: '10px', border: 'none',
+      background: gold, color: ON_GOLD, fontSize: '13px', fontWeight: '800', cursor: 'pointer',
+    },
+    group: { display: 'flex', flexDirection: 'column' },
+    groupLabel: {
+      fontSize: '11px', fontWeight: '800', letterSpacing: '0.12em', textTransform: 'uppercase',
+      color: text3, marginBottom: '2px',
+    },
+    row: { gap: '20px', padding: '12px 0', borderTop: `1px solid ${divider}`, alignItems: 'center' },
+    rowLabel: { fontSize: '13.5px', color: text2 },
+    rowValue: { fontSize: '14.5px', fontWeight: '600', color: text, minWidth: 0, wordBreak: 'break-word' },
+    input: {
+      width: '100%', minHeight: '38px', padding: '8px 12px', borderRadius: '9px',
+      border: `1px solid ${border}`, background: inset, color: text,
+      fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+    },
+    roleTag: {
+      display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em',
+      textTransform: 'uppercase', padding: '3px 11px', borderRadius: '20px',
+      background: isDark ? '#3a3b3c' : '#e5e7eb', color: isDark ? '#e4e6eb' : '#374151',
+    },
+    hint: { fontSize: '12px', color: text3, margin: '6px 0 0', lineHeight: 1.5 },
+
+    statusCard: (tone) => ({
+      display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center',
+      padding: '18px', borderRadius: '14px',
+      background: tone === 'bad' ? redTint : tone === 'soon' ? goldTint : inset,
+      border: `1px solid ${tone === 'bad' ? redLine : tone === 'soon' ? goldLine : border}`,
+    }),
+    statusTile: (tone) => ({
+      width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: tone === 'bad' ? redTint : goldTint,
+      color: tone === 'bad' ? red : ink,
+      border: `1px solid ${tone === 'bad' ? redLine : goldLine}`,
+    }),
+    statusBody: { flex: '1 1 200px', minWidth: 0 },
+    statusLabel: {
+      fontSize: '11px', fontWeight: '800', letterSpacing: '0.12em', textTransform: 'uppercase', color: text3,
+    },
+    statusValue: { fontSize: '18px', fontWeight: '800', color: text, marginTop: '2px' },
+    statusNote: (tone) => ({ fontSize: '13px', fontWeight: '700', color: tone === 'bad' ? red : ink, marginTop: '4px' }),
+
+    pwForm: { maxWidth: '440px', display: 'flex', flexDirection: 'column', gap: '14px' },
+    label: { display: 'block', fontSize: '13px', fontWeight: '600', color: text2, marginBottom: '6px' },
+    pwInput: {
+      width: '100%', minHeight: '44px', padding: '10px 12px', borderRadius: '9px',
+      border: `1px solid ${border}`, background: inset, color: text,
+      fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+    },
+    pwSubmit: {
+      minHeight: '44px', padding: '0 20px', borderRadius: '10px', border: 'none',
+      background: gold, color: ON_GOLD, fontSize: '14px', fontWeight: '800', cursor: 'pointer',
+    },
+    formError: { background: redTint, color: red, padding: '10px 14px', borderRadius: '9px', fontSize: '13px' },
+    formSuccess: {
+      background: isDark ? 'rgba(22,163,74,0.15)' : '#f0fdf4', color: isDark ? '#86efac' : '#166534',
+      padding: '10px 14px', borderRadius: '9px', fontSize: '13px',
+    },
   };
 
   const memberSince = profile?.createdAt
     ? new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
     : '';
 
-  // First + last initials (e.g. "John Doe" -> "JD"), not just one letter.
-  const initials = (name) => {
-    const parts = (name || '').trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return '';
-    const first = parts[0].charAt(0);
-    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
-    return (first + last).toUpperCase();
+  // A licence only matters to somebody who books self-drive. Consignors and
+  // admins never have one on file — the renewal reminder already skips them
+  // (server/utils/expiryNotify.js), so the section would be an empty card.
+  const wantsLicence = profile?.role === 'user';
+  const licenceLeft = profile?.licenseExpiry ? daysUntil(profile.licenseExpiry) : null;
+  const licenceExpired = licenceLeft !== null && licenceLeft < 0;
+  const licenceSoon = licenceLeft !== null && licenceLeft >= 0 && licenceLeft <= LICENCE_SOON_DAYS;
+  const licenceTone = licenceExpired ? 'bad' : licenceSoon ? 'soon' : 'calm';
+  const licenceFlag = wantsLicence && (licenceExpired || licenceSoon);
+
+  // Worked out rather than stored, so nobody can be left looking at a
+  // section that isn't in their menu.
+  const active = section === 'licence' && !wantsLicence ? 'details' : section;
+
+  const menu = [
+    { key: 'details', label: 'Account details' },
+    ...(wantsLicence ? [{ key: 'licence', label: 'Your licence' }] : []),
+    { key: 'password', label: 'Password' },
+  ];
+
+  const countdown = () => {
+    if (licenceExpired) return 'It has run out — renew it before your next self-drive booking.';
+    if (licenceLeft === 0) return "That's today — renew it to keep booking self-drive.";
+    if (licenceLeft === 1) return "That's tomorrow — renew it to keep booking self-drive.";
+    return `That's in ${licenceLeft} days — renew it to keep booking self-drive.`;
   };
 
-  return (
-    <div style={s.page}>
-      <div style={s.container}>
-        <h1 style={s.title}>My Profile</h1>
-        <p style={s.subtitle}>View and update your account information.</p>
+  // A plain function rather than a component: these rows exist only inside
+  // this one panel, and each needs the style objects built above.
+  const detailRow = (label, value, input) => (
+    <div className="profile-row" style={s.row}>
+      <span style={s.rowLabel}>{label}</span>
+      <div style={s.rowValue}>{editMode && input ? input : value}</div>
+    </div>
+  );
 
+  const detailsPanel = (
+    <form style={s.panel} onSubmit={handleSave}>
+      <div style={s.panelHead}>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={s.h1}>Account details</h1>
+          <p style={s.lead}>View and update your account information.</p>
+        </div>
         {profile && (
-          <div style={s.avatarRow}>
-            <div style={s.avatarOuter}>
-              <div style={{
-                ...s.avatarWrap,
-                border: profile.image
-                  ? `2px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`
-                  : `2px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-              }}>
-                {profile.image ? (
-                  <img src={profile.image} alt="" style={s.avatarImg} />
-                ) : (
-                  <div style={s.avatarEmpty}>{initials(profile.name)}</div>
-                )}
-                <input
-                  id="profile-avatar-input"
-                  type="file"
-                  accept="image/*"
-                  style={s.avatarFileInput}
-                  onChange={handleAvatarChange}
-                  disabled={avatarUploading}
-                  aria-label={profile.image ? 'Change profile photo' : 'Add profile photo'}
-                />
-              </div>
-              <div style={s.avatarEditBadge}><EditPencilIcon /></div>
-            </div>
-            <div style={s.avatarMeta}>
-              <span style={s.avatarName}>{profile.name}</span>
-              {memberSince && <span style={s.avatarHint}>Member since {memberSince}</span>}
-              {avatarUploading && <span style={s.avatarHint}>Uploading photo...</span>}
-            </div>
+          <div style={s.headActions}>
+            {editMode ? (
+              <>
+                <button type="button" style={s.btn} onClick={cancelEdit} disabled={saving}>Cancel</button>
+                <button type="submit" style={s.btnGold} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save changes'}
+                </button>
+              </>
+            ) : (
+              <button type="button" style={s.btn} onClick={startEdit}>Edit profile</button>
+            )}
           </div>
         )}
-        {avatarError && <div style={s.formError}>{avatarError}</div>}
+      </div>
 
-        {saveSuccess && <div style={s.formSuccess}>{saveSuccess}</div>}
+      {saveSuccess && <div style={s.formSuccess}>{saveSuccess}</div>}
+      {saveError && <div style={s.formError}>{saveError}</div>}
 
-        <div style={s.profileCard}>
-          <div style={s.profileHeaderRow}>
-            <div style={s.sectionTitleRow}>
-              <span style={s.accentBar('#8b5cf6')} />
-              <div style={s.sectionTitle}>Account Details</div>
+      {!profile ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} style={{ display: 'flex', gap: '20px' }}>
+              <Skeleton height="14px" width="140px" isDark={isDark} />
+              <Skeleton height="14px" width="60%" isDark={isDark} />
             </div>
-            {!editMode && profile && (
-              <button style={s.editBtn} onClick={startEdit}>Edit Profile</button>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div style={s.group}>
+            <div style={s.groupLabel}>Personal</div>
+            {detailRow(
+              'Full name',
+              profile.name,
+              <input
+                style={s.input} type="text" aria-label="Full name" value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })} required
+              />,
+            )}
+            {detailRow(
+              'Birthdate',
+              profile.birthDate ? new Date(profile.birthDate).toLocaleDateString() : '—',
+              // Filled in once and then fixed. It has to match the ID shown
+              // at the counter, so it is not somebody's to change afterwards.
+              profile.birthDate ? null : (
+                <div>
+                  <input
+                    style={s.input} type="date" max={maxBirthDate()} aria-label="Birthdate"
+                    value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
+                  />
+                  <p style={s.hint}>
+                    Your account doesn&apos;t have a birthdate on file yet — add it now. Must match your
+                    valid ID; you won&apos;t be able to change it once set.
+                  </p>
+                </div>
+              ),
+            )}
+            {detailRow('Account type', <span style={s.roleTag}>{profile.role}</span>, null)}
+          </div>
+
+          <div style={s.group}>
+            <div style={s.groupLabel}>Contact</div>
+            {detailRow('Email', profile.email, null)}
+            {detailRow(
+              'Phone',
+              profile.phone || '—',
+              <input
+                style={s.input} type="tel" aria-label="Phone" value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />,
+            )}
+            {detailRow(
+              'Address',
+              profile.address || '—',
+              <input
+                style={s.input} type="text" aria-label="Address" value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+              />,
             )}
           </div>
 
-          {!profile ? (
-            <div className="responsive-row-2" style={s.profileGrid}>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} style={s.profileItem}>
-                  <Skeleton height="11px" width="40%" isDark={isDark} style={{ marginBottom: '8px' }} />
-                  <Skeleton height="14px" width="70%" isDark={isDark} />
-                </div>
-              ))}
-            </div>
-          ) : !editMode ? (
-            <>
-              <div className="responsive-row-2" style={s.profileGrid}>
-                <div style={s.profileItem}>
-                  <span style={s.profileLabel}>Full Name</span>
-                  <span style={s.profileValue}>{profile.name}</span>
-                </div>
-                <div style={s.profileItem}>
-                  <span style={s.profileLabel}>Email</span>
-                  <span style={s.profileValue}>{profile.email}</span>
-                </div>
-                <div style={s.profileItem}>
-                  <span style={s.profileLabel}>Account Type</span>
-                  <span style={s.roleTag}>{profile.role}</span>
-                </div>
-                <div style={s.profileItem}>
-                  <span style={s.profileLabel}>Birthdate</span>
-                  <span style={s.profileValue}>
-                    {profile.birthDate ? new Date(profile.birthDate).toLocaleDateString() : '—'}
-                  </span>
-                </div>
-                <div style={s.profileItem}>
-                  <span style={s.profileLabel}>Phone</span>
-                  <span style={s.profileValue}>{profile.phone || '—'}</span>
-                </div>
-                <div style={s.profileItem}>
-                  <span style={s.profileLabel}>Address</span>
-                  <span style={s.profileValue}>{profile.address || '—'}</span>
-                </div>
-                <div style={s.profileItem}>
-                  <span style={s.profileLabel}>License Expiry</span>
-                  <span style={s.profileValue}>
-                    {profile.licenseExpiry ? new Date(profile.licenseExpiry).toLocaleDateString() : '—'}
-                  </span>
-                  {profile.licenseExpiry && new Date(profile.licenseExpiry) < new Date() && (
-                    <div style={{ marginTop: '4px' }}><span style={s.expiredTag}>Expired</span></div>
-                  )}
-                </div>
-                <div style={s.profileItem}>
-                  <span style={s.profileLabel}>Emergency Contact</span>
-                  <span style={s.profileValue}>{profile.emergencyContactName || '—'}</span>
-                </div>
-                <div style={s.profileItem}>
-                  <span style={s.profileLabel}>Emergency Contact Number</span>
-                  <span style={s.profileValue}>{profile.emergencyContactNumber || '—'}</span>
-                </div>
-              </div>
-            </>
-          ) : null}
-
-          {editMode && (
-            <form onSubmit={handleSave}>
-              {saveError && <div style={s.formError}>{saveError}</div>}
-
-              <div style={s.field}>
-                <label style={s.label} htmlFor="profile-name">Full Name</label>
-                <input id="profile-name" style={s.input} type="text" value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              </div>
-
-              {!profile.birthDate && (
-                <div style={s.field}>
-                  <label style={s.label} htmlFor="profile-birthdate">Birthdate</label>
-                  <input id="profile-birthdate" style={s.input} type="date" max={maxBirthDate()}
-                    value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} />
-                  <p style={s.uploadHint}>Your account doesn't have a birthdate on file yet — add it now. Must match your valid ID; you won't be able to change it once set.</p>
-                </div>
-              )}
-
-              <div className="responsive-row-2" style={s.row}>
-                <div style={s.field}>
-                  <label style={s.label} htmlFor="profile-phone">Phone Number</label>
-                  <input id="profile-phone" style={s.input} type="tel" value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label} htmlFor="profile-address">Address</label>
-                  <input id="profile-address" style={s.input} type="text" value={form.address}
-                    onChange={(e) => setForm({ ...form, address: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="responsive-row-2" style={s.row}>
-                {/* Editable now. It used to be read off the uploaded photo
-                    by whoever checked it; there is no photo, so there is
-                    nothing for anybody else to read it off. It drives the
-                    renewal reminder and the self-drive warning — the licence
-                    itself is checked at the counter. */}
-                <div style={s.field}>
-                  <label style={s.label} htmlFor="profile-license-expiry">License Expiry</label>
-                  <input id="profile-license-expiry" style={s.input} type="date" value={form.licenseExpiry || ''}
-                    onChange={(e) => setForm({ ...form, licenseExpiry: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="responsive-row-2" style={s.row}>
-                <div style={s.field}>
-                  <label style={s.label} htmlFor="profile-emergency-name">Emergency Contact Name</label>
-                  <input id="profile-emergency-name" style={s.input} type="text" value={form.emergencyContactName}
-                    onChange={(e) => setForm({ ...form, emergencyContactName: e.target.value })} />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label} htmlFor="profile-emergency-number">Emergency Contact Number</label>
-                  <input id="profile-emergency-number" style={s.input} type="tel" value={form.emergencyContactNumber}
-                    onChange={(e) => setForm({ ...form, emergencyContactNumber: e.target.value })} />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
-                <button type="submit" style={s.saveBtn} disabled={saving}>
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-                <button type="button" style={s.cancelBtn} onClick={cancelEdit} disabled={saving}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-
-        {profile && (
-          <div style={{ ...s.profileCard, marginTop: '20px' }}>
-            <div style={s.sectionTitleRow}>
-              <span style={s.accentBar('#3b82f6')} />
-              <div style={s.sectionTitle}>Your Licence</div>
-            </div>
-
-            {/* The only document this system records, and only as a number
-                and a date. Everything else is checked at the counter. */}
-            <p style={s.uploadHint}>
-              We hold no copies of any document. This is kept so we can remind you before it runs out, and
-              so self-drive bookings can check it covers the whole trip.
-            </p>
-
-            <div style={{ marginTop: '12px' }}>
-              <span style={s.profileLabel}>Driver&apos;s Licence</span>
-              <span style={{ ...s.profileValue, display: 'block', marginTop: '4px' }}>
-                {profile.licenseExpiry
-                  ? `Expires ${new Date(profile.licenseExpiry).toLocaleDateString()}`
-                  : 'Not set'}
-              </span>
-            </div>
+          <div style={s.group}>
+            <div style={s.groupLabel}>Emergency contact</div>
+            {detailRow(
+              'Name',
+              profile.emergencyContactName || '—',
+              <input
+                style={s.input} type="text" aria-label="Emergency contact name" value={form.emergencyContactName}
+                onChange={(e) => setForm({ ...form, emergencyContactName: e.target.value })}
+              />,
+            )}
+            {detailRow(
+              'Number',
+              profile.emergencyContactNumber || '—',
+              <input
+                style={s.input} type="tel" aria-label="Emergency contact number" value={form.emergencyContactNumber}
+                onChange={(e) => setForm({ ...form, emergencyContactNumber: e.target.value })}
+              />,
+            )}
           </div>
-        )}
 
-        <p style={s.helpFooter}>
-          Need help with your account? <Link to="/help" style={s.helpLink}>Contact our support team</Link>
+          {/* The licence date is read in its own section, but it is still
+              changed here, with everything else, on the one save. There is
+              no separate editor for it. */}
+          {wantsLicence && editMode && (
+            <div style={s.group}>
+              <div style={s.groupLabel}>Licence</div>
+              {detailRow(
+                'Expiry date',
+                null,
+                <input
+                  style={s.input} type="date" aria-label="Licence expiry date" value={form.licenseExpiry || ''}
+                  onChange={(e) => setForm({ ...form, licenseExpiry: e.target.value })}
+                />,
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </form>
+  );
+
+  const licencePanel = (
+    <div style={s.panel}>
+      <div>
+        <h1 style={s.h1}>Your licence</h1>
+        <p style={s.lead}>
+          We hold no copies of any document. This is kept so we can remind you before it runs out, and
+          so self-drive bookings can check it covers the whole trip.
         </p>
+      </div>
 
-        <div style={{ ...s.profileCard, marginTop: '20px' }}>
-          <div style={s.sectionTitle}>Change Password</div>
-          <p style={s.subtitle}>Update the password you use to log in.</p>
-
-          {pwSuccess && <div style={s.formSuccess}>{pwSuccess}</div>}
-          {pwError && <div style={s.formError}>{pwError}</div>}
-
-          {pwStep === 'form' ? (
-            <form onSubmit={handleRequestPasswordChange}>
-              <div style={s.field}>
-                <label style={s.label} htmlFor="pw-current">Current Password</label>
-                <PasswordInput id="pw-current" style={s.input} value={pwForm.currentPassword} isDark={isDark}
-                  onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })} required />
-              </div>
-              <div className="responsive-row-2" style={s.row}>
-                <div style={s.field}>
-                  <label style={s.label} htmlFor="pw-new">New Password</label>
-                  <PasswordInput id="pw-new" style={s.input} value={pwForm.newPassword} minLength={8} isDark={isDark}
-                    onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} required />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label} htmlFor="pw-confirm">Confirm New Password</label>
-                  <PasswordInput id="pw-confirm" style={s.input} value={pwForm.confirmPassword} minLength={8} isDark={isDark}
-                    onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })} required />
-                </div>
-              </div>
-              <button type="submit" style={s.saveBtn} disabled={pwSaving}>
-                {pwSaving ? 'Sending code...' : 'Continue'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleConfirmPasswordChange}>
-              <p style={{ ...s.subtitle, marginBottom: '12px' }}>
-                We sent a 6-digit code to <strong>{profile.email}</strong>. Enter it below to finish changing your password.
-              </p>
-              <div style={s.field}>
-                <label style={s.label} htmlFor="pw-code">Verification Code</label>
-                <OtpInput value={pwCode} onChange={setPwCode} isDark={isDark} />
-              </div>
-              <button type="button" className="text-link-btn" style={{ background: 'none', border: 'none', padding: 0, marginBottom: '14px', font: 'inherit', color: goldInk(isDark), cursor: pwResendCooldown > 0 ? 'default' : 'pointer' }}
-                onClick={handleResendPasswordCode} disabled={pwSaving || pwResendCooldown > 0}>
-                {pwSaving ? 'Resending...' : pwResendCooldown > 0 ? `Resend code in ${pwResendCooldown}s` : "Didn't get it? Resend code"}
-              </button>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button type="submit" style={s.saveBtn} disabled={pwSaving}>
-                  {pwSaving ? 'Updating...' : 'Confirm & Update Password'}
-                </button>
-                <button type="button" style={s.cancelBtn} onClick={cancelPasswordVerify} disabled={pwSaving}>
-                  Back
-                </button>
-              </div>
-            </form>
+      <div style={s.statusCard(licenceTone)}>
+        <span style={s.statusTile(licenceTone)}><LicenceCardIcon /></span>
+        <div style={s.statusBody}>
+          <div style={s.statusLabel}>Driver&apos;s licence</div>
+          <div style={s.statusValue}>
+            {!profile?.licenseExpiry
+              ? 'Not set'
+              : `${licenceExpired ? 'Expired' : 'Expires'} ${new Date(profile.licenseExpiry).toLocaleDateString()}`}
+          </div>
+          {profile?.licenseExpiry && licenceTone !== 'calm' && (
+            <div style={s.statusNote(licenceTone)}>{countdown()}</div>
           )}
         </div>
       </div>
+
+      <p style={s.hint}>
+        To change this date, open <strong>Account details</strong> and choose Edit profile.
+      </p>
+    </div>
+  );
+
+  const passwordPanel = (
+    <div style={s.panel}>
+      <div>
+        <h1 style={s.h1}>Change password</h1>
+        <p style={s.lead}>Update the password you use to log in.</p>
+      </div>
+
+      {pwSuccess && <div style={s.formSuccess}>{pwSuccess}</div>}
+      {pwError && <div style={s.formError}>{pwError}</div>}
+
+      {pwStep === 'form' ? (
+        <form style={s.pwForm} onSubmit={handleRequestPasswordChange}>
+          <div>
+            <label style={s.label} htmlFor="pw-current">Current password</label>
+            <PasswordInput id="pw-current" style={s.pwInput} value={pwForm.currentPassword} isDark={isDark}
+              onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })} required />
+          </div>
+          <div>
+            <label style={s.label} htmlFor="pw-new">New password</label>
+            <PasswordInput id="pw-new" style={s.pwInput} value={pwForm.newPassword} minLength={8} isDark={isDark}
+              onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} required />
+          </div>
+          <div>
+            <label style={s.label} htmlFor="pw-confirm">Confirm new password</label>
+            <PasswordInput id="pw-confirm" style={s.pwInput} value={pwForm.confirmPassword} minLength={8} isDark={isDark}
+              onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })} required />
+          </div>
+          <div>
+            <button type="submit" style={s.pwSubmit} disabled={pwSaving}>
+              {pwSaving ? 'Sending code...' : 'Continue'}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <form style={s.pwForm} onSubmit={handleConfirmPasswordChange}>
+          <p style={{ ...s.lead, margin: 0 }}>
+            We sent a 6-digit code to <strong>{profile?.email}</strong>. Enter it below to finish changing your password.
+          </p>
+          <div>
+            <label style={s.label} htmlFor="pw-code">Verification code</label>
+            <OtpInput value={pwCode} onChange={setPwCode} isDark={isDark} />
+          </div>
+          <div>
+            <button
+              type="button"
+              className="text-link-btn"
+              style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: ink, cursor: pwResendCooldown > 0 ? 'default' : 'pointer' }}
+              onClick={handleResendPasswordCode}
+              disabled={pwSaving || pwResendCooldown > 0}
+            >
+              {pwSaving ? 'Resending...' : pwResendCooldown > 0 ? `Resend code in ${pwResendCooldown}s` : "Didn't get it? Resend code"}
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button type="submit" style={s.pwSubmit} disabled={pwSaving}>
+              {pwSaving ? 'Updating...' : 'Confirm & Update Password'}
+            </button>
+            <button type="button" style={{ ...s.btn, minHeight: '44px' }} onClick={cancelPasswordVerify} disabled={pwSaving}>
+              Back
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+
+  return (
+    <div style={s.page}>
+      <main style={s.main}>
+        <div className="profile-sidebar" style={s.sidebar}>
+          <div style={s.identity}>
+            <div className="profile-avatar-outer" style={s.avatarOuter}>
+              <div style={s.avatarWrap}>
+                {profile?.image
+                  ? <img src={profile.image} alt="" style={s.avatarImg} />
+                  : <span style={s.avatarInitials}>{initialsOf(profile?.name)}</span>}
+              </div>
+              <label htmlFor="profile-avatar-input" className="profile-avatar-badge" style={s.avatarBadge}>
+                <EditPencilIcon size={12} />
+                <span className="sr-only">{profile?.image ? 'Change profile photo' : 'Add profile photo'}</span>
+              </label>
+              <input
+                id="profile-avatar-input"
+                className="sr-only"
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                disabled={avatarUploading}
+              />
+            </div>
+            <div style={s.identityMeta}>
+              <span style={s.identityName}>{profile?.name || ''}</span>
+              {avatarUploading
+                ? <span style={s.identityHint}>Uploading photo...</span>
+                : memberSince && <span style={s.identityHint}>Member since {memberSince}</span>}
+            </div>
+          </div>
+
+          {avatarError && <div style={s.formError}>{avatarError}</div>}
+
+          <nav style={s.menuCard} aria-label="Profile sections">
+            {menu.map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                className="profile-menu-btn"
+                style={s.menuBtn(active === m.key)}
+                aria-current={active === m.key ? 'page' : undefined}
+                onClick={() => setSection(m.key)}
+              >
+                {m.label}
+                {m.key === 'licence' && licenceFlag && (
+                  <>
+                    <span style={s.menuDot} aria-hidden="true" />
+                    <span className="sr-only">— expires soon</span>
+                  </>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          <p style={s.help}>
+            Need help with your account? <Link to="/help" style={s.helpLink}>Contact our support team</Link>
+          </p>
+        </div>
+
+        {active === 'details' && detailsPanel}
+        {active === 'licence' && licencePanel}
+        {active === 'password' && passwordPanel}
+      </main>
     </div>
   );
 };
