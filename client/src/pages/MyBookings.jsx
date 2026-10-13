@@ -104,6 +104,7 @@ const TagLineIcon = (props) => <LineIcon {...props}><path d="M20.6 12.6L12.6 20.
 const CalendarPlusIcon = (props) => <LineIcon {...props}><rect x="3" y="4" width="18" height="17" rx="3" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="12" y1="13" x2="12" y2="17" /><line x1="10" y1="15" x2="14" y2="15" /></LineIcon>;
 const RepeatIcon = (props) => <LineIcon {...props}><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></LineIcon>;
 const PencilIcon = (props) => <LineIcon {...props}><path d="M17 3l4 4-11 11H6v-4z" /><line x1="14" y1="6" x2="18" y2="10" /></LineIcon>;
+const StarLineIcon = (props) => <LineIcon {...props}><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></LineIcon>;
 
 // Local YYYY-MM-DD (not toISOString, which shifts to UTC and can land on
 // the wrong day in timezones ahead of UTC, like PH).
@@ -1567,6 +1568,15 @@ const MyBookings = () => {
                   <button className="btn-solid-gold" style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
                     <RepeatIcon /> Book Again
                   </button>
+                  {/* A booking that says "Not rated yet" and offers nothing
+                      to do about it is a dead end: the only way to rate was
+                      the button at the top of the page, which meant closing
+                      this, finding it, and finding this booking again. */}
+                  {!booking.carRating?.ratedAt && (
+                    <button className="btn-ghost-amber" style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>
+                      <StarLineIcon /> Rate This Trip
+                    </button>
+                  )}
                   {booking.carRating?.ratedAt && (
                     <>
                       <button className="btn-ghost-amber" style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>
