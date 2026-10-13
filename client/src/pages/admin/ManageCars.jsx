@@ -19,6 +19,7 @@ import Pagination from '../../components/Pagination';
 import { paginate } from '../../utils/paginate';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
 import { registrationLapsed } from '../../utils/registration';
+import { unbookable } from '../../utils/vehicleAvailability';
 import { isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
 import ModalClose from '../../components/ModalClose';
 
@@ -668,6 +669,11 @@ const ManageCars = ({ view = 'active' }) => {
     // because it begins with the second the row was made, so it still
     // orders correctly for anything stored before timestamps.
     .sort((a, b) => {
+      // Anything that cannot go out — hidden, off the road, papers expired
+      // — sits at the end, the same as on the public page. The fleet that
+      // is working is the part somebody scrolls this list to find.
+      const stopped = (unbookable(a) ? 1 : 0) - (unbookable(b) ? 1 : 0);
+      if (stopped) return stopped;
       const made = (c) => (c.createdAt ? new Date(c.createdAt).getTime() : 0);
       return made(b) - made(a) || String(b._id).localeCompare(String(a._id));
     });
