@@ -1484,6 +1484,12 @@ button.seg-tab:not(:disabled):hover {
    card and drop a shadow over the items either side of it, which reads as
    the menu coming apart. Same opt-out as the dropdown rows; the feedback
    here is a tint, which is what the active item uses too. */
+.profile-menu-btn {
+  /* Here rather than inline: an inline background would beat the hover tint
+     below. Without it the row falls back to the browser's own grey button
+     face, which is how the inactive rows first came out. */
+  background: transparent;
+}
 .profile-menu-btn:not(:disabled) {
   transition: background 0.15s ease;
 }
