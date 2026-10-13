@@ -34,7 +34,7 @@ const AddVehicle = () => {
     );
   }
 
-  return <BookInspection stage={stage} onBooked={load} />;
+  return <BookInspection stage={stage} onBooked={load} onBack={() => navigate('/consignor')} />;
 };
 
 export default AddVehicle;

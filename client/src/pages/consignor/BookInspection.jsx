@@ -4,6 +4,7 @@ import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import Skeleton from '../../components/Skeleton';
 import usePageTitle from '../../hooks/usePageTitle';
+import BackButton from '../../components/BackButton';
 import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER } from '../../data/vehicleBrands';
 import { vehicleNoteProblem, OLDEST_VEHICLE_YEAR, isAppointmentOpen } from '../../utils/appointments';
 import Autocomplete from '../../components/Autocomplete';
@@ -22,7 +23,11 @@ const DAY_LABEL = { weekday: 'short', month: 'short', day: 'numeric' };
 // is no dashboard to show: no vehicles, no bookings, no earnings. Showing
 // the real dashboard empty would be showing somebody a room full of things
 // that are not theirs yet.
-const BookInspection = ({ stage, onBooked, suspension }) => {
+// `onBack` is passed only when this page was opened from My Vehicles, as
+// the second door into it (/consignor/add-vehicle). An applicant who has
+// no listing yet sees this page AS their My Vehicles, and has nowhere to
+// go back to — so they get no back button.
+const BookInspection = ({ stage, onBooked, suspension, onBack }) => {
   usePageTitle('Book an inspection');
   const { isDark } = useTheme();
   const { toast, confirm } = useUIFeedback();
@@ -272,6 +277,7 @@ const BookInspection = ({ stage, onBooked, suspension }) => {
     return (
       <div style={s.page}>
         <div style={s.wrap}>
+          {onBack && <BackButton text="Back to My Vehicles" onClick={onBack} />}
           <h1 style={s.title}>Your appointment</h1>
           <p style={s.sub}>
             {booked.status === 'accepted'
@@ -308,6 +314,7 @@ const BookInspection = ({ stage, onBooked, suspension }) => {
     return (
       <div style={s.page}>
         <div style={s.wrap}>
+          {onBack && <BackButton text="Back to My Vehicles" onClick={onBack} />}
           <h1 style={s.title}>Your contract is on hold</h1>
           <p style={s.holdReason}>{suspension.reason}</p>
           <div style={s.card}>
@@ -329,6 +336,7 @@ const BookInspection = ({ stage, onBooked, suspension }) => {
   return (
     <div style={s.page}>
       <div style={s.wrap}>
+          {onBack && <BackButton text="Back to My Vehicles" onClick={onBack} />}
         <h1 style={s.title}>List your vehicle</h1>
         <p style={s.sub}>
           We look at every vehicle in person before it goes on the site. Book a time, bring it over with its
