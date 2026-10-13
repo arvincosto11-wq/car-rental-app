@@ -496,7 +496,10 @@ const Dashboard = () => {
     }
     if (c.month?.pct === null || c.month?.pct === undefined) return null;
     const from = new Date(c.month.from).toLocaleDateString('en-US', MONTH_DAY);
-    const to = new Date(c.month.to).toLocaleDateString('en-US', MONTH_DAY);
+    // The server's `to` is the boundary the sum stops at, so the last day
+    // actually counted is the one before it. Printing the boundary made a
+    // comparison of 1–14 read as 1–15.
+    const to = new Date(new Date(c.month.to).getTime() - 86400000).toLocaleDateString('en-US', MONTH_DAY);
     return { pct: c.month.pct, label: `${from}–${to} (₱${(c.month.previous || 0).toLocaleString()})` };
   })();
 
