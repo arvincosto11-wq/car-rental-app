@@ -67,7 +67,7 @@ const MoreIcon = () => <LineIcon size={16}><circle cx="5" cy="12" r="1.4" /><cir
 const EyeIcon = () => <LineIcon size={15}><path d="M1.8 12S5.5 5 12 5s10.2 7 10.2 7-3.7 7-10.2 7S1.8 12 1.8 12z" /><circle cx="12" cy="12" r="3" /></LineIcon>;
 const EyeOffIcon = () => <LineIcon size={15}><path d="M9.9 5.2A9.6 9.6 0 0 1 12 5c6.5 0 10.2 7 10.2 7a17 17 0 0 1-3.3 4.1M6.3 6.5A17 17 0 0 0 1.8 12S5.5 19 12 19a9.8 9.8 0 0 0 4-.8" /><line x1="3" y1="3" x2="21" y2="21" /></LineIcon>;
 const StarIcon = () => <LineIcon size={15}><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></LineIcon>;
-const WrenchIcon = () => <LineIcon size={15}><path d="M20 6.5a5 5 0 0 1-6.6 6.2L6.8 19.3a2 2 0 1 1-2.8-2.8l6.6-6.6A5 5 0 0 1 17.5 4L15 6.5l1.2 2.3L18.5 10z" /></LineIcon>;
+const WrenchIcon = ({ size = 15 }) => <LineIcon size={size}><path d="M20 6.5a5 5 0 0 1-6.6 6.2L6.8 19.3a2 2 0 1 1-2.8-2.8l6.6-6.6A5 5 0 0 1 17.5 4L15 6.5l1.2 2.3L18.5 10z" /></LineIcon>;
 
 
 
@@ -444,7 +444,6 @@ const ManageCars = ({ view = 'active' }) => {
     },
     title: { fontSize: '26px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    cardList: { display: 'flex', flexDirection: 'column', gap: '16px' },
 
     // ── Photo cards ────────────────────────────────────────────────────
     // Four columns on a 1440px screen, fewer as it narrows. Admin is a
@@ -691,109 +690,39 @@ const ManageCars = ({ view = 'active' }) => {
       fontSize: '11px', fontWeight: '800', fontVariantNumeric: 'tabular-nums',
       color: on ? goldInk(isDark) : (isDark ? '#8a8d91' : '#9ca3af'),
     }),
-    // Photo | details | price-and-actions. The side column is capped so a
-    // long action strip wraps under itself instead of squeezing the details.
-    carCard: {
-      display: 'grid', gridTemplateColumns: '224px minmax(0, 1fr) auto', gap: '28px',
-      alignItems: 'stretch', padding: '24px', borderRadius: '24px',
-      background: isDark ? '#242526' : '#fff',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-    },
-    carThumbWrap: {
-      width: '224px', height: '144px', borderRadius: '16px', overflow: 'hidden', alignSelf: 'center',
-      background: isDark ? '#3a3b3c' : '#f3f4f6',
-    },
-    carThumbImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
-    carThumbEmpty: {
-      width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: '6px',
-      alignItems: 'center', justifyContent: 'center', fontSize: '11px',
-      color: isDark ? '#8a8d91' : '#9ca3af',
-    },
-    carInfo: { minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '10px', justifyContent: 'center' },
-    carNameRow: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
-    carName: { fontSize: '18px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    // Two columns of labelled specs replace the old single dot-separated
-    // line, which was hard to scan once it held four values.
-    specGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, max-content)', gap: '8px 28px' },
-    spec: { display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#b0b3b8' : '#4b5563' },
-    specMissing: { fontStyle: 'italic', color: isDark ? '#8a8d91' : '#9ca3af' },
-    ratingRow: { display: 'flex', alignItems: 'center', gap: '6px' },
-    carRatingText: { fontSize: '12px', fontWeight: '600', color: isDark ? '#b0b3b8' : '#6b7280' },
-    carSide: {
-      display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between',
-      // Six buttons need about 580px and this was capped at 560, so Archive
-      // dropped to a line of its own the moment a row gained one. The extra
-      // room is taken from the details column, which wraps happily; the
-      // buttons do not. Wrapping is still there underneath for real narrow
-      // screens — this only stops it happening on a desktop that has space.
-      gap: '18px', maxWidth: '680px',
-    },
-    carPriceWrap: { textAlign: 'right' },
-    carPrice: { fontSize: '26px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    carPriceUnit: { fontSize: '10px', fontWeight: '700', letterSpacing: '0.1em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '2px' },
-    offRoadFlag: {
-      display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
-      padding: '3px 10px', borderRadius: '20px',
-      background: isDark ? 'rgba(248,113,113,0.15)' : '#fee2e2',
-      color: isDark ? '#f87171' : '#991b1b',
-    },
-    // Same red as off the road, because it means the same thing to the
-    // yard: this vehicle cannot go out today. The reason differs, so the
-    // words differ.
-    papersFlag: {
-      display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
-      padding: '3px 10px', borderRadius: '20px',
-      background: isDark ? 'rgba(248,113,113,0.15)' : '#fee2e2',
-      color: isDark ? '#f87171' : '#991b1b',
-      border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
-    },
-    available: {
-      display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
-      padding: '3px 10px', borderRadius: '20px',
-      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
-      border: `1px solid ${isDark ? 'rgba(22,163,74,0.4)' : '#86efac'}`,
-    },
-    unavailable: {
-      display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
-      padding: '3px 10px', borderRadius: '20px',
-      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
-      border: `1px solid ${isDark ? 'rgba(220,38,38,0.4)' : '#fca5a5'}`,
-    },
-    staleFlag: { background: '#fef3c7', color: '#92400e', fontSize: '10px', padding: '2px 8px', borderRadius: '20px', marginLeft: '4px', fontWeight: '600', cursor: 'help' },
-    draftFlag: {
-      display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
-      padding: '3px 10px', borderRadius: '20px',
-      background: isDark ? 'rgba(148,163,184,0.15)' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#475569',
-      border: `1px solid ${isDark ? 'rgba(148,163,184,0.4)' : '#cbd5e1'}`,
-    },
-    publishBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? GOLD_DARK : GOLD, border: 'none', color: ON_GOLD },
-    actions: { display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '8px' },
-    editBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? GOLD_DARK : GOLD, border: 'none', color: ON_GOLD },
-    toggleBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb'}`, color: isDark ? '#b0b3b8' : '#374151' },
-    // Shaped exactly like Block Dates and Archive beside it — same padding,
-    // radius, weight and muted background — so it sits in the row instead of
-    // interrupting it. Only the text and border are red, which is enough to
-    // find at a glance without the solid block that made it shout.
-    // One width for both states. "Back on the Road" is the longer label, and
-    // without this the whole row re-laid itself the moment you pressed the
-    // button — everything beside it shuffling is a poor reward for a click.
-    offRoadBtn: {
-      padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
-      minWidth: '132px', textAlign: 'center',
-      background: isDark ? '#18191a' : '#f3f4f6',
-      border: `1px solid ${isDark ? 'rgba(248,113,113,0.45)' : 'rgba(220,38,38,0.4)'}`,
-      color: isDark ? '#f87171' : '#dc2626',
-    },
-    backOnRoadBtn: {
-      padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
-      minWidth: '132px', textAlign: 'center',
-      background: isDark ? '#18191a' : '#f3f4f6',
-      border: `1px solid ${isDark ? 'rgba(248,113,113,0.45)' : 'rgba(220,38,38,0.4)'}`,
-      color: isDark ? '#f87171' : '#dc2626',
-    },
     modalOverlay: {
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'grid',
       placeItems: 'center', padding: '16px', zIndex: 1000,
+    },
+    offRoadHead: { display: 'flex', alignItems: 'center', gap: '11px', marginBottom: '10px' },
+    offRoadIcon: {
+      width: '38px', height: '38px', borderRadius: '11px', flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      color: isDark ? '#f87171' : '#b91c1c',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
+    },
+    offRoadFacts: {
+      margin: '0 0 16px', padding: '11px 14px 11px 28px', borderRadius: '10px',
+      background: isDark ? '#1e1f20' : '#f8f9fa',
+      fontSize: '12.5px', lineHeight: 1.6, color: isDark ? '#b0b3b8' : '#4b5563',
+      display: 'flex', flexDirection: 'column', gap: '4px',
+    },
+    // Cards rather than bare radios: the difference between the two is what
+    // the client is told, so each one says what it means underneath.
+    offRoadOption: (on) => ({
+      display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer',
+      padding: '11px 13px', borderRadius: '11px',
+      border: on
+        ? `1.5px solid ${isDark ? '#f87171' : '#dc2626'}`
+        : `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      background: on ? (isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2') : 'transparent',
+    }),
+    offRoadOptionTitle: {
+      display: 'block', fontSize: '13px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    offRoadOptionSub: {
+      display: 'block', fontSize: '11.5px', marginTop: '1px', color: isDark ? '#8a8d91' : '#6b7280',
     },
     offRoadCard: {
       width: '100%', maxWidth: '440px', background: isDark ? '#242526' : '#fff',
@@ -817,10 +746,6 @@ const ManageCars = ({ view = 'active' }) => {
     offRoadTitle: { fontSize: '17px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#111827', marginBottom: '8px' },
     offRoadSub: { fontSize: '13px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#6b7280', margin: '0 0 14px' },
     offRoadChoices: { display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' },
-    offRoadChoice: {
-      display: 'flex', alignItems: 'center', gap: '9px', fontSize: '13px', cursor: 'pointer',
-      color: isDark ? '#e4e6eb' : '#374151',
-    },
     offRoadInput: {
       width: '100%', padding: '9px 12px', fontSize: '13px', outline: 'none',
       border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px',
@@ -835,31 +760,6 @@ const ManageCars = ({ view = 'active' }) => {
       border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, background: 'transparent',
       color: isDark ? '#e4e6eb' : '#374151',
     },
-    archiveBtn: { padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', background: isDark ? '#18191a' : '#f3f4f6', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb'}`, color: isDark ? '#b0b3b8' : '#374151' },
-    featureBtn: (active) => ({
-      padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
-      border: `1px solid ${active ? (isDark ? 'rgba(232,161,0,0.45)' : 'rgba(184,121,10,0.45)') : (isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb')}`,
-      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#18191a' : '#f3f4f6'),
-      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#b0b3b8' : '#374151'),
-    }),
-    editForm: { maxWidth: '960px' },
-    editModalOverlay: {
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300,
-      display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-      padding: '40px 16px', overflowY: 'auto',
-    },
-    editModalCard: {
-      position: 'relative', width: '100%', maxWidth: '960px',
-      background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '12px', padding: '24px', outline: 'none',
-    },
-    editTitle: { fontSize: '16px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '16px' },
-    imageUpload: { position: 'relative', width: '200px', height: '140px', border: `2px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDark ? '#18191a' : '#fff' },
-    imagePlaceholder: { textAlign: 'center', padding: '16px' },
-    fileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
-    photoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '8px', marginTop: '10px' },
-    photoThumbWrap: { position: 'relative', width: '100%', height: '70px', borderRadius: '8px', overflow: 'hidden' },
-    photoThumb: { width: '100%', height: '100%', objectFit: 'cover' },
     removePhotoBtn: {
       position: 'absolute', top: '2px', right: '2px', width: '20px', height: '20px',
       borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff',
@@ -871,27 +771,8 @@ const ManageCars = ({ view = 'active' }) => {
     input: { width: '100%', padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', color: isDark ? '#e4e6eb' : '#111827', background: isDark ? '#18191a' : '#fff' },
     fieldHint: { display: 'block', fontSize: '11px', lineHeight: 1.45, color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '4px' },
     textarea: { width: '100%', padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '60px', resize: 'vertical', color: isDark ? '#e4e6eb' : '#111827', background: isDark ? '#18191a' : '#fff' },
-    saveBtn: { padding: '8px 20px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
-    cancelBtn: { padding: '8px 20px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
-    checkboxLabel: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: isDark ? '#e4e6eb' : '#374151', cursor: 'pointer' },
-    typeToggleRow: { display: 'flex', gap: '10px', marginBottom: '16px' },
-    typeToggleBtn: (active) => ({
-      flex: 1, padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-      border: active ? `2px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      background: active ? (isDark ? GOLD_TINT_DARK : GOLD_TINT) : (isDark ? '#18191a' : '#fff'),
-      color: active ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#b0b3b8' : '#374151'),
-      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-    }),
     categoryFixed: { padding: '8px 10px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', background: isDark ? '#18191a' : '#f9fafb', color: isDark ? '#b0b3b8' : '#6b7280' },
     hint: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '4px' },
-    // Neutral when there's nothing blocked; picks up an edge when there is,
-    // so the count reads as information rather than a warning.
-    blockDatesBtn: (hasBlocks) => ({
-      padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
-      background: isDark ? '#18191a' : '#f3f4f6',
-      border: `1px solid ${hasBlocks ? (isDark ? '#6b7280' : '#9ca3af') : (isDark ? 'rgba(255,255,255,0.09)' : '#e5e7eb')}`,
-      color: hasBlocks ? (isDark ? '#e4e6eb' : '#1a1a1a') : (isDark ? '#b0b3b8' : '#374151'),
-    }),
     promoRowTag: {
       display: 'inline-flex', alignItems: 'center', gap: '5px',
       fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
@@ -933,12 +814,6 @@ const ManageCars = ({ view = 'active' }) => {
       minWidth: '20px', height: '20px', padding: '0 6px', borderRadius: '999px',
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       fontSize: '11px', fontWeight: '800', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-    },
-    deleteBtn: {
-      padding: '9px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
-      background: 'transparent',
-      border: `1px solid ${isDark ? 'rgba(248,113,113,0.45)' : 'rgba(220,38,38,0.45)'}`,
-      color: isDark ? '#f87171' : '#dc2626',
     },
     archivedLinkBtn: {
       display: 'inline-flex', alignItems: 'center', gap: '8px',
@@ -1520,35 +1395,49 @@ const ManageCars = ({ view = 'active' }) => {
       {offRoadTarget && (
         <div style={styles.modalOverlay} onClick={() => !offRoadSubmitting && setOffRoadTarget(null)}>
           <div style={styles.offRoadCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="off-road-title">
-            <div id="off-road-title" style={styles.offRoadTitle}>
-              Take {offRoadTarget.brand} {offRoadTarget.model} off the road
+            <div style={styles.offRoadHead}>
+              <span style={styles.offRoadIcon}><WrenchIcon size={20} /></span>
+              <div id="off-road-title" style={styles.offRoadTitle}>
+                Take {offRoadTarget.brand} {offRoadTarget.model} off the road
+              </div>
             </div>
             <p style={styles.offRoadSub}>
               It stops taking bookings from now until you say it is roadworthy again — no end date, because
-              nobody knows yet how long it will take. Anyone already booked is offered another vehicle on
-              their own dates, or a full refund if nothing suitable is free. Clients already out in it are
-              left alone.
+              nobody knows yet how long it will take.
             </p>
+            {/* The two consequences, set apart from the sentence above so
+                neither gets skimmed past: one is about people waiting, the
+                other about people already driving it. */}
+            <ul style={styles.offRoadFacts}>
+              <li>Anyone already booked is offered another vehicle on their own dates, or a full refund if nothing suitable is free.</li>
+              <li>Clients already out in it are left alone.</li>
+            </ul>
             {/* What the affected clients read. Neither says why, so nothing
                 about a previous renter reaches anybody. */}
             <div style={styles.offRoadChoices}>
-              <label style={styles.offRoadChoice}>
+              <label style={styles.offRoadOption(offRoadReason === 'repairs')}>
                 <input
                   type="radio"
                   name="off-road-reason"
                   checked={offRoadReason === 'repairs'}
                   onChange={() => setOffRoadReason('repairs')}
                 />
-                <span>Off the road for repairs</span>
+                <span>
+                  <span style={styles.offRoadOptionTitle}>For repairs</span>
+                  <span style={styles.offRoadOptionSub}>Comes back later</span>
+                </span>
               </label>
-              <label style={styles.offRoadChoice}>
+              <label style={styles.offRoadOption(offRoadReason === 'unavailable')}>
                 <input
                   type="radio"
                   name="off-road-reason"
                   checked={offRoadReason === 'unavailable'}
                   onChange={() => setOffRoadReason('unavailable')}
                 />
-                <span>No longer available</span>
+                <span>
+                  <span style={styles.offRoadOptionTitle}>No longer available</span>
+                  <span style={styles.offRoadOptionSub}>Not coming back</span>
+                </span>
               </label>
             </div>
 
