@@ -21,8 +21,9 @@ import appointments from './appointments.test.mjs';
 import email from './email.test.mjs';
 import drivers from './drivers.test.mjs';
 import noShow from './noShow.test.mjs';
+import adminToday from './adminToday.test.mjs';
 
-const suites = [phTime, availability, pricing, longRental, refunds, adjustOffer, handover, dwell, delivery, appointments, email, drivers, noShow];
+const suites = [phTime, availability, pricing, longRental, refunds, adjustOffer, handover, dwell, delivery, appointments, email, drivers, noShow, adminToday];
 
 for (const run of suites) run();
 

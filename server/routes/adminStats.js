@@ -9,6 +9,11 @@ import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { expireAdjustOffers } from '../utils/adjustOffer.js';
 import { APPOINTMENT_OPEN } from '../utils/appointments.js';
 import { fail } from '../utils/respond.js';
+import { isOverdue } from '../utils/overdue.js';
+import { phYmd, phDayStart, addDays } from '../utils/phTime.js';
+import {
+  balanceDue, lateFeeSoFar, unsettledCharges, vehicleState, comparePeriods,
+} from '../utils/adminToday.js';
 
 const router = express.Router();
 
@@ -85,6 +90,183 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
 // registration (CR). Consolidated into one response instead of three
 // separate checks, since admin cares about "what needs attention soon"
 // as a single list, not which category it happens to be.
+
+// Everything the dashboard needs to answer "what does today need?".
+//
+// Separate from /stats, which answers "how is the business doing" and is
+// all aggregates. This one is about named bookings on a named day, so it
+// reads whole documents and hands back only the fields the page shows.
+router.get('/today', protect, adminOnly, async (req, res) => {
+  try {
+    const now = new Date();
+    const dayStart = phDayStart(now);
+    const dayEnd = addDays(dayStart, 1);
+    const today = phYmd(now);
+
+    const [live, cars, appointments, owing] = await Promise.all([
+      // Anything that could be on today's schedule or already out.
+      Booking.find({ status: 'confirmed' })
+        .populate('car', 'brand model plateNumber pricePerDay image')
+        .populate('user', 'name phone')
+        .populate('driver', 'name')
+        .lean(),
+      Car.find({ archived: { $ne: true } })
+        .select('brand model isAvailable offRoad registrationExpiry')
+        .lean(),
+      Appointment.find({ status: { $in: APPOINTMENT_OPEN }, slot: { $gte: dayStart, $lt: dayEnd } })
+        .populate('owner', 'name phone')
+        .lean(),
+      // Charges live on finished bookings too, so this is its own query
+      // rather than a filter over the confirmed ones.
+      Booking.find({
+        $or: [
+          { 'lateFee.amount': { $gt: 0 }, 'lateFee.collectedAt': null },
+          { 'fuel.charge': { $gt: 0 }, 'fuel.collectedAt': null },
+          { 'condition.damageCharge': { $gt: 0 }, 'condition.damageCollectedAt': null },
+        ],
+      })
+        .populate('car', 'brand model')
+        .populate('user', 'name')
+        .lean(),
+    ]);
+
+    const onDay = (date) => phYmd(date) === today;
+    const place = (p) => (p && p.label ? { label: p.label, km: p.km || 0 } : null);
+    const base = (b) => ({
+      id: b._id,
+      client: b.user?.name || 'Unknown',
+      phone: b.user?.phone || '',
+      vehicle: b.car ? `${b.car.brand} ${b.car.model}` : 'Vehicle removed',
+      bookingType: b.bookingType,
+      driver: b.driver?.name || '',
+      hasTime: !!b.hasPickupTime,
+    });
+
+    const pickups = live
+      .filter((b) => onDay(b.startDate) && !b.collectedAt)
+      .map((b) => ({
+        ...base(b),
+        at: b.startDate,
+        place: place(b.pickupPlace),
+        balance: balanceDue(b),
+      }));
+
+    const returns = live
+      .filter((b) => onDay(b.endDate) && b.collectedAt && !b.returnedAt)
+      .map((b) => ({ ...base(b), at: b.endDate, place: place(b.returnPlace) }));
+
+    // A delivery is a pickup or a return with somewhere to be. The same
+    // booking can appear in both lanes, once at each end.
+    const deliveries = [
+      ...pickups.filter((p) => p.place).map((p) => ({ ...p, leg: 'Drop-off' })),
+      ...returns.filter((r) => r.place).map((r) => ({ ...r, leg: 'Collection' })),
+    ];
+
+    const overdue = live
+      .filter((b) => isOverdue(b, now))
+      .map((b) => ({
+        ...base(b),
+        at: b.endDate,
+        lateFee: lateFeeSoFar(b, b.car?.pricePerDay, now),
+      }))
+      .sort((a, b) => new Date(a.at) - new Date(b.at));
+
+    const inspections = appointments.map((a) => ({
+      id: a._id,
+      at: a.slot,
+      owner: a.owner?.name || 'Owner',
+      phone: a.owner?.phone || '',
+      note: a.vehicle?.note || '',
+    }));
+
+    // ── money ───────────────────────────────────────────────────────────
+    const dueAtCollection = pickups
+      .filter((p) => p.balance > 0)
+      .map((p) => ({ id: p.id, client: p.client, vehicle: p.vehicle, at: p.at, hasTime: p.hasTime, amount: p.balance }));
+
+    const charges = owing.flatMap((b) => unsettledCharges(b).map((c) => ({
+      id: b._id,
+      kind: c.kind,
+      days: c.days,
+      client: b.user?.name || 'Unknown',
+      vehicle: b.car ? `${b.car.brand} ${b.car.model}` : 'Vehicle removed',
+      amount: c.amount,
+    })));
+
+    const gcash = await Booking.find({ payment: 'gcash_pending' })
+      .populate('car', 'brand model')
+      .populate('user', 'name')
+      .select('amountPaid createdAt car user')
+      .lean();
+
+    const sum = (rows) => rows.reduce((n, r) => n + (r.amount || 0), 0);
+
+    // ── vehicles ────────────────────────────────────────────────────────
+    const outIds = new Set(live.filter((b) => b.collectedAt && !b.returnedAt).map((b) => String(b.car?._id)));
+    const vehicles = { out: [], free: [], hidden: [], offRoad: [], expired: [] };
+    cars.forEach((c) => {
+      const entry = { id: c._id, name: `${c.brand} ${c.model}` };
+      if (c.offRoad?.since) entry.since = c.offRoad.since;
+      vehicles[vehicleState(c, outIds, now)].push(entry);
+    });
+
+    // ── revenue, against the same stretch of the period before ──────────
+    const earned = await Booking.find({ status: { $in: ['confirmed', 'completed'] } })
+      .select('createdAt totalPrice').lean();
+    const between = (from, to) => earned
+      .filter((b) => new Date(b.createdAt) >= from && new Date(b.createdAt) < to)
+      .reduce((n, b) => n + (b.totalPrice || 0), 0);
+
+    const weekStart = addDays(dayStart, -6);
+    const prevWeekStart = addDays(weekStart, -7);
+    const monthStart = new Date(dayStart);
+    monthStart.setUTCDate(1);
+    const prevMonthStart = new Date(monthStart);
+    prevMonthStart.setUTCMonth(prevMonthStart.getUTCMonth() - 1);
+    // The same number of days into last month as we are into this one, so
+    // a comparison on the 14th is 1–14 against 1–14.
+    const daysIn = Math.round((dayEnd - monthStart) / (24 * 60 * 60 * 1000));
+    const prevMonthSamePoint = addDays(prevMonthStart, daysIn);
+
+    const thisWeek = between(weekStart, dayEnd);
+    const thisMonth = between(monthStart, dayEnd);
+    const lastWeek = between(prevWeekStart, weekStart);
+    const lastMonthToDate = between(prevMonthStart, prevMonthSamePoint);
+
+    res.json({
+      now,
+      schedule: { pickups, returns, deliveries, inspections },
+      overdue,
+      money: {
+        dueAtCollection: { rows: dueAtCollection, total: sum(dueAtCollection) },
+        charges: { rows: charges, total: sum(charges) },
+        gcash: {
+          rows: gcash.map((b) => ({
+            id: b._id,
+            client: b.user?.name || 'Unknown',
+            vehicle: b.car ? `${b.car.brand} ${b.car.model}` : 'Vehicle removed',
+            at: b.createdAt,
+            amount: b.amountPaid || 0,
+          })),
+          total: gcash.reduce((n, b) => n + (b.amountPaid || 0), 0),
+        },
+      },
+      vehicles,
+      compare: {
+        week: { previous: lastWeek, pct: comparePeriods(thisWeek, lastWeek) },
+        month: {
+          previous: lastMonthToDate,
+          pct: comparePeriods(thisMonth, lastMonthToDate),
+          from: prevMonthStart,
+          to: prevMonthSamePoint,
+        },
+      },
+    });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 router.get('/expiring-documents', protect, adminOnly, async (req, res) => {
   try {
     const cutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
