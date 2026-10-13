@@ -18,6 +18,7 @@ import DiscountsPanel from '../../components/DiscountsPanel';
 import Pagination from '../../components/Pagination';
 import { paginate } from '../../utils/paginate';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
+import { registrationLapsed } from '../../utils/registration';
 import { isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
 import ModalClose from '../../components/ModalClose';
 
@@ -440,6 +441,16 @@ const ManageCars = ({ view = 'active' }) => {
       background: isDark ? 'rgba(248,113,113,0.15)' : '#fee2e2',
       color: isDark ? '#f87171' : '#991b1b',
     },
+    // Same red as off the road, because it means the same thing to the
+    // yard: this vehicle cannot go out today. The reason differs, so the
+    // words differ.
+    papersFlag: {
+      display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
+      padding: '3px 10px', borderRadius: '20px',
+      background: isDark ? 'rgba(248,113,113,0.15)' : '#fee2e2',
+      color: isDark ? '#f87171' : '#991b1b',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
+    },
     available: {
       display: 'inline-block', fontSize: '10px', fontWeight: '700', letterSpacing: '0.03em', textTransform: 'uppercase',
       padding: '3px 10px', borderRadius: '20px',
@@ -762,6 +773,16 @@ const ManageCars = ({ view = 'active' }) => {
                            about; the button to fix it is not. */
                         <span style={styles.offRoadFlag} title={car.offRoad.note || 'Off the road for repairs'}>
                           Off the Road
+                        </span>
+                      ) : registrationLapsed(car) ? (
+                        /* Papers that have run out stop the vehicle just as
+                           surely as a workshop does, and this list used to
+                           call it AVAILABLE in green. */
+                        <span
+                          style={styles.papersFlag}
+                          title={`Registration expired ${new Date(car.registrationExpiry).toLocaleDateString()} — renew it on Expiring Documents.`}
+                        >
+                          Papers Expired
                         </span>
                       ) : (
                         <span style={car.isAvailable ? styles.available : styles.unavailable}>
