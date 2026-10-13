@@ -468,13 +468,18 @@ const AddCar = () => {
               </div>
               <div style={s.secBody}>
                 <p style={s.who}>
-                  {appointment
-                    ? <>
-                        <strong>{appointment.owner?.name || 'Owner'}</strong>
-                        {appointment.owner?.phone ? ` · ${appointment.owner.phone}` : ''}
-                        {appointment.vehicle?.note ? <><br />{appointment.vehicle.note}</> : null}
-                      </>
-                    : 'Loading the appointment…'}
+                  {appointment ? (
+                    <>
+                      <strong>{appointment.owner?.name || 'Owner'}</strong>
+                      {appointment.owner?.phone ? ` · ${appointment.owner.phone}` : ''}
+                      {appointment.vehicle?.note ? <><br />{appointment.vehicle.note}</> : null}
+                    </>
+                  ) : error ? (
+                    // It is not still loading — it failed, and the banner
+                    // above already says so. Saying "loading" under it reads
+                    // as a page that has not noticed its own error.
+                    'No appointment details — the checklist still applies.'
+                  ) : 'Loading the appointment…'}
                 </p>
                 {INSPECTION_CHECKS.map((c) => (
                   <label key={c.key} style={s.checkRow}>
