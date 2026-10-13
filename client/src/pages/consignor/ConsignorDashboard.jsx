@@ -898,7 +898,11 @@ const ConsignorDashboard = () => {
                   <div style={s.emptyTitle}>No blocked dates on {selected.brand} {selected.model}</div>
                   <p style={s.emptyNote}>Requests take effect once our admin approves them.</p>
                   {!onHold && (
-                    <button type="button" style={s.goldBtn} onClick={() => setBlockPanelCarId(selected.linkedCar._id)}>
+                    <button
+                      type="button"
+                      style={{ ...s.goldBtn, alignSelf: 'center', marginTop: '4px' }}
+                      onClick={() => setBlockPanelCarId(selected.linkedCar._id)}
+                    >
                       Block dates
                     </button>
                   )}
