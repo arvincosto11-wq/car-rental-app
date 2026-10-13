@@ -307,7 +307,10 @@ const Profile = () => {
       width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
       minHeight: '44px', padding: '0 14px', borderRadius: '10px', border: 'none',
       fontSize: '14px', fontWeight: on ? '800' : '500', textAlign: 'left', cursor: 'pointer',
-      background: on ? goldTint : 'transparent', color: on ? ink : text,
+      // Left unset when inactive rather than set to transparent, so the
+      // hover tint in index.css has something to win against — an inline
+      // background would beat the stylesheet and nothing would happen.
+      background: on ? goldTint : undefined, color: on ? ink : text,
     }),
     // marginLeft: auto is what holds it against the right edge. Nothing
     // else may set an inline start margin here — that wins over the auto

@@ -1479,6 +1479,26 @@ button.seg-tab:not(:disabled):hover {
   }
 }
 
+/* The page-wide lift and shadow (see button:hover) are sized for a call to
+   action. On a full-width row inside a card they pull the row up out of the
+   card and drop a shadow over the items either side of it, which reads as
+   the menu coming apart. Same opt-out as the dropdown rows; the feedback
+   here is a tint, which is what the active item uses too. */
+.profile-menu-btn:not(:disabled) {
+  transition: background 0.15s ease;
+}
+.profile-menu-btn:not(:disabled):hover,
+.profile-menu-btn:not(:disabled):active {
+  filter: none;
+  transform: none;
+  box-shadow: none;
+  background: rgba(184, 121, 10, 0.08);
+}
+body.dark .profile-menu-btn:not(:disabled):hover,
+body.dark .profile-menu-btn:not(:disabled):active {
+  background: rgba(232, 161, 0, 0.1);
+}
+
 .profile-menu-btn:focus-visible,
 .profile-avatar-outer:focus-within .profile-avatar-badge {
   outline: 2px solid #b8790a;
