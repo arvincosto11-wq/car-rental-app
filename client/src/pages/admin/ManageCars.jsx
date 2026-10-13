@@ -904,10 +904,12 @@ const ManageCars = ({ view = 'active' }) => {
     { key: 'featured', label: 'Featured', count: countOf('featured') },
   ];
 
-  // Matches the same three things the search box does, so a suggestion
-  // never offers something the search itself would not find.
+  // Everything the box says it searches, in one haystack, so a suggestion
+  // never offers something the search itself would not find. Category is in
+  // here so "sedan" or "motor" gathers the fleet by kind — the shortened
+  // word works because this is a substring match, not a whole-word one.
   const matchesQuery = (car, q) =>
-    `${car.brand} ${car.model} ${car.plateNumber || ''}`.toLowerCase().includes(q);
+    `${car.brand} ${car.model} ${car.plateNumber || ''} ${car.category || ''}`.toLowerCase().includes(q);
 
   const query = search.trim().toLowerCase();
   const suggestions = query
@@ -920,8 +922,9 @@ const ManageCars = ({ view = 'active' }) => {
     if (statusFilter === 'featured' && !car.featured) return false;
     if (statusFilter !== 'all' && statusFilter !== 'featured' && stateOf(car) !== statusFilter) return false;
     if (!query) return true;
-    // Plate too: the office has the plate in front of them more often than
-    // the model, and typing it used to return nothing.
+    // Plate and category as well as the name: the office has the plate in
+    // front of them more often than the model, and "sedan" is how somebody
+    // asks for the part of the fleet they mean.
     return matchesQuery(car, query);
   })
     // Newest first. This list had no order at all, so it came out however
@@ -1007,7 +1010,7 @@ const ManageCars = ({ view = 'active' }) => {
             <input
               style={styles.searchInput}
               type="text"
-              placeholder="Search by brand, model or plate..."
+              placeholder="Search by brand, model, plate or type..."
               aria-label="Search cars"
               autoComplete="off"
               value={search}
