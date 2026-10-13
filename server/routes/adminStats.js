@@ -103,7 +103,9 @@ router.get('/today', protect, adminOnly, async (req, res) => {
     const dayEnd = addDays(dayStart, 1);
     const today = phYmd(now);
 
-    const [live, cars, appointments, owing] = await Promise.all([
+    const expiryCutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+    const [live, cars, appointments, owing, waiting] = await Promise.all([
       // Anything that could be on today's schedule or already out.
       Booking.find({ status: 'confirmed' })
         .populate('car', 'brand model plateNumber pricePerDay image')
@@ -128,6 +130,33 @@ router.get('/today', protect, adminOnly, async (req, res) => {
         .populate('car', 'brand model')
         .populate('user', 'name')
         .lean(),
+      // The same nine things the sidebar badges, counted one at a time.
+      // The badge endpoint adds four of them together, which is right for a
+      // dot on a menu and useless on a list that says what to go and do.
+      (async () => {
+        const [bookingsToReview, refunds, reschedules, needsDriver, consignments, openAppointments, availability, blocked, registrations] = await Promise.all([
+          Booking.countDocuments({ status: 'pending', payment: 'paid', 'adjustOffer.status': { $ne: 'open' } }),
+          Booking.countDocuments({ refundStatus: 'requested' }),
+          Booking.countDocuments({ 'rescheduleRequest.status': 'pending' }),
+          Booking.countDocuments({ status: 'confirmed', bookingType: 'with-driver', driver: null, collectedAt: null }),
+          Consignment.countDocuments({ status: 'pending' }),
+          Appointment.countDocuments({ status: { $in: APPOINTMENT_OPEN } }),
+          Car.countDocuments({ 'availabilityRequest.status': 'pending' }),
+          Car.aggregate([
+            { $unwind: '$blockedDates' },
+            { $match: { 'blockedDates.status': 'pending' } },
+            { $count: 'count' },
+          ]),
+          Car.countDocuments({ archived: { $ne: true }, registrationExpiry: { $ne: null, $lte: expiryCutoff } }),
+        ]);
+        return {
+          bookingsToReview, refunds, reschedules, needsDriver, consignments,
+          appointments: openAppointments,
+          availability,
+          blockedDates: blocked[0]?.count || 0,
+          registrations,
+        };
+      })(),
     ]);
 
     const onDay = (date) => phYmd(date) === today;
@@ -252,6 +281,7 @@ router.get('/today', protect, adminOnly, async (req, res) => {
         },
       },
       vehicles,
+      waiting,
       compare: {
         week: { previous: lastWeek, pct: comparePeriods(thisWeek, lastWeek) },
         month: {

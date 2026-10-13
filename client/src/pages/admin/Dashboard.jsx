@@ -19,12 +19,30 @@ const compactPeso = (n) => (n >= 1000
   ? `₱${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k`
   : `₱${Math.round(n)}`);
 
+const Stroke = ({ children, size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    {children}
+  </svg>
+);
+const KeyGlyph = () => <Stroke><circle cx="8" cy="12" r="3.4" /><path d="M11.4 12H21l-2 2.2M16.6 12v2.6" /></Stroke>;
+const ReturnGlyph = () => <Stroke><path d="M3 12a9 9 0 1 0 3-6.7" /><polyline points="3 4 3 9 8 9" /></Stroke>;
+const VanGlyph = () => <Stroke><path d="M3 16V8a1.6 1.6 0 0 1 1.6-1.6h8.8V16" /><path d="M13.4 10H17l3 3.2V16" /><circle cx="7.5" cy="17" r="1.6" /><circle cx="16.5" cy="17" r="1.6" /></Stroke>;
+const ClipboardGlyph = () => <Stroke><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V6H9z" /><path d="M9 11h6M9 15h4" /></Stroke>;
+const WarnGlyph = () => <Stroke size={16}><path d="M12 3.5 2.8 19.5h18.4z" /><line x1="12" y1="9.5" x2="12" y2="14" /><line x1="12" y1="16.6" x2="12" y2="16.7" /></Stroke>;
+
+// A booking made before pickup times existed sits at midnight and means a
+// whole day, so it is never drawn at 12am — it is said in words instead.
+const timeText = (d) => new Date(d).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+const whenText = (d, hasTime) => (hasTime === false
+  ? new Date(d).toLocaleDateString('en-US', MONTH_DAY)
+  : `${new Date(d).toLocaleDateString('en-US', MONTH_DAY)}, ${timeText(d)}`);
+
 const Dashboard = () => {
   usePageTitle('Admin Dashboard');
   const { user } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ totalCars: 0, totalBookings: 0, pending: 0, confirmed: 0 });
   const [recentBookings, setRecentBookings] = useState([]);
   const [topRatedCars, setTopRatedCars] = useState([]);
   const [revenue, setRevenue] = useState({ week: 0, month: 0, all: 0 });
@@ -32,6 +50,17 @@ const Dashboard = () => {
   const [monthlyTrend, setMonthlyTrend] = useState([]);
   const [periodDates, setPeriodDates] = useState({ weekStart: '', today: '', monthStart: '' });
   const [loading, setLoading] = useState(true);
+  // Today's schedule, the money and the vehicle states — see
+  // server/routes/adminStats.js. Null until it lands, so the page can tell
+  // "nothing today" from "not asked yet".
+  const [today, setToday] = useState(null);
+  // Moves the now-line. A minute is as precise as a day's timeline needs.
+  const [clock, setClock] = useState(() => new Date());
+
+  useEffect(() => {
+    const t = setInterval(() => setClock(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') return navigate('/login');
@@ -43,8 +72,13 @@ const Dashboard = () => {
       // One small request instead of every booking in the system. The
       // counting, the six-month trend and the top-rated list are all worked
       // out server-side now — see routes/adminStats.js.
-      const { data } = await api.get('/admin/dashboard');
-      setStats(data.stats);
+      const [{ data }, todayRes] = await Promise.all([
+        api.get('/admin/dashboard'),
+        // Its own request: the dashboard figures are aggregates over
+        // everything, this one is about named bookings on one day.
+        api.get('/admin/today').catch(() => null),
+      ]);
+      if (todayRes) setToday(todayRes.data);
       setRecentBookings(data.recentBookings);
       setTopRatedCars(data.topRatedCars);
       setRevenue(data.revenue);
@@ -92,34 +126,7 @@ const Dashboard = () => {
     title: { fontSize: '22px', fontWeight: '700', color: text, marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: text2, marginBottom: '24px' },
     stack: { display: 'flex', flexDirection: 'column', gap: '16px' },
-    statsRow: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '14px' },
     card: { background: isDark ? '#242526' : '#fff', border: `1px solid ${line}`, borderRadius: '12px' },
-    statCard: {
-      padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '6px',
-      minHeight: '96px', boxSizing: 'border-box',
-    },
-    statLabel: { fontSize: '12px', color: text2 },
-    statNum: { fontSize: '24px', fontWeight: '700', color: text, fontVariantNumeric: 'tabular-nums' },
-    // The one card that is a job rather than a number. Gold only while there
-    // is something waiting; at zero it is indistinguishable from the others,
-    // because a standing gold panel stops meaning anything.
-    pendingCard: {
-      background: isDark ? GOLD_TINT_DARK : GOLD_TINT,
-      border: `1px solid ${isDark ? GOLD_DARK : GOLD}`,
-      borderRadius: '12px', padding: '16px 18px',
-      display: 'flex', flexDirection: 'column', gap: '6px',
-      minHeight: '96px', boxSizing: 'border-box',
-      textDecoration: 'none', color: goldInk(isDark),
-    },
-    pendingTop: {
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
-      fontSize: '12px', fontWeight: '600', color: goldInk(isDark),
-    },
-    pendingDot: { width: '8px', height: '8px', borderRadius: '50%', background: isDark ? GOLD_DARK : GOLD, flexShrink: 0 },
-    pendingBottom: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px' },
-    pendingNum: { fontSize: '24px', fontWeight: '700', color: goldInk(isDark), fontVariantNumeric: 'tabular-nums' },
-    pendingWaiting: { fontSize: '12px', fontWeight: '600', color: goldInk(isDark) },
-    pendingReview: { display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '700', color: goldInk(isDark) },
 
     revenueCard: { padding: '22px', display: 'grid', gridTemplateColumns: '280px minmax(0, 1fr)', gap: '36px' },
     boxTitle: { fontSize: '15px', fontWeight: '600', color: text, marginBottom: '4px' },
@@ -193,11 +200,283 @@ const Dashboard = () => {
       height: '250px', display: 'flex', alignItems: 'flex-end', gap: '36px',
       padding: '0 24px 34px 60px', borderLeft: `1px solid ${rowLine}`,
     },
+  
+    // ── Today, money, vehicles, waiting (design 1a) ───────────────────
+    cardHead: {
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+      gap: '14px', marginBottom: '14px',
+    },
+    h2: { fontSize: '16.5px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a', margin: 0 },
+    cardSub: { fontSize: '12.5px', color: isDark ? '#8a8d91' : '#6b7280', margin: '3px 0 0' },
+    headBtn: {
+      display: 'inline-flex', alignItems: 'center', gap: '7px', whiteSpace: 'nowrap',
+      minHeight: '36px', padding: '0 14px', borderRadius: '10px', textDecoration: 'none',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e3e5e8'}`,
+      color: isDark ? '#e4e6eb' : '#374151', fontSize: '12.5px', fontWeight: '700',
+    },
+    todayCard: { padding: '22px 24px' },
+    moneyCard: { padding: '22px 24px' },
+
+    overdueRow: { display: 'grid', gridTemplateColumns: '120px 1fr', gap: '14px', marginBottom: '12px' },
+    overdueLabel: {
+      fontSize: '11px', fontWeight: '800', letterSpacing: '0.1em', textTransform: 'uppercase',
+      color: isDark ? '#f87171' : '#b91c1c', paddingTop: '11px',
+    },
+    overdueBox: {
+      display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '11px 13px', borderRadius: '11px',
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
+      color: isDark ? '#fca5a5' : '#991b1b', fontSize: '12.5px', lineHeight: 1.5,
+    },
+    overdueIcon: { display: 'flex', marginTop: '1px', flexShrink: 0 },
+    overdueLink: {
+      marginLeft: 'auto', whiteSpace: 'nowrap', fontWeight: '700', textDecoration: 'none',
+      color: isDark ? '#fca5a5' : '#991b1b',
+    },
+
+    axisRow: { display: 'grid', gridTemplateColumns: '120px 1fr', gap: '14px', marginTop: '6px' },
+    axis: { display: 'flex', justifyContent: 'space-between' },
+    axisTick: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
+    laneRow: { display: 'grid', gridTemplateColumns: '120px 1fr', gap: '14px', alignItems: 'start', marginTop: '6px' },
+    laneLabel: {
+      display: 'flex', alignItems: 'center', gap: '7px', paddingTop: '10px',
+      fontSize: '12.5px', fontWeight: '700', color: isDark ? '#b0b3b8' : '#4b5563',
+    },
+    laneTrack: {
+      position: 'relative', height: '96px', borderRadius: '10px',
+      background: isDark ? '#1e1f20' : '#f8f9fa',
+      border: `1px solid ${isDark ? '#303132' : '#eef0f2'}`,
+    },
+    hourLine: (left) => ({
+      position: 'absolute', top: 0, bottom: 0, left: `${left}%`, width: '1px',
+      background: isDark ? '#303132' : '#eef0f2',
+    }),
+    nowLine: (left) => ({
+      position: 'absolute', top: 0, bottom: 0, left: `${left}%`, width: '2px',
+      background: isDark ? GOLD_DARK : GOLD,
+    }),
+    nowLegend: { fontSize: '11px', color: isDark ? GOLD_DARK : goldInk(isDark), margin: '8px 0 0 134px' },
+    chip: (tone, left, dropped) => {
+      const tones = {
+        gold: {
+          bg: isDark ? 'rgba(232,161,0,0.12)' : '#fbf1d6',
+          line: isDark ? 'rgba(232,161,0,0.45)' : '#e6c77a',
+          fg: isDark ? GOLD_DARK : goldInk(isDark),
+        },
+        blue: {
+          bg: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe',
+          line: isDark ? 'rgba(37,99,235,0.4)' : '#bfdbfe',
+          fg: isDark ? '#93c5fd' : '#1e40af',
+        },
+        green: {
+          bg: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5',
+          line: isDark ? 'rgba(22,163,74,0.4)' : '#a7f3d0',
+          fg: isDark ? '#86efac' : '#065f46',
+        },
+        neutral: {
+          bg: isDark ? '#303132' : '#f1f2f4',
+          line: isDark ? '#3a3b3c' : '#e3e5e8',
+          fg: isDark ? '#b0b3b8' : '#4b5563',
+        },
+      };
+      const t = tones[tone];
+      return {
+        position: 'absolute', left: `${left}%`, top: dropped ? '38px' : '8px',
+        width: '168px', maxWidth: 'calc(100% - 8px)', padding: '7px 10px', borderRadius: '9px',
+        background: t.bg, border: `1px solid ${t.line}`, color: t.fg,
+        textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '1px', overflow: 'hidden',
+      };
+    },
+    chipTime: { fontSize: '11px', fontWeight: '800' },
+    chipWho: {
+      fontSize: '12.5px', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    chipDetail: {
+      fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      color: isDark ? '#8a8d91' : '#6b7280',
+    },
+    emptyLine: { fontSize: '13px', color: isDark ? '#8a8d91' : '#6b7280', margin: '6px 0 0' },
+
+    moneyGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '14px' },
+    moneyBlock: {
+      padding: '16px', borderRadius: '13px',
+      background: isDark ? '#1e1f20' : '#f8f9fa',
+      border: `1px solid ${isDark ? '#303132' : '#eef0f2'}`,
+    },
+    moneyLabel: {
+      fontSize: '10.5px', fontWeight: '800', letterSpacing: '0.1em', textTransform: 'uppercase',
+      color: isDark ? '#8a8d91' : '#6b7280',
+    },
+    moneyNum: {
+      fontSize: '24px', fontWeight: '800', marginTop: '6px',
+      color: isDark ? '#e4e6eb' : '#1a1a1a', fontVariantNumeric: 'tabular-nums',
+    },
+    moneyCount: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#6b7280', marginTop: '2px' },
+    moneyRow: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+      paddingTop: '9px', marginTop: '9px', borderTop: `1px solid ${isDark ? '#303132' : '#eef0f2'}`,
+    },
+    moneyRowMain: { minWidth: 0 },
+    moneyRowTop: {
+      display: 'block', fontSize: '12.5px', fontWeight: '700',
+      color: isDark ? '#e4e6eb' : '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+    },
+    moneyRowSub: { display: 'block', fontSize: '11px', color: isDark ? '#8a8d91' : '#6b7280' },
+    moneyRowAmount: {
+      fontSize: '13px', fontWeight: '800', whiteSpace: 'nowrap',
+      color: isDark ? '#e4e6eb' : '#1a1a1a', fontVariantNumeric: 'tabular-nums',
+    },
+    moreLink: {
+      display: 'inline-block', marginTop: '10px', fontSize: '12px', fontWeight: '700',
+      textDecoration: 'none', color: goldInk(isDark),
+    },
+    moneyNote: { fontSize: '11px', lineHeight: 1.5, color: isDark ? '#8a8d91' : '#9ca3af', margin: '10px 0 0' },
+
+    twoColWide: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' },
+    vehicleBar: { display: 'flex', gap: '3px', margin: '4px 0 14px' },
+    barSeg: (fill, n) => ({ flex: n, height: '14px', borderRadius: '4px', background: fill }),
+    legendRow: {
+      display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', textDecoration: 'none',
+      borderTop: `1px solid ${isDark ? '#303132' : '#eef0f2'}`,
+    },
+    legendSwatch: (fill) => ({ width: '11px', height: '11px', borderRadius: '3px', background: fill, flexShrink: 0 }),
+    legendText: { minWidth: 0, flex: 1 },
+    legendLabel: { display: 'block', fontSize: '13.5px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    legendNames: {
+      display: 'block', fontSize: '12px', color: isDark ? '#8a8d91' : '#6b7280',
+      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+    },
+    legendCount: {
+      fontSize: '17px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a', fontVariantNumeric: 'tabular-nums',
+    },
+
+    waitGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '0 18px' },
+    waitRow: {
+      display: 'flex', alignItems: 'center', gap: '10px', minHeight: '42px', textDecoration: 'none',
+      borderTop: `1px solid ${isDark ? '#303132' : '#eef0f2'}`,
+    },
+    waitLabel: (any) => ({
+      flex: 1, minWidth: 0, fontSize: '12.5px', fontWeight: any ? '700' : '500',
+      color: any ? (isDark ? '#e4e6eb' : '#1a1a1a') : (isDark ? '#8a8d91' : '#6b7280'),
+    }),
+    // Zero is calm: no fill, no colour, nothing asking to be looked at.
+    waitPill: (any) => ({
+      minWidth: '22px', padding: '2px 8px', borderRadius: '20px', textAlign: 'center',
+      fontSize: '11.5px', fontWeight: '800',
+      background: any ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
+      color: any ? ON_GOLD : (isDark ? '#8a8d91' : '#9ca3af'),
+    }),
+    waitChevron: { fontSize: '14px', color: isDark ? '#8a8d91' : '#9ca3af' },
   };
 
   const thumb = (src) => (src
     ? <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     : null);
+
+  // ── today, worked out for the timeline ──────────────────────────────
+  const schedule = today?.schedule || { pickups: [], returns: [], deliveries: [], inspections: [] };
+  const overdue = today?.overdue || [];
+
+  const lanes = [
+    { key: 'pickups', label: 'Pickups', tone: 'gold', icon: <KeyGlyph />, items: schedule.pickups },
+    { key: 'returns', label: 'Returns', tone: 'blue', icon: <ReturnGlyph />, items: schedule.returns },
+    { key: 'deliveries', label: 'Deliveries', tone: 'green', icon: <VanGlyph />, items: schedule.deliveries },
+    { key: 'inspections', label: 'Inspections', tone: 'neutral', icon: <ClipboardGlyph />, items: schedule.inspections },
+  ];
+
+  const daySummary = lanes
+    .filter((l) => l.items.length)
+    .map((l) => `${l.items.length} ${l.items.length === 1 ? l.label.replace(/s$/, '').toLowerCase() : l.label.toLowerCase()}`)
+    .join(' · ') || 'Nothing scheduled';
+
+  // 7am to 7pm unless something falls outside it, in which case the axis
+  // stretches rather than quietly dropping the booking off its end.
+  const timed = lanes.flatMap((l) => l.items.filter((i) => i.hasTime !== false).map((i) => new Date(i.at).getHours()));
+  const firstHour = Math.min(7, ...timed);
+  const lastHour = Math.max(19, ...timed);
+  const span = Math.max(1, lastHour - firstHour);
+  const hours = Array.from({ length: span + 1 }, (unused, i) => firstHour + i);
+  const hourLabel = (h) => `${((h + 11) % 12) + 1}${h < 12 ? 'a' : 'p'}`;
+
+  const pctFor = (d) => {
+    const at = new Date(d);
+    return ((at.getHours() + at.getMinutes() / 60) - firstHour) / span * 100;
+  };
+  const chipLeft = (item) => (item.hasTime === false ? 0 : Math.max(0, Math.min(92, pctFor(item.at))));
+  // Two chips within about two hours of each other would sit on top of one
+  // another, so the later one drops a row.
+  const crowded = (items, i) => i > 0 && Math.abs(pctFor(items[i].at) - pctFor(items[i - 1].at)) < (2 / span) * 100;
+  const nowPct = (() => {
+    const p = pctFor(clock);
+    return p >= 0 && p <= 100 ? p : null;
+  })();
+  const dayCount = (at) => {
+    const n = Math.max(1, Math.ceil((clock - new Date(at)) / 86400000));
+    return `${n} day${n === 1 ? '' : 's'}`;
+  };
+
+  const detailFor = (key, item) => {
+    if (key === 'inspections') return item.note || 'Inspection';
+    if (key === 'deliveries') {
+      return `${item.leg} · ${item.place?.label || 'No address'}${item.place?.km ? ` · ${item.place.km} km` : ''}`;
+    }
+    if (item.bookingType === 'with-driver') return `With driver${item.driver ? ` · ${item.driver}` : ' · none assigned'}`;
+    return item.place ? `Self-drive · ${item.place.label}` : 'Self-drive · collects at the base';
+  };
+
+  const allEvents = lanes.flatMap((l) => l.items.map((i) => ({ ...i, key: l.key, label: l.label.replace(/s$/, '') })))
+    .sort((a, b) => new Date(a.at) - new Date(b.at));
+
+  // ── money ───────────────────────────────────────────────────────────
+  const money = today?.money || {
+    dueAtCollection: { rows: [], total: 0 }, charges: { rows: [], total: 0 }, gcash: { rows: [], total: 0 },
+  };
+  const moneyBlocks = [
+    {
+      label: 'Balance due at collection',
+      ...money.dueAtCollection,
+      sub: (r) => `${r.vehicle} · ${whenText(r.at, r.hasTime)}`,
+      note: 'Only deposit bookings appear. Anyone who paid in full owes nothing.',
+    },
+    {
+      label: 'Charges not settled',
+      ...money.charges,
+      sub: (r) => `${r.client}${r.days ? ` · ${r.days} day${r.days === 1 ? '' : 's'} late` : ''}`,
+      note: 'Late fees are one day\'s rental per day late.',
+    },
+    {
+      label: 'GCash to confirm',
+      ...money.gcash,
+      sub: (r) => `Deposit · ${r.vehicle}`,
+      note: 'Paid through GCash and not yet confirmed at our end.',
+    },
+  ];
+
+  // ── vehicles ────────────────────────────────────────────────────────
+  const v = today?.vehicles || { out: [], free: [], hidden: [], offRoad: [], expired: [] };
+  const vehicleGroups = [
+    { key: 'out', label: 'Out on rent', items: v.out, fill: isDark ? GOLD_DARK : GOLD },
+    { key: 'free', label: 'Free to book', items: v.free, fill: isDark ? '#22c55e' : '#16a34a' },
+    { key: 'hidden', label: 'Hidden', items: v.hidden, fill: isDark ? '#6b7280' : '#9ca3af' },
+    { key: 'offRoad', label: 'Off the road', items: v.offRoad, fill: isDark ? '#f59e0b' : '#d97706' },
+    { key: 'expired', label: 'Registration expired', items: v.expired, fill: isDark ? '#ef4444' : '#dc2626' },
+  ];
+  const vehicleTotal = vehicleGroups.reduce((n, g) => n + g.items.length, 0);
+
+  // ── waiting ─────────────────────────────────────────────────────────
+  const w = today?.waiting || {};
+  const waitingRows = [
+    { label: 'Bookings to review', n: w.bookingsToReview || 0, to: '/admin/manage-bookings' },
+    { label: 'Refund requests', n: w.refunds || 0, to: '/admin/manage-bookings' },
+    { label: 'Reschedule requests', n: w.reschedules || 0, to: '/admin/manage-bookings' },
+    { label: 'With-driver trips, no driver', n: w.needsDriver || 0, to: '/admin/manage-bookings' },
+    { label: 'Consignment applications', n: w.consignments || 0, to: '/admin/manage-consignments' },
+    { label: 'Inspection appointments', n: w.appointments || 0, to: '/admin/appointments' },
+    { label: 'Availability requests', n: w.availability || 0, to: '/admin/availability-requests' },
+    { label: 'Blocked-date requests', n: w.blockedDates || 0, to: '/admin/availability-requests' },
+    { label: 'Registrations expiring', n: w.registrations || 0, to: '/admin/expiring-documents' },
+  ];
 
   return (
     <AdminLayout activePage="Dashboard">
@@ -205,12 +484,10 @@ const Dashboard = () => {
       <p style={s.subtitle}>Monitor overall platform performance</p>
       {loading ? (
         <div style={s.stack}>
-          <div style={s.statsRow}>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} style={{ ...s.card, ...s.statCard }}>
-                <Skeleton height="12px" width="55%" isDark={isDark} />
-                <Skeleton height="24px" width="35%" isDark={isDark} />
-              </div>
+          <div style={{ ...s.card, ...s.todayCard }}>
+            <Skeleton height="15px" width="22%" isDark={isDark} style={{ marginBottom: '14px' }} />
+            {Array.from({ length: 4 }).map((unused, i) => (
+              <Skeleton key={i} height="96px" isDark={isDark} style={{ marginBottom: '6px', borderRadius: '10px' }} />
             ))}
           </div>
           <div style={{ ...s.card, ...s.revenueCard }}>
@@ -242,44 +519,167 @@ const Dashboard = () => {
         </div>
       ) : (
         <div style={s.stack}>
-          <div style={s.statsRow}>
-            <div style={{ ...s.card, ...s.statCard }}>
-              <span style={s.statLabel}>Total Cars</span>
-              <span style={s.statNum}>{stats.totalCars}</span>
-            </div>
-            <div style={{ ...s.card, ...s.statCard }}>
-              <span style={s.statLabel}>Total Bookings</span>
-              <span style={s.statNum}>{stats.totalBookings}</span>
-            </div>
-            {stats.pending > 0 ? (
-              <Link to="/admin/manage-bookings" style={s.pendingCard}>
-                <span style={s.pendingTop}>
-                  Pending
-                  <span style={s.pendingDot} />
-                </span>
-                <div style={s.pendingBottom}>
-                  <span style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                    <span style={s.pendingNum}>{stats.pending}</span>
-                    <span style={s.pendingWaiting}>awaiting review</span>
-                  </span>
-                  <span style={s.pendingReview}>
-                    Review
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <polyline points="9 6 15 12 9 18" />
-                    </svg>
-                  </span>
-                </div>
-              </Link>
-            ) : (
-              <div style={{ ...s.card, ...s.statCard }}>
-                <span style={s.statLabel}>Pending</span>
-                <span style={s.statNum}>{stats.pending}</span>
+          {/* ── What today needs ───────────────────────────────────── */}
+          <section style={{ ...s.card, ...s.todayCard }} aria-labelledby="dash-today">
+            <div style={s.cardHead}>
+              <div>
+                <h2 id="dash-today" style={s.h2}>Today</h2>
+                <p style={s.cardSub}>{daySummary}</p>
               </div>
-            )}
-            <div style={{ ...s.card, ...s.statCard }}>
-              <span style={s.statLabel}>Confirmed</span>
-              <span style={s.statNum}>{stats.confirmed}</span>
+              <Link to="/admin/pickups" className="btn-like" style={s.headBtn}>
+                Open Pickup Desk <span aria-hidden="true">→</span>
+              </Link>
             </div>
+
+            {overdue.map((o) => (
+              <div key={o.id} style={s.overdueRow}>
+                <span style={s.overdueLabel}>Overdue</span>
+                <div style={s.overdueBox}>
+                  <span style={s.overdueIcon}><WarnGlyph /></span>
+                  <span>
+                    <strong>{o.client}</strong> · {o.vehicle} — due back {whenText(o.at, o.hasTime)}.{' '}
+                    <strong>{dayCount(o.at)} late</strong>
+                    {o.lateFee > 0 && <> · late fee so far ₱{o.lateFee.toLocaleString()}</>}
+                  </span>
+                  <Link to="/admin/manage-bookings" style={s.overdueLink}>Open booking</Link>
+                </div>
+              </div>
+            ))}
+
+            {lanes.every((l) => l.items.length === 0) ? (
+              <p style={s.emptyLine}>Nothing scheduled today.</p>
+            ) : (
+              <>
+                <div style={s.axisRow}>
+                  <span />
+                  <div style={s.axis}>
+                    {hours.map((h) => (
+                      <span key={h} style={s.axisTick}>{hourLabel(h)}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {lanes.map((lane) => (
+                  <div key={lane.key} style={s.laneRow}>
+                    <span style={s.laneLabel}>{lane.icon} {lane.label}</span>
+                    <div style={s.laneTrack}>
+                      {hours.map((h) => <span key={h} style={s.hourLine((h - firstHour) / span * 100)} />)}
+                      {nowPct !== null && <span style={s.nowLine(nowPct)} aria-hidden="true" />}
+                      {lane.items.map((item, i) => (
+                        <Link
+                          key={`${item.id}-${item.leg || ''}`}
+                          to={lane.key === 'inspections' ? '/admin/appointments' : '/admin/manage-bookings'}
+                          style={s.chip(lane.tone, chipLeft(item), i % 2 === 1 && crowded(lane.items, i))}
+                          aria-label={`${lane.label.replace(/s$/, '')} ${whenText(item.at, item.hasTime)}, ${item.client || item.owner}, ${item.vehicle || 'inspection'}`}
+                        >
+                          <span style={s.chipTime}>{item.hasTime === false ? 'Time not set' : timeText(item.at)}</span>
+                          <span style={s.chipWho}>{(item.client || item.owner)}{item.vehicle ? ` · ${item.vehicle}` : ''}</span>
+                          <span style={s.chipDetail}>{detailFor(lane.key, item)}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {nowPct !== null && <p style={s.nowLegend}>Now, {timeText(clock)}</p>}
+              </>
+            )}
+
+            {/* The same day in order, for anybody reading with a screen
+                reader: a timeline is a picture of a sequence, and a picture
+                is exactly what does not reach them. */}
+            <ol className="sr-only">
+              {allEvents.map((e) => (
+                <li key={`${e.key}-${e.id}`}>
+                  {e.label} {whenText(e.at, e.hasTime)} — {e.client || e.owner}{e.vehicle ? `, ${e.vehicle}` : ''}
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          {/* ── Money not yet collected ────────────────────────────── */}
+          <section style={{ ...s.card, ...s.moneyCard }} aria-labelledby="dash-money">
+            <div style={s.cardHead}>
+              <div>
+                <h2 id="dash-money" style={s.h2}>Money not yet collected</h2>
+                <p style={s.cardSub}>Recorded in the system, not yet in hand.</p>
+              </div>
+            </div>
+            <div style={s.moneyGrid}>
+              {moneyBlocks.map((block) => (
+                <div key={block.label} style={s.moneyBlock}>
+                  <div style={s.moneyLabel}>{block.label}</div>
+                  <div style={s.moneyNum}>₱{block.total.toLocaleString()}</div>
+                  <div style={s.moneyCount}>
+                    {block.rows.length === 0 ? 'Nothing outstanding' : `${block.rows.length} ${block.rows.length === 1 ? 'booking' : 'bookings'}`}
+                  </div>
+                  {block.rows.slice(0, 3).map((r) => (
+                    <div key={`${r.id}-${r.kind || ''}`} style={s.moneyRow}>
+                      <span style={s.moneyRowMain}>
+                        <span style={s.moneyRowTop}>{r.kind ? `${r.kind} · ${r.vehicle}` : r.client}</span>
+                        <span style={s.moneyRowSub}>{block.sub(r)}</span>
+                      </span>
+                      <span style={s.moneyRowAmount}>₱{r.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                  {block.rows.length > 3 && (
+                    <Link to="/admin/manage-bookings" style={s.moreLink}>+{block.rows.length - 3} more →</Link>
+                  )}
+                  <p style={s.moneyNote}>{block.note}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <div style={s.twoColWide}>
+            {/* ── Vehicles right now ──────────────────────────────── */}
+            <section style={{ ...s.card, ...s.listCard }} aria-labelledby="dash-vehicles">
+              <div style={s.cardHead}>
+                <h2 id="dash-vehicles" style={s.h2}>Vehicles right now</h2>
+                <span style={s.cardSub}>{vehicleTotal} vehicles</span>
+              </div>
+              <div
+                style={s.vehicleBar}
+                role="img"
+                aria-label={vehicleGroups.filter((g) => g.items.length).map((g) => `${g.items.length} ${g.label}`).join(', ')}
+              >
+                {vehicleGroups.filter((g) => g.items.length).map((g) => (
+                  <span key={g.key} style={s.barSeg(g.fill, g.items.length)} />
+                ))}
+              </div>
+              {vehicleGroups.map((g) => (
+                <Link key={g.key} to="/admin/manage-cars" style={s.legendRow}>
+                  <span style={s.legendSwatch(g.fill)} />
+                  <span style={s.legendText}>
+                    <span style={s.legendLabel}>{g.label}</span>
+                    <span style={s.legendNames}>
+                      {g.items.length === 0
+                        ? 'None'
+                        : g.items.slice(0, 3).map((v) => v.name).join(', ')
+                          + (g.items.length > 3 ? ` and ${g.items.length - 3} more` : '')}
+                    </span>
+                  </span>
+                  <span style={s.legendCount}>{g.items.length}</span>
+                </Link>
+              ))}
+            </section>
+
+            {/* ── Waiting on a decision ───────────────────────────── */}
+            <section style={{ ...s.card, ...s.listCard }} aria-labelledby="dash-waiting">
+              <div style={s.cardHead}>
+                <h2 id="dash-waiting" style={s.h2}>Waiting on a decision</h2>
+                <span style={s.cardSub}>{waitingRows.filter((r) => r.n > 0).length} of {waitingRows.length} need you</span>
+              </div>
+              <div style={s.waitGrid}>
+                {waitingRows.map((r) => (
+                  <Link key={r.label} to={r.to} style={s.waitRow}>
+                    <span style={s.waitLabel(r.n > 0)}>{r.label}</span>
+                    <span style={s.waitPill(r.n > 0)}>{r.n}</span>
+                    <span style={s.waitChevron} aria-hidden="true">›</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
           </div>
 
           <div style={{ ...s.card, ...s.revenueCard }}>
