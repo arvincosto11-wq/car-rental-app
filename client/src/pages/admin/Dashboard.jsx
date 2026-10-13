@@ -162,6 +162,19 @@ const Dashboard = () => {
 
     twoCol: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '16px', alignItems: 'stretch' },
     listCard: { padding: '22px', display: 'flex', flexDirection: 'column' },
+    smallHead: {
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+      gap: '12px', marginBottom: '10px',
+    },
+    viewAll: { fontSize: '12px', fontWeight: '700', textDecoration: 'none', color: goldInk(isDark), whiteSpace: 'nowrap' },
+    // Never red: a quiet month is information, not a warning.
+    changeChip: {
+      alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '6px',
+      marginTop: '10px', padding: '4px 10px', borderRadius: '20px',
+      fontSize: '12px', fontWeight: '700',
+      background: isDark ? '#303132' : '#f1f2f4',
+      color: isDark ? '#b0b3b8' : '#4b5563',
+    },
     bookingRow: (last) => ({
       display: 'grid', gridTemplateColumns: '30px minmax(0, 1fr) auto 86px',
       alignItems: 'center', gap: '12px', padding: '11px 0',
@@ -280,8 +293,11 @@ const Dashboard = () => {
         },
       };
       const t = tones[tone];
+      const fromRight = left > 66;
       return {
-        position: 'absolute', left: `${left}%`, top: dropped ? '38px' : '8px',
+        position: 'absolute',
+        ...(fromRight ? { right: `${Math.max(0, 100 - left)}%` } : { left: `${left}%` }),
+        top: dropped ? '38px' : '8px',
         width: '168px', maxWidth: 'calc(100% - 8px)', padding: '7px 10px', borderRadius: '9px',
         background: t.bg, border: `1px solid ${t.line}`, color: t.fg,
         textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '1px', overflow: 'hidden',
@@ -403,7 +419,10 @@ const Dashboard = () => {
     const at = new Date(d);
     return ((at.getHours() + at.getMinutes() / 60) - firstHour) / span * 100;
   };
-  const chipLeft = (item) => (item.hasTime === false ? 0 : Math.max(0, Math.min(92, pctFor(item.at))));
+  // Past about two thirds of the day a 168px chip hung off the end of its
+  // track, so from there it is hung from its right edge instead and grows
+  // backwards into the afternoon it belongs to.
+  const chipLeft = (item) => (item.hasTime === false ? 0 : Math.max(0, Math.min(100, pctFor(item.at))));
   // Two chips within about two hours of each other would sit on top of one
   // another, so the later one drops a row.
   const crowded = (items, i) => i > 0 && Math.abs(pctFor(items[i].at) - pctFor(items[i - 1].at)) < (2 / span) * 100;
@@ -463,6 +482,23 @@ const Dashboard = () => {
     { key: 'expired', label: 'Registration expired', items: v.expired, fill: isDark ? '#ef4444' : '#dc2626' },
   ];
   const vehicleTotal = vehicleGroups.reduce((n, g) => n + g.items.length, 0);
+
+  // Against the same stretch of the period before — comparing a half-done
+  // month with all of last month says business has collapsed, every month,
+  // until the 28th. All Time has nothing to compare against.
+  const change = (() => {
+    const c = today?.compare;
+    if (!c || revenuePeriod === 'all') return null;
+    if (revenuePeriod === 'week') {
+      return c.week?.pct === null || c.week?.pct === undefined
+        ? null
+        : { pct: c.week.pct, label: 'the 7 days before' };
+    }
+    if (c.month?.pct === null || c.month?.pct === undefined) return null;
+    const from = new Date(c.month.from).toLocaleDateString('en-US', MONTH_DAY);
+    const to = new Date(c.month.to).toLocaleDateString('en-US', MONTH_DAY);
+    return { pct: c.month.pct, label: `${from}–${to} (₱${(c.month.previous || 0).toLocaleString()})` };
+  })();
 
   // ── waiting ─────────────────────────────────────────────────────────
   const w = today?.waiting || {};
@@ -692,6 +728,12 @@ const Dashboard = () => {
                 <button type="button" style={s.periodBtn(revenuePeriod === 'all')} aria-pressed={revenuePeriod === 'all'} onClick={() => setRevenuePeriod('all')}>All Time</button>
               </div>
               <div style={s.revenueNum}>₱{revenue[revenuePeriod].toLocaleString()}</div>
+              {change && (
+                <div style={s.changeChip}>
+                  <span aria-hidden="true">{change.pct >= 0 ? '↑' : '↓'}</span>
+                  {Math.abs(change.pct)}% vs {change.label}
+                </div>
+              )}
               <div style={s.revenueCaption}>{periodCaption}</div>
               <div style={s.revenueFootnote}>
                 Pending and cancelled bookings are excluded. Amounts in ₱, dates in Philippine time.
@@ -725,8 +767,13 @@ const Dashboard = () => {
 
           <div style={s.twoCol}>
             <div style={{ ...s.card, ...s.listCard }}>
-              <div style={s.boxTitle}>Recent Bookings</div>
-              <div style={{ ...s.boxSubtitle, marginBottom: '10px' }}>Latest customer bookings</div>
+              <div style={s.smallHead}>
+                <div>
+                  <div style={s.boxTitle}>Latest bookings</div>
+                  <div style={s.boxSubtitle}>Newest first</div>
+                </div>
+                <Link to="/admin/manage-bookings" style={s.viewAll}>View all →</Link>
+              </div>
               {recentBookings.length === 0 ? (
                 <div style={s.emptyBox}>No bookings yet.</div>
               ) : recentBookings.map((b, i) => (
@@ -745,8 +792,13 @@ const Dashboard = () => {
             </div>
 
             <div style={{ ...s.card, ...s.listCard }}>
-              <div style={s.boxTitle}>Top Rated Cars</div>
-              <div style={{ ...s.boxSubtitle, marginBottom: '10px' }}>Your best-reviewed vehicles</div>
+              <div style={s.smallHead}>
+                <div>
+                  <div style={s.boxTitle}>Best-reviewed vehicles</div>
+                  <div style={s.boxSubtitle}>By rating, then number of reviews</div>
+                </div>
+                <Link to="/admin/manage-reviews" style={s.viewAll}>View all →</Link>
+              </div>
               {topRatedCars.length === 0 ? (
                 <div style={s.emptyBox}>No reviews yet.</div>
               ) : topRatedCars.map((car, i) => (
