@@ -699,13 +699,30 @@ const ManageBookings = () => {
       color: isDark ? '#8a8d91' : '#9ca3af', margin: '4px 0 7px',
     },
     fuelRow: { display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '12px' },
-    fuelChip: (on) => ({
-      padding: '5px 9px', fontSize: '11px', fontWeight: on ? '800' : '500', borderRadius: '7px',
+    // `on` is what the admin has picked. `wentOut` is the level the vehicle
+    // left with — the thing being compared against, so it is marked rather
+    // than filled: a dashed gold outline, which still reads as separate
+    // when the two happen to be the same chip.
+    fuelChip: (on, wentOut) => ({
+      padding: '5px 9px', fontSize: '11px', fontWeight: on || wentOut ? '800' : '500', borderRadius: '7px',
       cursor: 'pointer',
-      border: `1px solid ${on ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
+      border: on
+        ? `1px solid ${isDark ? GOLD_DARK : GOLD}`
+        : wentOut
+          ? `1px dashed ${isDark ? GOLD_DARK : GOLD}`
+          : `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       background: on ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
-      color: on ? ON_GOLD : (isDark ? '#b0b3b8' : '#6b7280'),
+      color: on ? ON_GOLD : wentOut ? goldInk(isDark) : (isDark ? '#b0b3b8' : '#6b7280'),
     }),
+    fuelCaption: {
+      fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', margin: '0 0 12px',
+      display: 'flex', alignItems: 'center', gap: '6px',
+    },
+    fuelCaptionMark: {
+      display: 'inline-block', width: '14px', height: '10px', borderRadius: '3px',
+      border: `1px dashed ${isDark ? GOLD_DARK : GOLD}`, flexShrink: 0,
+    },
+    wentOutValue: { fontWeight: '800', color: goldInk(isDark) },
     returnOutRow: {
       margin: '4px 0 12px', padding: '10px 12px', borderRadius: '10px',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
@@ -1523,24 +1540,40 @@ const ManageBookings = () => {
           <div style={s.cancelCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="return-title">
             <div id="return-title" style={s.cancelTitle}>Record this return</div>
             <p style={s.cancelSub}>
-              {returnTarget.fuel?.atPickup !== null && returnTarget.fuel?.atPickup !== undefined
-                ? `It went out at ${fuelLabel(returnTarget.fuel.atPickup)}. Our terms ask for it back at the same level.`
-                : 'No fuel level was recorded when this vehicle went out, so there is nothing to compare against.'}
+              {returnTarget.fuel?.atPickup !== null && returnTarget.fuel?.atPickup !== undefined ? (
+                <>
+                  It went out at <span style={s.wentOutValue}>{fuelLabel(returnTarget.fuel.atPickup)}</span>.
+                  {' '}Our terms ask for it back at the same level.
+                </>
+              ) : (
+                'No fuel level was recorded when this vehicle went out, so there is nothing to compare against.'
+              )}
             </p>
 
             <div style={s.returnLabel}>Fuel coming back</div>
             <div style={s.fuelRow}>
-              {Array.from({ length: FUEL_STEPS + 1 }, (_, i) => i).map((i) => (
-                <button
-                  key={i}
-                  type="button"
-                  style={s.fuelChip(returnForm.fuel === i)}
-                  onClick={() => setReturnForm({ ...returnForm, fuel: i })}
-                >
-                  {fuelLabel(i)}
-                </button>
-              ))}
+              {Array.from({ length: FUEL_STEPS + 1 }, (_, i) => i).map((i) => {
+                const wentOut = returnTarget.fuel?.atPickup === i;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    style={s.fuelChip(returnForm.fuel === i, wentOut)}
+                    aria-label={wentOut ? `${fuelLabel(i)} — the level it went out at` : undefined}
+                    onClick={() => setReturnForm({ ...returnForm, fuel: i })}
+                  >
+                    {fuelLabel(i)}
+                  </button>
+                );
+              })}
             </div>
+
+            {returnTarget.fuel?.atPickup !== null && returnTarget.fuel?.atPickup !== undefined && (
+              <p style={s.fuelCaption}>
+                <span style={s.fuelCaptionMark} aria-hidden="true" />
+                The level it went out at
+              </p>
+            )}
 
             {shortfallNow && (
               <p style={s.returnShort}>
