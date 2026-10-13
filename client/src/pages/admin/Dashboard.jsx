@@ -371,7 +371,7 @@ const Dashboard = () => {
     },
     moneyNote: { fontSize: '11px', lineHeight: 1.5, color: isDark ? '#8a8d91' : '#9ca3af', margin: '10px 0 0' },
 
-    twoColWide: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' },
+    twoColWide: { display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '18px' },
     vehicleBar: { display: 'flex', gap: '3px', margin: '4px 0 14px' },
     barSeg: (fill, n) => ({ flex: n, height: '14px', borderRadius: '4px', background: fill }),
     legendRow: {
@@ -502,12 +502,16 @@ const Dashboard = () => {
 
   // ── vehicles ────────────────────────────────────────────────────────
   const v = today?.vehicles || { out: [], free: [], hidden: [], offRoad: [], expired: [] };
+  // `to` opens Manage Cars already filtered. "Out on rent" has no filter of
+  // its own there — a vehicle out on a trip is still listed and bookable
+  // for other dates — so that row opens the whole list rather than
+  // pretending to narrow it.
   const vehicleGroups = [
-    { key: 'out', label: 'Out on rent', items: v.out, fill: isDark ? GOLD_DARK : GOLD },
-    { key: 'free', label: 'Free to book', items: v.free, fill: isDark ? '#22c55e' : '#16a34a' },
-    { key: 'hidden', label: 'Hidden', items: v.hidden, fill: isDark ? '#6b7280' : '#9ca3af' },
-    { key: 'offRoad', label: 'Off the road', items: v.offRoad, fill: isDark ? '#f59e0b' : '#d97706' },
-    { key: 'expired', label: 'Registration expired', items: v.expired, fill: isDark ? '#ef4444' : '#dc2626' },
+    { key: 'out', label: 'Out on rent', items: v.out, fill: isDark ? GOLD_DARK : GOLD, to: '/admin/manage-cars' },
+    { key: 'free', label: 'Free to book', items: v.free, fill: isDark ? '#22c55e' : '#16a34a', to: '/admin/manage-cars?status=available' },
+    { key: 'hidden', label: 'Hidden', items: v.hidden, fill: isDark ? '#6b7280' : '#9ca3af', to: '/admin/manage-cars?status=hidden' },
+    { key: 'offRoad', label: 'Off the road', items: v.offRoad, fill: isDark ? '#f59e0b' : '#d97706', to: '/admin/manage-cars?status=off-road' },
+    { key: 'expired', label: 'Registration expired', items: v.expired, fill: isDark ? '#ef4444' : '#dc2626', to: '/admin/manage-cars?status=papers' },
   ];
   const vehicleTotal = vehicleGroups.reduce((n, g) => n + g.items.length, 0);
 
@@ -723,7 +727,7 @@ const Dashboard = () => {
                 ))}
               </div>
               {vehicleGroups.map((g) => (
-                <Link key={g.key} to="/admin/manage-cars" style={s.legendRow}>
+                <Link key={g.key} to={g.to} style={s.legendRow}>
                   <span style={s.legendSwatch(g.fill)} />
                   <span style={s.legendText}>
                     <span style={s.legendLabel}>{g.label}</span>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
 import { SkeletonListCard } from '../../components/Skeleton';
@@ -94,7 +94,14 @@ const ManageCars = ({ view = 'active' }) => {
   // Which card's ⋯ menu is open, and which status chip is selected. Both
   // are about looking at the list, so neither survives a reload.
   const [menuCarId, setMenuCarId] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('all');
+  // Openable from somewhere else — the dashboard's vehicle list links
+  // straight to the group somebody just read a count for. Only the first
+  // render reads it; after that the chips are in charge.
+  const [params] = useSearchParams();
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const asked = params.get('status');
+    return ['available', 'hidden', 'off-road', 'papers', 'featured'].includes(asked) ? asked : 'all';
+  });
   const [sortBy, setSortBy] = useState('newest');
   // Set by picking a suggestion: the list narrows to that one vehicle until
   // the search changes again.
