@@ -179,6 +179,31 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
       borderRadius: '16px', padding: '24px',
     },
+    // Two columns while picking dates: the calendar on the left stays put
+    // while the right side changes under it. Stacked, the calendar pushed
+    // everything that answers it — what is already blocked, what this
+    // range will do — below the fold.
+    cardWide: {
+      position: 'relative', width: '100%', maxWidth: '860px', outline: 'none',
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      borderRadius: '16px', padding: '24px',
+    },
+    columns: { display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'flex-start' },
+    colLeft: { flex: '1 1 360px', minWidth: 0 },
+    colRight: { flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column' },
+    // What this range will actually do, in words, before it is done.
+    summary: {
+      margin: '14px 0 2px', padding: '12px 14px', borderRadius: '10px',
+      background: isDark ? 'rgba(232,161,0,0.12)' : '#fbf1d6',
+      border: `1px solid ${isDark ? 'rgba(232,161,0,0.45)' : '#e6c77a'}`,
+    },
+    summaryLabel: {
+      fontSize: '10px', fontWeight: '800', letterSpacing: '0.08em', textTransform: 'uppercase',
+      color: isDark ? '#8a8d91' : '#9ca3af', marginBottom: '4px',
+    },
+    summaryText: { fontSize: '13px', fontWeight: '700', lineHeight: 1.5, color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    summaryHit: { color: isDark ? '#fca5a5' : '#b91c1c' },
     title: { fontSize: '16px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', paddingRight: '40px' },
     sub: { fontSize: '12px', lineHeight: 1.5, color: isDark ? '#b0b3b8' : '#6b7280', margin: '6px 0 18px' },
     sectionLabel: {
@@ -267,6 +292,20 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
 
   const fmt = (d) => new Date(d).toLocaleDateString();
 
+  // How many of the ranges already on the calendar this selection touches.
+  // Only to say so up front — the server still works out the real list, the
+  // refunds and the confirmation step on submit.
+  const bookingsHit = (() => {
+    if (!form.startDate || !form.endDate) return 0;
+    const from = new Date(`${form.startDate}T00:00:00Z`).getTime();
+    const to = new Date(`${form.endDate}T23:59:59Z`).getTime();
+    return calendarRanges.filter((r) => {
+      const rs = new Date(r.startDate).getTime();
+      const re = new Date(r.endDate).getTime();
+      return rs <= to && re >= from;
+    }).length;
+  })();
+
   // Spelled out rather than left to inference. "Sep 22 to Sep 24" reads as
   // either two days or three depending on who is reading it, and the
   // difference is a vehicle being booked while it sits in the workshop.
@@ -291,7 +330,7 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
       <div
         ref={panelRef}
         tabIndex={-1}
-        style={s.card}
+        style={conflicts ? s.card : s.cardWide}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -399,7 +438,40 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
                 : 'Ask admin to take your vehicle off the road for these dates. Nothing changes until admin approves the request.'}
             </p>
 
-            <div style={s.sectionLabel}>Blocked dates</div>
+            <div style={s.columns}>
+              <div style={s.colLeft}>
+            <div style={s.sectionLabel}>Pick the dates</div>
+            <div style={s.rangeRow}>
+              <span style={s.rangeValue}>
+                {form.startDate && form.endDate
+                  ? `${fmt(form.startDate)} → ${fmt(form.endDate)}${offRoadText}`
+                  : form.startDate
+                    ? 'Tap the last day — or the same day again for that day only'
+                    : 'Tap the first day off the road'}
+              </span>
+              {form.startDate && (
+                <button type="button" className="text-link-btn" style={s.linkBtn}
+                  onClick={() => setForm({ ...form, startDate: '', endDate: '' })}>
+                  Clear
+                </button>
+              )}
+            </div>
+            <AvailabilityCalendar
+              bookedRanges={calendarRanges}
+              selectedStart={form.startDate}
+              selectedEnd={form.endDate}
+              onSelectDay={handleSelectDay}
+              isDark={isDark}
+              promo={isPromoVisible(car.promo) ? car.promo : null}
+              // Admin can block over bookings (they're cancelled and refunded
+              // after a confirmation step); a consignor can't, so booked days
+              // stay unpickable for them.
+              selectableWhenBooked={isAdmin}
+            />
+              </div>
+
+              <div style={s.colRight}>
+            <div style={s.sectionLabel}>Already blocked</div>
             {shown.length === 0 ? (
               <p style={s.empty}>No upcoming blocked dates.</p>
             ) : (
@@ -444,36 +516,22 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
               </button>
             )}
 
-            <div style={s.divider} />
-
-            <div style={s.sectionLabel}>Add blocked dates</div>
-            <div style={s.rangeRow}>
-              <span style={s.rangeValue}>
-                {form.startDate && form.endDate
-                  ? `${fmt(form.startDate)} → ${fmt(form.endDate)}${offRoadText}`
-                  : form.startDate
-                    ? 'Tap the last day — or the same day again for that day only'
-                    : 'Tap the first day off the road'}
-              </span>
-              {form.startDate && (
-                <button type="button" className="text-link-btn" style={s.linkBtn}
-                  onClick={() => setForm({ ...form, startDate: '', endDate: '' })}>
-                  Clear
-                </button>
-              )}
-            </div>
-            <AvailabilityCalendar
-              bookedRanges={calendarRanges}
-              selectedStart={form.startDate}
-              selectedEnd={form.endDate}
-              onSelectDay={handleSelectDay}
-              isDark={isDark}
-              promo={isPromoVisible(car.promo) ? car.promo : null}
-              // Admin can block over bookings (they're cancelled and refunded
-              // after a confirmation step); a consignor can't, so booked days
-              // stay unpickable for them.
-              selectableWhenBooked={isAdmin}
-            />
+            {form.startDate && form.endDate && (
+              <div style={s.summary}>
+                <div style={s.summaryLabel}>New block</div>
+                <div style={s.summaryText}>
+                  {fmt(form.startDate)} → {fmt(form.endDate)}{offRoadText}
+                  {isAdmin && (
+                    <>
+                      {' · '}
+                      {bookingsHit > 0
+                        ? <span style={s.summaryHit}>{bookingsHit} booking{bookingsHit === 1 ? '' : 's'} affected</span>
+                        : 'no bookings affected'}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
             <label style={s.partDayToggle}>
               <input
@@ -542,11 +600,13 @@ const BlockDatesPanel = ({ car, role, isDark, onClose, onCarUpdated }) => {
 
             <div style={s.actions}>
               <button type="button" style={s.primaryBtn} disabled={busy} onClick={() => submit(false)}>
-                {busy ? 'Working...' : isAdmin ? 'Block These Dates' : 'Send Request'}
+                {busy ? 'Working...' : isAdmin ? 'Block these dates' : 'Send request'}
               </button>
               <button type="button" style={s.secondaryBtn} disabled={busy} onClick={close}>
                 Done
               </button>
+            </div>
+              </div>
             </div>
           </>
         )}
