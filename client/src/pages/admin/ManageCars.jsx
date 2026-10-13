@@ -28,6 +28,16 @@ const DASH_CH = '—';
 
 const PAGE_SIZE = 12;
 
+// The jump strip at the top of the Edit drawer. Not steps — the form is
+// one scroll and nothing depends on anything above it.
+const EDIT_SECTIONS = [
+  { id: 'photos', label: 'Photos' },
+  { id: 'basics', label: 'Basics' },
+  { id: 'pricing', label: 'Pricing' },
+  { id: 'registration', label: 'Registration' },
+  { id: 'booking', label: 'Booking' },
+];
+
 // What each state is called on a card. Status is never colour alone.
 const PILL_TEXT = {
   available: 'Available',
@@ -568,6 +578,99 @@ const ManageCars = ({ view = 'active' }) => {
     menuTitle: { display: 'block', fontSize: '12.5px', fontWeight: '700' },
     menuSub: { display: 'block', fontSize: '11px', color: isDark ? '#8a8d91' : '#6b7280', marginTop: '1px' },
     menuDivider: { height: '1px', background: isDark ? '#303132' : '#eef0f2', margin: '4px 2px' },
+
+    // ── Edit drawer ────────────────────────────────────────────────────
+    // A drawer rather than a centred box: the form is long, and a centred
+    // modal either scrolls inside a short window or covers the page it was
+    // opened from. This keeps the list visible beside it.
+    drawerOverlay: {
+      position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)',
+      display: 'flex', justifyContent: 'flex-end',
+    },
+    drawer: {
+      width: 'min(640px, 100%)', height: '100%', background: card,
+      borderLeft: `1px solid ${line}`, display: 'flex', flexDirection: 'column',
+      outline: 'none',
+    },
+    drawerHead: {
+      display: 'flex', alignItems: 'center', gap: '12px', position: 'relative',
+      padding: '18px 20px', borderBottom: `1px solid ${line}`,
+    },
+    drawerThumb: { width: '52px', height: '40px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 },
+    drawerThumbEmpty: {
+      width: '52px', height: '40px', borderRadius: '8px', flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: isDark ? '#1e1f20' : '#f1f2f4', color: isDark ? '#8a8d91' : '#9ca3af',
+    },
+    drawerTitle: { fontSize: '17px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a', margin: 0 },
+    drawerSub: { fontSize: '12.5px', color: isDark ? '#8a8d91' : '#6b7280', margin: '2px 0 0' },
+    strip: {
+      display: 'flex', gap: '4px', padding: '10px 20px', overflowX: 'auto',
+      borderBottom: `1px solid ${line}`,
+    },
+    stripBtn: {
+      minHeight: '30px', padding: '0 11px', borderRadius: '8px', whiteSpace: 'nowrap',
+      border: `1px solid ${line}`, background: 'transparent',
+      color: isDark ? '#b0b3b8' : '#4b5563', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+    },
+    drawerBody: { flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '26px' },
+    section: { display: 'flex', flexDirection: 'column', gap: '12px', scrollMarginTop: '12px' },
+    sectionHead: {
+      fontSize: '11px', fontWeight: '800', letterSpacing: '0.12em', textTransform: 'uppercase',
+      color: isDark ? '#8a8d91' : '#6b7280',
+    },
+    typeSeg: {
+      display: 'inline-flex', gap: '2px', padding: '3px', borderRadius: '10px',
+      background: isDark ? '#1e1f20' : '#f1f2f4', border: `1px solid ${line}`, alignSelf: 'flex-start',
+    },
+    typeSegBtn: (on) => ({
+      minHeight: '32px', padding: '0 18px', borderRadius: '8px', border: 'none',
+      fontSize: '12.5px', fontWeight: on ? '800' : '600', cursor: 'pointer',
+      background: on ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
+      color: on ? ON_GOLD : (isDark ? '#b0b3b8' : '#4b5563'),
+    }),
+    photoGrid4: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' },
+    photoCell: (cover) => ({
+      position: 'relative', aspectRatio: '4 / 3', borderRadius: '10px', overflow: 'hidden',
+      border: cover ? `2px solid ${isDark ? GOLD_DARK : GOLD}` : `1px solid ${line}`,
+      background: isDark ? '#1e1f20' : '#f8f9fa',
+    }),
+    photoCellImg: { width: '100%', height: '100%', objectFit: 'cover' },
+    coverTag: {
+      position: 'absolute', left: '5px', bottom: '5px',
+      fontSize: '9px', fontWeight: '800', letterSpacing: '0.08em', textTransform: 'uppercase',
+      padding: '2px 7px', borderRadius: '5px',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+    },
+    addTile: {
+      aspectRatio: '4 / 3', borderRadius: '10px', cursor: 'pointer',
+      border: `1px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px',
+      fontSize: '11px', fontWeight: '700', color: isDark ? '#8a8d91' : '#6b7280',
+    },
+    tileRow: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
+    tile: (on) => ({
+      display: 'inline-flex', alignItems: 'center', gap: '9px', cursor: 'pointer',
+      minHeight: '42px', padding: '0 16px', borderRadius: '10px',
+      fontSize: '13px', fontWeight: '700',
+      border: `1px solid ${on ? (isDark ? 'rgba(232,161,0,0.45)' : '#e6c77a') : line}`,
+      background: on ? (isDark ? 'rgba(232,161,0,0.12)' : '#fbf1d6') : 'transparent',
+      color: on ? goldInk(isDark) : (isDark ? '#e4e6eb' : '#374151'),
+    }),
+    drawerFoot: {
+      display: 'flex', gap: '10px', justifyContent: 'flex-end',
+      padding: '14px 20px', borderTop: `1px solid ${line}`, background: card,
+    },
+    drawerCancel: {
+      minHeight: '40px', padding: '0 18px', borderRadius: '10px', border: `1px solid ${line}`,
+      background: 'transparent', color: isDark ? '#e4e6eb' : '#374151',
+      fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+    },
+    drawerSave: {
+      minHeight: '40px', padding: '0 22px', borderRadius: '10px', border: 'none',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+      fontSize: '13px', fontWeight: '800', cursor: 'pointer',
+    },
 
     toolbar: {
       display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', marginBottom: '22px',
@@ -1180,9 +1283,9 @@ const ManageCars = ({ view = 'active' }) => {
       {editingCarData && (() => {
         const car = editingCarData;
         return (
-          <div style={styles.editModalOverlay} onClick={closeEditModal}>
+          <div style={styles.drawerOverlay} onClick={closeEditModal}>
             <div
-              style={styles.editModalCard}
+              style={styles.drawer}
               ref={editModalRef}
               tabIndex={-1}
               role="dialog"
@@ -1190,58 +1293,81 @@ const ManageCars = ({ view = 'active' }) => {
               aria-labelledby="edit-car-modal-title"
               onClick={(e) => e.stopPropagation()}
             >
-              <ModalClose onClose={closeEditModal} isDark={isDark} />
-              <div style={styles.editForm}>
-                <h3 id="edit-car-modal-title" style={styles.editTitle}>Edit Car</h3>
-
-                <div style={styles.typeToggleRow}>
-                  <button type="button" style={styles.typeToggleBtn(editVehicleType === 'car')} onClick={() => handleEditVehicleTypeChange('car')}>
-                    🚗 Car
-                  </button>
-                  <button type="button" style={styles.typeToggleBtn(editVehicleType === 'motorcycle')} onClick={() => handleEditVehicleTypeChange('motorcycle')}>
-                    🏍️ Motorcycle
-                  </button>
+              <div style={styles.drawerHead}>
+                {car.image
+                  ? <img src={car.image} alt="" style={styles.drawerThumb} />
+                  : <div style={styles.drawerThumbEmpty}>{car.category === 'Motorcycle' ? <MotoIcon /> : <CarIcon />}</div>}
+                <div style={{ minWidth: 0 }}>
+                  <h3 id="edit-car-modal-title" style={styles.drawerTitle}>Edit {car.brand} {car.model}</h3>
+                  <p style={styles.drawerSub}>Changes go live when you save.</p>
                 </div>
+                <ModalClose onClose={closeEditModal} isDark={isDark} />
+              </div>
 
-                {/* Photos */}
-                <div style={styles.field}>
-                  <label style={styles.label} htmlFor="mc-edit-photos">Car Photos</label>
-                  <div style={styles.imageUpload}>
-                    <div style={styles.imagePlaceholder}>
-                      <span style={{ fontSize: '28px' }}>🚗</span>
-                      <p style={{ fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '6px' }}>
-                        Click to add photos
-                      </p>
-                    </div>
-                    <input
-                      id="mc-edit-photos"
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleEditPhotosChange}
-                      style={styles.fileInput}
-                    />
+              {/* Jumps rather than steps: every section is on one scroll,
+                  and nothing here has to be filled in before anything else. */}
+              <div style={styles.strip}>
+                {EDIT_SECTIONS.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    style={styles.stripBtn}
+                    onClick={() => document.getElementById(`mc-sec-${s.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={styles.drawerBody}>
+                <div id="mc-sec-photos" style={styles.section}>
+                  <div style={styles.sectionHead}>Vehicle type</div>
+                  <div style={styles.typeSeg}>
+                    <button type="button" style={styles.typeSegBtn(editVehicleType === 'car')} onClick={() => handleEditVehicleTypeChange('car')}>
+                      Car
+                    </button>
+                    <button type="button" style={styles.typeSegBtn(editVehicleType === 'motorcycle')} onClick={() => handleEditVehicleTypeChange('motorcycle')}>
+                      Motorcycle
+                    </button>
                   </div>
-                  {(editExistingPhotos.length > 0 || editNewPhotoPreviews.length > 0) && (
-                    <div style={styles.photoGrid}>
-                      {editExistingPhotos.map((photo, i) => (
-                        <div key={photo.fileId || photo.url || i} style={styles.photoThumbWrap}>
-                          <img src={photo.url} alt={`Existing ${i + 1}`} style={styles.photoThumb} />
-                          <button type="button" className="icon-toggle-btn" style={styles.removePhotoBtn} onClick={() => removeExistingPhoto(i)} aria-label={`Remove existing photo ${i + 1}`}>×</button>
-                        </div>
-                      ))}
-                      {editNewPhotoPreviews.map((src, i) => (
-                        <div key={src} style={styles.photoThumbWrap}>
-                          <img src={src} alt={`New ${i + 1}`} style={styles.photoThumb} />
-                          <button type="button" className="icon-toggle-btn" style={styles.removePhotoBtn} onClick={() => removeNewPhoto(i)} aria-label={`Remove new photo ${i + 1}`}>×</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <p style={styles.hint}>The first photo shown here becomes the cover image everywhere else in the app.</p>
                 </div>
 
-                <div style={styles.editGrid}>
+                <div style={styles.section}>
+                  <div style={styles.sectionHead}>Photos</div>
+                  <div style={styles.photoGrid4}>
+                    {editExistingPhotos.map((photo, i) => (
+                      <div key={photo.fileId || photo.url || i} style={styles.photoCell(i === 0)}>
+                        <img src={photo.url} alt={`Existing ${i + 1}`} style={styles.photoCellImg} />
+                        {i === 0 && <span style={styles.coverTag}>Cover</span>}
+                        <button type="button" className="icon-toggle-btn" style={styles.removePhotoBtn} onClick={() => removeExistingPhoto(i)} aria-label={`Remove existing photo ${i + 1}`}>×</button>
+                      </div>
+                    ))}
+                    {editNewPhotoPreviews.map((src, i) => (
+                      <div key={src} style={styles.photoCell(editExistingPhotos.length === 0 && i === 0)}>
+                        <img src={src} alt={`New ${i + 1}`} style={styles.photoCellImg} />
+                        {editExistingPhotos.length === 0 && i === 0 && <span style={styles.coverTag}>Cover</span>}
+                        <button type="button" className="icon-toggle-btn" style={styles.removePhotoBtn} onClick={() => removeNewPhoto(i)} aria-label={`Remove new photo ${i + 1}`}>×</button>
+                      </div>
+                    ))}
+                    <label htmlFor="mc-edit-photos" style={styles.addTile}>
+                      <span style={{ fontSize: '18px', lineHeight: 1 }}>+</span>
+                      Add photos
+                      <input
+                        id="mc-edit-photos"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleEditPhotosChange}
+                        className="sr-only"
+                      />
+                    </label>
+                  </div>
+                  <p style={styles.hint}>The first photo is the cover everywhere in the app.</p>
+                </div>
+
+                <div id="mc-sec-basics" style={styles.section}>
+                  <div style={styles.sectionHead}>Basics</div>
+                  <div style={styles.editGrid}>
                   <div style={styles.field}>
                     <label style={styles.label} htmlFor="mc-edit-brand">Brand</label>
                     <Autocomplete id="mc-edit-brand" isDark={isDark} value={editForm.brand}
@@ -1260,20 +1386,6 @@ const ManageCars = ({ view = 'active' }) => {
                     <label style={styles.label} htmlFor="mc-edit-year">Year</label>
                     <input id="mc-edit-year" style={styles.input} type="text" inputMode="numeric" placeholder="e.g. 2022" value={editForm.year}
                       onChange={(e) => setEditForm({...editForm, year: sanitizeDigits(e.target.value, 4)})} />
-                  </div>
-                  <div style={styles.field}>
-                    <label style={styles.label} htmlFor="mc-edit-price">Daily Price (₱)</label>
-                    <input id="mc-edit-price" style={styles.input} type="text" inputMode="decimal" placeholder="e.g. 150" value={editForm.pricePerDay}
-                      onChange={(e) => setEditForm({...editForm, pricePerDay: sanitizeDecimal(e.target.value, 8)})} />
-                  </div>
-                  <div style={styles.field}>
-                    <label style={styles.label} htmlFor="mc-edit-turnaround">Turnaround (hours)</label>
-                    <input id="mc-edit-turnaround" style={styles.input} type="text" inputMode="numeric" placeholder="Leave blank for the standard 2"
-                      value={editForm.turnaroundHours}
-                      onChange={(e) => setEditForm({ ...editForm, turnaroundHours: sanitizeDigits(e.target.value, 2) })} />
-                    <span style={styles.fieldHint}>
-                      How long this vehicle needs between one client returning it and the next collecting it.
-                    </span>
                   </div>
                   <div style={styles.field}>
                     <label style={styles.label} htmlFor="mc-edit-category">Category</label>
@@ -1316,7 +1428,38 @@ const ManageCars = ({ view = 'active' }) => {
                       onChange={(e) => setEditForm({...editForm, seats: sanitizeDigits(e.target.value, 2)})} />
                   </div>
                   <div style={styles.field}>
-                    <label style={styles.label} htmlFor="mc-edit-plate">Plate Number</label>
+                    <label style={styles.label} htmlFor="mc-edit-mileage">Mileage (km)</label>
+                    <input id="mc-edit-mileage" style={styles.input} type="text" inputMode="numeric" placeholder="e.g. 35000" value={editForm.mileage}
+                      onChange={(e) => setEditForm({...editForm, mileage: sanitizeDigits(e.target.value, 7)})} />
+                  </div>
+                  </div>
+                </div>
+
+                <div id="mc-sec-pricing" style={styles.section}>
+                  <div style={styles.sectionHead}>Pricing &amp; turnaround</div>
+                  <div style={styles.editGrid}>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-price">Daily price (₱)</label>
+                    <input id="mc-edit-price" style={styles.input} type="text" inputMode="decimal" placeholder="e.g. 150" value={editForm.pricePerDay}
+                      onChange={(e) => setEditForm({...editForm, pricePerDay: sanitizeDecimal(e.target.value, 8)})} />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-turnaround">Turnaround (hours)</label>
+                    <input id="mc-edit-turnaround" style={styles.input} type="text" inputMode="numeric" placeholder="Standard is 2"
+                      value={editForm.turnaroundHours}
+                      onChange={(e) => setEditForm({ ...editForm, turnaroundHours: sanitizeDigits(e.target.value, 2) })} />
+                    <span style={styles.fieldHint}>
+                      How long this vehicle needs between one client returning it and the next collecting it.
+                    </span>
+                  </div>
+                  </div>
+                </div>
+
+                <div id="mc-sec-registration" style={styles.section}>
+                  <div style={styles.sectionHead}>Registration &amp; tracking</div>
+                  <div style={styles.editGrid}>
+                  <div style={styles.field}>
+                    <label style={styles.label} htmlFor="mc-edit-plate">Plate number</label>
                     <input id="mc-edit-plate" style={styles.input} type="text" placeholder="e.g. ABC 1234" value={editForm.plateNumber}
                       onChange={(e) => setEditForm({...editForm, plateNumber: formatPlateNumber(e.target.value)})} />
                   </div>
@@ -1330,45 +1473,45 @@ const ManageCars = ({ view = 'active' }) => {
                     <input id="mc-edit-gps-device" style={styles.input} type="text" placeholder="e.g. 9176761220 (leave blank if none installed)" value={editForm.gpsDeviceId}
                       onChange={(e) => setEditForm({...editForm, gpsDeviceId: e.target.value.trim()})} />
                   </div>
-                  <div style={styles.field}>
-                    <label style={styles.label} htmlFor="mc-edit-color">Color</label>
-                    <ColorPicker id="mc-edit-color" isDark={isDark} value={editForm.color}
-                      onChange={(color) => setEditForm({...editForm, color})} />
-                  </div>
-                  <div style={styles.field}>
-                    <label style={styles.label} htmlFor="mc-edit-mileage">Mileage (km)</label>
-                    <input id="mc-edit-mileage" style={styles.input} type="text" inputMode="numeric" placeholder="e.g. 35000" value={editForm.mileage}
-                      onChange={(e) => setEditForm({...editForm, mileage: sanitizeDigits(e.target.value, 7)})} />
                   </div>
                 </div>
-                <div style={styles.field}>
-                  <label style={styles.label} id="mc-edit-booking-types-label">Available Booking Types</label>
-                  <div role="group" aria-labelledby="mc-edit-booking-types-label" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                    <label style={styles.checkboxLabel}>
+
+                <div style={styles.section}>
+                  <div style={styles.sectionHead}>Colour</div>
+                  <ColorPicker id="mc-edit-color" isDark={isDark} value={editForm.color}
+                    onChange={(color) => setEditForm({...editForm, color})} />
+                </div>
+
+                <div id="mc-sec-booking" style={styles.section}>
+                  <div style={styles.sectionHead}>Booking types</div>
+                  <div role="group" aria-labelledby="mc-edit-booking-types-label" style={styles.tileRow}>
+                    <span className="sr-only" id="mc-edit-booking-types-label">Available booking types</span>
+                    <label style={styles.tile((editForm.availableBookingTypes || []).includes('self-drive'))}>
                       <input type="checkbox" checked={(editForm.availableBookingTypes || []).includes('self-drive')}
                         onChange={() => toggleEditBookingType('self-drive')} />
-                      Self Drive
+                      Self drive
                     </label>
-                    <label style={styles.checkboxLabel}>
+                    <label style={styles.tile((editForm.availableBookingTypes || []).includes('with-driver'))}>
                       <input type="checkbox" checked={(editForm.availableBookingTypes || []).includes('with-driver')}
                         onChange={() => toggleEditBookingType('with-driver')} />
-                      With Driver
+                      With driver
                     </label>
                   </div>
                 </div>
-                <div style={styles.field}>
-                  <label style={styles.label} htmlFor="mc-edit-description">Description</label>
+
+                <div style={styles.section}>
+                  <div style={styles.sectionHead}>Description</div>
                   <textarea id="mc-edit-description" style={styles.textarea} placeholder="e.g. A luxurious SUV..." value={editForm.description}
                     onChange={(e) => setEditForm({...editForm, description: e.target.value})} />
                 </div>
-                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                  <button style={styles.saveBtn} onClick={() => handleUpdate(car._id)} disabled={updating}>
-                    {updating ? 'Saving...' : 'Save Changes'}
-                  </button>
-                  <button style={styles.cancelBtn} onClick={closeEditModal}>
-                    Cancel
-                  </button>
-                </div>
+              </div>
+
+              {/* Stays on screen however far down the form somebody is. */}
+              <div style={styles.drawerFoot}>
+                <button style={styles.drawerCancel} onClick={closeEditModal}>Cancel</button>
+                <button style={styles.drawerSave} onClick={() => handleUpdate(car._id)} disabled={updating}>
+                  {updating ? 'Saving...' : 'Save changes'}
+                </button>
               </div>
             </div>
           </div>
