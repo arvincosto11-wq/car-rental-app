@@ -402,10 +402,16 @@ const Profile = () => {
     ? new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
     : '';
 
+  // Who is on screen while the profile request is still out. The name,
+  // photo and role were all cached at login, so the sidebar can be right
+  // from the first frame instead of filling in a second later — the menu
+  // used to come back one item short until the role arrived.
+  const shown = profile || user || null;
+
   // A licence only matters to somebody who books self-drive. Consignors and
   // admins never have one on file — the renewal reminder already skips them
   // (server/utils/expiryNotify.js), so the section would be an empty card.
-  const wantsLicence = profile?.role === 'user';
+  const wantsLicence = shown?.role === 'user';
   const licenceLeft = profile?.licenseExpiry ? daysUntil(profile.licenseExpiry) : null;
   const licenceExpired = licenceLeft !== null && licenceLeft < 0;
   const licenceSoon = licenceLeft !== null && licenceLeft >= 0 && licenceLeft <= LICENCE_SOON_DAYS;
@@ -672,13 +678,13 @@ const Profile = () => {
           <div style={s.identity}>
             <div className="profile-avatar-outer" style={s.avatarOuter}>
               <div style={s.avatarWrap}>
-                {profile?.image
-                  ? <img src={profile.image} alt="" style={s.avatarImg} />
-                  : <span style={s.avatarInitials}>{initialsOf(profile?.name)}</span>}
+                {shown?.image
+                  ? <img src={shown.image} alt="" style={s.avatarImg} />
+                  : <span style={s.avatarInitials}>{initialsOf(shown?.name)}</span>}
               </div>
               <label htmlFor="profile-avatar-input" className="profile-avatar-badge" style={s.avatarBadge}>
                 <EditPencilIcon size={12} />
-                <span className="sr-only">{profile?.image ? 'Change profile photo' : 'Add profile photo'}</span>
+                <span className="sr-only">{shown?.image ? 'Change profile photo' : 'Add profile photo'}</span>
               </label>
               <input
                 id="profile-avatar-input"
@@ -690,10 +696,17 @@ const Profile = () => {
               />
             </div>
             <div style={s.identityMeta}>
-              <span style={s.identityName}>{profile?.name || ''}</span>
-              {avatarUploading
-                ? <span style={s.identityHint}>Uploading photo...</span>
-                : memberSince && <span style={s.identityHint}>Member since {memberSince}</span>}
+              <span style={s.identityName}>{shown?.name || ''}</span>
+              {avatarUploading ? (
+                <span style={s.identityHint}>Uploading photo...</span>
+              ) : memberSince ? (
+                <span style={s.identityHint}>Member since {memberSince}</span>
+              ) : (
+                // The join date is the one thing here the cached login
+                // doesn't know, so it waits rather than leaving a gap that
+                // pushes the menu down when it arrives.
+                <Skeleton height="12.5px" width="140px" isDark={isDark} />
+              )}
             </div>
           </div>
 
