@@ -248,12 +248,17 @@ router.get('/today', protect, adminOnly, async (req, res) => {
 
     const weekStart = addDays(dayStart, -6);
     const prevWeekStart = addDays(weekStart, -7);
-    const monthStart = new Date(dayStart);
-    monthStart.setUTCDate(1);
-    const prevMonthStart = new Date(monthStart);
-    prevMonthStart.setUTCMonth(prevMonthStart.getUTCMonth() - 1);
+    // The first of the month in Philippine time. Setting the date on
+    // dayStart would be setting it on an instant that already carries the
+    // +8 shift, which lands on the 2nd and made this say "Sep 2–Sep 15".
+    const phMonthStart = (back) => {
+      const [y, m] = phYmd(now).split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1 - back, 1) - 8 * 60 * 60 * 1000);
+    };
+    const monthStart = phMonthStart(0);
+    const prevMonthStart = phMonthStart(1);
     // The same number of days into last month as we are into this one, so
-    // a comparison on the 14th is 1–14 against 1–14.
+    // a comparison on the 13th is 1–13 against 1–13.
     const daysIn = Math.round((dayEnd - monthStart) / (24 * 60 * 60 * 1000));
     const prevMonthSamePoint = addDays(prevMonthStart, daysIn);
 
