@@ -95,6 +95,11 @@ const ManageCars = ({ view = 'active' }) => {
   // are about looking at the list, so neither survives a reload.
   const [menuCarId, setMenuCarId] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+  // Set by picking a suggestion: the list narrows to that one vehicle until
+  // the search changes again.
+  const [pickedCarId, setPickedCarId] = useState(null);
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const [blockPanelCarId, setBlockPanelCarId] = useState(null);
   const [offRoadTarget, setOffRoadTarget] = useState(null);
   const [offRoadNote, setOffRoadNote] = useState('');
@@ -115,6 +120,16 @@ const ManageCars = ({ view = 'active' }) => {
     }
   };
   useEffect(() => { loadRuleCount(); }, []);
+
+  // The suggestion list closes the same way the ⋯ menu does. Its own
+  // pointer events are stopped on the search wrapper, so picking one still
+  // lands before this fires.
+  useEffect(() => {
+    if (!suggestOpen) return undefined;
+    const close = () => setSuggestOpen(false);
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [suggestOpen]);
 
   // One open menu at a time, closed by a click anywhere else or by Esc.
   // Bound only while a menu is actually open, so the page carries no
@@ -675,12 +690,12 @@ const ManageCars = ({ view = 'active' }) => {
       display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', marginBottom: '22px',
     },
     filterStrip: {
-      display: 'inline-flex', gap: '2px', padding: '3px', borderRadius: '11px',
+      display: 'inline-flex', gap: '2px', padding: '3px', borderRadius: '10px',
       background: isDark ? '#1e1f20' : '#f1f2f4', border: `1px solid ${line}`,
     },
     filterChip: (on) => ({
       display: 'inline-flex', alignItems: 'center', gap: '6px',
-      minHeight: '34px', padding: '0 12px', borderRadius: '9px', border: 'none',
+      minHeight: '32px', padding: '0 12px', borderRadius: '8px', border: 'none',
       fontSize: '12.5px', fontWeight: on ? '800' : '600', cursor: 'pointer',
       background: on ? card : 'transparent',
       color: on ? (isDark ? '#e4e6eb' : '#1a1a1a') : (isDark ? '#b0b3b8' : '#4b5563'),
@@ -781,16 +796,52 @@ const ManageCars = ({ view = 'active' }) => {
       border: `1px solid ${isDark ? 'rgba(232,161,0,0.35)' : 'rgba(184,121,10,0.35)'}`,
       color: goldInk(isDark),
     },
-    searchWrap: { position: 'relative', maxWidth: '420px', marginBottom: '22px' },
+    // 40px and a 10px radius, the same as the filter chips beside it. It
+    // used to be 44px with a 12px radius, which read as a taller, rounder
+    // box bolted onto the row, and it carried its own bottom margin from
+    // the days when it was alone there.
+    searchWrap: { position: 'relative', flex: '0 1 380px', minWidth: '240px' },
     searchIcon: {
       position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)',
       display: 'flex', pointerEvents: 'none', color: isDark ? '#8a8d91' : '#9ca3af',
     },
     searchInput: {
-      width: '100%', height: '44px', padding: '0 14px 0 40px', boxSizing: 'border-box',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '12px',
+      width: '100%', height: '40px', padding: '0 34px 0 38px', boxSizing: 'border-box',
+      border: `1px solid ${line}`, borderRadius: '10px',
       fontSize: '13px', fontFamily: 'inherit', outline: 'none',
-      background: isDark ? '#242526' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
+      background: card, color: isDark ? '#e4e6eb' : '#111827',
+    },
+    searchClear: {
+      position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+      width: '22px', height: '22px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+      background: 'transparent', color: isDark ? '#8a8d91' : '#9ca3af',
+      fontSize: '16px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    },
+    suggestList: {
+      position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 40,
+      padding: '6px', borderRadius: '12px', background: card, border: `1px solid ${line}`,
+      boxShadow: '0 12px 28px rgba(0,0,0,0.22)',
+      display: 'flex', flexDirection: 'column', gap: '2px',
+    },
+    suggestItem: {
+      display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
+      padding: '7px 8px', borderRadius: '8px', border: 'none', background: 'transparent',
+      textAlign: 'left', cursor: 'pointer', color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    suggestThumb: { width: '40px', height: '30px', objectFit: 'cover', borderRadius: '6px', flexShrink: 0 },
+    suggestThumbEmpty: {
+      width: '40px', height: '30px', borderRadius: '6px', flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: isDark ? '#1e1f20' : '#f1f2f4', color: isDark ? '#8a8d91' : '#9ca3af',
+    },
+    suggestText: { minWidth: 0 },
+    suggestName: { display: 'block', fontSize: '12.5px', fontWeight: '700' },
+    suggestSub: { display: 'block', fontSize: '11px', color: isDark ? '#8a8d91' : '#6b7280' },
+    sortWrap: { marginLeft: 'auto' },
+    sortSelect: {
+      height: '40px', padding: '0 12px', borderRadius: '10px', cursor: 'pointer',
+      border: `1px solid ${line}`, background: card, color: isDark ? '#e4e6eb' : '#374151',
+      fontSize: '12.5px', fontWeight: '700', fontFamily: 'inherit', outline: 'none',
     },
     emptyText: { color: isDark ? '#b0b3b8' : '#6b7280', fontSize: '13px' },
     listFooter: {
@@ -853,15 +904,25 @@ const ManageCars = ({ view = 'active' }) => {
     { key: 'featured', label: 'Featured', count: countOf('featured') },
   ];
 
+  // Matches the same three things the search box does, so a suggestion
+  // never offers something the search itself would not find.
+  const matchesQuery = (car, q) =>
+    `${car.brand} ${car.model} ${car.plateNumber || ''}`.toLowerCase().includes(q);
+
+  const query = search.trim().toLowerCase();
+  const suggestions = query
+    ? listCars.filter((c) => matchesQuery(c, query)).slice(0, 6)
+    : [];
+
   const filteredCars = cars.filter((car) => {
     if (isDraftsView ? car.status !== 'draft' : car.status === 'draft') return false;
+    if (pickedCarId) return car._id === pickedCarId;
     if (statusFilter === 'featured' && !car.featured) return false;
     if (statusFilter !== 'all' && statusFilter !== 'featured' && stateOf(car) !== statusFilter) return false;
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
+    if (!query) return true;
     // Plate too: the office has the plate in front of them more often than
     // the model, and typing it used to return nothing.
-    return `${car.brand} ${car.model} ${car.plateNumber || ''}`.toLowerCase().includes(q);
+    return matchesQuery(car, query);
   })
     // Newest first. This list had no order at all, so it came out however
     // MongoDB handed it over — oldest first — which put the vehicle you
@@ -870,12 +931,20 @@ const ManageCars = ({ view = 'active' }) => {
     // orders correctly for anything stored before timestamps.
     .sort((a, b) => {
       // Anything that cannot go out — hidden, off the road, papers expired
-      // — sits at the end, the same as on the public page. The fleet that
-      // is working is the part somebody scrolls this list to find.
+      // — sits at the end, the same as on the public page, whichever sort
+      // is chosen. The fleet that is working is the part somebody scrolls
+      // this list to find.
       const stopped = (unbookable(a) ? 1 : 0) - (unbookable(b) ? 1 : 0);
       if (stopped) return stopped;
+      // The id breaks every tie: it begins with the second the row was
+      // made, so the order never depends on what the database sent.
       const made = (c) => (c.createdAt ? new Date(c.createdAt).getTime() : 0);
-      return made(b) - made(a) || String(b._id).localeCompare(String(a._id));
+      const newest = () => made(b) - made(a) || String(b._id).localeCompare(String(a._id));
+      if (sortBy === 'name-asc') return `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`) || newest();
+      if (sortBy === 'price-asc') return a.pricePerDay - b.pricePerDay || newest();
+      if (sortBy === 'price-desc') return b.pricePerDay - a.pricePerDay || newest();
+      if (sortBy === 'reviews-desc') return (b.ratingCount || 0) - (a.ratingCount || 0) || newest();
+      return newest();
     });
 
   // Each card is several times taller than the old row now that it carries
@@ -933,16 +1002,63 @@ const ManageCars = ({ view = 'active' }) => {
         </div>
 
         <div style={styles.toolbar}>
-          <div style={styles.searchWrap}>
+          <div style={styles.searchWrap} onPointerDown={(e) => e.stopPropagation()}>
             <span style={styles.searchIcon}><SearchIcon /></span>
             <input
               style={styles.searchInput}
               type="text"
               placeholder="Search by brand, model or plate..."
               aria-label="Search cars"
+              autoComplete="off"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+                // Typing again is leaving the one vehicle behind.
+                setPickedCarId(null);
+                setSuggestOpen(true);
+              }}
+              onFocus={() => setSuggestOpen(true)}
+              onKeyDown={(e) => { if (e.key === 'Escape') setSuggestOpen(false); }}
             />
+            {search && (
+              <button
+                type="button"
+                className="icon-toggle-btn"
+                style={styles.searchClear}
+                aria-label="Clear search"
+                onClick={() => { setSearch(''); setPickedCarId(null); setSuggestOpen(false); setPage(1); }}
+              >
+                ×
+              </button>
+            )}
+            {suggestOpen && !pickedCarId && suggestions.length > 0 && (
+              <div style={styles.suggestList}>
+                {suggestions.map((c) => (
+                  <button
+                    key={c._id}
+                    type="button"
+                    style={styles.suggestItem}
+                    onClick={() => {
+                      setPickedCarId(c._id);
+                      setSearch(`${c.brand} ${c.model}`);
+                      setSuggestOpen(false);
+                      setPage(1);
+                    }}
+                  >
+                    {c.image
+                      ? <img src={c.image} alt="" style={styles.suggestThumb} />
+                      : <span style={styles.suggestThumbEmpty}>{c.category === 'Motorcycle' ? <MotoIcon /> : <CarIcon />}</span>}
+                    <span style={styles.suggestText}>
+                      <span style={styles.suggestName}>{c.brand} {c.model}</span>
+                      <span style={styles.suggestSub}>
+                        {c.plateNumber || 'No plate on file'} · {PILL_TEXT[stateOf(c)]}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           {!isDraftsView && (
             <div style={styles.filterStrip} role="tablist" aria-label="Filter by status">
@@ -962,6 +1078,20 @@ const ManageCars = ({ view = 'active' }) => {
               ))}
             </div>
           )}
+          <label style={styles.sortWrap}>
+            <span className="sr-only">Sort vehicles</span>
+            <select
+              style={styles.sortSelect}
+              value={sortBy}
+              onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
+            >
+              <option value="newest">Newest first</option>
+              <option value="name-asc">Name: A to Z</option>
+              <option value="price-asc">Price: low to high</option>
+              <option value="price-desc">Price: high to low</option>
+              <option value="reviews-desc">Most reviewed</option>
+            </select>
+          </label>
         </div>
 
         {loading ? <SkeletonListCard isDark={isDark} count={4} /> : filteredCars.length === 0 ? (
