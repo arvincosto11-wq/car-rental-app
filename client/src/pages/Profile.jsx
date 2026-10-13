@@ -296,14 +296,23 @@ const Profile = () => {
     identityName: { fontSize: '17px', fontWeight: '800', color: text, wordBreak: 'break-word' },
     identityHint: { fontSize: '12.5px', color: text3 },
 
-    menuCard: { background: card, border: `1px solid ${border}`, borderRadius: '14px', padding: '6px' },
+    // The padding and the gap are what keep this from looking crumpled: at
+    // 6px with the buttons stacked edge to edge, the active block ran into
+    // the card's own rounded corner and sat flush against the next label.
+    menuCard: {
+      background: card, border: `1px solid ${border}`, borderRadius: '14px', padding: '8px',
+      display: 'flex', flexDirection: 'column', gap: '4px',
+    },
     menuBtn: (on) => ({
       width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-      minHeight: '42px', padding: '0 12px', borderRadius: '10px', border: 'none',
+      minHeight: '44px', padding: '0 14px', borderRadius: '10px', border: 'none',
       fontSize: '14px', fontWeight: on ? '800' : '500', textAlign: 'left', cursor: 'pointer',
       background: on ? goldTint : 'transparent', color: on ? ink : text,
     }),
-    menuDot: { width: '8px', height: '8px', borderRadius: '50%', background: gold, marginLeft: 'auto', flexShrink: 0 },
+    menuDot: {
+      width: '8px', height: '8px', borderRadius: '50%', background: gold,
+      marginLeft: 'auto', marginInlineStart: '8px', flexShrink: 0,
+    },
 
     help: { fontSize: '12.5px', lineHeight: 1.5, color: text3, margin: 0 },
     helpLink: { color: ink, fontWeight: '700', textDecoration: 'none' },
