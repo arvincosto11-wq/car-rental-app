@@ -1491,18 +1491,26 @@ button.seg-tab:not(:disabled):hover {
   background: transparent;
 }
 .profile-menu-btn:not(:disabled) {
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.2s ease;
 }
-.profile-menu-btn:not(:disabled):hover,
+/* The same hover as the admin sidebar (.admin-side-item): gold tint, a thin
+   gold ring with a soft glow, and a 3px lean toward the pointer. Not the
+   page-wide button lift — that raises the row out of the card and drops a
+   shadow on its neighbours. */
+.profile-menu-btn:not(:disabled):hover {
+  filter: none;
+  background: rgba(232, 161, 0, 0.08);
+  box-shadow: 0 0 0 1px rgba(232, 161, 0, 0.25), 0 0 16px rgba(232, 161, 0, 0.15);
+  transform: translateX(3px);
+}
 .profile-menu-btn:not(:disabled):active {
   filter: none;
-  transform: none;
-  box-shadow: none;
-  background: rgba(184, 121, 10, 0.08);
+  transform: translateX(3px);
 }
-body.dark .profile-menu-btn:not(:disabled):hover,
-body.dark .profile-menu-btn:not(:disabled):active {
-  background: rgba(232, 161, 0, 0.1);
+@media (prefers-reduced-motion: reduce) {
+  .profile-menu-btn:not(:disabled) { transition: none; }
+  .profile-menu-btn:not(:disabled):hover,
+  .profile-menu-btn:not(:disabled):active { transform: none; }
 }
 
 .profile-menu-btn:focus-visible,
