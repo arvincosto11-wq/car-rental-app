@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
-import { GOLD, GOLD_DARK } from '../theme';
+import { goldInk } from '../theme';
+
+// Whether a tick drawn on this swatch should be dark or white. The usual
+// luminance sum — white, beige and silver need dark ink, navy and maroon
+// need light.
+const isLight = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 150;
+};
 
 // Curated list of real vehicle colors, each with a swatch hex for the picker.
 // Keeping this closed-ended is what makes the field "valid" — an admin can
@@ -68,48 +77,63 @@ const ColorPicker = ({ id, value, onChange, isDark }) => {
     }
   }, [value]);
 
-  const accent = isDark ? GOLD_DARK : GOLD;
-  const ring = (selected) => selected
-    ? { border: `2px solid ${accent}`, boxShadow: `0 0 0 2px ${isDark ? '#18191a' : '#fff'}, 0 0 0 4px ${accent}` }
-    : { border: `2px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}` };
+  const line = isDark ? '#3a3b3c' : '#e3e5e8';
+  const goldTint = isDark ? 'rgba(232,161,0,0.12)' : '#fbf1d6';
+  const goldLine = isDark ? 'rgba(232,161,0,0.45)' : '#e6c77a';
 
+  const chipGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(112px, 1fr))', gap: '8px' };
+  const chip = (on) => ({
+    display: 'flex', alignItems: 'center', gap: '9px', minHeight: '40px', padding: '0 10px',
+    borderRadius: '10px', cursor: 'pointer', textAlign: 'left', fontSize: '12.5px',
+    border: on ? `1.5px solid ${goldLine}` : `1px solid ${line}`,
+    background: on ? goldTint : 'transparent',
+    color: on ? goldInk(isDark) : (isDark ? '#e4e6eb' : '#1a1a1a'),
+  });
+  const swatch = {
+    width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.14)'}`,
+  };
   return (
     <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+      {/* Named chips rather than bare circles. A row of coloured dots asks
+          somebody to tell silver from grey by eye, and a screen reader got
+          nothing but a label nobody could see. */}
+      <div style={chipGrid} role="radiogroup" aria-label="Colour">
         {CAR_COLORS.map((c) => {
           const selected = !customMode && (value || '').trim().toLowerCase() === c.name.toLowerCase();
           return (
             <button
               key={c.name}
               type="button"
-              title={c.name}
-              aria-label={c.name}
-              aria-pressed={selected}
+              role="radio"
+              aria-checked={selected}
               onClick={() => { setCustomMode(false); onChange(c.name); }}
-              style={{
-                width: '26px', height: '26px', borderRadius: '50%', background: c.hex,
-                cursor: 'pointer', padding: 0, flexShrink: 0, ...ring(selected),
-              }}
-            />
+              style={chip(selected)}
+            >
+              <span style={{ ...swatch, background: c.hex }}>
+                {selected && (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={isLight(c.hex) ? '#17130e' : '#fff'} strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="5 13 10 18 19 7" />
+                  </svg>
+                )}
+              </span>
+              <span style={{ fontWeight: selected ? 800 : 500 }}>{c.name}</span>
+            </button>
           );
         })}
         <button
           type="button"
-          title="Other color"
-          aria-label="Other color"
-          aria-pressed={customMode}
+          role="radio"
+          aria-checked={customMode}
           onClick={() => setCustomMode(true)}
-          style={{
-            width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0, padding: 0, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: isDark ? '#18191a' : '#fff',
-            border: `2px dashed ${customMode ? accent : (isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)')}`,
-            boxShadow: customMode ? `0 0 0 2px ${isDark ? '#18191a' : '#fff'}, 0 0 0 4px ${accent}` : 'none',
-            color: customMode ? accent : (isDark ? '#b0b3b8' : '#9ca3af'),
-            fontSize: '14px', fontWeight: 700, lineHeight: 1,
-          }}
+          style={{ ...chip(customMode), borderStyle: 'dashed' }}
         >
-          +
+          <span style={{
+            ...swatch,
+            background: 'conic-gradient(#dc2626, #eab308, #16a34a, #2563eb, #7c3aed, #dc2626)',
+          }} />
+          <span style={{ fontWeight: customMode ? 800 : 500 }}>Custom…</span>
         </button>
       </div>
       {customMode && (
