@@ -309,9 +309,12 @@ const Profile = () => {
       fontSize: '14px', fontWeight: on ? '800' : '500', textAlign: 'left', cursor: 'pointer',
       background: on ? goldTint : 'transparent', color: on ? ink : text,
     }),
+    // marginLeft: auto is what holds it against the right edge. Nothing
+    // else may set an inline start margin here — that wins over the auto
+    // and drops the dot back beside the label.
     menuDot: {
       width: '8px', height: '8px', borderRadius: '50%', background: gold,
-      marginLeft: 'auto', marginInlineStart: '8px', flexShrink: 0,
+      marginLeft: 'auto', flexShrink: 0,
     },
 
     help: { fontSize: '12.5px', lineHeight: 1.5, color: text3, margin: 0 },
