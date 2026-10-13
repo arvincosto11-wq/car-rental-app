@@ -8,6 +8,7 @@ import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
 import api from '../api';
 import PromoBadge from '../components/PromoBadge';
+import { unbookable, availabilityLabel } from '../utils/vehicleAvailability';
 
 const MyFavorites = () => {
   usePageTitle('My Favorites');
@@ -102,8 +103,8 @@ const MyFavorites = () => {
                 ) : (
                   <div style={styles.noImg}>No Image</div>
                 )}
-                <span style={{ ...styles.availBadge, background: car.isAvailable === false ? '#dc2626' : '#16a34a' }}>
-                  {car.isAvailable === false ? 'Not Listed' : 'Bookable'}
+                <span style={{ ...styles.availBadge, background: unbookable(car) ? '#dc2626' : '#16a34a' }}>
+                  {availabilityLabel(car)}
                 </span>
                 <FavoriteButton
                   carId={car._id}

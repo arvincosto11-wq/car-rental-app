@@ -10,7 +10,7 @@ import PromoBadge from '../components/PromoBadge';
 import PromoConfetti from '../components/PromoConfetti';
 import useLongRentalRules from '../hooks/useLongRentalRules';
 import { rulesForCar } from '../utils/longRental';
-import { registrationLapsed } from '../utils/registration';
+import { unbookable, availabilityLabel } from '../utils/vehicleAvailability';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK, goldInk} from '../theme';
@@ -169,10 +169,16 @@ const Cars = () => {
       const matchTransmission = transmission ? car.transmission === transmission : true;
       const matchMin = minPrice ? car.pricePerDay >= Number(minPrice) : true;
       const matchMax = maxPrice ? car.pricePerDay <= Number(maxPrice) : true;
-      const matchAvailable = availableOnly ? car.isAvailable !== false : true;
+      const matchAvailable = availableOnly ? !unbookable(car) : true;
       return matchSearch && matchCategory && matchTransmission && matchMin && matchMax && matchAvailable;
     })
     .sort((a, b) => {
+      // Whatever the chosen sort, a vehicle that cannot go out sinks to the
+      // bottom. Somebody scanning the page is shopping, and a car in the
+      // workshop is not for sale today — it stays on the page, because it
+      // will be back, but not among the ones they can actually book.
+      const stopped = (unbookable(a) ? 1 : 0) - (unbookable(b) ? 1 : 0);
+      if (stopped) return stopped;
       if (sortBy === 'price-asc') return a.pricePerDay - b.pricePerDay || mostRented(a, b);
       if (sortBy === 'price-desc') return b.pricePerDay - a.pricePerDay || mostRented(a, b);
       // Same rule the admin dashboard's Top Rated list has always used:
@@ -697,20 +703,19 @@ const Cars = () => {
                       first, the availability status is the supporting fact. */}
                   <PromoBadge promo={car.promo} isDark={isDark} />
                   {(() => {
-                    // A vehicle whose papers have run out cannot go out,
-                    // whatever the listing flag says — so it reads as
-                    // unavailable rather than bookable.
-                    const lapsed = registrationLapsed(car);
-                    const unbookable = car.isAvailable === false || lapsed;
+                    // Papers run out, workshops keep cars — neither is the
+                    // listing flag, and both stop the vehicle going out.
+                    // See utils/vehicleAvailability.js.
+                    const stopped = unbookable(car);
                     return (
                       <span style={{
                         ...styles.availBadge,
                         background: 'rgba(0,0,0,0.65)',
-                        color: unbookable ? '#fca5a5' : '#86efac',
-                        border: `1px solid ${unbookable ? 'rgba(248,113,113,0.4)' : 'rgba(134,239,172,0.4)'}`,
+                        color: stopped ? '#fca5a5' : '#86efac',
+                        border: `1px solid ${stopped ? 'rgba(248,113,113,0.4)' : 'rgba(134,239,172,0.4)'}`,
                       }}>
                         <span style={styles.availDot} />
-                        {lapsed ? 'Not Available' : (car.isAvailable === false ? 'Not Listed' : 'Bookable')}
+                        {availabilityLabel(car)}
                       </span>
                     );
                   })()}
