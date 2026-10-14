@@ -174,6 +174,7 @@ const PlacePicker = ({ value, onChange, settings, isDark, label, describedBy }) 
                   <button
                     type="button"
                     key={`${r.lat},${r.lng}`}
+                    className="list-row-btn"
                     style={s.result}
                     onClick={() => chooseResult(r)}
                   >

@@ -1048,7 +1048,7 @@ const ManageCars = ({ view = 'active' }) => {
                   <button
                     key={c._id}
                     type="button"
-                    className="mc-suggest-item"
+                    className="list-row-btn"
                     style={styles.suggestItem}
                     onClick={() => {
                       setPickedCarId(c._id);

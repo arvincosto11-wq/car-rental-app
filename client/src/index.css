@@ -1574,20 +1574,22 @@ body.dark .consignor-menu-btn:focus-visible { outline-color: #e8a100; }
   }
 }
 
-/* A row inside the search suggestions, not a call to action: the page-wide
-   button lift pulled each one out of the dropdown it belongs to. Same
-   opt-out as the other menu rows, with a tint for the hover instead. */
-.mc-suggest-item:not(:disabled) {
+/* A whole row inside a list: a suggestion, a search result, a booking in
+   the day panel. The page-wide button lift is for things with a fill and
+   an edge; on a row it peels the row out of the list it belongs to. These
+   highlight instead, the way the menus do. The tint needs the weight
+   because the rows set their own transparent background inline. */
+.list-row-btn:not(:disabled) {
   transition: background 0.15s ease;
 }
-.mc-suggest-item:not(:disabled):hover,
-.mc-suggest-item:not(:disabled):active {
+.list-row-btn:not(:disabled):hover,
+.list-row-btn:not(:disabled):active {
   filter: none;
   transform: none;
   box-shadow: none;
   background: rgba(184, 121, 10, 0.08) !important;
 }
-body.dark .mc-suggest-item:not(:disabled):hover,
-body.dark .mc-suggest-item:not(:disabled):active {
+body.dark .list-row-btn:not(:disabled):hover,
+body.dark .list-row-btn:not(:disabled):active {
   background: rgba(232, 161, 0, 0.1) !important;
 }

@@ -316,6 +316,7 @@ const BookingsCalendar = () => {
                   <button
                     key={b._id}
                     type="button"
+                    className="list-row-btn"
                     style={s.panelRow}
                     onClick={() => navigate('/admin/manage-bookings')}
                   >
