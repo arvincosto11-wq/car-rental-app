@@ -27,6 +27,7 @@ import { byUrgency } from '../utils/priority.js';
 import { recordActivity } from '../utils/priority.js';
 import { vehiclesForSwap, remainingSpan, repriceForSwap } from '../utils/moveVehicle.js';
 import { fail } from '../utils/respond.js';
+import { hideClientRatings } from '../utils/privacy.js';
 import { isAbandoned, NO_SHOW_REASON } from '../utils/noShow.js';
 
 const router = express.Router();
@@ -517,7 +518,7 @@ router.get('/my', protect, async (req, res) => {
       // utils/drivers.js.
       .populate('driver', 'name image avgRating ratingCount')
       .sort({ createdAt: -1 });
-    res.json(byUrgency(bookings, { role: 'client' }));
+    res.json(hideClientRatings(byUrgency(bookings, { role: 'client' })));
   } catch (err) {
     fail(res, err);
   }
@@ -578,8 +579,10 @@ router.get('/owner', protect, consignorOnly, async (req, res) => {
       .populate('driver', 'name image avgRating ratingCount')
       .sort({ createdAt: -1 });
     // The owner reads this the way admin does: what needs attention on their
-    // vehicles first, finished rentals last.
-    res.json(byUrgency(bookings, { role: 'admin' }));
+    // vehicles first, finished rentals last. Not the office's rating of the
+    // renter, though — that is written for admin, about somebody who is a
+    // client of ours rather than of theirs.
+    res.json(hideClientRatings(byUrgency(bookings, { role: 'admin' })));
   } catch (err) {
     fail(res, err);
   }

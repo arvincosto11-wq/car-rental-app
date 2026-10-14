@@ -2,6 +2,7 @@ import { suite, group, check } from './harness.mjs';
 import {
   balanceDue, lateFeeSoFar, unsettledCharges, vehicleState, comparePeriods,
 } from '../utils/adminToday.js';
+import { withoutClientRating, hideClientRatings } from '../utils/privacy.js';
 import { phInstant } from '../utils/appointments.js';
 
 export default function run() {
@@ -80,4 +81,20 @@ export default function run() {
   check('down by two thirds', comparePeriods(1000, 3000), -67);
   // Nothing to compare against is not a 100% rise.
   check('no takings last time says nothing', comparePeriods(1000, 0), null);
+
+  group('what a client is allowed to read about themselves');
+  const rated = {
+    _id: 'b1',
+    totalPrice: 2000,
+    clientRating: { rating: 2, comment: 'argued about the fuel' },
+  };
+  // The note is written about this person, for the office. Nothing drew it
+  // on their screen, but it arrived in their browser all the same.
+  check('the rating is gone', withoutClientRating(rated).clientRating, undefined);
+  check('the rest of the booking is not', withoutClientRating(rated).totalPrice, 2000);
+  check('the original is untouched', rated.clientRating.rating, 2);
+  check('a whole list is cleaned', hideClientRatings([rated, rated]).every((b) => !b.clientRating), true);
+  // A mongoose document, which is what the routes actually hand it.
+  const asDoc = { toObject: () => ({ ...rated }) };
+  check('a mongoose document too', withoutClientRating(asDoc).clientRating, undefined);
 }
