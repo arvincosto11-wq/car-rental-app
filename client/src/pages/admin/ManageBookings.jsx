@@ -134,6 +134,14 @@ const previewRefund = (booking, reason) => {
   return 0;
 };
 
+const ClockGlyph = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <circle cx="12" cy="12" r="8.5" />
+    <polyline points="12 7.5 12 12 15 14" />
+  </svg>
+);
+
 const CalendarGlyph = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -769,7 +777,43 @@ const ManageBookings = () => {
   const goldTint = isDark ? 'rgba(232,161,0,0.12)' : '#fbf1d6';
   const goldLine = isDark ? 'rgba(232,161,0,0.45)' : '#e6c77a';
 
+  // The three shapes an action can take, from the handoff: a primary that
+  // fills the row, outline secondaries beside it, and destructive ones in
+  // red on a red border. Their sizes — 42px tall, radius 10 — and our
+  // colours. The old keys below point at these, so every action is restyled
+  // without touching a line of when it appears or what it does.
+  const ACT_PRIMARY = {
+    flex: '1 1 200px', minHeight: '42px', padding: '0 16px', borderRadius: '10px', border: 'none',
+    background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+    fontSize: '14px', fontWeight: '800', cursor: 'pointer',
+  };
+  const ACT_SECONDARY = {
+    minHeight: '42px', padding: '0 14px', borderRadius: '10px', cursor: 'pointer',
+    border: `1px solid ${line}`, background: card, color: text,
+    fontSize: '13px', fontWeight: '700',
+  };
+  const ACT_DANGER = {
+    ...ACT_SECONDARY,
+    border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
+    color: isDark ? '#f87171' : '#b91c1c',
+  };
+
   const s = {
+    // One line, not a panel: amber tint, a clock, and a quiet link.
+    dueLine: {
+      display: 'flex', alignItems: 'center', gap: '12px',
+      padding: '10px 14px', borderRadius: '12px', marginBottom: '18px',
+      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7',
+      fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    dueIcon: { display: 'flex', color: isDark ? '#fbbf24' : '#92400e' },
+    dueText: { flex: 1, minWidth: 0 },
+    dueLink: {
+      border: 'none', background: 'transparent', padding: 0, cursor: 'pointer',
+      font: 'inherit', fontSize: '13px', fontWeight: '800',
+      color: isDark ? '#fbbf24' : '#92400e',
+      textDecoration: 'underline', textUnderlineOffset: '3px',
+    },
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
@@ -868,13 +912,8 @@ const ManageBookings = () => {
     // running the expected action is none at all, and a gold button reads
     // as the next thing to do @ on a label that already sounds like a
     // statement of fact rather than something you are about to do.
-    returnBtn: (due) => ({
-      padding: '4px 10px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500',
-      border: due ? 'none' : `1px solid ${isDark ? GOLD_DARK : GOLD}`,
-      background: due ? (isDark ? GOLD_DARK : GOLD) : 'transparent',
-      color: due ? ON_GOLD : (isDark ? GOLD_DARK : GOLD),
-    }),
-    pickedUpBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '700' },
+    returnBtn: () => (ACT_PRIMARY),
+    pickedUpBtn: ACT_PRIMARY,
     returnLabel: {
       fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
       color: isDark ? '#8a8d91' : '#9ca3af', margin: '4px 0 7px',
@@ -920,10 +959,7 @@ const ManageBookings = () => {
       background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
       color: isDark ? '#f87171' : '#991b1b',
     },
-    feeBtn: {
-      padding: '4px 10px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', cursor: 'pointer',
-      border: `1px solid ${isDark ? GOLD_DARK : GOLD}`, background: 'transparent', color: goldInk(isDark),
-    },
+    feeBtn: ACT_SECONDARY,
     feeSettled: { fontSize: '11px', fontWeight: '700', color: isDark ? '#86efac' : '#065f46' },
     activityNote: {
       fontSize: '11px', fontWeight: '700', lineHeight: 1.4, marginTop: '4px',
@@ -969,11 +1005,7 @@ const ManageBookings = () => {
       border: 'none', borderRadius: '8px', cursor: 'pointer',
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
     },
-    moveBtn: {
-      padding: '4px 10px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, background: 'transparent',
-      color: isDark ? '#b0b3b8' : '#374151',
-    },
+    moveBtn: ACT_SECONDARY,
     moveRow: {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
       padding: '10px 12px', borderRadius: '10px', marginBottom: '8px',
@@ -989,15 +1021,11 @@ const ManageBookings = () => {
       fontSize: '11.5px', fontWeight: '700',
       color: up ? (isDark ? '#f87171' : '#b91c1c') : (isDark ? '#86efac' : '#065f46'),
     }),
-    cancelRowBtn: {
-      padding: '4px 10px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500',
-      border: `1px solid ${isDark ? '#f87171' : '#dc2626'}`, background: 'transparent',
-      color: isDark ? '#f87171' : '#dc2626',
-    },
-    noShowBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
+    cancelRowBtn: ACT_DANGER,
+    noShowBtn: ACT_DANGER,
     acceptBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     declineBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
-    editRatingBtn: { background: 'none', border: 'none', color: '#7c3aed', fontSize: '11px', cursor: 'pointer', padding: 0, textDecoration: 'underline' },
+    editRatingBtn: ACT_SECONDARY,
     detailsBtn: {
       padding: '5px 12px', fontSize: '12px', fontWeight: '500', borderRadius: '6px', cursor: 'pointer',
       border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#374151',
@@ -1032,11 +1060,7 @@ const ManageBookings = () => {
     },
     awaitingTitle: { fontSize: '11px', fontWeight: '800', color: isDark ? GOLD_DARK : '#92400e' },
     awaitingSub: { fontSize: '10px', lineHeight: 1.4, color: isDark ? '#b0b3b8' : '#6b7280' },
-    awaitingCancelBtn: {
-      alignSelf: 'flex-start', marginTop: '2px', padding: '3px 8px', borderRadius: '6px', cursor: 'pointer',
-      border: `1px solid ${isDark ? '#f87171' : '#dc2626'}`, background: 'transparent',
-      color: isDark ? '#f87171' : '#dc2626', fontSize: '10px', fontWeight: '700',
-    },
+    awaitingCancelBtn: ACT_DANGER,
     cancelCard: {
       width: '100%', maxWidth: '430px', background: isDark ? '#242526' : '#fff',
       border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '16px',
@@ -1353,7 +1377,7 @@ const ManageBookings = () => {
         </div>
       ) : booking.status === 'confirmed' ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={s.confirmed}><span style={s.statusDot(isDark ? '#86efac' : '#065f46')} />Confirmed</span>
+          {/* The panel states this above, in the same pill the list uses. */}
           {/* One sequence, in the order it happens at the
               counter: waiting, then handed over, then back. Until
               the keys are recorded as handed over there is
@@ -1579,12 +1603,10 @@ const ManageBookings = () => {
       {/* Vehicles that are not here. Loud on purpose: everything else on
           this page is a record of something that already happened, and this
           is the one row that is still going wrong while you read it. */}
-      {!loading && (overdueBookings.length > 0 || dueBackBookings.length > 0) && (
-        <div style={s.outPanel(overdueBookings.length > 0)}>
+      {!loading && overdueBookings.length > 0 && (
+        <div style={s.outPanel(true)}>
           <div style={s.outPanelTitle}>
-            {overdueBookings.length > 0
-              ? `${overdueBookings.length} vehicle${overdueBookings.length === 1 ? '' : 's'} not returned`
-              : `${dueBackBookings.length} vehicle${dueBackBookings.length === 1 ? '' : 's'} due back`}
+            {overdueBookings.length} vehicle{overdueBookings.length === 1 ? '' : 's'} not returned
           </div>
           <ul style={s.outPanelList}>
             {overdueBookings.map((b) => (
@@ -1596,24 +1618,45 @@ const ManageBookings = () => {
                 , due {formatMoment(b.endDate, b.hasPickupTime)}
               </li>
             ))}
-            {dueBackBookings.map((b) => (
-              <li key={b._id} style={s.outPanelItem}>
-                <strong>{b.car?.brand} {b.car?.model}</strong> {DASH_JS} {b.user?.name || 'a client'} {DASH_JS}{' '}
-                due back {formatMoment(b.endDate, b.hasPickupTime)}
-              </li>
-            ))}
           </ul>
           <div style={s.outPanelFoot}>
-            {overdueBookings.length > 0
-              ? 'These dates stay blocked until the vehicle is marked returned, so nobody can book a car that is not here. The client is reminded once a day.'
-              : 'Still on time. Mark each one returned when it comes back.'}
+            These dates stay blocked until the vehicle is marked returned, so nobody can book a car that
+            is not here. The client is reminded once a day.
           </div>
           <button
             type="button"
             style={s.outPanelBtn}
-            onClick={() => { setStatusFilter(overdueBookings.length > 0 ? 'overdue' : 'on_trip'); setPage(1); }}
+            onClick={() => { setStatusFilter('overdue'); setPage(1); }}
           >
             Show these bookings
+          </button>
+        </div>
+      )}
+
+      {/* Due back today and still on time is not a problem, so it gets a
+          line rather than a panel. Overdue keeps the loud one above: that
+          is the only thing on this page still going wrong as you read it. */}
+      {!loading && overdueBookings.length === 0 && dueBackBookings.length > 0 && (
+        <div style={s.dueLine}>
+          <span style={s.dueIcon}><ClockGlyph /></span>
+          <span style={s.dueText}>
+            <strong>
+              {dueBackBookings.length} vehicle{dueBackBookings.length === 1 ? '' : 's'} due back today
+            </strong>
+            {' · '}
+            {dueBackBookings[0].car?.brand} {dueBackBookings[0].car?.model}
+            {' · '}
+            {dueBackBookings[0].user?.name || 'a client'}
+            {' · '}
+            {formatMoment(dueBackBookings[0].endDate, dueBackBookings[0].hasPickupTime, { hour: 'numeric', minute: '2-digit' })}
+            . Still on time.
+          </span>
+          <button
+            type="button"
+            style={s.dueLink}
+            onClick={() => { setStatusFilter('on_trip'); setPage(1); }}
+          >
+            Show {dueBackBookings.length === 1 ? 'it' : 'them'}
           </button>
         </div>
       )}
