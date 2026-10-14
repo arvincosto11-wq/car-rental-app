@@ -5,6 +5,7 @@ import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import LAYERS from '../layers';
 import useModalA11y from '../hooks/useModalA11y';
 import DriverAvatar from './DriverAvatar';
+import { CameraGlyph } from './Glyphs';
 
 // Shared "rate your experience" modal, used by both the My Bookings list
 // and the dedicated Rate My Bookings panel so the rating flow only lives
@@ -207,7 +208,7 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
 
         <label style={s.modalLabel} htmlFor="rating-photos">Photos (optional)</label>
         <div style={s.photoUpload}>
-          <span style={s.photoUploadHint}>📷 Click to add photos</span>
+          <span style={s.photoUploadHint}><CameraGlyph /> Click to add photos</span>
           <input id="rating-photos" type="file" accept="image/*" multiple style={s.photoFileInput} onChange={handlePhotosChange} />
         </div>
         {photos.length > 0 && (

@@ -8,6 +8,7 @@ import { SkeletonListCard } from '../components/Skeleton';
 import BackButton from '../components/BackButton';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import usePageTitle from '../hooks/usePageTitle';
+import { DoneGlyph, CalendarGlyph } from '../components/Glyphs';
 
 const RateBookings = () => {
   usePageTitle('Rate My Bookings');
@@ -76,7 +77,7 @@ const RateBookings = () => {
         <SkeletonListCard isDark={isDark} />
       ) : unrated.length === 0 ? (
         <div style={styles.empty}>
-          <p>🎉 You're all caught up — nothing left to rate.</p>
+          <p><DoneGlyph size={16} /> You're all caught up — nothing left to rate.</p>
         </div>
       ) : (
         <div style={styles.list}>
@@ -95,7 +96,7 @@ const RateBookings = () => {
                   <span style={styles.carSub}> · {booking.car?.year} · {booking.car?.category}</span>
                 </div>
                 <div style={styles.meta}>
-                  📅 {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
+                  <CalendarGlyph /> {new Date(booking.startDate).toLocaleDateString()} To {new Date(booking.endDate).toLocaleDateString()}
                 </div>
               </div>
               <button style={styles.rateBtn} onClick={() => setRatingModalId(booking._id)}>

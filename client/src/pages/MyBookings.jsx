@@ -26,6 +26,8 @@ import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk } from '..
 import LAYERS from '../layers';
 import { fuelShortfallLabel, fuelLabel } from '../utils/fuel';
 import ModalClose from '../components/ModalClose';
+import { DoneGlyph, WarnGlyph } from '../components/Glyphs';
+import { StarGlyph } from '../components/Glyphs';
 
 // How long a change is worth pointing out. After a day it is history, and a
 // list covered in badges says nothing at all.
@@ -1635,7 +1637,7 @@ const MyBookings = () => {
         </div>
         {!loading && unratedCount > 0 && (
           <button style={styles.rateBookingsBtn} onClick={() => navigate('/my-bookings/rate')}>
-            ⭐ Rate My Bookings
+            <StarGlyph /> Rate My Bookings
             <span style={styles.rateBookingsBadge}>{unratedCount}</span>
           </button>
         )}
@@ -1860,13 +1862,13 @@ const MyBookings = () => {
 
             <div style={styles.warningBox}>
               {refund.basis === 'mistake' ? (
-                <>✅ You booked this less than an hour ago, so this qualifies for a <strong>full refund</strong>.</>
+                <><DoneGlyph /> You booked this less than an hour ago, so this qualifies for a <strong>full refund</strong>.</>
               ) : refund.basis === 'full' ? (
-                <>✅ Your pickup is more than 3 days away, so this qualifies for a <strong>full refund</strong>.</>
+                <><DoneGlyph /> Your pickup is more than 3 days away, so this qualifies for a <strong>full refund</strong>.</>
               ) : refund.basis === 'half' ? (
-                <>⚠️ Your pickup is less than 3 days away, so this qualifies for a <strong>50% refund</strong> only.</>
+                <><WarnGlyph /> Your pickup is less than 3 days away, so this qualifies for a <strong>50% refund</strong> only.</>
               ) : (
-                <>⚠️ Your pickup is less than 24 hours away, so this booking is <strong>not eligible for a refund</strong>.</>
+                <><WarnGlyph /> Your pickup is less than 24 hours away, so this booking is <strong>not eligible for a refund</strong>.</>
               )}
               {' '}You paid ₱{activeBooking.amountPaid}, so you would receive approximately ₱{refundAmount} back if approved.
             </div>

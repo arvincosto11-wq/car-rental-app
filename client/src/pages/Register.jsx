@@ -13,6 +13,7 @@ import AuthBrandPanel from '../components/AuthBrandPanel';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
 import useEmailAvailable from '../hooks/useEmailAvailable';
+import { CarGlyph } from '../components/Glyphs';
 
 const PHONE_REGEX = /^(09\d{9}|\+639\d{9})$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -401,7 +402,7 @@ const Register = () => {
         <p style={styles.subtitle}>Sign up to get started</p>
 
         <div style={styles.consignmentNotice}>
-          🚗 Have a car to rent out? <Link to="/consignment/register" style={styles.consignmentLink}>Apply for consignment</Link> instead.
+          <CarGlyph /> Have a car to rent out? <Link to="/consignment/register" style={styles.consignmentLink}>Apply for consignment</Link> instead.
         </div>
 
         <form onSubmit={handleSubmit}>

@@ -98,7 +98,7 @@ const ExpiringDocuments = () => {
       )}
 
       {!loading && totalCount === 0 && (
-        <p style={{ ...s.sectionSubtitle, marginTop: '20px' }}>Nothing is expired or expiring in the next 30 days. 🎉</p>
+        <p style={{ ...s.sectionSubtitle, marginTop: '20px' }}>Nothing is expired or expiring in the next 30 days.</p>
       )}
     </AdminLayout>
   );

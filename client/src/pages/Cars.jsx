@@ -15,6 +15,7 @@ import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK, goldInk} from '../theme';
 import { isPromoVisible } from '../utils/promo';
+import { CalendarGlyph } from '../components/Glyphs';
 
 // Small feature-row icons — same hand-drawn inline-SVG approach used
 // elsewhere on the site.
@@ -525,7 +526,7 @@ const Cars = () => {
       {(pickupDate || returnDate) && (
         <div className="row-stack-sm" style={styles.dateNotice}>
           <span>
-            📅 Showing vehicles available {pickupDate || '—'} to {returnDate || '—'} — pick one and these dates carry over to its booking form.
+            <CalendarGlyph /> Showing vehicles available {pickupDate || '—'} to {returnDate || '—'} — pick one and these dates carry over to its booking form.
           </span>
           <button type="button" className="text-link-btn" style={styles.clearDatesBtn} onClick={clearDates}>Clear dates</button>
         </div>

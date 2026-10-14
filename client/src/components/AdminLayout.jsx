@@ -6,6 +6,7 @@ import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD, goldInk} from '../
 import NotificationBell from './NotificationBell';
 import { MenuCloseIcon } from './AnimatedStateIcons';
 import useAdminPendingCounts from '../hooks/useAdminPendingCounts';
+import { SunGlyph, MoonGlyph } from './Glyphs';
 
 // Small line icons for the sidebar nav — hand-drawn inline SVGs (same
 // approach as FlowButton's arrow) rather than pulling in an icon library
@@ -131,7 +132,7 @@ const AdminLayout = ({ children, activePage }) => {
             btnBg={isDark ? '#18191a' : '#f9fafb'}
             btnBorder={isDark ? '#3a3b3c' : '#d1d5db'}
           />
-          <button style={s.toggleBtn} onClick={toggleTheme} aria-label="Toggle theme">{isDark ? '☀️' : '🌙'}</button>
+          <button style={s.toggleBtn} onClick={toggleTheme} aria-label="Toggle theme">{isDark ? <SunGlyph size={16} /> : <MoonGlyph size={16} />}</button>
           <button style={s.logoutBtn} onClick={handleLogout}>Logout</button>
         </div>
       </div>

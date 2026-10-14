@@ -30,6 +30,7 @@ import { isPromoVisible, promoOffer, promoDateRange, promoCoversRange, promoDisc
 import api from '../api';
 import { licenceProblem, licenceMessage } from '../utils/documents';
 import ModalClose from '../components/ModalClose';
+import { FuelGlyph } from '../components/Glyphs';
 
 // Booking-modal icons — hand-drawn inline SVG, like the rest of the site.
 const ModalIcon = ({ children, size = 17 }) => (
@@ -922,7 +923,7 @@ const CarDetail = () => {
             <div style={s.modalText}>
               <RefundNoticeLine pickupAt={pickupAt} amount={amountToPay} />
               <p style={{ marginTop: '10px' }}>
-                ⛽ <strong>Fuel Policy:</strong> Please return the vehicle with the same fuel level it had at pickup, or the difference will be charged to you.
+                <FuelGlyph /> <strong>Fuel Policy:</strong> Please return the vehicle with the same fuel level it had at pickup, or the difference will be charged to you.
               </p>
               {/* The one thing on this screen the client can act on, so it
                   earns its place beside the two policies. Leads with what to

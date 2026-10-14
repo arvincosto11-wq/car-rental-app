@@ -24,6 +24,7 @@ import {
 import {
   addDays, addHours, phYmd, phHour, formatHour, formatPhDate,
 } from '../utils/phTime';
+import { WarnGlyph } from './Glyphs';
 
 const SHORT_DATE = { weekday: 'short', month: 'short', day: 'numeric' };
 
@@ -58,7 +59,7 @@ const RefundNoticeLine = ({ pickupAt, amount, now = new Date() }) => {
   if (band === 'none') {
     return (
       <p>
-        ⚠️ <strong>Refund:</strong> Pickup is less than two hours away, so once you pay, this
+        <WarnGlyph /> <strong>Refund:</strong> Pickup is less than two hours away, so once you pay, this
         booking can&apos;t be refunded for any reason. Please check your dates and vehicle
         before you continue.
       </p>
@@ -71,7 +72,7 @@ const RefundNoticeLine = ({ pickupAt, amount, now = new Date() }) => {
     const sameDay = phYmd(pickupAt) === phYmd(now);
     return (
       <p>
-        ⚠️ <strong>Refund:</strong> Pickup is <strong>{when}</strong>, so there&apos;s no refund
+        <WarnGlyph /> <strong>Refund:</strong> Pickup is <strong>{when}</strong>, so there&apos;s no refund
         on this booking — the vehicle is held for you and can&apos;t go to anyone else
         {sameDay ? ' today' : ' that day'}. One exception: if you booked by mistake, cancel
         within the hour and you get the whole <strong>{full}</strong> back.

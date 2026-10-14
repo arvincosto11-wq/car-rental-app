@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import api from '../api';
 import { GOLD, GOLD_DARK, goldInk} from '../theme';
+import { CameraGlyph } from './Glyphs';
 
 // The walkaround, at either end of a rental.
 //
@@ -90,7 +91,7 @@ const ConditionPhotos = ({ id, label, photos, onChange, isDark, disabled }) => {
     <div>
       <div style={s.label}>{label}</div>
       <div style={s.drop}>
-        {busy ? 'Uploading…' : '📷 Add photos of the vehicle'}
+        {busy ? 'Uploading…' : <><CameraGlyph /> Add photos of the vehicle</>}
         <input
           id={id}
           type="file"

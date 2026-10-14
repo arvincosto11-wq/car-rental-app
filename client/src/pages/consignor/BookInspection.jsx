@@ -9,6 +9,7 @@ import { VEHICLE_DATA, CAR_BRAND_ORDER, MOTO_BRAND_ORDER } from '../../data/vehi
 import { vehicleNoteProblem, OLDEST_VEHICLE_YEAR, isAppointmentOpen } from '../../utils/appointments';
 import Autocomplete from '../../components/Autocomplete';
 import api from '../../api';
+import { CarGlyph, MotoGlyph } from '../../components/Glyphs';
 
 const DAY_LABEL = { weekday: 'short', month: 'short', day: 'numeric' };
 
@@ -391,11 +392,11 @@ const BookInspection = ({ stage, onBooked, suspension, onBack }) => {
           <div style={s.typeRow} role="group" aria-label="Vehicle type">
             <button type="button" style={s.typeBtn(vehicleType === 'car')} aria-pressed={vehicleType === 'car'}
               onClick={() => changeVehicleType('car')}>
-              🚗 Car
+              <CarGlyph size={17} /> Car
             </button>
             <button type="button" style={s.typeBtn(vehicleType === 'motorcycle')} aria-pressed={vehicleType === 'motorcycle'}
               onClick={() => changeVehicleType('motorcycle')}>
-              🏍️ Motorcycle
+              <MotoGlyph size={17} /> Motorcycle
             </button>
           </div>
 

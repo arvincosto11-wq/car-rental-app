@@ -21,6 +21,8 @@ import { formatMoment, phYmd } from '../../utils/phTime';
 import { FUEL_STEPS, fuelLabel, fuelShortfallLabel } from '../../utils/fuel';
 import ConditionPhotos from '../../components/ConditionPhotos';
 import { licenceProblem } from '../../utils/documents';
+import { RepeatGlyph } from '../../components/Glyphs';
+import { StarGlyph } from '../../components/Glyphs';
 
 const LOW_RATING_THRESHOLD = 3;
 // How long after the pickup time a no-show can still be recorded. Mirrors
@@ -1561,13 +1563,13 @@ const ManageBookings = () => {
               style={s.rescheduleFilterBtn}
               onClick={() => { setRescheduleOnly(true); setPage(1); }}
             >
-              🔄 Pending Reschedules
+              <RepeatGlyph /> Pending Reschedules
               <span style={s.rescheduleFilterBadge}>{pendingRescheduleCount}</span>
             </button>
           )}
           {!loading && unratedClientCount > 0 && (
             <button style={s.rateClientsBtn} onClick={() => navigate('/admin/rate-clients')}>
-              ⭐ Rate Clients
+              <StarGlyph /> Rate Clients
               <span style={s.rateClientsBadge}>{unratedClientCount}</span>
             </button>
           )}

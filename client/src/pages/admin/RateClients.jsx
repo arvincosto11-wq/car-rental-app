@@ -8,6 +8,7 @@ import { SkeletonListCard } from '../../components/Skeleton';
 import usePageTitle from '../../hooks/usePageTitle';
 import { GOLD, GOLD_DARK } from '../../theme';
 import api from '../../api';
+import { DoneGlyph } from '../../components/Glyphs';
 
 const RateClients = () => {
   usePageTitle('Rate Clients');
@@ -72,7 +73,7 @@ const RateClients = () => {
         <SkeletonListCard isDark={isDark} />
       ) : unrated.length === 0 ? (
         <div style={s.empty}>
-          <p>🎉 All returned bookings have been rated.</p>
+          <p><DoneGlyph size={16} /> All returned bookings have been rated.</p>
         </div>
       ) : (
         <div style={s.list}>
