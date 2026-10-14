@@ -3,20 +3,32 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import BackButton from '../../components/BackButton';
-import ClientRatingModal from '../../components/ClientRatingModal';
 import { SkeletonListCard } from '../../components/Skeleton';
 import usePageTitle from '../../hooks/usePageTitle';
-import { GOLD, GOLD_DARK } from '../../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
+import { useUIFeedback } from '../../context/UIFeedbackContext';
+import { fuelLabel } from '../../utils/fuel';
+import { formatMoment } from '../../utils/phTime';
 import api from '../../api';
 import { DoneGlyph } from '../../components/Glyphs';
+
+// What the stars mean, said in words beside them. A number out of five is
+// not an opinion anybody holds; "fine" and "good" are.
+const STAR_WORDS = ['Poor', 'Below average', 'Fine', 'Good', 'Excellent'];
 
 const RateClients = () => {
   usePageTitle('Rate Clients');
   const { isDark } = useTheme();
+  const { toast } = useUIFeedback();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [ratingModalId, setRatingModalId] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  // Skipped ones go to the back of the queue rather than out of it: the
+  // point of skipping is "not now", not "never".
+  const [skipped, setSkipped] = useState([]);
 
   useEffect(() => { fetchBookings(); }, []);
 
@@ -32,82 +44,322 @@ const RateClients = () => {
   };
 
   const unrated = bookings.filter((b) => b.status === 'completed' && !b.clientRating?.ratedAt);
-  const ratingBooking = bookings.find((b) => b._id === ratingModalId);
+  const queue = [
+    ...unrated.filter((b) => !skipped.includes(b._id)),
+    ...unrated.filter((b) => skipped.includes(b._id)),
+  ];
+  const current = queue[0] || null;
+  const upNext = queue.slice(1, 5);
+  const ratedCount = bookings.filter((b) => b.status === 'completed' && b.clientRating?.ratedAt).length;
+  const total = ratedCount + unrated.length;
 
-  const handleRatingSubmitted = async () => {
-    await fetchBookings();
-    setRatingModalId(null);
+  const save = async () => {
+    if (!current || !rating) return;
+    setSaving(true);
+    try {
+      await api.post(`/bookings/${current._id}/rate-client`, { rating, comment: note });
+      setRating(0);
+      setNote('');
+      await fetchBookings();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Something went wrong saving this rating.');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const skip = () => {
+    if (!current) return;
+    setSkipped((prev) => [...prev.filter((id) => id !== current._id), current._id]);
+    setRating(0);
+    setNote('');
+  };
+
+  // Everything on the left of the card is a record somebody wrote down at
+  // the counter. A fact nobody recorded is left out rather than guessed at
+  // — "no damage noted" and "nobody looked" are not the same sentence.
+  const factsFor = (b) => {
+    const facts = [];
+    facts.push({
+      label: 'Booking',
+      value: `${b.car?.brand} ${b.car?.model} · ${formatMoment(b.startDate, false, { month: 'short', day: 'numeric' })} to ${formatMoment(b.endDate, false, { month: 'short', day: 'numeric' })}`,
+    });
+    if (b.returnedAt) {
+      const late = b.lateFee?.days || 0;
+      facts.push({
+        label: 'Returned',
+        value: late > 0 ? `${late} day${late === 1 ? '' : 's'} late` : 'On time',
+        tone: late > 0 ? 'bad' : 'good',
+      });
+    }
+    if (b.fuel?.atReturn !== null && b.fuel?.atReturn !== undefined) {
+      const out = b.fuel?.atPickup;
+      const short = out !== null && out !== undefined && b.fuel.atReturn < out;
+      facts.push({
+        label: 'Fuel at return',
+        value: short
+          ? `${fuelLabel(b.fuel.atReturn)} — went out ${fuelLabel(out).toLowerCase()}`
+          : `${fuelLabel(b.fuel.atReturn)}, as it went out`,
+        tone: short ? 'bad' : 'good',
+      });
+    }
+    if (b.returnedAt) {
+      const damage = (b.condition?.damageCharge || 0) > 0 || !!b.condition?.atReturn?.note;
+      facts.push({
+        label: 'Condition',
+        value: damage ? (b.condition?.atReturn?.note || 'Damage noted') : 'No damage noted',
+        tone: damage ? 'bad' : 'good',
+      });
+    }
+    const owed = (!b.lateFee?.collectedAt ? (b.lateFee?.amount || 0) : 0)
+      + (!b.fuel?.collectedAt ? (b.fuel?.charge || 0) : 0)
+      + (!b.condition?.damageCollectedAt ? (b.condition?.damageCharge || 0) : 0);
+    const charged = (b.lateFee?.amount || 0) + (b.fuel?.charge || 0) + (b.condition?.damageCharge || 0);
+    if (charged > 0) {
+      facts.push({
+        label: 'Charges',
+        value: owed > 0 ? `₱${owed.toLocaleString()} not settled` : 'All settled',
+        tone: owed > 0 ? 'bad' : 'good',
+      });
+    }
+    return facts;
+  };
+
+  const card = isDark ? '#242526' : '#ffffff';
+  const inset = isDark ? '#1e1f20' : '#f8f9fa';
+  const line = isDark ? '#3a3b3c' : '#e3e5e8';
+  const divider = isDark ? '#303132' : '#eef0f2';
+  const text = isDark ? '#e4e6eb' : '#1a1a1a';
+  const text2 = isDark ? '#b0b3b8' : '#4b5563';
+  const text3 = isDark ? '#8a8d91' : '#6b7280';
+  const gold = isDark ? GOLD_DARK : GOLD;
+  const ink = goldInk(isDark);
+  const goldTint = isDark ? 'rgba(232,161,0,0.12)' : '#fbf1d6';
 
   const s = {
-    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
-    subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
-    empty: { textAlign: 'center', padding: '48px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    list: { display: 'flex', flexDirection: 'column', gap: '14px' },
-    card: {
-      display: 'flex', gap: '14px', alignItems: 'center',
-      background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '12px', padding: '14px 16px',
+    headRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
+    title: { fontSize: '22px', fontWeight: '700', color: text, marginTop: '10px', marginBottom: '4px' },
+    subtitle: { fontSize: '13px', color: text3, marginBottom: '18px' },
+    countPill: {
+      display: 'inline-flex', alignItems: 'center', gap: '7px', marginTop: '10px',
+      fontSize: '12.5px', color: text2,
     },
-    imgWrap: { width: '80px', height: '58px', borderRadius: '8px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', flexShrink: 0 },
-    img: { width: '100%', height: '100%', objectFit: 'cover' },
-    noImg: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
-    info: { flex: 1, minWidth: 0 },
-    clientName: { fontSize: '14px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    clientMeta: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    carMeta: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '4px' },
-    rateBtn: {
-      padding: '8px 16px', fontSize: '12px', fontWeight: '600',
-      background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer',
-      flexShrink: 0,
+    countNum: {
+      padding: '3px 10px', borderRadius: '20px', background: gold, color: ON_GOLD,
+      fontSize: '12px', fontWeight: '800',
+    },
+
+    progressRow: { display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '12px', color: text3 },
+    bar: { height: '6px', borderRadius: '3px', background: isDark ? '#303132' : '#f1f2f4', margin: '7px 0 20px' },
+    barFill: (pct) => ({ width: `${pct}%`, height: '100%', borderRadius: '3px', background: gold }),
+
+    card: {
+      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0',
+      background: card, border: `1px solid ${line}`, borderRadius: '18px', overflow: 'hidden',
+    },
+    left: { padding: '20px', borderRight: `1px solid ${divider}` },
+    stage: {
+      aspectRatio: '16 / 8', borderRadius: '12px', marginBottom: '16px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px',
+      background: isDark
+        ? 'radial-gradient(circle at 50% 35%, #2c2d30, #1b1c1e)'
+        : 'radial-gradient(circle at 50% 35%, #ffffff, #e9ebee)',
+    },
+    stageImg: { maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' },
+    stageEmpty: { fontSize: '12px', color: text3 },
+    facts: { margin: 0 },
+    factRow: {
+      display: 'flex', justifyContent: 'space-between', gap: '14px',
+      padding: '9px 0', borderTop: `1px solid ${divider}`, fontSize: '12.5px',
+    },
+    factLabel: { color: text3 },
+    factValue: (tone) => ({
+      fontWeight: '700', textAlign: 'right',
+      color: tone === 'bad' ? (isDark ? '#f87171' : '#b91c1c')
+        : tone === 'good' ? (isDark ? '#86efac' : '#065f46') : text,
+    }),
+
+    right: { padding: '20px' },
+    who: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' },
+    avatar: {
+      width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: goldTint, color: ink, fontSize: '19px', fontWeight: '800',
+    },
+    whoName: { fontSize: '18px', fontWeight: '800', color: text },
+    whoMail: { fontSize: '12.5px', color: text3 },
+    ask: { fontSize: '15px', fontWeight: '800', color: text, margin: '0 0 12px' },
+    stars: { display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' },
+    star: (on) => ({
+      width: '48px', height: '48px', border: 'none', background: 'transparent', cursor: 'pointer',
+      fontSize: '34px', lineHeight: 1, padding: 0,
+      color: on ? gold : (isDark ? '#4a4b4d' : '#d6d9de'),
+    }),
+    starWord: { fontSize: '15px', fontWeight: '800', color: ink, minHeight: '20px' },
+    noteLabel: { display: 'block', fontSize: '12.5px', fontWeight: '700', color: text2, margin: '16px 0 6px' },
+    note: {
+      width: '100%', minHeight: '84px', padding: '10px 12px', borderRadius: '10px', boxSizing: 'border-box',
+      border: `1px solid ${line}`, background: inset, color: text,
+      fontSize: '13px', fontFamily: 'inherit', outline: 'none', resize: 'vertical',
+    },
+    noteHint: { fontSize: '11.5px', color: text3, marginTop: '6px' },
+    actions: { display: 'flex', gap: '8px', marginTop: '16px' },
+    skipBtn: {
+      minHeight: '42px', padding: '0 16px', borderRadius: '10px', cursor: 'pointer',
+      border: `1px solid ${line}`, background: 'transparent', color: text,
+      fontSize: '13px', fontWeight: '700',
+    },
+    saveBtn: (ready) => ({
+      flex: 1, minHeight: '42px', borderRadius: '10px', border: 'none',
+      background: ready ? gold : (isDark ? '#303132' : '#e5e7eb'),
+      color: ready ? ON_GOLD : text3,
+      fontSize: '14px', fontWeight: '800', cursor: ready ? 'pointer' : 'not-allowed',
+    }),
+
+    upNextLabel: {
+      fontSize: '10.5px', fontWeight: '800', letterSpacing: '0.1em', textTransform: 'uppercase',
+      color: text3, margin: '24px 0 8px',
+    },
+    upNextRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' },
+    upNextCard: {
+      padding: '11px 13px', borderRadius: '11px', background: card, border: `1px solid ${line}`,
+    },
+    upNextName: { fontSize: '13px', fontWeight: '700', color: text },
+    upNextMeta: {
+      fontSize: '11.5px', color: text3, marginTop: '2px',
+      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+    },
+    empty: { textAlign: 'center', padding: '48px', color: text3 },
+    emptyLink: {
+      border: 'none', background: 'transparent', font: 'inherit', fontWeight: '700',
+      color: ink, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '3px',
     },
   };
+
+  const done = total - queue.length;
 
   return (
     <AdminLayout activePage="Manage Bookings">
       <BackButton text="Back to Manage Bookings" onClick={() => navigate('/admin/manage-bookings')} />
-      <h1 style={s.title}>Rate Clients</h1>
-      <p style={s.subtitle}>Completed bookings where the client hasn't been rated yet.</p>
+      <div style={s.headRow}>
+        <div>
+          <h1 style={s.title}>Rate Clients</h1>
+          <p style={s.subtitle}>How each renter was to deal with. Only your side ever sees this.</p>
+        </div>
+        {queue.length > 0 && (
+          <span style={s.countPill}>
+            <span style={s.countNum}>{queue.length}</span> still to rate
+          </span>
+        )}
+      </div>
 
       {loading ? (
-        <SkeletonListCard isDark={isDark} />
-      ) : unrated.length === 0 ? (
+        <SkeletonListCard isDark={isDark} count={2} />
+      ) : !current ? (
         <div style={s.empty}>
-          <p><DoneGlyph size={16} /> All returned bookings have been rated.</p>
+          <p><DoneGlyph size={16} /> Everyone is rated.</p>
+          <button type="button" style={s.emptyLink} onClick={() => navigate('/admin/manage-bookings')}>
+            Back to Manage Bookings
+          </button>
         </div>
       ) : (
-        <div style={s.list}>
-          {unrated.map((booking) => (
-            <div key={booking._id} className="booking-card" style={s.card}>
-              <div style={s.imgWrap}>
-                {booking.car?.image ? (
-                  <img src={booking.car.image} alt="" style={s.img} />
-                ) : (
-                  <div style={s.noImg}>No Image</div>
-                )}
-              </div>
-              <div style={s.info}>
-                <div style={s.clientName}>{booking.user?.name || 'Unknown'}</div>
-                <div style={s.clientMeta}>{booking.user?.email}</div>
-                <div style={s.carMeta}>
-                  {booking.car?.brand} {booking.car?.model} · {new Date(booking.startDate).toLocaleDateString()} to {new Date(booking.endDate).toLocaleDateString()}
-                </div>
-              </div>
-              <button style={s.rateBtn} onClick={() => setRatingModalId(booking._id)}>
-                Rate Client
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+        <>
+          <div style={s.progressRow}>
+            <span>Client {done + 1} of {total}</span>
+            <span>Skipped ones stay in the list</span>
+          </div>
+          <div
+            style={s.bar}
+            role="progressbar"
+            aria-valuenow={total ? Math.round((done / total) * 100) : 0}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div style={s.barFill(total ? (done / total) * 100 : 0)} />
+          </div>
 
-      {ratingModalId && ratingBooking && (
-        <ClientRatingModal
-          booking={ratingBooking}
-          isDark={isDark}
-          onClose={() => setRatingModalId(null)}
-          onSubmitted={handleRatingSubmitted}
-        />
+          <div style={s.card}>
+            <div style={s.left}>
+              <div style={s.stage}>
+                {current.car?.image
+                  ? <img src={current.car.image} alt="" style={s.stageImg} />
+                  : <span style={s.stageEmpty}>No photo</span>}
+              </div>
+              <dl style={s.facts}>
+                {factsFor(current).map((f) => (
+                  <div key={f.label} style={s.factRow}>
+                    <dt style={s.factLabel}>{f.label}</dt>
+                    <dd style={s.factValue(f.tone)}>{f.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+
+            <div style={s.right}>
+              <div style={s.who}>
+                <span style={s.avatar}>{(current.user?.name || '?').charAt(0).toUpperCase()}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={s.whoName}>{current.user?.name || 'Unknown'}</span>
+                  <span style={s.whoMail}>{current.user?.email}</span>
+                </span>
+              </div>
+
+              <h2 style={s.ask}>How was {(current.user?.name || 'this client').split(' ')[0]} as a renter?</h2>
+
+              <div style={s.stars} role="radiogroup" aria-label="Rating">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    role="radio"
+                    aria-checked={rating === n}
+                    aria-label={`${n} star${n === 1 ? '' : 's'} — ${STAR_WORDS[n - 1]}`}
+                    style={s.star(n <= rating)}
+                    onClick={() => setRating(n)}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+              <div style={s.starWord}>{rating ? STAR_WORDS[rating - 1] : ''}</div>
+
+              <label style={s.noteLabel} htmlFor="rate-note">Private note (optional)</label>
+              <textarea
+                id="rate-note"
+                style={s.note}
+                placeholder="Anything worth knowing next time they book."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+              <p style={s.noteHint}>Staff only — the client is never sent this.</p>
+
+              <div style={s.actions}>
+                <button type="button" style={s.skipBtn} onClick={skip} disabled={saving}>
+                  Skip for now
+                </button>
+                <button type="button" style={s.saveBtn(!!rating)} onClick={save} disabled={!rating || saving}>
+                  {saving ? 'Saving...' : 'Save and next'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {upNext.length > 0 && (
+            <>
+              <div style={s.upNextLabel}>Up next</div>
+              <div style={s.upNextRow}>
+                {upNext.map((b) => (
+                  <div key={b._id} style={s.upNextCard}>
+                    <div style={s.upNextName}>{b.user?.name || 'Unknown'}</div>
+                    <div style={s.upNextMeta}>
+                      {b.car?.brand} {b.car?.model} · {formatMoment(b.startDate, false, { month: 'short', day: 'numeric' })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
       )}
     </AdminLayout>
   );
