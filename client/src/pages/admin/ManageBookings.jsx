@@ -86,6 +86,17 @@ const isOverdue = (b) => isOnTrip(b) && new Date(b.endDate) < new Date();
 // sentence from one that is already late.
 const isDueBack = (b) => isOnTrip(b) && !isOverdue(b)
   && new Date(b.endDate) <= new Date(new Date().getTime() + 24 * 60 * 60 * 1000);
+// "Due back" means within the next 24 hours, not within today — a vehicle
+// due at seven tomorrow morning is on that list, and calling it "today" on
+// the evening of the 14th was simply untrue. One booking can name its own
+// day; several share only the window.
+const dueBackLabel = (list, now = new Date()) => {
+  if (list.length !== 1) return 'in the next 24 hours';
+  const day = phYmd(list[0].endDate);
+  if (day === phYmd(now)) return 'today';
+  if (day === phYmd(new Date(now.getTime() + 24 * 60 * 60 * 1000))) return 'tomorrow';
+  return 'in the next 24 hours';
+};
 const daysOverdue = (b) => Math.max(1, Math.ceil((Date.now() - new Date(b.endDate).getTime()) / (24 * 60 * 60 * 1000)));
 // Confirmed was one label over four situations, each wanting a different
 // thing from you: nothing yet, check them in, nothing again, chase them.
@@ -698,6 +709,7 @@ const ManageBookings = () => {
     ? fuelShortfallLabel({ fuel: { atPickup: returnTarget.fuel?.atPickup, atReturn: returnForm.fuel } })
     : '';
   const dueBackBookings = paidBookings.filter(isDueBack);
+  const dueBackWhen = dueBackLabel(dueBackBookings);
   // In the order a booking lives through them, so the row of tabs is the
   // journey rather than a bag of labels.
   const statusTabs = [
@@ -1641,14 +1653,16 @@ const ManageBookings = () => {
           <span style={s.dueIcon}><ClockGlyph /></span>
           <span style={s.dueText}>
             <strong>
-              {dueBackBookings.length} vehicle{dueBackBookings.length === 1 ? '' : 's'} due back today
+              {dueBackBookings.length} vehicle{dueBackBookings.length === 1 ? '' : 's'} due back {dueBackWhen}
             </strong>
             {' · '}
             {dueBackBookings[0].car?.brand} {dueBackBookings[0].car?.model}
             {' · '}
             {dueBackBookings[0].user?.name || 'a client'}
             {' · '}
-            {formatMoment(dueBackBookings[0].endDate, dueBackBookings[0].hasPickupTime, { hour: 'numeric', minute: '2-digit' })}
+            {/* formatMoment already puts the time on the end — handing it
+                time options as well printed the hour twice. */}
+            {formatMoment(dueBackBookings[0].endDate, dueBackBookings[0].hasPickupTime)}
             . Still on time.
           </span>
           <button
