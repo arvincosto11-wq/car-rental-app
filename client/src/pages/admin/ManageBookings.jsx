@@ -960,6 +960,226 @@ const ManageBookings = () => {
     })
     : '');
 
+  // Every action a booking can take, exactly as the table cell drew
+  // them: the early-collect window, the no-show window, the adjust-offer
+  // deadline and the rest. Lifted out whole rather than rewritten — the
+  // rules in here took real thought and none of them are about layout.
+  const actionsFor = (booking) => (
+    <>
+      {booking.refundStatus === 'requested' ? (
+        <div>
+          <span style={{ fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic' }}>
+            Resolve refund request first
+          </span>
+        </div>
+      ) : bookingAwaitingDecision(booking) ? (
+        <div style={s.awaitingBox}>
+          <span style={s.awaitingTitle}>Waiting on the client</span>
+          <span style={s.awaitingSub}>
+            {booking.adjustOffer.reason === 'booking_conflict'
+              ? 'Lost these dates to a confirmed booking.'
+              : 'These dates were blocked on the vehicle.'}
+            {' '}Offered other dates or a full refund — {timeLeftLabel(booking.adjustOffer.deadline).toLowerCase()}.
+            It refunds itself if they don&apos;t answer.
+          </span>
+          <button
+            type="button"
+            style={s.awaitingCancelBtn}
+            onClick={() => handleStatus(booking._id, 'cancelled')}
+            title="Settle it now instead of waiting for the deadline."
+          >
+            Cancel &amp; refund now
+          </button>
+        </div>
+      ) : booking.status === 'confirmed' ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={s.confirmed}><span style={s.statusDot(isDark ? '#86efac' : '#065f46')} />Confirmed</span>
+          {/* One sequence, in the order it happens at the
+              counter: waiting, then handed over, then back. Until
+              the keys are recorded as handed over there is
+              nothing to return — and after they are, there is no
+              longer any question of a no-show. */}
+          {booking.collectedAt ? (
+            <>
+              <span style={isOverdue(booking) ? s.overdueNote : s.pickedUpNote}>
+                {isOverdue(booking)
+                  ? `${daysOverdue(booking)} day${daysOverdue(booking) === 1 ? '' : 's'} overdue`
+                  : `Picked up ${formatMoment(booking.collectedAt, true, { month: 'numeric', day: 'numeric' })}`}
+              </span>
+              <button
+                style={s.returnBtn(new Date() >= new Date(booking.endDate))}
+                onClick={() => handleMarkReturned(booking)}
+                title="Only needed for an early return — this completes automatically the day after the return date."
+              >
+                Mark as Returned
+              </button>
+            </>
+          ) : new Date() >= new Date(new Date(booking.startDate).getTime() - EARLY_COLLECT_HOURS * 60 * 60 * 1000) ? (
+            <>
+              {/* Not a handover button any more. This row could
+                  only ever show the documents as a list and take
+                  one yes, while the Pickup Desk makes you tick
+                  each one — two doors to the same act, held to
+                  two different standards. A check that can be
+                  skipped by clicking the easier button is not a
+                  check. */}
+              <button
+                style={s.pickedUpBtn}
+                onClick={() => navigate('/admin/pickups')}
+                title="Check their documents at the Pickup Desk, then hand over the keys there."
+              >
+                Check in at desk
+              </button>
+              {/* Three days into a trip it is not a no-show,
+                  whatever else it might be. */}
+              {new Date() >= new Date(booking.startDate)
+                && !booking.extensions?.length
+                && new Date() <= new Date(new Date(booking.startDate).getTime() + NO_SHOW_WINDOW_HOURS * 60 * 60 * 1000) && (
+                <button
+                  style={s.noShowBtn}
+                  onClick={() => handleMarkNoShow(booking)}
+                  title="Vehicle was never picked up — cancels the booking and forfeits what was paid."
+                >
+                  No-Show
+                </button>
+              )}
+            </>
+          ) : (
+            <span style={{ fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', fontStyle: 'italic' }}>
+              Pickup {formatMoment(booking.startDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
+            </span>
+          )}
+          {/* Accepting a booking used to be one-way: the status
+              dropdown with Cancelled on it only ever showed on
+              pending rows, so a confirmed booking couldn't be
+              cancelled from anywhere. That left "Terms not met"
+              unreachable in the one situation it was written for,
+              since nobody turns up at pickup for a booking that
+              was never accepted. Quieter than No-Show on purpose
+              — No-Show forfeits everything and shouldn't be the
+              calmer-looking of the two. */}
+          {/* Only when the vehicle is actually out of service:
+              off the road, or inside an approved block such as
+              repairs. Moving somebody off a working vehicle is
+              not an everyday action, and a button offering it on
+              every confirmed row invited exactly that. */}
+          {vehicleOutOfService(booking) && (
+            <button
+              style={s.moveBtn}
+              onClick={() => openMove(booking)}
+              title="This vehicle is out of service. Put the booking on a different one, keeping its dates."
+            >
+              Move vehicle
+            </button>
+          )}
+          <button
+            style={s.cancelRowBtn}
+            onClick={() => handleStatus(booking._id, 'cancelled')}
+            title="Cancel this booking and refund by policy."
+          >
+            Cancel
+          </button>
+        </div>
+      ) : booking.status === 'cancelled' ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={s.cancelled}><span style={s.statusDot(isDark ? '#fca5a5' : '#991b1b')} />Cancelled</span>
+          {/* A breakdown the client caused ends the booking and
+              leaves a repair bill behind it. */}
+          {booking.condition?.damageCharge > 0 && (
+            booking.condition.damageCollectedAt ? (
+              <span style={s.feeSettled}>{peso(booking.condition.damageCharge)} damage settled</span>
+            ) : (
+              <button style={s.feeBtn} onClick={() => handleCollectDamageCharge(booking)}>
+                Collect {peso(booking.condition.damageCharge)} damage
+              </button>
+            )
+          )}
+        </div>
+      ) : booking.status === 'completed' ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={s.completed}><span style={s.statusDot(isDark ? '#93c5fd' : '#1e40af')} />Completed</span>
+          {/* A booking that came back three days late used to be
+              indistinguishable from one that came back on time
+              the moment it completed. We had the record and
+              showed it nowhere, so nobody could see who makes a
+              habit of it — least of all the client. */}
+          {booking.condition?.damageCharge > 0 && (
+            booking.condition.damageCollectedAt ? (
+              <span style={s.feeSettled}>{peso(booking.condition.damageCharge)} damage settled</span>
+            ) : (
+              <button
+                style={s.feeBtn}
+                onClick={() => handleCollectDamageCharge(booking)}
+                title={booking.condition.atReturn?.note || 'Damage recorded at return.'}
+              >
+                Collect {peso(booking.condition.damageCharge)} damage
+              </button>
+            )
+          )}
+          {booking.fuel?.charge > 0 && (
+            booking.fuel.collectedAt ? (
+              <span style={s.feeSettled}>{peso(booking.fuel.charge)} refuelling settled</span>
+            ) : (
+              <button
+                style={s.feeBtn}
+                onClick={() => handleCollectFuelCharge(booking)}
+                title={fuelShortfallLabel(booking)
+                  ? `Came back ${fuelShortfallLabel(booking)} short of the level it went out with.`
+                  : 'Refuelling charge recorded at return.'}
+              >
+                Collect {peso(booking.fuel.charge)} refuelling
+              </button>
+            )
+          )}
+          {booking.lateFee?.days > 0 && (
+            <>
+              <span style={s.overdueNote}>
+                Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late
+              </span>
+              {booking.lateFee.collectedAt ? (
+                <span style={s.feeSettled}>
+                  {peso(booking.lateFee.amount)} late fee settled
+                </span>
+              ) : (
+                <button
+                  style={s.feeBtn}
+                  onClick={() => handleCollectLateFee(booking)}
+                  title="One day's rental rate per day of delay, per the booking terms."
+                >
+                  Collect {peso(booking.lateFee.amount)} late fee
+                </button>
+              )}
+            </>
+          )}
+          {booking.clientRating?.ratedAt && (
+            <>
+              <StarRating value={booking.clientRating.rating} size={12} readOnly />
+              <button className="text-link-btn" style={s.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
+            </>
+          )}
+        </div>
+      ) : (
+        <div>
+          <StatusDropdown
+            isDark={isDark}
+            value={booking.status}
+            onChange={(status) => handleStatus(booking._id, status)}
+            options={[
+              { value: 'pending', label: 'Pending' },
+              { value: 'confirmed', label: 'Confirmed', disabled: booking.payment !== 'paid', color: isDark ? '#34d399' : '#16a34a' },
+              { value: 'cancelled', label: 'Cancelled', color: isDark ? '#f87171' : '#dc2626' },
+            ]}
+          />
+          {booking.payment !== 'paid' && (
+            <div style={{ fontSize: '10px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic', marginTop: '4px' }}>
+              Awaiting GCash payment
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <AdminLayout activePage="Manage Bookings">
       {!loading && rescheduleOnly && (
@@ -1242,217 +1462,7 @@ const ManageBookings = () => {
                   )}
                 </td>
                 <td style={cellStyle}>
-                  {booking.refundStatus === 'requested' ? (
-                    <div>
-                      <span style={{ fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic' }}>
-                        Resolve refund request first
-                      </span>
-                    </div>
-                  ) : bookingAwaitingDecision(booking) ? (
-                    <div style={s.awaitingBox}>
-                      <span style={s.awaitingTitle}>Waiting on the client</span>
-                      <span style={s.awaitingSub}>
-                        {booking.adjustOffer.reason === 'booking_conflict'
-                          ? 'Lost these dates to a confirmed booking.'
-                          : 'These dates were blocked on the vehicle.'}
-                        {' '}Offered other dates or a full refund — {timeLeftLabel(booking.adjustOffer.deadline).toLowerCase()}.
-                        It refunds itself if they don&apos;t answer.
-                      </span>
-                      <button
-                        type="button"
-                        style={s.awaitingCancelBtn}
-                        onClick={() => handleStatus(booking._id, 'cancelled')}
-                        title="Settle it now instead of waiting for the deadline."
-                      >
-                        Cancel &amp; refund now
-                      </button>
-                    </div>
-                  ) : booking.status === 'confirmed' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={s.confirmed}><span style={s.statusDot(isDark ? '#86efac' : '#065f46')} />Confirmed</span>
-                      {/* One sequence, in the order it happens at the
-                          counter: waiting, then handed over, then back. Until
-                          the keys are recorded as handed over there is
-                          nothing to return — and after they are, there is no
-                          longer any question of a no-show. */}
-                      {booking.collectedAt ? (
-                        <>
-                          <span style={isOverdue(booking) ? s.overdueNote : s.pickedUpNote}>
-                            {isOverdue(booking)
-                              ? `${daysOverdue(booking)} day${daysOverdue(booking) === 1 ? '' : 's'} overdue`
-                              : `Picked up ${formatMoment(booking.collectedAt, true, { month: 'numeric', day: 'numeric' })}`}
-                          </span>
-                          <button
-                            style={s.returnBtn(new Date() >= new Date(booking.endDate))}
-                            onClick={() => handleMarkReturned(booking)}
-                            title="Only needed for an early return — this completes automatically the day after the return date."
-                          >
-                            Mark as Returned
-                          </button>
-                        </>
-                      ) : new Date() >= new Date(new Date(booking.startDate).getTime() - EARLY_COLLECT_HOURS * 60 * 60 * 1000) ? (
-                        <>
-                          {/* Not a handover button any more. This row could
-                              only ever show the documents as a list and take
-                              one yes, while the Pickup Desk makes you tick
-                              each one — two doors to the same act, held to
-                              two different standards. A check that can be
-                              skipped by clicking the easier button is not a
-                              check. */}
-                          <button
-                            style={s.pickedUpBtn}
-                            onClick={() => navigate('/admin/pickups')}
-                            title="Check their documents at the Pickup Desk, then hand over the keys there."
-                          >
-                            Check in at desk
-                          </button>
-                          {/* Three days into a trip it is not a no-show,
-                              whatever else it might be. */}
-                          {new Date() >= new Date(booking.startDate)
-                            && !booking.extensions?.length
-                            && new Date() <= new Date(new Date(booking.startDate).getTime() + NO_SHOW_WINDOW_HOURS * 60 * 60 * 1000) && (
-                            <button
-                              style={s.noShowBtn}
-                              onClick={() => handleMarkNoShow(booking)}
-                              title="Vehicle was never picked up — cancels the booking and forfeits what was paid."
-                            >
-                              No-Show
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <span style={{ fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', fontStyle: 'italic' }}>
-                          Pickup {formatMoment(booking.startDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      )}
-                      {/* Accepting a booking used to be one-way: the status
-                          dropdown with Cancelled on it only ever showed on
-                          pending rows, so a confirmed booking couldn't be
-                          cancelled from anywhere. That left "Terms not met"
-                          unreachable in the one situation it was written for,
-                          since nobody turns up at pickup for a booking that
-                          was never accepted. Quieter than No-Show on purpose
-                          — No-Show forfeits everything and shouldn't be the
-                          calmer-looking of the two. */}
-                      {/* Only when the vehicle is actually out of service:
-                          off the road, or inside an approved block such as
-                          repairs. Moving somebody off a working vehicle is
-                          not an everyday action, and a button offering it on
-                          every confirmed row invited exactly that. */}
-                      {vehicleOutOfService(booking) && (
-                        <button
-                          style={s.moveBtn}
-                          onClick={() => openMove(booking)}
-                          title="This vehicle is out of service. Put the booking on a different one, keeping its dates."
-                        >
-                          Move vehicle
-                        </button>
-                      )}
-                      <button
-                        style={s.cancelRowBtn}
-                        onClick={() => handleStatus(booking._id, 'cancelled')}
-                        title="Cancel this booking and refund by policy."
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : booking.status === 'cancelled' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={s.cancelled}><span style={s.statusDot(isDark ? '#fca5a5' : '#991b1b')} />Cancelled</span>
-                      {/* A breakdown the client caused ends the booking and
-                          leaves a repair bill behind it. */}
-                      {booking.condition?.damageCharge > 0 && (
-                        booking.condition.damageCollectedAt ? (
-                          <span style={s.feeSettled}>{peso(booking.condition.damageCharge)} damage settled</span>
-                        ) : (
-                          <button style={s.feeBtn} onClick={() => handleCollectDamageCharge(booking)}>
-                            Collect {peso(booking.condition.damageCharge)} damage
-                          </button>
-                        )
-                      )}
-                    </div>
-                  ) : booking.status === 'completed' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={s.completed}><span style={s.statusDot(isDark ? '#93c5fd' : '#1e40af')} />Completed</span>
-                      {/* A booking that came back three days late used to be
-                          indistinguishable from one that came back on time
-                          the moment it completed. We had the record and
-                          showed it nowhere, so nobody could see who makes a
-                          habit of it — least of all the client. */}
-                      {booking.condition?.damageCharge > 0 && (
-                        booking.condition.damageCollectedAt ? (
-                          <span style={s.feeSettled}>{peso(booking.condition.damageCharge)} damage settled</span>
-                        ) : (
-                          <button
-                            style={s.feeBtn}
-                            onClick={() => handleCollectDamageCharge(booking)}
-                            title={booking.condition.atReturn?.note || 'Damage recorded at return.'}
-                          >
-                            Collect {peso(booking.condition.damageCharge)} damage
-                          </button>
-                        )
-                      )}
-                      {booking.fuel?.charge > 0 && (
-                        booking.fuel.collectedAt ? (
-                          <span style={s.feeSettled}>{peso(booking.fuel.charge)} refuelling settled</span>
-                        ) : (
-                          <button
-                            style={s.feeBtn}
-                            onClick={() => handleCollectFuelCharge(booking)}
-                            title={fuelShortfallLabel(booking)
-                              ? `Came back ${fuelShortfallLabel(booking)} short of the level it went out with.`
-                              : 'Refuelling charge recorded at return.'}
-                          >
-                            Collect {peso(booking.fuel.charge)} refuelling
-                          </button>
-                        )
-                      )}
-                      {booking.lateFee?.days > 0 && (
-                        <>
-                          <span style={s.overdueNote}>
-                            Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late
-                          </span>
-                          {booking.lateFee.collectedAt ? (
-                            <span style={s.feeSettled}>
-                              {peso(booking.lateFee.amount)} late fee settled
-                            </span>
-                          ) : (
-                            <button
-                              style={s.feeBtn}
-                              onClick={() => handleCollectLateFee(booking)}
-                              title="One day's rental rate per day of delay, per the booking terms."
-                            >
-                              Collect {peso(booking.lateFee.amount)} late fee
-                            </button>
-                          )}
-                        </>
-                      )}
-                      {booking.clientRating?.ratedAt && (
-                        <>
-                          <StarRating value={booking.clientRating.rating} size={12} readOnly />
-                          <button className="text-link-btn" style={s.editRatingBtn} onClick={() => openRatingModal(booking)}>Edit rating</button>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <div>
-                      <StatusDropdown
-                        isDark={isDark}
-                        value={booking.status}
-                        onChange={(status) => handleStatus(booking._id, status)}
-                        options={[
-                          { value: 'pending', label: 'Pending' },
-                          { value: 'confirmed', label: 'Confirmed', disabled: booking.payment !== 'paid', color: isDark ? '#34d399' : '#16a34a' },
-                          { value: 'cancelled', label: 'Cancelled', color: isDark ? '#f87171' : '#dc2626' },
-                        ]}
-                      />
-                      {booking.payment !== 'paid' && (
-                        <div style={{ fontSize: '10px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic', marginTop: '4px' }}>
-                          Awaiting GCash payment
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {actionsFor(booking)}
                 </td>
                 <td style={cellStyle}>
                   <button type="button" style={s.detailsBtn} onClick={() => setDetailsBookingId(booking._id)}>
