@@ -142,6 +142,9 @@ const ManageBookings = () => {
   const [loading, setLoading] = useState(true);
   const [ratingModalId, setRatingModalId] = useState(null);
   const [detailsBookingId, setDetailsBookingId] = useState(null);
+  // The row the panel is about. Null means "the first one in the list",
+  // worked out below, so the panel is never empty while there are bookings.
+  const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [rescheduleOnly, setRescheduleOnly] = useState(false);
@@ -513,6 +516,36 @@ const ManageBookings = () => {
 
   const ratingBooking = bookings.find((b) => b._id === ratingModalId);
   const detailsBooking = bookings.find((b) => b._id === detailsBookingId);
+
+  // What stage a booking is at, in the same words the tabs use.
+  const stageOf = (b) => {
+    if (b.status === 'pending') return 'pending';
+    if (b.status === 'completed') return 'completed';
+    if (b.status === 'cancelled') return 'cancelled';
+    if (isOverdue(b)) return 'overdue';
+    if (isOnTrip(b)) return 'on_trip';
+    if (isForPickup(b)) return 'for_pickup';
+    return 'upcoming';
+  };
+  const STAGE_LABEL = {
+    pending: 'Pending', upcoming: 'Upcoming', for_pickup: 'For pickup',
+    on_trip: 'On trip', overdue: 'Overdue', completed: 'Completed', cancelled: 'Cancelled',
+  };
+
+  // One figure per row: what somebody would want to know about this booking
+  // at a glance. Money still to come in beats money already settled.
+  const moneyFor = (b) => {
+    const unsettled = (!b.lateFee?.collectedAt ? (b.lateFee?.amount || 0) : 0)
+      + (!b.fuel?.collectedAt ? (b.fuel?.charge || 0) : 0)
+      + (!b.condition?.damageCollectedAt ? (b.condition?.damageCharge || 0) : 0);
+    const balance = Math.max(0, (b.totalPrice || 0) - (b.amountPaid || 0));
+    if (b.status === 'cancelled' && b.refundStatus === 'approved') {
+      return { amount: b.refundAmount || 0, label: 'refunded', tone: 'muted' };
+    }
+    if (unsettled > 0) return { amount: unsettled, label: 'to collect', tone: isOverdue(b) ? 'red' : 'gold' };
+    if (balance > 0 && b.status !== 'cancelled') return { amount: balance, label: 'due at pickup', tone: 'gold' };
+    return { amount: b.totalPrice || 0, label: 'total', tone: 'plain' };
+  };
   const unratedClientCount = bookings.filter((b) => b.status === 'completed' && !b.clientRating?.ratedAt).length;
   const pendingRescheduleCount = bookings.filter((b) => b.rescheduleRequest?.status === 'pending').length;
 
@@ -585,8 +618,23 @@ const ManageBookings = () => {
   })();
   const totalPages = Math.max(1, Math.ceil(groupedBookings.length / PAGE_SIZE));
   const pageBookings = paginate(groupedBookings, page, PAGE_SIZE);
+  // Never an empty panel: if nothing is picked, or what was picked has
+  // dropped off this tab, the panel follows the list.
+  const selected = pageBookings.find((b) => b._id === selectedId) || pageBookings[0] || null;
 
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
+
+  // The shorthands the list and panel below lean on.
+  const card = isDark ? '#242526' : '#ffffff';
+  const inset = isDark ? '#1e1f20' : '#f8f9fa';
+  const line = isDark ? '#3a3b3c' : '#e3e5e8';
+  const divider = isDark ? '#303132' : '#eef0f2';
+  const text = isDark ? '#e4e6eb' : '#1a1a1a';
+  const text2 = isDark ? '#b0b3b8' : '#4b5563';
+  const text3 = isDark ? '#8a8d91' : '#6b7280';
+  const ink = goldInk(isDark);
+  const goldTint = isDark ? 'rgba(232,161,0,0.12)' : '#fbf1d6';
+  const goldLine = isDark ? 'rgba(232,161,0,0.45)' : '#e6c77a';
 
   const s = {
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
@@ -927,6 +975,130 @@ const ManageBookings = () => {
     rescheduleFilterBadge: {
       background: isDark ? '#3a3b3c' : '#e5e7eb', color: isDark ? '#e4e6eb' : '#374151',
       fontSize: '11px', fontWeight: '700', borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
+    },
+  
+    // ── List beside detail (design 1c) ────────────────────────────────
+    split: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 560px', gap: '18px', alignItems: 'start' },
+    listCol: { minWidth: 0 },
+    listCard: {
+      background: card, border: `1px solid ${line}`, borderRadius: '14px', padding: '6px',
+      display: 'flex', flexDirection: 'column', gap: '2px',
+    },
+    emptyList: { fontSize: '13px', color: text3, padding: '18px', margin: 0, textAlign: 'center' },
+    row: (on) => ({
+      display: 'grid', gridTemplateColumns: '56px minmax(0, 1fr) auto', gap: '12px', alignItems: 'center',
+      padding: '10px', borderRadius: '10px', cursor: 'pointer', textAlign: 'left', width: '100%',
+      background: on ? goldTint : 'transparent',
+      border: `1px solid ${on ? goldLine : 'transparent'}`,
+    }),
+    rowThumb: {
+      width: '56px', height: '40px', borderRadius: '7px', overflow: 'hidden', background: inset, display: 'block',
+    },
+    rowThumbImg: { width: '100%', height: '100%', objectFit: 'cover' },
+    rowMain: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' },
+    rowTop: { display: 'flex', gap: '5px', minWidth: 0, alignItems: 'baseline' },
+    rowClient: { fontSize: '13.5px', fontWeight: '800', color: text, whiteSpace: 'nowrap' },
+    rowCar: { fontSize: '13px', color: text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    rowWhen: { fontSize: '12px', color: text3 },
+    rowFlags: { display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', marginTop: '2px' },
+    rowMoney: { textAlign: 'right', whiteSpace: 'nowrap' },
+    rowAmount: (tone) => ({
+      display: 'block', fontSize: '13px', fontWeight: '800', fontVariantNumeric: 'tabular-nums',
+      color: tone === 'gold' ? ink : tone === 'red' ? (isDark ? '#f87171' : '#b91c1c') : tone === 'muted' ? text3 : text,
+    }),
+    rowMoneyLabel: { display: 'block', fontSize: '10.5px', color: text3 },
+
+    pill: (stage) => {
+      const map = {
+        pending: { bg: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', fg: isDark ? '#fbbf24' : '#92400e', bd: 'transparent' },
+        upcoming: { bg: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', fg: isDark ? '#86efac' : '#065f46', bd: 'transparent' },
+        for_pickup: { bg: goldTint, fg: ink, bd: goldLine },
+        on_trip: { bg: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe', fg: isDark ? '#93c5fd' : '#1e40af', bd: 'transparent' },
+        overdue: {
+          bg: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+          fg: isDark ? '#f87171' : '#b91c1c',
+          bd: isDark ? 'rgba(248,113,113,0.35)' : '#fecaca',
+        },
+        completed: { bg: isDark ? '#303132' : '#f1f2f4', fg: text, bd: 'transparent' },
+        // A booking called off last month is not an alarm.
+        cancelled: { bg: 'transparent', fg: text2, bd: line },
+      };
+      const t = map[stage] || map.completed;
+      return {
+        display: 'inline-block', fontSize: '10px', fontWeight: '800', letterSpacing: '0.06em',
+        textTransform: 'uppercase', padding: '3px 9px', borderRadius: '20px',
+        background: t.bg, color: t.fg, border: `1px solid ${t.bd}`,
+      };
+    },
+    requestChip: {
+      display: 'inline-block', fontSize: '10.5px', fontWeight: '700', padding: '3px 8px', borderRadius: '7px',
+      background: goldTint, color: ink,
+    },
+    raceChip: {
+      display: 'inline-block', fontSize: '10.5px', fontWeight: '700', padding: '3px 8px', borderRadius: '7px',
+      background: isDark ? '#303132' : '#f1f2f4', color: text2,
+    },
+    lateFlag: {
+      display: 'inline-block', fontSize: '10.5px', fontWeight: '800',
+      color: isDark ? '#f87171' : '#b91c1c',
+    },
+
+    listFoot: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap',
+      marginTop: '14px',
+    },
+    listCount: { fontSize: '12px', color: text3 },
+    listCountStrong: { color: text, fontWeight: '700' },
+
+    panel: {
+      position: 'sticky', top: '20px', minWidth: 0,
+      background: card, border: `1px solid ${line}`, borderRadius: '16px', overflow: 'hidden',
+    },
+    panelHead: {
+      display: 'flex', gap: '14px', padding: '20px 22px', borderBottom: `1px solid ${divider}`, alignItems: 'flex-start',
+    },
+    panelThumb: {
+      width: '84px', height: '58px', borderRadius: '9px', overflow: 'hidden', background: inset, flexShrink: 0, display: 'block',
+    },
+    panelTitle: { fontSize: '18px', fontWeight: '800', color: text, margin: 0, wordBreak: 'break-word' },
+    panelEmail: { fontSize: '12.5px', color: text2, marginTop: '2px' },
+    panelMeta: { display: 'flex', alignItems: 'center', gap: '9px', flexWrap: 'wrap', marginTop: '7px' },
+    panelRef: {
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '11px', color: text3,
+    },
+    panelBody: { padding: '18px 22px 22px' },
+    sectionLabel: {
+      fontSize: '10.5px', fontWeight: '800', letterSpacing: '0.1em', textTransform: 'uppercase',
+      color: text3, marginBottom: '7px',
+    },
+    datesRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' },
+    datesMain: { fontSize: '14.5px', fontWeight: '800', color: text },
+    datesSub: { fontSize: '12.5px', color: text2, marginTop: '2px' },
+    noteBox: {
+      marginTop: '14px', padding: '10px 12px', borderRadius: '10px',
+      background: isDark ? 'rgba(217,119,6,0.12)' : '#fef3c7',
+      color: isDark ? '#fbbf24' : '#92400e', fontSize: '12px', lineHeight: 1.5,
+      display: 'flex', flexDirection: 'column', gap: '4px',
+    },
+    actionsWrap: { marginTop: '18px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' },
+    requestCard: {
+      marginTop: '16px', padding: '14px 16px', borderRadius: '12px',
+      background: goldTint, border: `1px solid ${goldLine}`,
+    },
+    requestLabel: {
+      fontSize: '10.5px', fontWeight: '800', letterSpacing: '0.1em', textTransform: 'uppercase', color: ink,
+    },
+    requestAsk: { fontSize: '14px', fontWeight: '800', color: text, marginTop: '5px' },
+    requestWords: { fontSize: '12.5px', fontStyle: 'italic', color: text2, margin: '6px 0 0', lineHeight: 1.5 },
+    requestBtns: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' },
+    goldBtn: {
+      minHeight: '38px', padding: '0 16px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, fontSize: '12.5px', fontWeight: '800',
+    },
+    ghostBtn: {
+      minHeight: '38px', padding: '0 16px', borderRadius: '10px', cursor: 'pointer',
+      border: `1px solid ${line}`, background: 'transparent', color: text,
+      fontSize: '12.5px', fontWeight: '700',
     },
   };
 
@@ -1301,183 +1473,185 @@ const ManageBookings = () => {
         })}
       </div>
 
-      <div className="table-scroll">
-        <table style={s.table}>
-          <thead>
-            <tr>
-              <th style={s.th}>Client</th>
-              <th style={s.th}>Car</th>
-              <th style={s.th}>Date Range</th>
-              <th style={s.th}>Total</th>
-              <th style={s.th}>Requests</th>
-              <th style={s.th}>Actions</th>
-              <th style={s.th}>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : filteredBookings.length === 0 ? (
-              <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', color: isDark ? '#b0b3b8' : '#6b7280' }}>No bookings match.</td></tr>
-            ) : pageBookings.map((booking, rowIndex) => {
-              const race = raceFor(booking);
-              // The heading belongs to the group, so only the first row of
-              // a race draws it. Rows were reordered above to sit together.
-              const opensRace = race && !(rowIndex > 0
-                && race.rivals.some((r) => r._id === pageBookings[rowIndex - 1]._id));
-              const cellStyle = race
-                ? { ...s.td, ...s.clashTd(race.askedFirst) }
-                : s.td;
-              const firstCellStyle = race ? { ...cellStyle, ...s.clashEdge } : cellStyle;
+      <div style={s.split}>
+        <div style={s.listCol}>
+          <div style={s.listCard} role="listbox" aria-label="Bookings">
+            {loading ? (
+              <SkeletonListCard isDark={isDark} count={5} />
+            ) : pageBookings.length === 0 ? (
+              <p style={s.emptyList}>No bookings match.</p>
+            ) : pageBookings.map((b) => {
+              const stage = stageOf(b);
+              const money = moneyFor(b);
+              const race = raceFor(b);
+              const on = selected?._id === b._id;
               return (
-              <Fragment key={booking._id}>
-              {opensRace && (
-                <tr>
-                  <td colSpan={7} style={s.clashBannerTd}>
-                    <div style={s.clashBanner}>
-                      <span style={s.clashDot} aria-hidden="true" />
-                      <span>{race.count} clients want these dates</span>
-                      <span style={s.clashWhy}>
-                        Confirming one will bump the other &mdash; they keep their money either way.
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              )}
-              <tr>
-                <td style={firstCellStyle}>
-                  <div style={s.clientCell}>
-                    <div style={s.avatar(!!race)}>
-                      {booking.user?.image
-                        ? <img src={booking.user.image} alt="" style={s.avatarImg} />
-                        : (booking.user?.name?.charAt(0).toUpperCase() || '?')}
-                    </div>
-                    <div>
-                  <div style={s.clientName}>
-                    {booking.user?.name || 'Unknown'}
-                    {booking.user?.ratingCount > 0 && booking.user.avgRating < LOW_RATING_THRESHOLD && (
-                      <span style={s.lowRatingBadge} title={`Avg rating: ${booking.user.avgRating.toFixed(1)} from ${booking.user.ratingCount} booking(s)`}>
-                        ⚠ Low Rating
-                      </span>
-                    )}
-                  </div>
-                  <div style={s.clientMeta}>{booking.user?.email}</div>
-                  <div style={s.clientMeta}>ID: {booking.user?._id?.slice(-6) || '—'}</div>
-                  {race && (
-                    <div style={s.rank(race.askedFirst)}>
-                      {race.askedFirst ? 'Asked first' : 'Asked later'}
-                      {askedAt(booking) ? ` · ${askedAt(booking)}` : ''}
-                    </div>
-                  )}
-                  {/* Asked before you accept, while it can still be fixed.
-                      A licence that runs out mid-trip is fine on the day
-                      they booked and useless on the day they drive. */}
-                  {freshActivity(booking) && (
-                    <div style={s.activityNote}>{freshActivity(booking)}</div>
-                  )}
-                  {docWarning(booking) && (
-                    <div style={s.docWarn}>{docWarning(booking)}</div>
-                  )}
-                  {booking.user?.ratingCount > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                      <StarRating value={booking.user.avgRating} size={11} readOnly />
-                      <span style={s.clientMeta}>{booking.user.avgRating.toFixed(1)} ({booking.user.ratingCount})</span>
-                    </div>
-                  )}
-                    </div>
-                  </div>
-                </td>
-                <td style={cellStyle}>
-                  <div style={s.carCell}>
-                    <div style={s.carThumb}>
-                      {booking.car?.image && <img src={booking.car.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                    </div>
-                    <div>
-                      <span>{booking.car?.brand} {booking.car?.model}</span>
-                      {booking.carRating?.ratedAt && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }} title={booking.carRating.comment || ''}>
-                          <StarRating value={booking.carRating.overall} size={11} readOnly />
-                          <span style={s.clientMeta}>{booking.carRating.overall.toFixed(1)} client review</span>
-                        </div>
+                <button
+                  key={b._id}
+                  type="button"
+                  role="option"
+                  aria-selected={on}
+                  style={s.row(on)}
+                  onClick={() => setSelectedId(b._id)}
+                >
+                  <span style={s.rowThumb}>
+                    {b.car?.image && <img src={b.car.image} alt="" style={s.rowThumbImg} />}
+                  </span>
+
+                  <span style={s.rowMain}>
+                    <span style={s.rowTop}>
+                      <strong style={s.rowClient}>{b.user?.name || 'Unknown'}</strong>
+                      <span style={s.rowCar}>· {b.car?.brand} {b.car?.model}</span>
+                    </span>
+                    <span style={s.rowWhen}>
+                      {formatMoment(b.startDate, b.hasPickupTime, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                    <span style={s.rowFlags}>
+                      <span style={s.pill(stage)}>{STAGE_LABEL[stage]}</span>
+                      {b.refundStatus === 'requested' && <span style={s.requestChip}>Refund requested</span>}
+                      {b.rescheduleRequest?.status === 'pending' && <span style={s.requestChip}>Reschedule requested</span>}
+                      {/* Two clients asked for the same dates. Confirming one
+                          bumps the other, so it belongs where somebody is
+                          choosing between them. */}
+                      {race && (
+                        <span style={s.raceChip}>
+                          {race.askedFirst ? 'Asked first' : 'Asked later'}
+                          {askedAt(b) ? ` · ${askedAt(b)}` : ''}
+                        </span>
                       )}
-                    </div>
-                  </div>
-                </td>
-                <td style={cellStyle}>
-                  {formatMoment(booking.startDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })} to {formatMoment(booking.endDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
-                  {booking.extensions?.length > 0 && (
-                    <div style={s.extendedNote}>
-                      Extended from {formatMoment(booking.extensions[0].previousEndDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
-                    </div>
-                  )}
-                  {booking.totalDays && (
-                    <div style={s.rentalLengthNote}>
-                      {booking.totalDays} DAY{booking.totalDays === 1 ? '' : 'S'} RENTAL
-                    </div>
-                  )}
-                </td>
-                <td style={cellStyle}>
-                  ₱{booking.totalPrice}
-                  {booking.discountAmount > 0 && (
-                    <div style={s.promoNote}>
-                      {booking.promoLabel || 'Promo'} · −₱{booking.discountAmount.toLocaleString()}
-                    </div>
-                  )}
-                  {booking.paymentType === 'downpayment' && booking.amountPaid < booking.totalPrice && (
-                    <div style={s.balanceNote}>
-                      ₱{booking.amountPaid.toLocaleString()} paid · ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} due at pickup
-                    </div>
-                  )}
-                </td>
-                <td style={cellStyle}>
-                  {booking.refundStatus === 'requested' && (
-                    <div style={{ marginBottom: booking.rescheduleRequest?.status === 'pending' ? '10px' : 0 }}>
-                      <div style={{ fontSize: '12px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '2px' }}>
-                        Refund: ₱{booking.refundAmount?.toLocaleString() ?? 0}
-                      </div>
-                      <div style={{ fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px', maxWidth: '160px' }}>
-                        {booking.refundReason}
-                      </div>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button style={s.acceptBtn} onClick={() => handleRefundDecision(booking._id, 'approved')}>Accept</button>
-                        <button style={s.declineBtn} onClick={() => handleRefundDecision(booking._id, 'declined')}>Decline</button>
-                      </div>
-                    </div>
-                  )}
-                  {booking.rescheduleRequest?.status === 'pending' && !bookingAwaitingDecision(booking) && (
-                    <div>
-                      <div style={{ fontSize: '12px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '2px' }}>
-                        Reschedule request
-                      </div>
-                      <div style={{ fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '6px', maxWidth: '160px' }}>
-                        New: {new Date(booking.rescheduleRequest.newStartDate).toLocaleDateString()} to {new Date(booking.rescheduleRequest.newEndDate).toLocaleDateString()}
-                      </div>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button style={s.acceptBtn} onClick={() => handleRescheduleDecision(booking._id, 'approved')}>Accept</button>
-                        <button style={s.declineBtn} onClick={() => handleRescheduleDecision(booking._id, 'declined')}>Decline</button>
-                      </div>
-                    </div>
-                  )}
-                  {booking.refundStatus !== 'requested'
-                    && (booking.rescheduleRequest?.status !== 'pending' || bookingAwaitingDecision(booking)) && (
-                    <span style={{ color: isDark ? '#8a8d91' : '#9ca3af', fontSize: '12px' }}>—</span>
-                  )}
-                </td>
-                <td style={cellStyle}>
-                  {actionsFor(booking)}
-                </td>
-                <td style={cellStyle}>
-                  <button type="button" style={s.detailsBtn} onClick={() => setDetailsBookingId(booking._id)}>
-                    View Details
-                  </button>
-                </td>
-              </tr>
-              </Fragment>
+                      {isOverdue(b) && (
+                        <span style={s.lateFlag}>
+                          {daysOverdue(b)} day{daysOverdue(b) === 1 ? '' : 's'} late
+                        </span>
+                      )}
+                      {b.lateFee?.days > 0 && b.status === 'completed' && (
+                        <span style={s.lateFlag}>
+                          Returned {b.lateFee.days} day{b.lateFee.days === 1 ? '' : 's'} late
+                        </span>
+                      )}
+                    </span>
+                  </span>
+
+                  <span style={s.rowMoney}>
+                    <span style={s.rowAmount(money.tone)}>₱{money.amount.toLocaleString()}</span>
+                    <span style={s.rowMoneyLabel}>{money.label}</span>
+                  </span>
+                </button>
               );
             })}
-          </tbody>
-        </table>
-      </div>
+          </div>
 
-      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} isDark={isDark} />
+          <div style={s.listFoot}>
+            <span style={s.listCount}>
+              Showing <strong style={s.listCountStrong}>{pageBookings.length}</strong> of{' '}
+              <strong style={s.listCountStrong}>{filteredBookings.length}</strong> booking{filteredBookings.length === 1 ? '' : 's'}
+            </span>
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} isDark={isDark} />
+          </div>
+        </div>
+
+        <div className="mb-panel" style={s.panel} role="region" aria-labelledby="mb-panel-title">
+          {!selected ? (
+            <p style={s.emptyList}>Nothing selected.</p>
+          ) : (
+            <>
+              <div style={s.panelHead}>
+                <span style={s.panelThumb}>
+                  {selected.car?.image && <img src={selected.car.image} alt="" style={s.rowThumbImg} />}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <h2 id="mb-panel-title" aria-live="polite" style={s.panelTitle}>
+                    {selected.user?.name || 'Unknown'} · {selected.car?.brand} {selected.car?.model}
+                  </h2>
+                  <div style={s.panelEmail}>{selected.user?.email}</div>
+                  <div style={s.panelMeta}>
+                    <span style={s.pill(stageOf(selected))}>{STAGE_LABEL[stageOf(selected)]}</span>
+                    {selected.paymongoPaymentId && (
+                      <span style={s.panelRef}>{selected.paymongoPaymentId}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={s.panelBody}>
+                <div style={s.sectionLabel}>Dates</div>
+                <div style={s.datesRow}>
+                  <div>
+                    <div style={s.datesMain}>
+                      {formatMoment(selected.startDate, selected.hasPickupTime, { month: 'short', day: 'numeric' })}
+                      {' → '}
+                      {formatMoment(selected.endDate, selected.hasPickupTime, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                    <div style={s.datesSub}>
+                      {selected.totalDays} day{selected.totalDays === 1 ? '' : 's'}
+                      {selected.bookingType === 'with-driver' ? ' · with driver' : ' · self-drive'}
+                    </div>
+                  </div>
+                  {isOverdue(selected) && (
+                    <span style={s.lateFlag}>
+                      {daysOverdue(selected)} day{daysOverdue(selected) === 1 ? '' : 's'} late
+                    </span>
+                  )}
+                </div>
+
+                {/* Things worth knowing before accepting, which used to be
+                    small grey lines in the client column. */}
+                {(docWarning(selected) || freshActivity(selected)) && (
+                  <div style={s.noteBox}>
+                    {docWarning(selected) && <div>{docWarning(selected)}</div>}
+                    {freshActivity(selected) && <div>{freshActivity(selected)}</div>}
+                  </div>
+                )}
+
+                {/* The only things on this page that are somebody else's
+                    question waiting on an answer, so they sit above the
+                    actions rather than among them. */}
+                {selected.refundStatus === 'requested' && (
+                  <div style={s.requestCard}>
+                    <div style={s.requestLabel}>Refund request</div>
+                    <div style={s.requestAsk}>
+                      ₱{(selected.refundAmount || 0).toLocaleString()} back to {selected.user?.name || 'the client'}
+                    </div>
+                    {selected.refundReason && <p style={s.requestWords}>&ldquo;{selected.refundReason}&rdquo;</p>}
+                    <div style={s.requestBtns}>
+                      <button type="button" style={s.goldBtn} onClick={() => handleRefundDecision(selected._id, 'approved')}>
+                        Approve refund
+                      </button>
+                      <button type="button" style={s.ghostBtn} onClick={() => handleRefundDecision(selected._id, 'declined')}>
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {selected.rescheduleRequest?.status === 'pending' && (
+                  <div style={s.requestCard}>
+                    <div style={s.requestLabel}>Reschedule request</div>
+                    <div style={s.requestAsk}>
+                      {formatMoment(selected.rescheduleRequest.newStartDate, selected.hasPickupTime, { month: 'short', day: 'numeric' })}
+                      {' → '}
+                      {formatMoment(selected.rescheduleRequest.newEndDate, selected.hasPickupTime, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                    {selected.rescheduleRequest.reason && (
+                      <p style={s.requestWords}>&ldquo;{selected.rescheduleRequest.reason}&rdquo;</p>
+                    )}
+                    <div style={s.requestBtns}>
+                      <button type="button" style={s.goldBtn} onClick={() => handleRescheduleDecision(selected._id, 'approved')}>
+                        Approve new dates
+                      </button>
+                      <button type="button" style={s.ghostBtn} onClick={() => handleRescheduleDecision(selected._id, 'declined')}>
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div style={s.actionsWrap}>{actionsFor(selected)}</div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       {ratingModalId && ratingBooking && (
         <ClientRatingModal
