@@ -20,6 +20,10 @@ import useReveal from '../../hooks/useReveal';
 // whole point. A tap on a phone still dials, as it always did.
 const PHONE = '0950-651-0479';
 const TEL = 'tel:09506510479';
+// The same page the footer links to. m.me opens the Messenger app on a
+// phone and the web version on a laptop, which is the half of this the
+// phone number cannot do.
+const MESSENGER = 'https://m.me/rentaridealbaybranch';
 
 const OCCASIONS = [
   {
@@ -134,6 +138,8 @@ const OccasionsSection = ({ cars }) => {
       fontSize: '14px', fontWeight: '800',
       color: on ? goldInk(isDark) : (isDark ? '#8a8d91' : '#6b7280'),
     }),
+    links: { display: 'inline-flex', alignItems: 'center', gap: '8px' },
+    linkSplit: { fontSize: '12px', color: isDark ? '#4a4b4d' : '#d6d9de' },
     link: {
       fontSize: '13.5px', fontWeight: '700', textDecoration: 'none',
       color: goldInk(isDark), minHeight: '44px', display: 'inline-flex', alignItems: 'center',
@@ -173,15 +179,27 @@ const OccasionsSection = ({ cars }) => {
                   <p style={s.text}>{o.text}</p>
                   <div style={s.foot}>
                     <span style={s.price(o.highlight)}>{o.price}</span>
-                    <a
-                      href={TEL}
-                      className="occasion-call"
-                      style={s.link}
-                      aria-label={`Call to arrange ${o.title.toLowerCase()}: ${PHONE}`}
-                    >
-                      Call <span aria-hidden="true">→</span>
-                      <span className="occasion-call-number" aria-hidden="true">{PHONE}</span>
-                    </a>
+                    <span style={s.links}>
+                      <a
+                        href={MESSENGER}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={s.link}
+                        aria-label={`Message us on Facebook about ${o.title.toLowerCase()}`}
+                      >
+                        Message
+                      </a>
+                      <span style={s.linkSplit} aria-hidden="true">·</span>
+                      <a
+                        href={TEL}
+                        className="occasion-call"
+                        style={s.link}
+                        aria-label={`Call to arrange ${o.title.toLowerCase()}: ${PHONE}`}
+                      >
+                        Call <span aria-hidden="true">→</span>
+                        <span className="occasion-call-number" aria-hidden="true">{PHONE}</span>
+                      </a>
+                    </span>
                   </div>
                 </div>
               </li>
