@@ -1577,19 +1577,32 @@ body.dark .consignor-menu-btn:focus-visible { outline-color: #e8a100; }
 /* A whole row inside a list: a suggestion, a search result, a booking in
    the day panel. The page-wide button lift is for things with a fill and
    an edge; on a row it peels the row out of the list it belongs to. These
-   highlight instead, the way the menus do. The tint needs the weight
-   because the rows set their own transparent background inline. */
+   take the admin sidebar's hover instead (.admin-side-item): a gold tint,
+   a ring and glow, and a 3px lean toward the pointer. No icon pop here —
+   these rows have no icon, and scaled text goes blurry mid-animation.
+   The tint needs the weight because the rows set their own transparent
+   background inline. */
 .list-row-btn:not(:disabled) {
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.2s ease;
 }
 .list-row-btn:not(:disabled):hover,
 .list-row-btn:not(:disabled):active {
   filter: none;
-  transform: none;
-  box-shadow: none;
+  transform: translateX(3px);
   background: rgba(184, 121, 10, 0.08) !important;
+  box-shadow: 0 0 0 1px rgba(184, 121, 10, 0.25), 0 0 16px rgba(184, 121, 10, 0.15);
 }
 body.dark .list-row-btn:not(:disabled):hover,
 body.dark .list-row-btn:not(:disabled):active {
   background: rgba(232, 161, 0, 0.1) !important;
+  box-shadow: 0 0 0 1px rgba(232, 161, 0, 0.25), 0 0 16px rgba(232, 161, 0, 0.15);
+}
+@media (prefers-reduced-motion: reduce) {
+  .list-row-btn:not(:disabled) {
+    transition: none;
+  }
+  .list-row-btn:not(:disabled):hover,
+  .list-row-btn:not(:disabled):active {
+    transform: none;
+  }
 }
