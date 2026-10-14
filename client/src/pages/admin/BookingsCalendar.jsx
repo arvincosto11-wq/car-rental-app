@@ -4,21 +4,17 @@ import AdminLayout from '../../components/AdminLayout';
 import BackButton from '../../components/BackButton';
 import Skeleton from '../../components/Skeleton';
 import { useTheme } from '../../context/ThemeContext';
-import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../../theme';
 import api from '../../api';
-import { formatMoment } from '../../utils/phTime';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_LABELS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-const STATUS_COLORS = {
-  pending: '#f59e0b',
-  confirmed: '#16a34a',
-  completed: '#2563eb',
-  cancelled: '#dc2626',
-};
+// Cancelled is neutral and struck through, never red: red on this page
+// means something needs doing, and a booking called off last month does
+// not. The edge colour is the 3px rule down the left of a chip.
+const STATUS_ORDER = ['pending', 'confirmed', 'completed', 'cancelled'];
 
 const normalize = (d) => {
   const nd = new Date(d);
@@ -75,12 +71,34 @@ const BookingsCalendar = () => {
     fetchBookings();
   }, []);
 
-  const dayModalRef = useModalA11y(() => setSelectedDay(null), !!selectedDay);
+  // What MOVES on a day, rather than what is merely out on it. A vehicle
+  // sitting with a client all week is not a thing anybody does something
+  // about; the mornings it leaves and comes back are. Whether a given
+  // vehicle is free on a date is still answered on its own calendar, in
+  // Block Dates.
+  const pickupsOn = (day) => bookings
+    .filter((b) => sameDate(b.startDate, day))
+    .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+  const returnsOn = (day) => bookings
+    .filter((b) => sameDate(b.endDate, day))
+    .sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
 
-  const bookingsForDay = (day) => {
-    const target = normalize(day);
-    return bookings.filter((b) => target >= normalize(b.startDate) && target <= normalize(b.endDate));
+  const hourLabel = (b, which) => {
+    if (!b.hasPickupTime) return 'all day';
+    const d = new Date(which === 'end' ? b.endDate : b.startDate);
+    const h = d.getHours();
+    return `${((h + 11) % 12) + 1}${h < 12 ? 'am' : 'pm'}`;
   };
+
+  // The panel always has a day: the one picked, or today, or the first of
+  // the month being looked at. An empty panel beside a full month is a
+  // question nobody asked.
+  const panelDay = selectedDay
+    || (cursor.getMonth() === new Date().getMonth() && cursor.getFullYear() === new Date().getFullYear()
+      ? new Date()
+      : new Date(cursor));
+  const panelOut = pickupsOn(panelDay);
+  const panelBack = returnsOn(panelDay);
 
   const grid = buildGrid(cursor.getFullYear(), cursor.getMonth());
   const today = new Date();
@@ -93,6 +111,14 @@ const BookingsCalendar = () => {
     d.setDate(1);
     setCursor(d);
   };
+
+  const card = isDark ? '#242526' : '#ffffff';
+  const line = isDark ? '#3a3b3c' : '#e3e5e8';
+  const divider = isDark ? '#303132' : '#eef0f2';
+  const text = isDark ? '#e4e6eb' : '#1a1a1a';
+  const text2 = isDark ? '#b0b3b8' : '#4b5563';
+  const text3 = isDark ? '#8a8d91' : '#6b7280';
+  const ink = goldInk(isDark);
 
   const s = {
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
@@ -128,6 +154,56 @@ const BookingsCalendar = () => {
     statusBadge: (color) => ({ fontSize: '10px', fontWeight: '700', color: '#fff', background: color, padding: '2px 8px', borderRadius: '20px', textTransform: 'capitalize' }),
     bookingMeta: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
     closeBtn: { marginTop: '16px', width: '100%', padding: '10px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' },
+  
+    // ── Month beside a day (design 1a) ────────────────────────────────
+    split: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: '18px', alignItems: 'start' },
+    dayTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' },
+    backCount: { fontSize: '10.5px', color: text3 },
+    tone: (status) => ({
+      pending: { bg: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', fg: isDark ? '#fbbf24' : '#92400e', edge: isDark ? '#f59e0b' : '#d97706' },
+      confirmed: { bg: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', fg: isDark ? '#86efac' : '#065f46', edge: isDark ? '#22c55e' : '#16a34a' },
+      completed: { bg: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe', fg: isDark ? '#93c5fd' : '#1e40af', edge: isDark ? '#3b82f6' : '#2563eb' },
+      cancelled: { bg: isDark ? '#303132' : '#f1f2f4', fg: text2, edge: isDark ? '#6b7280' : '#9ca3af' },
+    }[status] || { bg: isDark ? '#303132' : '#f1f2f4', fg: text2, edge: '#9ca3af' }),
+    legendSwatch: (status) => ({
+      width: '12px', height: '12px', borderRadius: '3px', display: 'inline-block',
+      background: s.tone(status).bg,
+      borderLeft: `3px solid ${s.tone(status).edge}`,
+    }),
+    pill: (status) => ({
+      fontSize: '10px', fontWeight: '800', letterSpacing: '0.05em', textTransform: 'uppercase',
+      padding: '3px 8px', borderRadius: '20px', whiteSpace: 'nowrap',
+      background: s.tone(status).bg, color: s.tone(status).fg,
+      textDecoration: status === 'cancelled' ? 'line-through' : 'none',
+    }),
+
+    panel: {
+      position: 'sticky', top: '20px',
+      background: card, border: `1px solid ${line}`, borderRadius: '16px', padding: '18px 20px',
+    },
+    panelTitle: { fontSize: '17px', fontWeight: '800', color: text, margin: 0 },
+    panelSummary: { fontSize: '12.5px', color: text3, margin: '4px 0 16px' },
+    group: { marginBottom: '16px' },
+    groupLabel: {
+      fontSize: '10.5px', fontWeight: '800', letterSpacing: '0.1em', textTransform: 'uppercase',
+      color: text3, marginBottom: '6px',
+    },
+    groupEmpty: { fontSize: '12.5px', color: text3, margin: 0 },
+    panelRow: {
+      display: 'grid', gridTemplateColumns: '58px minmax(0, 1fr) auto', gap: '10px', alignItems: 'center',
+      width: '100%', padding: '8px 0', background: 'transparent', border: 'none',
+      borderTop: `1px solid ${divider}`, textAlign: 'left', cursor: 'pointer',
+    },
+    panelTime: { fontSize: '12.5px', fontWeight: '800', color: text },
+    panelClient: { display: 'block', fontSize: '13px', fontWeight: '700', color: text },
+    panelMeta: {
+      display: 'block', fontSize: '11.5px', color: text3,
+      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+    },
+    panelLink: {
+      border: 'none', background: 'transparent', padding: 0, cursor: 'pointer',
+      font: 'inherit', fontSize: '12.5px', fontWeight: '700', color: ink,
+    },
   };
 
   return (
@@ -152,65 +228,96 @@ const BookingsCalendar = () => {
           </div>
 
           <div style={s.legendRow}>
-            {Object.entries(STATUS_COLORS).map(([status, color]) => (
+            {STATUS_ORDER.map((status) => (
               <span key={status} style={s.legendItem}>
-                <span style={s.legendDot(color)} />
+                <span style={s.legendSwatch(status)} />
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </span>
             ))}
           </div>
 
+          <div style={s.split}>
           <div style={s.grid}>
             {WEEKDAY_LABELS.map((wd) => (
               <div key={wd} style={s.weekdayCell}>{wd}</div>
             ))}
             {grid.map(({ date, inMonth }, i) => {
-              const dayBookings = bookingsForDay(date);
+              const out = pickupsOn(date);
+              const back = returnsOn(date);
               const isToday = sameDate(date, today);
+              const isSelected = selectedDay && sameDate(date, selectedDay);
               return (
-                <div key={i} style={s.dayCell(inMonth, isToday)}>
-                  <span style={s.dayNum(isToday)}>{date.getDate()}</span>
-                  {dayBookings.slice(0, CHIP_LIMIT).map((b) => (
+                <button
+                  key={i}
+                  type="button"
+                  style={s.dayCell(inMonth, isToday, isSelected)}
+                  aria-pressed={!!isSelected}
+                  aria-label={`${date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}: ${out.length} pickup${out.length === 1 ? '' : 's'}, ${back.length} return${back.length === 1 ? '' : 's'}`}
+                  onClick={() => setSelectedDay(date)}
+                >
+                  <span style={s.dayTop}>
+                    <span style={s.dayNum(isToday)}>{date.getDate()}</span>
+                    {back.length > 0 && <span style={s.backCount}>{back.length} back</span>}
+                  </span>
+                  {out.slice(0, CHIP_LIMIT).map((b) => (
                     <span
                       key={b._id}
-                      style={s.chip(STATUS_COLORS[b.status] || '#9ca3af')}
+                      style={s.chip(b.status)}
                       title={`${b.car?.brand} ${b.car?.model} · ${b.user?.name} · ${b.status}`}
-                      onClick={() => setSelectedDay(date)}
                     >
-                      {b.car?.brand} {b.car?.model}
+                      {hourLabel(b)} · {b.car?.model}
                     </span>
                   ))}
-                  {dayBookings.length > CHIP_LIMIT && (
-                    <button className="text-link-btn" style={s.moreBtn} onClick={() => setSelectedDay(date)}>
-                      +{dayBookings.length - CHIP_LIMIT} more
-                    </button>
+                  {out.length > CHIP_LIMIT && (
+                    <span style={s.moreBtn}>+{out.length - CHIP_LIMIT} more</span>
                   )}
-                </div>
+                </button>
               );
             })}
+          </div>
+
+          <div style={s.panel} aria-live="polite">
+            <h2 style={s.panelTitle}>
+              {panelDay.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long' })}
+              {sameDate(panelDay, today) ? ' · Today' : ''}
+            </h2>
+            <p style={s.panelSummary}>
+              {panelOut.length} going out · {panelBack.length} coming back
+            </p>
+
+            {[['Pickups', panelOut, 'start'], ['Returns', panelBack, 'end']].map(([label, list, which]) => (
+              <div key={label} style={s.group}>
+                <div style={s.groupLabel}>{label} · {list.length}</div>
+                {list.length === 0 ? (
+                  <p style={s.groupEmpty}>None</p>
+                ) : list.map((b) => (
+                  <button
+                    key={b._id}
+                    type="button"
+                    style={s.panelRow}
+                    onClick={() => navigate('/admin/manage-bookings')}
+                  >
+                    <span style={s.panelTime}>{hourLabel(b, which)}</span>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={s.panelClient}>{b.user?.name || 'Unknown'}</span>
+                      <span style={s.panelMeta}>
+                        {b.car?.brand} {b.car?.model} · {b.totalDays} day{b.totalDays === 1 ? '' : 's'}
+                      </span>
+                    </span>
+                    <span style={s.pill(b.status)}>{b.status}</span>
+                  </button>
+                ))}
+              </div>
+            ))}
+
+            <button type="button" style={s.panelLink} onClick={() => navigate('/admin/manage-bookings')}>
+              Open these in Manage Bookings →
+            </button>
+          </div>
           </div>
         </>
       )}
 
-      {selectedDay && (
-        <div style={s.modalOverlay}>
-          <div style={s.modalContent} ref={dayModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="day-modal-title">
-            <h2 id="day-modal-title" style={s.modalTitle}>
-              {selectedDay.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-            </h2>
-            {bookingsForDay(selectedDay).map((b) => (
-              <div key={b._id} style={s.bookingRow}>
-                <div style={s.bookingTop}>
-                  <span style={s.bookingCar}>{b.car?.brand} {b.car?.model}</span>
-                  <span style={s.statusBadge(STATUS_COLORS[b.status] || '#9ca3af')}>{b.status}</span>
-                </div>
-                <div style={s.bookingMeta}>{b.user?.name} · {formatMoment(b.startDate, b.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })} to {formatMoment(b.endDate, b.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })} · ₱{b.totalPrice?.toLocaleString()}</div>
-              </div>
-            ))}
-            <button style={s.closeBtn} onClick={() => setSelectedDay(null)}>Close</button>
-          </div>
-        </div>
-      )}
     </AdminLayout>
   );
 };
