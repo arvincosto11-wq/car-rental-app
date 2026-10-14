@@ -119,6 +119,9 @@ const BookingsCalendar = () => {
   const text2 = isDark ? '#b0b3b8' : '#4b5563';
   const text3 = isDark ? '#8a8d91' : '#6b7280';
   const ink = goldInk(isDark);
+  const gold = isDark ? GOLD_DARK : GOLD;
+  const goldTint = isDark ? 'rgba(232,161,0,0.12)' : '#fbf1d6';
+  const goldLine = isDark ? 'rgba(232,161,0,0.45)' : '#e6c77a';
 
   const s = {
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
@@ -133,16 +136,35 @@ const BookingsCalendar = () => {
     legendDot: (color) => ({ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0 }),
     grid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: isDark ? '#3a3b3c' : '#e5e7eb', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '10px', overflow: 'hidden' },
     weekdayCell: { background: isDark ? '#242526' : '#f9fafb', padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: '700', color: isDark ? '#b0b3b8' : '#6b7280', textTransform: 'uppercase' },
-    dayCell: (inMonth, isToday) => ({
-      background: isDark ? '#242526' : '#fff', minHeight: '92px', padding: '6px', display: 'flex', flexDirection: 'column', gap: '3px',
-      opacity: inMonth ? 1 : 0.4,
-      boxShadow: isToday ? `inset 0 0 0 2px ${isDark ? GOLD_DARK : GOLD}` : 'none',
+    // The third argument is the one the cells have been passing all along
+    // and this did not take, so picking a day changed nothing on the grid —
+    // the only ring on screen was today's.
+    dayCell: (inMonth, isToday, isSelected) => ({
+      background: isSelected ? goldTint : card,
+      minHeight: '112px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px',
+      alignItems: 'stretch', textAlign: 'left', border: 'none', cursor: 'pointer',
+      opacity: inMonth ? 1 : 0.45,
+      boxShadow: isSelected
+        ? `inset 0 0 0 2px ${gold}`
+        : isToday ? `inset 0 0 0 1px ${goldLine}` : 'none',
     }),
-    dayNum: (isToday) => ({ fontSize: '12px', fontWeight: isToday ? '800' : '600', color: isDark ? '#e4e6eb' : '#1a1a1a' }),
-    chip: (color) => ({
-      fontSize: '10px', padding: '2px 6px', borderRadius: '4px', borderLeft: `3px solid ${color}`,
-      background: isDark ? '#18191a' : '#f9fafb', color: isDark ? '#e2e8f0' : '#374151',
-      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
+    // A circle, filled when it is today, as the design draws it.
+    dayNum: (isToday) => ({
+      width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '12px', fontWeight: isToday ? '800' : '600',
+      background: isToday ? gold : 'transparent',
+      color: isToday ? ON_GOLD : text,
+    }),
+    // Takes the status, not a colour: it used to take a colour, and when the
+    // cells started passing the status instead the browser quietly dropped
+    // "3px solid confirmed" and every chip came out plain.
+    chip: (status) => ({
+      display: 'block', fontSize: '11.5px', fontWeight: '600', padding: '3px 7px',
+      borderRadius: '5px', borderLeft: `3px solid ${s.tone(status).edge}`,
+      background: s.tone(status).bg, color: s.tone(status).fg,
+      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left',
+      textDecoration: status === 'cancelled' ? 'line-through' : 'none',
     }),
     moreBtn: { fontSize: '10px', background: 'none', border: 'none', color: goldInk(isDark), cursor: 'pointer', fontWeight: '700', textAlign: 'left', padding: 0 },
     modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
