@@ -332,7 +332,7 @@ const BookingsCalendar = () => {
               </div>
             ))}
 
-            <button type="button" style={s.panelLink} onClick={() => navigate('/admin/manage-bookings')}>
+            <button type="button" className="text-link-btn" style={s.panelLink} onClick={() => navigate('/admin/manage-bookings')}>
               Open these in Manage Bookings →
             </button>
           </div>

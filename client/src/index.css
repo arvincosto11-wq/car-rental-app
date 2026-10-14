@@ -1573,3 +1573,21 @@ body.dark .consignor-menu-btn:focus-visible { outline-color: #e8a100; }
     row-gap: 2px !important;
   }
 }
+
+/* A row inside the search suggestions, not a call to action: the page-wide
+   button lift pulled each one out of the dropdown it belongs to. Same
+   opt-out as the other menu rows, with a tint for the hover instead. */
+.mc-suggest-item:not(:disabled) {
+  transition: background 0.15s ease;
+}
+.mc-suggest-item:not(:disabled):hover,
+.mc-suggest-item:not(:disabled):active {
+  filter: none;
+  transform: none;
+  box-shadow: none;
+  background: rgba(184, 121, 10, 0.08);
+}
+body.dark .mc-suggest-item:not(:disabled):hover,
+body.dark .mc-suggest-item:not(:disabled):active {
+  background: rgba(232, 161, 0, 0.1);
+}

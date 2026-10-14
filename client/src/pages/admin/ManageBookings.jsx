@@ -1667,6 +1667,7 @@ const ManageBookings = () => {
           </span>
           <button
             type="button"
+            className="text-link-btn"
             style={s.dueLink}
             onClick={() => { setStatusFilter('on_trip'); setPage(1); }}
           >

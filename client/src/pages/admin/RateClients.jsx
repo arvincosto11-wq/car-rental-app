@@ -260,7 +260,7 @@ const RateClients = () => {
       ) : !current ? (
         <div style={s.empty}>
           <p><DoneGlyph size={16} /> Everyone is rated.</p>
-          <button type="button" style={s.emptyLink} onClick={() => navigate('/admin/manage-bookings')}>
+          <button type="button" className="text-link-btn" style={s.emptyLink} onClick={() => navigate('/admin/manage-bookings')}>
             Back to Manage Bookings
           </button>
         </div>
