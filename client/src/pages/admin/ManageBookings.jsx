@@ -567,7 +567,9 @@ const ManageBookings = () => {
     const steps = [{
       title: 'Booked',
       at: b.createdAt,
-      detail: b.paymentType === 'full' ? 'Paid in full' : `${Math.round(((b.amountPaid || 0) / (b.totalPrice || 1)) * 100)}% deposit paid`,
+      detail: (b.amountPaid || 0) >= (b.totalPrice || 0)
+        ? 'Paid in full'
+        : `${Math.round(((b.amountPaid || 0) / (b.totalPrice || 1)) * 100)}% deposit paid`,
     }];
 
     if (b.collectedAt) {
@@ -622,7 +624,7 @@ const ManageBookings = () => {
     const paidInFull = (b.amountPaid || 0) >= (b.totalPrice || 0);
     rows.push({
       title: 'Rental',
-      sub: b.paymentType === 'full'
+      sub: paidInFull
         ? `paid in full${b.payment === 'gcash_pending' ? ', GCash pending' : ''}`
         : `${Math.round(((b.amountPaid || 0) / (b.totalPrice || 1)) * 100)}% deposit paid`,
       amount: b.totalPrice || 0,
@@ -1836,7 +1838,7 @@ const ManageBookings = () => {
                     booking can owe a balance, a late fee, a refuelling and a
                     repair at once, and those used to be in three different
                     columns. */}
-                <div style={s.sectionLabel}>Money</div>
+                <div style={{ ...s.sectionLabel, marginTop: '22px' }}>Money</div>
                 <div style={s.moneyStrip}>
                   {moneyStripFor(selected).map((f) => (
                     <div key={f.label} style={s.moneyCell}>
