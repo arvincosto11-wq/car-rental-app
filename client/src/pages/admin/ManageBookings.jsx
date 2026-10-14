@@ -720,7 +720,10 @@ const ManageBookings = () => {
     const matchSearch = !q
       || b.user?.name?.toLowerCase().includes(q)
       || b.user?.email?.toLowerCase().includes(q)
-      || `${b.car?.brand} ${b.car?.model}`.toLowerCase().includes(q);
+      || `${b.car?.brand} ${b.car?.model}`.toLowerCase().includes(q)
+      // The payment reference is what a client quotes when they ring up
+      // about a charge, and it is printed on their own booking.
+      || b.paymongoPaymentId?.toLowerCase().includes(q);
     return matchStatus && matchReschedule && matchSearch;
   });
   // Two clients racing for the same vehicle are one decision, so they are
@@ -1627,7 +1630,7 @@ const ManageBookings = () => {
         <input
           style={s.searchInput}
           type="text"
-          placeholder="Search by client, email, or car..."
+          placeholder="Search by client, email, car or payment reference..."
           aria-label="Search bookings"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
