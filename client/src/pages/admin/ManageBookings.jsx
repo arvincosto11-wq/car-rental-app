@@ -559,6 +559,56 @@ const ManageBookings = () => {
     ];
   };
 
+  // What happened to this booking, from the times the system actually
+  // recorded. There is no cancelledAt or confirmedAt on a booking, so those
+  // steps carry no clock rather than borrowing `updatedAt`, which only says
+  // when the row was last touched by anything at all.
+  const stepsFor = (b) => {
+    const steps = [{
+      title: 'Booked',
+      at: b.createdAt,
+      detail: b.paymentType === 'full' ? 'Paid in full' : `${Math.round(((b.amountPaid || 0) / (b.totalPrice || 1)) * 100)}% deposit paid`,
+    }];
+
+    if (b.collectedAt) {
+      steps.push({
+        title: 'Picked up',
+        at: b.collectedAt,
+        detail: b.fuel?.atPickup !== null && b.fuel?.atPickup !== undefined
+          ? `Fuel ${fuelLabel(b.fuel.atPickup).toLowerCase()}`
+          : 'No fuel level recorded',
+        photos: b.condition?.atPickup?.photos || [],
+      });
+    }
+
+    if (b.returnedAt) {
+      steps.push({
+        title: 'Returned',
+        at: b.returnedAt,
+        detail: b.fuel?.atReturn !== null && b.fuel?.atReturn !== undefined
+          ? `Fuel ${fuelLabel(b.fuel.atReturn).toLowerCase()}`
+          : 'No fuel level recorded',
+        photos: b.condition?.atReturn?.photos || [],
+        bad: (b.lateFee?.days || 0) > 0 || (b.condition?.damageCharge || 0) > 0,
+      });
+    } else if (isOverdue(b)) {
+      steps.push({
+        title: 'Still out',
+        detail: `${daysOverdue(b)} day${daysOverdue(b) === 1 ? '' : 's'} past its return time`,
+        bad: true,
+      });
+    }
+
+    if (b.status === 'cancelled') {
+      steps.push({
+        title: 'Cancelled',
+        detail: b.cancelNote || (b.cancelReason ? b.cancelReason.replace(/_/g, ' ') : 'No reason recorded'),
+        bad: true,
+      });
+    }
+    return steps;
+  };
+
   const LEDGER_STATE = {
     settled: 'Settled',
     unsettled: 'Not settled',
@@ -1190,6 +1240,28 @@ const ManageBookings = () => {
         background: t.bg, color: t.fg,
       };
     },
+    timeline: { listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' },
+    step: { display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr)', gap: '12px' },
+    stepRail: { display: 'flex', flexDirection: 'column', alignItems: 'center' },
+    stepDot: (bad) => ({
+      width: '12px', height: '12px', borderRadius: '50%', marginTop: '3px', flexShrink: 0,
+      background: bad ? (isDark ? '#ef4444' : '#dc2626') : 'transparent',
+      border: `2px solid ${bad ? (isDark ? '#ef4444' : '#dc2626') : (isDark ? GOLD_DARK : GOLD)}`,
+    }),
+    stepLine: { flex: 1, width: '2px', background: divider, marginTop: '3px' },
+    stepHead: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px' },
+    stepTitle: (bad) => ({
+      fontSize: '13px', fontWeight: '800',
+      color: bad ? (isDark ? '#f87171' : '#b91c1c') : text,
+    }),
+    stepWhen: { fontSize: '11.5px', color: text3, whiteSpace: 'nowrap' },
+    stepDetail: { display: 'block', fontSize: '12px', color: text2, marginTop: '2px' },
+    stepPhotos: { display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '7px' },
+    stepPhoto: {
+      width: '46px', height: '34px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer',
+      border: `1px solid ${line}`,
+    },
+    stepPhotoCount: { fontSize: '11px', fontWeight: '700', color: ink },
     requestCard: {
       marginTop: '16px', padding: '14px 16px', borderRadius: '12px',
       background: goldTint, border: `1px solid ${goldLine}`,
@@ -1783,6 +1855,45 @@ const ManageBookings = () => {
                     </div>
                   ))}
                 </div>
+
+                <div style={{ ...s.sectionLabel, marginTop: '22px' }}>What happened</div>
+                <ol style={s.timeline}>
+                  {stepsFor(selected).map((step, i, all) => (
+                    <li key={step.title} style={s.step}>
+                      <span style={s.stepRail}>
+                        <span style={s.stepDot(step.bad)} />
+                        {i < all.length - 1 && <span style={s.stepLine} />}
+                      </span>
+                      <span style={{ minWidth: 0, paddingBottom: i < all.length - 1 ? '16px' : 0 }}>
+                        <span style={s.stepHead}>
+                          <span style={s.stepTitle(step.bad)}>{step.title}</span>
+                          {step.at && (
+                            <span style={s.stepWhen}>
+                              {formatMoment(step.at, true, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                          )}
+                        </span>
+                        <span style={s.stepDetail}>{step.detail}</span>
+                        {step.photos?.length > 0 && (
+                          <span style={s.stepPhotos}>
+                            {step.photos.slice(0, 4).map((url, n) => (
+                              <img
+                                key={url}
+                                src={url}
+                                alt={`${step.title} ${n + 1}`}
+                                style={s.stepPhoto}
+                                onClick={() => window.open(url, '_blank', 'noopener')}
+                              />
+                            ))}
+                            <span style={s.stepPhotoCount}>
+                              {step.photos.length} photo{step.photos.length === 1 ? '' : 's'}
+                            </span>
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
               </div>
             </>
           )}
