@@ -432,7 +432,7 @@ const Dashboard = () => {
   const daySummary = lanes
     .filter((l) => l.items.length)
     .map((l) => `${l.items.length} ${l.items.length === 1 ? l.label.replace(/s$/, '').toLowerCase() : l.label.toLowerCase()}`)
-    .join(' · ') || 'Nothing scheduled';
+    .join(' · ') || 'Nothing going out or coming back today';
 
   // 7am to 7pm unless something falls outside it, in which case the axis
   // stretches rather than quietly dropping the booking off its end.
@@ -626,7 +626,9 @@ const Dashboard = () => {
             ))}
 
             {lanes.every((l) => l.items.length === 0) ? (
-              <p style={s.emptyLine}>Nothing scheduled today.</p>
+              // The line under the heading already says so; saying it twice
+              // made an empty day look like an error.
+              null
             ) : (
               <>
                 <div style={s.axisRow}>
