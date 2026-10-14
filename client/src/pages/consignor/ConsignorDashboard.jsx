@@ -685,7 +685,7 @@ const ConsignorDashboard = () => {
                 <p style={s.lead}>Track the status of your consignment applications.</p>
               </div>
 
-              <div style={s.overviewGrid}>
+              <div className="consignor-overview" style={s.overviewGrid}>
                 <div style={s.inset}>
                   <div style={s.boxLabel}>Earnings</div>
                   <div style={s.periodToggleRow} role="tablist" aria-label="Earnings period">
@@ -755,7 +755,7 @@ const ConsignorDashboard = () => {
                 consignments
                   .filter((c) => (approved.length > 1 && selected ? c._id === selected._id || c.status !== 'approved' : true))
                   .map((c) => (
-                    <div key={c._id} style={s.vehicleBlock}>
+                    <div key={c._id} className="consignor-vehicle" style={s.vehicleBlock}>
                       <div style={s.vehiclePhoto}>
                         {(c.linkedCar?.image || c.vehiclePhotos?.[0]?.url) && (
                           <img src={c.linkedCar?.image || c.vehiclePhotos[0].url} alt="" style={s.vehiclePhotoImg} />
@@ -837,7 +837,7 @@ const ConsignorDashboard = () => {
                   <div style={s.boxLabel}>Recent bookings</div>
                   <div style={s.recentList}>
                     {scopedBookings.slice(0, 3).map((b) => (
-                      <div key={b._id} style={s.recentRow}>
+                      <div key={b._id} className="consignor-recent" style={s.recentRow}>
                         <span style={s.recentClient}>{b.user?.name || 'Unknown'}</span>
                         <span style={s.recentDates}>
                           {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}

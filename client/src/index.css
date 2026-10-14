@@ -1557,3 +1557,19 @@ body.dark .consignor-menu-btn:focus-visible { outline-color: #e8a100; }
   .consignor-menu-btn { transition: none; }
   .consignor-menu-btn:not(:disabled):hover { transform: none; }
 }
+
+/* The consignor page is the one admin-ish screen a partner may open on a
+   phone, so its fixed columns have to give way. A 200px photo beside a
+   150px stack of buttons is 26px wider than a 430px window, which pushed
+   the whole page sideways. */
+@media (max-width: 760px) {
+  .consignor-overview,
+  .consignor-vehicle {
+    grid-template-columns: 1fr !important;
+  }
+  .consignor-vehicle > :last-child { flex-direction: row !important; flex-wrap: wrap; }
+  .consignor-recent {
+    grid-template-columns: 1fr auto !important;
+    row-gap: 2px !important;
+  }
+}
