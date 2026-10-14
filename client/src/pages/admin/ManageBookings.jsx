@@ -132,6 +132,16 @@ const previewRefund = (booking, reason) => {
   return 0;
 };
 
+const CalendarGlyph = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+    <line x1="3" y1="9.5" x2="21" y2="9.5" />
+    <line x1="8" y1="2.5" x2="8" y2="6.5" />
+    <line x1="16" y1="2.5" x2="16" y2="6.5" />
+  </svg>
+);
+
 const ManageBookings = () => {
   usePageTitle('Manage Bookings');
   const { isDark } = useTheme();
@@ -1363,11 +1373,11 @@ const ManageBookings = () => {
       <div style={s.headerRow}>
         <div>
           <h1 style={s.title}>Manage Bookings</h1>
-          <p style={s.subtitle}>Track all customer bookings and manage booking statuses.</p>
+          <p style={s.subtitle}>Every booking from confirmation to the keys coming back.</p>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button style={s.calendarBtn} onClick={() => navigate('/admin/bookings-calendar')}>
-            📅 Calendar View
+          <CalendarGlyph /> Calendar View
           </button>
           {!loading && !rescheduleOnly && pendingRescheduleCount > 0 && (
             <button
