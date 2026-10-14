@@ -542,6 +542,72 @@ const ManageBookings = () => {
     on_trip: 'On trip', overdue: 'Overdue', completed: 'Completed', cancelled: 'Cancelled',
   };
 
+  // What the four figures mean: what this booking is worth in the end, what
+  // has come in, what is still to come in, and what went back out.
+  const moneyStripFor = (b) => {
+    const charges = (b.lateFee?.amount || 0) + (b.fuel?.charge || 0) + (b.condition?.damageCharge || 0);
+    const settled = (b.lateFee?.collectedAt ? (b.lateFee?.amount || 0) : 0)
+      + (b.fuel?.collectedAt ? (b.fuel?.charge || 0) : 0)
+      + (b.condition?.damageCollectedAt ? (b.condition?.damageCharge || 0) : 0);
+    const refunded = b.refundStatus === 'approved' ? (b.refundAmount || 0) : 0;
+    const balance = b.status === 'cancelled' ? 0 : Math.max(0, (b.totalPrice || 0) - (b.amountPaid || 0));
+    return [
+      { label: 'Worth', amount: (b.totalPrice || 0) + charges, tone: 'plain' },
+      { label: 'Paid', amount: (b.amountPaid || 0) + settled, tone: 'plain' },
+      { label: 'To collect', amount: balance + (charges - settled), tone: 'gold' },
+      { label: 'Refunded', amount: refunded, tone: 'plain' },
+    ];
+  };
+
+  const LEDGER_STATE = {
+    settled: 'Settled',
+    unsettled: 'Not settled',
+    due: 'Due at pickup',
+    refunded: 'Refunded',
+  };
+
+  // One line per thing the client owes or owed, with how it stands.
+  const ledgerFor = (b) => {
+    const rows = [];
+    const paidInFull = (b.amountPaid || 0) >= (b.totalPrice || 0);
+    rows.push({
+      title: 'Rental',
+      sub: b.paymentType === 'full'
+        ? `paid in full${b.payment === 'gcash_pending' ? ', GCash pending' : ''}`
+        : `${Math.round(((b.amountPaid || 0) / (b.totalPrice || 1)) * 100)}% deposit paid`,
+      amount: b.totalPrice || 0,
+      state: b.status === 'cancelled' && b.refundStatus === 'approved' ? 'refunded'
+        : paidInFull ? 'settled' : 'due',
+    });
+    if ((b.lateFee?.amount || 0) > 0) {
+      rows.push({
+        title: 'Late fee',
+        sub: `${b.lateFee.days} day${b.lateFee.days === 1 ? '' : 's'} · one day's rental per day late`,
+        amount: b.lateFee.amount,
+        state: b.lateFee.collectedAt ? 'settled' : 'unsettled',
+      });
+    }
+    if ((b.fuel?.charge || 0) > 0) {
+      const out = b.fuel?.atPickup !== null && b.fuel?.atPickup !== undefined ? fuelLabel(b.fuel.atPickup).toLowerCase() : null;
+      const back = b.fuel?.atReturn !== null && b.fuel?.atReturn !== undefined ? fuelLabel(b.fuel.atReturn).toLowerCase() : null;
+      rows.push({
+        title: 'Refuelling',
+        sub: out && back ? `went out ${out}, back at ${back}` : 'recorded at the counter',
+        amount: b.fuel.charge,
+        state: b.fuel.collectedAt ? 'settled' : 'unsettled',
+      });
+    }
+    if ((b.condition?.damageCharge || 0) > 0) {
+      rows.push({
+        title: 'Damage',
+        sub: b.condition?.atReturn?.note || 'recorded on return',
+        amount: b.condition.damageCharge,
+        state: b.condition.damageCollectedAt ? 'settled' : 'unsettled',
+      });
+    }
+    return rows;
+  };
+
   // One figure per row: what somebody would want to know about this booking
   // at a glance. Money still to come in beats money already settled.
   const moneyFor = (b) => {
@@ -1091,6 +1157,39 @@ const ManageBookings = () => {
       display: 'flex', flexDirection: 'column', gap: '4px',
     },
     actionsWrap: { marginTop: '18px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' },
+    moneyStrip: {
+      display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+      border: `1px solid ${line}`, borderRadius: '12px', overflow: 'hidden', marginBottom: '14px',
+    },
+    moneyCell: { padding: '11px 12px', borderLeft: `1px solid ${divider}` },
+    moneyCellLabel: { fontSize: '10px', fontWeight: '800', letterSpacing: '0.08em', textTransform: 'uppercase', color: text3 },
+    // A figure of nothing is not news: it goes quiet rather than shouting a
+    // zero in gold.
+    moneyCellNum: (tone, amount) => ({
+      fontSize: '15px', fontWeight: '800', marginTop: '4px', fontVariantNumeric: 'tabular-nums',
+      color: amount === 0 ? text3 : tone === 'gold' ? ink : text,
+    }),
+    ledger: { display: 'flex', flexDirection: 'column' },
+    ledgerRow: {
+      display: 'grid', gridTemplateColumns: '1fr auto 104px', gap: '12px', alignItems: 'center',
+      padding: '10px 0', borderTop: `1px solid ${divider}`,
+    },
+    ledgerTitle: { display: 'block', fontSize: '13px', fontWeight: '700', color: text },
+    ledgerSub: { display: 'block', fontSize: '11.5px', color: text3, marginTop: '1px' },
+    ledgerAmount: { fontSize: '13px', fontWeight: '800', color: text, fontVariantNumeric: 'tabular-nums' },
+    ledgerTag: (state) => {
+      const map = {
+        settled: { bg: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', fg: isDark ? '#86efac' : '#065f46' },
+        unsettled: { bg: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2', fg: isDark ? '#f87171' : '#b91c1c' },
+        due: { bg: goldTint, fg: ink },
+        refunded: { bg: isDark ? '#303132' : '#f1f2f4', fg: text2 },
+      };
+      const t = map[state];
+      return {
+        textAlign: 'center', fontSize: '10.5px', fontWeight: '800', padding: '4px 8px', borderRadius: '7px',
+        background: t.bg, color: t.fg,
+      };
+    },
     requestCard: {
       marginTop: '16px', padding: '14px 16px', borderRadius: '12px',
       background: goldTint, border: `1px solid ${goldLine}`,
@@ -1657,6 +1756,33 @@ const ManageBookings = () => {
                 )}
 
                 <div style={s.actionsWrap}>{actionsFor(selected)}</div>
+
+                {/* Four figures and then the lines behind them. The same
+                    booking can owe a balance, a late fee, a refuelling and a
+                    repair at once, and those used to be in three different
+                    columns. */}
+                <div style={s.sectionLabel}>Money</div>
+                <div style={s.moneyStrip}>
+                  {moneyStripFor(selected).map((f) => (
+                    <div key={f.label} style={s.moneyCell}>
+                      <div style={s.moneyCellLabel}>{f.label}</div>
+                      <div style={s.moneyCellNum(f.tone, f.amount)}>₱{f.amount.toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={s.ledger}>
+                  {ledgerFor(selected).map((row) => (
+                    <div key={row.title} style={s.ledgerRow}>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={s.ledgerTitle}>{row.title}</span>
+                        {row.sub && <span style={s.ledgerSub}>{row.sub}</span>}
+                      </span>
+                      <span style={s.ledgerAmount}>₱{row.amount.toLocaleString()}</span>
+                      <span style={s.ledgerTag(row.state)}>{LEDGER_STATE[row.state]}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </>
           )}
