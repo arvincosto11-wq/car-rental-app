@@ -212,7 +212,7 @@ const BookingsCalendar = () => {
       <div style={s.headerRow}>
         <div>
           <h1 style={s.title}>Bookings Calendar</h1>
-          <p style={s.subtitle}>Visual overview of pickup dates. Read-only — manage bookings from the table.</p>
+          <p style={s.subtitle}>What goes out and what comes back, day by day. Read-only — bookings are handled in Manage Bookings.</p>
         </div>
       </div>
 

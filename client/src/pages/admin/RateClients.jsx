@@ -186,8 +186,10 @@ const RateClients = () => {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: goldTint, color: ink, fontSize: '19px', fontWeight: '800',
     },
-    whoName: { fontSize: '18px', fontWeight: '800', color: text },
-    whoMail: { fontSize: '12.5px', color: text3 },
+    // Both spans, so both need telling to be lines: without this the name
+    // and the address ran together as "John Doejohn@gmail.com".
+    whoName: { display: 'block', fontSize: '18px', fontWeight: '800', color: text },
+    whoMail: { display: 'block', fontSize: '12.5px', color: text3, marginTop: '1px' },
     ask: { fontSize: '15px', fontWeight: '800', color: text, margin: '0 0 12px' },
     stars: { display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' },
     star: (on) => ({
