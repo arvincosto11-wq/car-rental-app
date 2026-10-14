@@ -211,9 +211,14 @@ const BookingsCalendar = () => {
       color: text3, marginBottom: '6px',
     },
     groupEmpty: { fontSize: '12.5px', color: text3, margin: 0 },
+    // The row's highlight needs room inside it, but the text still has to
+    // line up with the headings above it — so the padding is pulled back
+    // out again with the matching negative margin, into the panel's own
+    // 20px. The radius matches the card the row sits in.
     panelRow: {
       display: 'grid', gridTemplateColumns: '58px minmax(0, 1fr) auto', gap: '10px', alignItems: 'center',
-      width: '100%', padding: '8px 0', background: 'transparent', border: 'none',
+      width: 'calc(100% + 20px)', margin: '0 -10px', padding: '9px 10px', borderRadius: '10px',
+      background: 'transparent', border: 'none',
       borderTop: `1px solid ${divider}`, textAlign: 'left', cursor: 'pointer',
     },
     panelTime: { fontSize: '12.5px', fontWeight: '800', color: text },

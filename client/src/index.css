@@ -1589,6 +1589,8 @@ body.dark .consignor-menu-btn:focus-visible { outline-color: #e8a100; }
 .list-row-btn:not(:disabled):active {
   filter: none;
   transform: translateX(3px);
+  /* the hairline between rows would cut across the rounded highlight */
+  border-color: transparent;
   background: rgba(184, 121, 10, 0.08) !important;
   box-shadow: 0 0 0 1px rgba(184, 121, 10, 0.25), 0 0 16px rgba(184, 121, 10, 0.15);
 }
