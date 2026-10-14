@@ -6,7 +6,7 @@ import BackButton from '../../components/BackButton';
 import StarRating from '../../components/StarRating';
 import ClientRatingModal from '../../components/ClientRatingModal';
 import BookingDetailsModal from '../../components/BookingDetailsModal';
-import { SkeletonTableRows } from '../../components/Skeleton';
+import { SkeletonListCard } from '../../components/Skeleton';
 import Pagination from '../../components/Pagination';
 import StatusDropdown from '../../components/StatusDropdown';
 import { paginate } from '../../utils/paginate';
