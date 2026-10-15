@@ -395,9 +395,9 @@ const ManageCars = ({ view = 'active' }) => {
     setEditVehicleType(car.category === 'Motorcycle' ? 'motorcycle' : 'car');
   };
 
-  // Assigned here, below the declaration it points at: doing this higher
-  // up ran before handleEdit existed and crashed the page on render.
-  openEditor.current = handleEdit;
+  // Kept pointed at the current opener. Done in an effect rather than
+  // during the render itself, which is not a safe moment to write a ref.
+  useEffect(() => { openEditor.current = handleEdit; });
 
   const handleEditVehicleTypeChange = (type) => {
     setEditVehicleType(type);
