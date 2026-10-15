@@ -75,6 +75,8 @@ const Profile = () => {
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
+  // Chosen, uploaded, and waiting for Save.
+  const [pendingPhoto, setPendingPhoto] = useState(null);
   const [avatarError, setAvatarError] = useState('');
 
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -123,6 +125,7 @@ const Profile = () => {
   const cancelEdit = () => {
     setEditMode(false);
     setSaveError('');
+    setPendingPhoto(null);
   };
 
   // `isPrivate` for identity documents only. A private file refuses a plain
@@ -144,9 +147,14 @@ const Profile = () => {
     return { url: data.url, fileId: data.fileId };
   };
 
-  // Uploads and saves immediately on selection, independent of Edit
-  // Profile/Save — a photo swap doesn't need the same review step as the
-  // rest of the form (birthdate, ID docs, etc.).
+  // A picked photo is held, not published. It used to save the moment it
+  // was chosen, which meant the one field on this page that everybody else
+  // can see was also the one field nobody could take back: a wrong picture
+  // was already public before the page finished reacting.
+  //
+  // Picking one now opens editing if it is not already open, so Save and
+  // Cancel are on the screen, and the new picture shows as a preview until
+  // Save is pressed.
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -155,9 +163,9 @@ const Profile = () => {
     setAvatarUploading(true);
     try {
       const uploaded = await uploadToImageKit(file);
-      const res = await api.put('/auth/me', { image: uploaded.url, imageFileId: uploaded.fileId });
-      setProfile(res.data);
-      updateUser({ image: res.data.image });
+      if (!editMode) startEdit();
+      setPendingPhoto({ image: uploaded.url, imageFileId: uploaded.fileId });
+      setSaveSuccess('');
     } catch (err) {
       setAvatarError(err.response?.data?.message || 'Failed to upload photo.');
     } finally {
@@ -173,9 +181,15 @@ const Profile = () => {
       // Dates go up with everything else now. There is no document on file
       // for anybody else to read them off, so the person they belong to is
       // the only one who can say what they are.
-      const payload = { ...form };
+      const payload = { ...form, ...(pendingPhoto || {}) };
       const res = await api.put('/auth/me', payload);
       setProfile(res.data);
+      if (pendingPhoto) {
+        // The navbar reads the cached login, so it would otherwise keep
+        // the old picture until the next sign-in.
+        updateUser({ image: res.data.image });
+        setPendingPhoto(null);
+      }
       setEditMode(false);
       setSaveSuccess('Profile updated.');
       setTimeout(() => setSaveSuccess(''), 5000);
@@ -279,7 +293,7 @@ const Profile = () => {
   // Compared field by field against what the form opened with, so leaving
   // a field alone — or typing into it and putting it back — counts as no
   // change.
-  const changed = Object.keys(openedWith).some(
+  const changed = !!pendingPhoto || Object.keys(openedWith).some(
     (key) => (form[key] ?? '') !== (openedWith[key] ?? ''),
   );
 
@@ -706,8 +720,8 @@ const Profile = () => {
           <div style={s.identity}>
             <div className="profile-avatar-outer" style={s.avatarOuter}>
               <div style={s.avatarWrap}>
-                {shown?.image
-                  ? <img src={shown.image} alt="" style={s.avatarImg} />
+                {(pendingPhoto?.image || shown?.image)
+                  ? <img src={pendingPhoto?.image || shown.image} alt="" style={s.avatarImg} />
                   : <span style={s.avatarInitials}>{initialsOf(shown?.name)}</span>}
               </div>
               <label htmlFor="profile-avatar-input" className="profile-avatar-badge" style={s.avatarBadge}>
@@ -727,6 +741,8 @@ const Profile = () => {
               <span style={s.identityName}>{shown?.name || ''}</span>
               {avatarUploading ? (
                 <span style={s.identityHint}>Uploading photo...</span>
+              ) : pendingPhoto ? (
+                <span style={s.identityHint}>New photo — press Save changes to use it</span>
               ) : memberSince ? (
                 <span style={s.identityHint}>Member since {memberSince}</span>
               ) : (
