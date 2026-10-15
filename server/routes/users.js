@@ -124,10 +124,22 @@ router.put('/:id/document-dates', protect, adminOnly, async (req, res) => {
 // Block or unblock a client (admin)
 router.put('/:id/block', protect, adminOnly, async (req, res) => {
   try {
-    const { blocked } = req.body;
+    const { blocked, reason } = req.body;
+
+    // Blocking needs a reason, the same as putting an owner's contract on
+    // hold. Somebody who cannot book will eventually ring up and ask why,
+    // and "the system says blocked" is not an answer.
+    if (blocked && !String(reason || '').trim()) {
+      return res.status(400).json({ message: 'Say why this client is being blocked.' });
+    }
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { isBlocked: blocked },
+      blocked
+        ? { isBlocked: true, blockedAt: new Date(), blockReason: String(reason).trim() }
+        // Unblocking clears the record rather than keeping a reason beside
+        // somebody who is no longer blocked.
+        : { isBlocked: false, blockedAt: null, blockReason: '' },
       { new: true }
     ).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });

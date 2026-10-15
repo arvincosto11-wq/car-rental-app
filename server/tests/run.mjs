@@ -25,8 +25,9 @@ import adminToday from './adminToday.test.mjs';
 import analytics from './analytics.test.mjs';
 import expiryRisk from './expiryRisk.test.mjs';
 import plates from './plates.test.mjs';
+import lateness from './lateness.test.mjs';
 
-const suites = [phTime, availability, pricing, longRental, refunds, adjustOffer, handover, dwell, delivery, appointments, email, drivers, noShow, adminToday, analytics, expiryRisk, plates];
+const suites = [phTime, availability, pricing, longRental, refunds, adjustOffer, handover, dwell, delivery, appointments, email, drivers, noShow, adminToday, analytics, expiryRisk, plates, lateness];
 
 for (const run of suites) run();
 

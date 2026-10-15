@@ -45,6 +45,12 @@ const userSchema = new mongoose.Schema({
   // the screen says plainly rather than guessing a date.
   passwordChangedAt: { type: Date, default: null },
   isBlocked: { type: Boolean, default: false },
+  // Why, and since when. A block used to be a bare yes/no, so a client who
+  // could not book had no record saying what they had done — and the admin
+  // who blocked them was the only person who knew. An owner's contract
+  // hold has always carried its reason; this brings the two level.
+  blockedAt: { type: Date, default: null },
+  blockReason: { type: String, default: '' },
 
   // A vehicle owner whose contract is on hold.
   //

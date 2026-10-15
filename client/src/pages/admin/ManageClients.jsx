@@ -1,50 +1,112 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
-import { SkeletonTableRows } from '../../components/Skeleton';
-import Pagination from '../../components/Pagination';
-import { paginate } from '../../utils/paginate';
-import StarRating from '../../components/StarRating';
-import { hasClientScore, clientScoreLabel } from '../../utils/clientScore';
-import useModalA11y from '../../hooks/useModalA11y';
+import { SkeletonListCard } from '../../components/Skeleton';
 import usePageTitle from '../../hooks/usePageTitle';
-import { GOLD, GOLD_DARK, goldInk} from '../../theme';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
+import { latenessLabel, hoursLate } from '../../utils/lateness';
 import api from '../../api';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
-import ModalClose from '../../components/ModalClose';
 
-const PAGE_SIZE = 10;
+// The two kinds of people on the other side of a booking: clients, who rent
+// vehicles, and owners, who put their own vehicles on the site.
+//
+// This used to be one table with two tabs, where the same columns meant
+// different things depending on which tab you were on, and somebody's whole
+// rental history lived in a 600px modal. A renter and a vehicle owner have
+// almost nothing in common; they are two lists now, each carrying the facts
+// that actually belong to it.
+
+const CLIENT_REASONS = [
+  'Returned vehicles late repeatedly',
+  'Damaged a vehicle',
+  'Unpaid charges',
+  'False or invalid documents',
+  'Other',
+];
+const OWNER_REASONS = [
+  'Registration papers not renewed',
+  'Vehicle condition needs checking',
+  'Owner asked to pause',
+  'Other',
+];
+
+const initialsOf = (name) => {
+  const words = String(name || '?').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return '?';
+  return ((words[0][0] || '') + (words.length > 1 ? words[words.length - 1][0] : '')).toUpperCase();
+};
+
+const peso = (n) => `₱${Math.round(n || 0).toLocaleString()}`;
+const day = (iso) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+const shortDay = (iso) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
+const monthKey = (iso) => new Date(iso).toLocaleDateString('en-GB', {
+  month: 'long',
+  ...(new Date(iso).getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }),
+});
+
+const SearchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5L14 14" />
+  </svg>
+);
+const ChevronIcon = ({ open }) => (
+  <svg
+    width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+    strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+    style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s ease', flexShrink: 0 }}
+  >
+    <path d="M6 3.5L10.5 8 6 12.5" />
+  </svg>
+);
+const LockIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="7" width="10" height="7" rx="1.5" /><path d="M5.5 7V5a2.5 2.5 0 015 0v2" />
+  </svg>
+);
+const BanIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="8" r="6" /><path d="M3.8 3.8l8.4 8.4" />
+  </svg>
+);
 
 const ManageClients = () => {
   usePageTitle('Manage Clients');
   const { isDark } = useTheme();
-  const { confirm, toast } = useUIFeedback();
-  // Clients or vehicle owners. Two lists of people with the same columns,
-  // so one screen with a switch rather than two pages that drift apart.
-  const [tab, setTab] = useState('clients');
+  const { toast } = useUIFeedback();
+
   const [clients, setClients] = useState([]);
   const [owners, setOwners] = useState([]);
-  const [holdFor, setHoldFor] = useState(null);
-  const [holdReason, setHoldReason] = useState('');
-  const [working, setWorking] = useState('');
   const [bookings, setBookings] = useState([]);
+  const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [selectedClientId, setSelectedClientId] = useState(null);
-  const [page, setPage] = useState(1);
 
-  useEffect(() => { fetchData(); }, []);
+  const [q, setQ] = useState('');
+  const [clientFilter, setClientFilter] = useState('all');
+  const [ownerFilter, setOwnerFilter] = useState('all');
+  const [selectedId, setSelectedId] = useState(null);
+  // null means "follow the selection" — the group holding the selected
+  // person opens, the other stays shut.
+  const [openClients, setOpenClients] = useState(null);
+  const [openOwners, setOpenOwners] = useState(null);
+
+  const [step, setStep] = useState(false);
+  const [reason, setReason] = useState('');
+  const [otherText, setOtherText] = useState('');
+  const [working, setWorking] = useState(false);
 
   const fetchData = async () => {
     try {
-      const [clientsRes, ownersRes, bookingsRes] = await Promise.all([
+      const [clientsRes, ownersRes, bookingsRes, carsRes] = await Promise.all([
         api.get('/users'),
         api.get('/users', { params: { role: 'consignor' } }),
         api.get('/bookings/all'),
+        api.get('/cars'),
       ]);
       setClients(clientsRes.data);
       setOwners(ownersRes.data);
       setBookings(bookingsRes.data);
+      setCars(carsRes.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -52,492 +114,808 @@ const ManageClients = () => {
     }
   };
 
-  const handleBlock = async (id, currentStatus) => {
-    const ok = await confirm(
-      currentStatus
-        ? 'Unblock this client? They will be able to make bookings again.'
-        : 'Block this client? They will not be able to make any booking until you unblock them. '
-          + 'Bookings they already have are not affected.',
-      currentStatus
-        ? { confirmLabel: 'Unblock', cancelLabel: 'Leave blocked' }
-        : { confirmLabel: 'Block client', cancelLabel: 'Cancel', danger: true }
-    );
-    if (!ok) return;
-    try {
-      await api.put(`/users/${id}/block`, { blocked: !currentStatus });
-      fetchData();
-    } catch (err) {
-      console.error(err);
-    }
+  useEffect(() => { fetchData(); }, []);
+
+  // ── what we know about each person ──────────────────────────────────
+  const bookingsOf = (userId) => bookings.filter((b) => String(b.user?._id) === String(userId));
+  const vehiclesOf = (ownerId) => cars.filter((c) => String(c.owner?._id || c.owner) === String(ownerId));
+
+  const lateness = (b) => {
+    if (!b.returnedAt) return 0;
+    return hoursLate(b.endDate, b.returnedAt);
   };
 
-  // Putting an owner's contract on hold, or taking it off.
-  //
-  // The reason is typed rather than picked from a list, because the owner
-  // reads it on their own page and no list of reasons would fit the one
-  // that actually happened.
-  const hold = async (owner) => {
-    if (!holdReason.trim()) return;
-    setWorking(owner._id);
+  const clientFacts = (c) => {
+    const mine = bookingsOf(c._id);
+    const finished = mine.filter((b) => b.status === 'completed');
+    const late = finished.filter((b) => lateness(b) > 0);
+    const lastLate = late.reduce((d, b) => (!d || new Date(b.returnedAt) > new Date(d) ? b.returnedAt : d), null);
+    return { all: mine, finished, late, lastLate };
+  };
+
+  const ownerFacts = (o) => {
+    const mine = vehiclesOf(o._id);
+    const ids = new Set(mine.map((c) => String(c._id)));
+    const rentals = bookings.filter((b) => ids.has(String(b.car?._id)));
+    return {
+      vehicles: mine,
+      listed: mine.filter((c) => c.isAvailable !== false && !c.archived),
+      rentals,
+      finished: rentals.filter((b) => b.status === 'completed'),
+    };
+  };
+
+  // ── the rail ────────────────────────────────────────────────────────
+  const matches = (p) => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return true;
+    return `${p.name || ''} ${p.email || ''}`.toLowerCase().includes(needle);
+  };
+
+  const clientRows = clients.filter(matches).filter((c) => {
+    if (clientFilter === 'blocked') return c.isBlocked;
+    if (clientFilter === 'never') return bookingsOf(c._id).length === 0;
+    if (clientFilter === 'late') return clientFacts(c).late.length > 0;
+    return true;
+  });
+
+  const ownerRows = owners.filter(matches).filter((o) => {
+    if (ownerFilter === 'hold') return !!o.suspension?.at;
+    if (ownerFilter === 'nolist') return ownerFacts(o).listed.length === 0;
+    return true;
+  });
+
+  const clientLine = (c) => {
+    if (c.isBlocked) return { text: 'Blocked', tone: 'red' };
+    const { all, finished, late } = clientFacts(c);
+    if (!all.length) return { text: 'Never booked', tone: 'quiet' };
+    if (!finished.length) {
+      return { text: `${all.length} booking${all.length === 1 ? '' : 's'}, none finished`, tone: 'quiet' };
+    }
+    const trips = `${finished.length} trip${finished.length === 1 ? '' : 's'}`;
+    return { text: late.length ? `${trips} · ${late.length} late` : `${trips} · never late`, tone: 'quiet' };
+  };
+
+  const ownerLine = (o) => {
+    if (o.suspension?.at) return { text: 'Contract on hold', tone: 'plain' };
+    const { vehicles, listed } = ownerFacts(o);
+    if (!vehicles.length) return { text: 'No vehicles yet', tone: 'quiet' };
+    return {
+      text: `${vehicles.length} vehicle${vehicles.length === 1 ? '' : 's'} · ${listed.length} listed`,
+      tone: 'quiet',
+    };
+  };
+
+  const selected = [...clients, ...owners].find((p) => String(p._id) === String(selectedId))
+    || clientRows[0] || ownerRows[0] || null;
+  const isClient = selected ? clients.some((c) => String(c._id) === String(selected._id)) : false;
+
+  const searching = !!q.trim();
+  const clientsOpen = searching || (openClients ?? (isClient || !selected));
+  const ownersOpen = searching || (openOwners ?? (!!selected && !isClient));
+
+  // ── blocking and holding ────────────────────────────────────────────
+  const reasons = isClient ? CLIENT_REASONS : OWNER_REASONS;
+  const finalReason = reason === 'Other' ? otherText.trim() : reason;
+  const reasonReady = reason && (reason !== 'Other' || otherText.trim().length >= 3);
+
+  const closeStep = () => { setStep(false); setReason(''); setOtherText(''); };
+
+  const applyBlock = async () => {
+    setWorking(true);
     try {
-      const { data } = await api.put(`/users/${owner._id}/suspend`, {
-        suspended: true, reason: holdReason.trim(),
-      });
-      setHoldFor(null);
-      setHoldReason('');
+      await api.put(`/users/${selected._id}/block`, { blocked: true, reason: finalReason });
       await fetchData();
-      toast.success(data.vehiclesArchived
-        ? `On hold. ${data.vehiclesArchived} vehicle${data.vehiclesArchived === 1 ? '' : 's'} taken off the site.`
-        : 'On hold. They had no vehicles listed.');
+      closeStep();
+      toast.success(`${selected.name} is blocked. You can unblock them from this page any time.`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not do that.');
+      toast.error(err.response?.data?.message || 'Could not block this client.');
     } finally {
-      setWorking('');
+      setWorking(false);
     }
   };
 
-  const lift = async (owner) => {
-    const ok = await confirm(
-      `Take ${owner.name} off hold? Their vehicles go back on the site and they can list more.`,
-      { confirmLabel: 'Take off hold', cancelLabel: 'Leave it' },
-    );
-    if (!ok) return;
-    setWorking(owner._id);
+  const liftBlock = async () => {
+    setWorking(true);
     try {
-      const { data } = await api.put(`/users/${owner._id}/suspend`, { suspended: false });
+      await api.put(`/users/${selected._id}/block`, { blocked: false });
       await fetchData();
-      toast.success(data.vehiclesRestored
-        ? `Back on. ${data.vehiclesRestored} vehicle${data.vehiclesRestored === 1 ? '' : 's'} returned to the site.`
-        : 'Back on.');
+      toast.success(`${selected.name} can book again.`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not do that.');
+      toast.error(err.response?.data?.message || 'Could not unblock this client.');
     } finally {
-      setWorking('');
+      setWorking(false);
     }
   };
 
-  // The dates are read off the photographs above and typed here, not taken
-  // from anything the client sent. Blank is a real answer — a TIN ID does
-  // not expire — so it is sent as an empty string rather than omitted.
-  const [docDates, setDocDates] = useState({ licenseExpiry: '' });
-  const [savingDates, setSavingDates] = useState(false);
-
-
-  const saveDocumentDates = async (id) => {
-    setSavingDates(true);
+  const applyHold = async () => {
+    setWorking(true);
     try {
-      await api.put(`/users/${id}/document-dates`, {
-        licenseExpiry: docDates.licenseExpiry || '',
-      });
+      await api.put(`/users/${selected._id}/suspend`, { suspended: true, reason: finalReason });
       await fetchData();
+      closeStep();
+      toast.success(`${selected.name}'s contract is on hold. Their vehicles are off the site.`);
     } catch (err) {
-      console.error(err);
+      toast.error(err.response?.data?.message || 'Could not put this contract on hold.');
     } finally {
-      setSavingDates(false);
+      setWorking(false);
     }
   };
 
+  const liftHold = async () => {
+    setWorking(true);
+    try {
+      await api.put(`/users/${selected._id}/suspend`, { suspended: false });
+      await fetchData();
+      toast.success(`${selected.name}'s vehicles are back on the site.`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not lift this hold.');
+    } finally {
+      setWorking(false);
+    }
+  };
 
+  const pickPerson = (id) => { setSelectedId(id); closeStep(); };
 
-  const bookingsForClient = (clientId) =>
-    bookings.filter((b) => b.user?._id === clientId);
+  // ── colours ─────────────────────────────────────────────────────────
+  const card = isDark ? '#242526' : '#ffffff';
+  const inset = isDark ? '#1e1f20' : '#f8f9fa';
+  const line = isDark ? '#3a3b3c' : '#e3e5e8';
+  const line2 = isDark ? '#303132' : '#eef0f2';
+  const text = isDark ? '#e4e6eb' : '#1a1a1a';
+  const text2 = isDark ? '#b0b3b8' : '#4b5563';
+  const text3 = isDark ? '#8a8d91' : '#6b7280';
+  const gold = isDark ? GOLD_DARK : GOLD;
+  const ink = goldInk(isDark);
+  const goldTint = isDark ? 'rgba(232,161,0,0.12)' : '#fbf1d6';
+  const goldLine = isDark ? 'rgba(232,161,0,0.45)' : '#e6c77a';
+  const chip = isDark ? '#303132' : '#f1f2f4';
+  const red = isDark ? '#f87171' : '#b91c1c';
+  const redBg = isDark ? 'rgba(248,113,113,0.10)' : '#fef2f2';
+  const redLine = isDark ? 'rgba(248,113,113,0.45)' : '#f3b4b4';
+  const redSolid = isDark ? '#dc2626' : '#c62828';
 
-  const finishedTripsFor = (clientId) =>
-    bookingsForClient(clientId).filter((b) => b.status === 'completed' && b.collectedAt);
-  const lateReturnsFor = (clientId) =>
-    finishedTripsFor(clientId).filter((b) => b.lateFee?.days > 0);
-
-  const people = tab === 'owners' ? owners : clients;
-  const filtered = people.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.email.toLowerCase().includes(search.toLowerCase())
-  );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageClients = paginate(filtered, page, PAGE_SIZE);
-  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
-
-  const selectedClient = people.find((c) => c._id === selectedClientId);
-  const finishedTrips = selectedClient ? finishedTripsFor(selectedClient._id).length : 0;
-  const lateReturns = selectedClient ? lateReturnsFor(selectedClient._id).length : 0;
-  const clientModalRef = useModalA11y(() => setSelectedClientId(null), !!selectedClient);
+  const reduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const lean = (e) => {
+    if (reduced) return;
+    const box = e.currentTarget.getBoundingClientRect();
+    const dx = e.clientX - (box.left + box.width / 2);
+    const dy = e.clientY - (box.top + box.height / 2);
+    const length = Math.hypot(dx, dy) || 1;
+    const k = (Math.min(1, length / 40) * 3) / length;
+    e.currentTarget.style.transform = `translate(${(dx * k).toFixed(2)}px, ${(dy * k).toFixed(2)}px)`;
+  };
+  const unlean = (e) => { e.currentTarget.style.transform = ''; };
 
   const s = {
-    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
-    subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '20px' },
-    searchInput: { width: '100%', maxWidth: '320px', padding: '9px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '16px', background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    table: { width: '100%', borderCollapse: 'collapse', background: isDark ? '#242526' : '#fff', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
-    th: { textAlign: 'left', padding: '12px 16px', fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, fontWeight: '500' },
-    td: { padding: '12px 16px', fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`, verticalAlign: 'middle' },
-    nameCell: { fontWeight: '600' },
-    subCell: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    scoreCell: { display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', whiteSpace: 'nowrap' },
-    scoreNone: { fontSize: '12.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
-    clientCell: { display: 'flex', alignItems: 'center', gap: '10px' },
-    clientAvatar: {
-      width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
-      background: isDark ? '#3a3b3c' : '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '13px', fontWeight: '700', color: goldInk(isDark),
+    title: { margin: 0, fontSize: '26px', fontWeight: '700', color: text },
+    lead: { margin: '6px 0 20px', fontSize: '14px', lineHeight: 1.5, color: text2, maxWidth: '760px' },
+    body: { display: 'flex', gap: '20px', alignItems: 'flex-start' },
+
+    rail: {
+      width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column',
+      background: card, border: `1px solid ${line}`, borderRadius: '12px', overflow: 'hidden',
     },
-    verified: {
-      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
-      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
+    searchWrap: { padding: '12px', borderBottom: `1px solid ${line}` },
+    searchBox: {
+      display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', height: '38px',
+      border: `1px solid ${line}`, borderRadius: '8px', background: inset, color: text3,
     },
-    unverified: {
-      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fbbf24' : '#92400e',
-      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
+    searchInput: {
+      flex: 1, border: 'none', background: 'transparent', outline: 'none',
+      fontSize: '13px', color: text, fontFamily: 'inherit', minWidth: 0,
     },
-    active: {
-      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
-      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
+    list: { padding: '8px 8px 12px', display: 'flex', flexDirection: 'column', gap: '4px' },
+    groupBtn: {
+      display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 8px',
+      border: 'none', borderRadius: '8px', background: 'transparent',
+      cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: text,
     },
-    blocked: {
-      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
-      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
-    },
-    viewBtn: { padding: '5px 12px', fontSize: '12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', background: 'none', color: isDark ? '#e4e6eb' : '#1a1a1a', cursor: 'pointer' },
-    tabRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' },
-    tab: (on) => ({
-      fontSize: '12.5px', fontWeight: '700', padding: '7px 14px', borderRadius: '8px', cursor: 'pointer',
-      fontFamily: 'inherit',
-      border: `1px solid ${on ? (isDark ? GOLD_DARK : GOLD) : (isDark ? '#3a3b3c' : '#e5e7eb')}`,
-      background: on ? (isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.08)') : 'transparent',
-      color: on ? goldInk(isDark) : (isDark ? '#b0b3b8' : '#6b7280'),
+    groupLabel: { fontSize: '13px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase', color: text },
+    groupCount: { marginLeft: 'auto', fontSize: '12px', color: text3 },
+    chips: { display: 'flex', gap: '6px', flexWrap: 'wrap', padding: '0 8px 6px' },
+    chipBtn: (on) => ({
+      display: 'flex', alignItems: 'center', gap: '5px', padding: '3px 9px', borderRadius: '999px',
+      border: `1px solid ${on ? goldLine : line}`, background: on ? goldTint : card,
+      color: on ? ink : text2, fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit',
     }),
-    holdBtn: {
-      padding: '5px 12px', fontSize: '12px', borderRadius: '6px', cursor: 'pointer',
-      border: `1px solid ${isDark ? '#7f1d1d' : '#fca5a5'}`, background: 'none',
-      color: isDark ? '#fca5a5' : '#991b1b', fontFamily: 'inherit',
+    personRow: (on) => ({
+      display: 'flex', alignItems: 'center', gap: '10px', padding: '8px',
+      border: 'none', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+      background: on ? goldTint : 'transparent',
+      boxShadow: on ? `0 0 0 1px ${goldLine}` : 'none',
+      color: text,
+    }),
+    avatarSm: {
+      width: '32px', height: '32px', flexShrink: 0, borderRadius: '50%',
+      background: gold, color: ON_GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '13px', fontWeight: '700',
     },
-    reasonRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '8px' },
-    reasonInput: {
-      flex: '1 1 220px', padding: '7px 10px', fontSize: '12.5px', borderRadius: '6px',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#111827',
+    photoSm: { width: '32px', height: '32px', flexShrink: 0, borderRadius: '50%', objectFit: 'cover' },
+    rowName: { fontSize: '14px', fontWeight: '600', color: text },
+    rowFact: (tone) => ({
+      fontSize: '12px', color: tone === 'red' ? red : (tone === 'plain' ? text : text3),
+      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    }),
+    divider: { height: '1px', margin: '6px 8px', background: line },
+    railEmpty: { padding: '8px 8px 12px', fontSize: '13px', lineHeight: 1.5, color: text3 },
+
+    profile: {
+      flex: 1, minWidth: 0, background: card, border: `1px solid ${line}`, borderRadius: '12px',
+      paddingBottom: '8px',
     },
-    onHold: {
-      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
-      fontSize: '11px', padding: '2px 10px', borderRadius: '20px',
-      border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
+    pHead: { display: 'flex', gap: '20px', padding: '28px 32px 0', alignItems: 'flex-start' },
+    avatarLg: {
+      width: '72px', height: '72px', flexShrink: 0, borderRadius: '50%',
+      background: gold, color: ON_GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '26px', fontWeight: '800',
     },
-    holdWhy: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '3px', maxWidth: '280px' },
-    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
-    modalContent: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '600px', width: '100%', maxHeight: '85vh', overflow: 'auto', position: 'relative' },
-    // The card and the scrolling area used to be the same element, so the
-    // close button — positioned against the card — scrolled away with the
-    // content. Splitting them keeps it against the card, which never moves.
-    modalShell: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', maxWidth: '600px', width: '100%', maxHeight: '85vh', position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-    modalBody: { padding: '24px', overflowY: 'auto', flex: 1, minHeight: 0 },
-    modalTitle: { fontSize: '20px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
-    modalSub: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '18px' },
-    badgeRow: { display: 'flex', gap: '8px', marginBottom: '18px' },
-    profileGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' },
-    profileItem: { background: isDark ? '#18191a' : '#f9fafb', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
-    dateRow: { display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' },
-    dateField: { display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '160px' },
-    dateInput: {
-      padding: '8px 10px', fontSize: '13px', borderRadius: '8px', outline: 'none',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a',
+    photoLg: { width: '72px', height: '72px', flexShrink: 0, borderRadius: '50%', objectFit: 'cover' },
+    eyebrow: { fontSize: '12px', fontWeight: '800', letterSpacing: '0.1em', textTransform: 'uppercase', color: ink },
+    pName: { margin: '2px 0 4px', fontSize: '26px', fontWeight: '700', color: text },
+    pContact: { fontSize: '14px', color: text2, overflowWrap: 'anywhere' },
+    statusChip: (kind) => ({
+      padding: '5px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: '700', whiteSpace: 'nowrap',
+      border: `1px solid ${kind === 'blocked' ? redLine : (kind === 'hold' ? text3 : line)}`,
+      background: kind === 'blocked' ? redBg : 'transparent',
+      color: kind === 'blocked' ? red : (kind === 'hold' ? text : text2),
+    }),
+    standing: { margin: '20px 32px 0', fontSize: '20px', fontWeight: '600', lineHeight: 1.45, color: text, maxWidth: '720px' },
+
+    facts: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', margin: '20px 32px 0' },
+    fact: { background: inset, border: `1px solid ${line}`, borderRadius: '10px', padding: '14px 16px' },
+    factLabel: { fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em', color: text3 },
+    factValue: (quiet) => ({ fontSize: '24px', fontWeight: '700', color: quiet ? text3 : text, margin: '4px 0 2px' }),
+    factSub: { fontSize: '13px', color: text2 },
+    privateChip: {
+      display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '8px',
+      padding: '2px 7px', borderRadius: '6px', background: chip, border: `1px solid ${line}`,
+      fontSize: '11px', fontWeight: '700', color: text3,
     },
-    profileLabel: { display: 'block', fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '3px' },
-    profileValue: { fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a', fontWeight: '500' },
-    idImage: { width: '100%', maxHeight: '220px', objectFit: 'contain', borderRadius: '8px', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, marginBottom: '18px', background: isDark ? '#18191a' : '#f9fafb' },
-    sectionTitle: { fontSize: '14px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '10px', marginTop: '20px' },
-    actionRow: { display: 'flex', gap: '10px', marginBottom: '18px' },
-    verifyBtn: (verified) => ({ flex: 1, padding: '9px', background: verified ? (isDark ? '#3a3b3c' : '#f3f4f6') : '#16a34a', color: verified ? (isDark ? '#e4e6eb' : '#374151') : '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }),
-    blockBtn: (blocked) => ({ flex: 1, padding: '9px', background: blocked ? '#16a34a' : '#dc2626', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }),
-    historyTable: { width: '100%', borderCollapse: 'collapse', fontSize: '12px' },
-    historyTh: { textAlign: 'left', padding: '8px 10px', color: isDark ? '#b0b3b8' : '#6b7280', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
-    historyTd: { padding: '8px 10px', color: isDark ? '#e4e6eb' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}` },
-    empty: { fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', padding: '12px 0' },
-    pendingTag: {
-      background: isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7', color: isDark ? '#fbbf24' : '#92400e',
-      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600', border: isDark ? '1px solid rgba(217,119,6,0.35)' : 'none',
+
+    section: { margin: '26px 32px 0' },
+    h3: { margin: '0 0 12px', fontSize: '15px', fontWeight: '700', color: text },
+    vehicleGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' },
+    vehicleCard: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+      border: `1px solid ${line}`, borderRadius: '10px', padding: '12px 14px',
     },
-    pendingBox: { background: isDark ? 'rgba(217,119,6,0.12)' : '#fffbeb', border: `1px solid ${isDark ? 'rgba(217,119,6,0.35)' : '#fde68a'}`, borderRadius: '10px', padding: '14px', marginBottom: '18px' },
-    modalTextarea: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', marginTop: '10px', marginBottom: '4px', color: isDark ? '#e4e6eb' : '#1a1a1a', background: isDark ? '#18191a' : '#fff', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' },
-    modalActions: { display: 'flex', gap: '10px', marginTop: '14px' },
-    modalCancelBtn: { flex: 1, padding: '10px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
-    modalSubmitBtn: { flex: 1, padding: '10px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
+    vehicleName: { fontSize: '15px', fontWeight: '600', color: text },
+    vehicleMeta: { fontSize: '12px', color: text3 },
+    vehicleState: (listed) => ({ fontSize: '12px', fontWeight: '700', color: listed ? ink : text3, whiteSpace: 'nowrap' }),
+
+    histHead: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' },
+    histCount: { fontSize: '13px', color: text3 },
+    monthRow: { display: 'grid', gridTemplateColumns: '110px minmax(0, 1fr)', gap: '12px', marginBottom: '14px' },
+    monthLabel: { fontSize: '13px', fontWeight: '600', color: text3, paddingTop: '6px' },
+    monthList: { borderLeft: `2px solid ${line}`, paddingLeft: '16px', display: 'flex', flexDirection: 'column' },
+    histItem: {
+      display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) 120px auto minmax(0, 0.9fr)',
+      gap: '12px', alignItems: 'center', padding: '8px 0', fontSize: '13px', color: text,
+    },
+    histWho: { fontSize: '12px', color: text3 },
+    histDates: { fontSize: '13px', color: text2, whiteSpace: 'nowrap' },
+    pill: (kind) => ({
+      justifySelf: 'start', padding: '3px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: '700', whiteSpace: 'nowrap',
+      background: kind === 'finished' ? chip : (kind === 'upcoming' ? goldTint : 'transparent'),
+      border: `1px solid ${kind === 'finished' ? chip : (kind === 'upcoming' ? goldLine : (kind === 'late' ? text3 : line))}`,
+      color: kind === 'finished' ? text2 : (kind === 'upcoming' ? ink : (kind === 'late' ? text : text3)),
+    }),
+    refund: (strong) => ({ fontSize: '13px', color: strong ? text : text3, textAlign: 'right' }),
+    histEmpty: { fontSize: '13.5px', lineHeight: 1.6, color: text3, maxWidth: '620px' },
+
+    account: { margin: '24px 32px 32px', paddingTop: '20px', borderTop: `1px solid ${line}`, maxWidth: '560px' },
+    accountRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
+    accountWhat: { fontSize: '14px', fontWeight: '700', color: text },
+    accountWhy: { fontSize: '13px', color: text2, marginTop: '2px' },
+    outlineBtn: {
+      padding: '9px 14px', borderRadius: '8px', border: `1px solid ${line}`, background: card,
+      color: text2, fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+    },
+    goldOutline: {
+      padding: '9px 14px', borderRadius: '8px', border: `1px solid ${goldLine}`, background: goldTint,
+      color: ink, fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+    },
+    stepBox: { marginTop: '14px', background: inset, border: `1px solid ${line}`, borderRadius: '10px', padding: '18px' },
+    stepTitle: { fontSize: '15px', fontWeight: '700', color: text, marginBottom: '12px' },
+    radioRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', cursor: 'pointer', fontSize: '13.5px', color: text },
+    ring: (on) => ({
+      width: '16px', height: '16px', flexShrink: 0, borderRadius: '50%', boxSizing: 'border-box',
+      border: `1px solid ${on ? gold : line}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }),
+    dot: { width: '6px', height: '6px', borderRadius: '50%', background: gold },
+    otherInput: {
+      width: '100%', height: '38px', padding: '0 12px', marginTop: '6px', boxSizing: 'border-box',
+      border: `1px solid ${line}`, borderRadius: '8px', background: card, color: text,
+      fontSize: '13px', fontFamily: 'inherit',
+    },
+    consequence: { fontSize: '13px', lineHeight: 1.5, color: text2, margin: '12px 0 0' },
+    stepBtns: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px', flexWrap: 'wrap' },
+    danger: (ready) => ({
+      padding: '10px 16px', borderRadius: '8px', border: 'none', background: redSolid, color: '#fff',
+      fontSize: '13.5px', fontWeight: '700', fontFamily: 'inherit',
+      opacity: ready ? 1 : 0.45, cursor: ready ? 'pointer' : 'not-allowed',
+    }),
+    goldBtn: (ready) => ({
+      padding: '10px 16px', borderRadius: '8px', border: 'none', background: gold, color: ON_GOLD,
+      fontSize: '13.5px', fontWeight: '700', fontFamily: 'inherit',
+      opacity: ready ? 1 : 0.45, cursor: ready ? 'pointer' : 'not-allowed',
+    }),
+    stoppedBox: (blocked) => ({
+      background: blocked ? redBg : chip, border: `1px solid ${blocked ? redLine : line}`,
+      borderRadius: '10px', padding: '14px 16px', marginBottom: '12px',
+    }),
+    stoppedWhen: (blocked) => ({
+      display: 'flex', alignItems: 'center', gap: '8px',
+      fontSize: '14px', fontWeight: '700', color: blocked ? red : text,
+    }),
+    stoppedWhy: { fontSize: '13px', color: text2, marginTop: '6px' },
+    none: { padding: '80px 32px', textAlign: 'center', fontSize: '14px', color: text2 },
+  };
+
+  // ── drawing a person ────────────────────────────────────────────────
+  const avatarOf = (person, big) => (person.image
+    ? <img src={person.image} alt="" style={big ? s.photoLg : s.photoSm} />
+    : <span style={big ? s.avatarLg : s.avatarSm}>{initialsOf(person.name)}</span>);
+
+  const personRow = (person, fact) => (
+    <button
+      key={person._id}
+      type="button"
+      style={s.personRow(String(person._id) === String(selected?._id))}
+      aria-current={String(person._id) === String(selected?._id)}
+      aria-label={`${person.name}. ${fact.text}`}
+      onClick={() => pickPerson(person._id)}
+      onMouseMove={lean}
+      onMouseLeave={unlean}
+    >
+      {avatarOf(person)}
+      <span style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
+        <span style={s.rowName}>{person.name}</span>
+        <span style={s.rowFact(fact.tone)}>{fact.text}</span>
+      </span>
+    </button>
+  );
+
+  // ── the history, grouped by month ───────────────────────────────────
+  const historyFor = (list, withClient) => {
+    const sorted = [...list].sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+    const months = [];
+    for (const b of sorted) {
+      const key = monthKey(b.startDate);
+      const group = months.find((m) => m.key === key) || { key, items: [] };
+      if (!months.includes(group)) months.push(group);
+      group.items.push(b);
+    }
+    return months.map((m) => ({ ...m, withClient }));
+  };
+
+  const statusOf = (b) => {
+    if (b.status === 'cancelled') return { kind: 'cancelled', label: 'Cancelled' };
+    if (b.status === 'completed') {
+      const hours = lateness(b);
+      if (hours > 0) return { kind: 'late', label: latenessLabel(hours, b.lateFee?.days) };
+      return { kind: 'finished', label: 'Finished' };
+    }
+    return { kind: 'upcoming', label: 'Upcoming' };
+  };
+
+  const refundOf = (b) => {
+    if (b.refundStatus === 'approved') return { text: `Refunded ${peso(b.refundAmount)}`, strong: true };
+    if (b.refundStatus === 'declined') return { text: 'Refund declined', strong: true };
+    if (b.status === 'cancelled') return { text: 'No refund due', strong: false };
+    if (b.status === 'completed') return { text: '', strong: false };
+    return { text: 'Paid, not started', strong: false };
   };
 
   return (
     <AdminLayout activePage="Manage Clients">
       <h1 style={s.title}>Manage Clients</h1>
-      <p style={s.subtitle}>
-        {tab === 'owners'
-          ? 'The people whose vehicles you rent out. Putting a contract on hold takes their vehicles off the site; bookings already made still go ahead.'
-          : 'View client profiles, correct document dates, and manage booking history.'}
+      <p style={s.lead}>
+        Clients rent your vehicles. Vehicle owners list theirs with you.
+        Pick a person to see their history and standing.
       </p>
 
-      <div style={s.tabRow} role="group" aria-label="Which people to show">
-        <button type="button" style={s.tab(tab === 'clients')} aria-pressed={tab === 'clients'}
-          onClick={() => { setTab('clients'); setPage(1); setHoldFor(null); }}>
-          Clients ({clients.length})
-        </button>
-        <button type="button" style={s.tab(tab === 'owners')} aria-pressed={tab === 'owners'}
-          onClick={() => { setTab('owners'); setPage(1); }}>
-          Vehicle Owners ({owners.length})
-        </button>
-      </div>
-
-      <input
-        style={s.searchInput}
-        type="text"
-        placeholder="Search by name or email..."
-        aria-label="Search clients by name or email"
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-      />
-
-      <div className="table-scroll">
-        <table style={s.table}>
-          <thead>
-            <tr>
-              <th style={s.th}>{tab === 'owners' ? 'Owner' : 'Client'}</th>
-              <th style={s.th}>Phone</th>
-              <th style={s.th}>Joined</th>
-              <th style={s.th}>{tab === 'owners' ? 'Vehicles' : 'Bookings'}</th>
-              {/* Owners are never rated — only the people who take a
-                  vehicle out are. */}
-              {tab !== 'owners' && <th style={s.th}>Rating</th>}
-              <th style={s.th}>{tab === 'owners' ? 'Contract' : 'Account'}</th>
-              <th style={s.th}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? <SkeletonTableRows isDark={isDark} columns={tab === 'owners' ? 6 : 7} /> : pageClients.map((client) => (
-              <tr key={client._id}>
-                <td style={s.td}>
-                  <div style={s.clientCell}>
-                    <div style={s.clientAvatar}>
-                      {client.image ? (
-                        <img src={client.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        client.name?.charAt(0).toUpperCase()
-                      )}
-                    </div>
-                    <div>
-                      <div style={s.nameCell}>{client.name}</div>
-                      <div style={s.subCell}>{client.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td style={s.td}>{client.phone || '—'}</td>
-                <td style={s.td}>{new Date(client.createdAt).toLocaleDateString()}</td>
-                <td style={s.td}>
-                  {tab === 'owners'
-                    ? `${client.liveVehicleCount || 0} listed${client.vehicleCount !== client.liveVehicleCount ? ` of ${client.vehicleCount}` : ''}`
-                    : bookingsForClient(client._id).length}
-                </td>
-                {tab !== 'owners' && (
-                  <td style={s.td}>
-                    {hasClientScore(client) ? (
-                      <span style={s.scoreCell}>
-                        <StarRating value={client.avgRating} size={12} readOnly />
-                        {clientScoreLabel(client)}
-                      </span>
-                    ) : (
-                      <span style={s.scoreNone}>{clientScoreLabel(client)}</span>
-                    )}
-                  </td>
-                )}
-                <td style={s.td}>
-                  {tab === 'owners' ? (
-                    <>
-                      <span style={client.suspension?.at ? s.onHold : s.active}>
-                        {client.suspension?.at ? 'On hold' : 'Active'}
-                      </span>
-                      {client.suspension?.at && (
-                        <div style={s.holdWhy}>{client.suspension.reason}</div>
-                      )}
-                    </>
-                  ) : (
-                    <span style={client.isBlocked ? s.blocked : s.active}>
-                      {client.isBlocked ? 'Blocked' : 'Active'}
-                    </span>
-                  )}
-                </td>
-                <td style={s.td}>
-                  {tab === 'owners' ? (
-                    client.suspension?.at ? (
-                      <button style={s.viewBtn} disabled={working === client._id} onClick={() => lift(client)}>
-                        {working === client._id ? 'Working…' : 'Take off hold'}
-                      </button>
-                    ) : holdFor === client._id ? (
-                      <div style={s.reasonRow}>
-                        <input
-                          style={s.reasonInput}
-                          autoFocus
-                          maxLength={300}
-                          placeholder="Why — they read this"
-                          value={holdReason}
-                          onChange={(e) => setHoldReason(e.target.value)}
-                        />
-                        <button style={s.holdBtn} disabled={working === client._id || !holdReason.trim()} onClick={() => hold(client)}>
-                          {working === client._id ? 'Working…' : 'Put on hold'}
-                        </button>
-                        <button style={s.viewBtn} onClick={() => { setHoldFor(null); setHoldReason(''); }}>Cancel</button>
-                      </div>
-                    ) : (
-                      <button style={s.holdBtn} onClick={() => { setHoldFor(client._id); setHoldReason(''); }}>
-                        Put contract on hold
-                      </button>
-                    )
-                  ) : (
-                    <button
-                      style={s.viewBtn}
-                      onClick={() => {
-                        // Seeded from what is on file, so admin edits a date
-                        // rather than retyping one from scratch.
-                        const ymd = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
-                        setDocDates({ licenseExpiry: ymd(client.licenseExpiry) });
-                        setSelectedClientId(client._id);
-                      }}
-                    >
-                      View Details
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} isDark={isDark} />
-
-      {selectedClient && (
-        <div style={s.modalOverlay}>
-          <div style={s.modalShell} ref={clientModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="client-modal-title">
-            <ModalClose onClose={() => setSelectedClientId(null)} isDark={isDark} />
-            <div style={s.modalBody}>
-            <h2 id="client-modal-title" style={s.modalTitle}>{selectedClient.name}</h2>
-            <p style={s.modalSub}>{selectedClient.email}</p>
-
-            <div style={s.badgeRow}>
-              <span style={selectedClient.isBlocked ? s.blocked : s.active}>
-                {selectedClient.isBlocked ? 'Blocked' : 'Active'}
-              </span>
+      {loading ? (
+        <SkeletonListCard isDark={isDark} count={3} />
+      ) : (
+        <div style={s.body}>
+          <nav aria-label="People" style={s.rail}>
+            <div style={s.searchWrap}>
+              <label style={s.searchBox} htmlFor="mc-search">
+                <SearchIcon />
+                <input
+                  id="mc-search"
+                  style={s.searchInput}
+                  value={q}
+                  placeholder="Search by name or email"
+                  onChange={(e) => setQ(e.target.value)}
+                />
+              </label>
             </div>
 
-            <div style={s.profileGrid}>
-              <div style={s.profileItem}>
-                <span style={s.profileLabel}>Birthdate</span>
-                <span style={s.profileValue}>
-                  {selectedClient.birthDate ? new Date(selectedClient.birthDate).toLocaleDateString() : '—'}
-                </span>
-              </div>
-              <div style={s.profileItem}>
-                <span style={s.profileLabel}>Phone</span>
-                <span style={s.profileValue}>{selectedClient.phone || '—'}</span>
-              </div>
-              <div style={s.profileItem}>
-                <span style={s.profileLabel}>Address</span>
-                <span style={s.profileValue}>{selectedClient.address || '—'}</span>
-              </div>
-              <div style={s.profileItem}>
-                <span style={s.profileLabel}>License Expiry</span>
-                <span style={s.profileValue}>
-                  {selectedClient.licenseExpiry ? new Date(selectedClient.licenseExpiry).toLocaleDateString() : '—'}
-                </span>
-              </div>
-              {/* We hold no copies of anything, so these dates are the
-                  client's own account of their papers. They are editable
-                  because whoever has actually seen the documents at the
-                  counter is the only person who can put them right. */}
-              <div style={{ ...s.profileItem, gridColumn: '1 / -1' }}>
-                <span style={s.profileLabel}>Licence expiry (as given by the client)</span>
-                <div style={s.dateRow}>
-                  <label style={s.dateField}>
-                    <span style={s.profileLabel}>Licence</span>
-                    <input
-                      type="date"
-                      style={s.dateInput}
-                      value={docDates.licenseExpiry}
-                      onChange={(e) => setDocDates({ ...docDates, licenseExpiry: e.target.value })}
-                    />
-                  </label>
-                  <button
-                    style={s.verifyBtn(false)}
-                    disabled={savingDates}
-                    onClick={() => saveDocumentDates(selectedClient._id)}
-                  >
-                    {savingDates ? 'Saving...' : 'Save dates'}
-                  </button>
-                </div>
-              </div>
-              <div style={s.profileItem}>
-                <span style={s.profileLabel}>Emergency Contact</span>
-                <span style={s.profileValue}>{selectedClient.emergencyContactName || '—'}</span>
-              </div>
-              <div style={s.profileItem}>
-                <span style={s.profileLabel}>Emergency Contact #</span>
-                <span style={s.profileValue}>{selectedClient.emergencyContactNumber || '—'}</span>
-              </div>
-              {/* One late return is a bad day. Four is a pattern, and it is
-                  the kind of thing you want to know before handing over the
-                  keys again rather than after. */}
-              <div style={s.profileItem}>
-                <span style={s.profileLabel}>Late Returns</span>
-                <span style={{ ...s.profileValue, color: lateReturns > 0 ? (isDark ? '#f87171' : '#dc2626') : undefined }}>
-                  {lateReturns === 0
-                    ? 'None'
-                    : `${lateReturns} of ${finishedTrips} trip${finishedTrips === 1 ? '' : 's'}`}
-                </span>
-              </div>
-            </div>
-
-            {/* The block button lived beside an ID-verification button that
-                no longer exists. Blocking is unrelated to documents and is
-                still how an admin stops somebody booking. */}
-            <div style={{ display: 'flex', gap: '10px', marginTop: '18px', marginBottom: '4px' }}>
+            <div style={s.list}>
               <button
                 type="button"
-                style={s.blockBtn(selectedClient.isBlocked)}
-                onClick={() => handleBlock(selectedClient._id, selectedClient.isBlocked)}
+                className="list-row-btn"
+                style={s.groupBtn}
+                aria-expanded={clientsOpen}
+                onClick={() => setOpenClients(!clientsOpen)}
               >
-                {selectedClient.isBlocked ? 'Unblock client' : 'Block client'}
+                <ChevronIcon open={clientsOpen} />
+                <span style={s.groupLabel}>Clients</span>
+                <span style={s.groupCount}>{clients.length}</span>
               </button>
-            </div>
 
-            <h3 style={s.sectionTitle}>Booking History</h3>
-            {bookingsForClient(selectedClient._id).length === 0 ? (
-              <p style={s.empty}>No bookings yet.</p>
+              {clientsOpen && (
+                <>
+                  <div style={s.chips}>
+                    {[['all', 'All', clients.length],
+                      ['blocked', 'Blocked', clients.filter((c) => c.isBlocked).length],
+                      ['never', 'Never booked', clients.filter((c) => bookingsOf(c._id).length === 0).length],
+                      ['late', 'Late returns', clients.filter((c) => clientFacts(c).late.length > 0).length],
+                    ].map(([key, label, count]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        className="list-row-btn"
+                        style={s.chipBtn(clientFilter === key)}
+                        aria-pressed={clientFilter === key}
+                        onClick={() => setClientFilter(key)}
+                      >
+                        {label} <strong>{count}</strong>
+                      </button>
+                    ))}
+                  </div>
+                  {clientRows.length === 0 ? (
+                    <div style={s.railEmpty}>
+                      {q.trim() ? `No client matches “${q.trim()}”.`
+                        : clientFilter === 'blocked' ? 'No blocked clients. Everyone here can book.'
+                          : clientFilter === 'never' ? 'Everyone here has booked at least once.'
+                            : 'No late returns on record.'}
+                    </div>
+                  ) : clientRows.map((c) => personRow(c, clientLine(c)))}
+                </>
+              )}
+
+              <div style={s.divider} />
+
+              <button
+                type="button"
+                className="list-row-btn"
+                style={s.groupBtn}
+                aria-expanded={ownersOpen}
+                onClick={() => setOpenOwners(!ownersOpen)}
+              >
+                <ChevronIcon open={ownersOpen} />
+                <span style={s.groupLabel}>Vehicle owners</span>
+                <span style={s.groupCount}>{owners.length}</span>
+              </button>
+
+              {ownersOpen && (
+                <>
+                  <div style={s.chips}>
+                    {[['all', 'All', owners.length],
+                      ['hold', 'Contract on hold', owners.filter((o) => o.suspension?.at).length],
+                      ['nolist', 'No vehicles listed', owners.filter((o) => ownerFacts(o).listed.length === 0).length],
+                    ].map(([key, label, count]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        className="list-row-btn"
+                        style={s.chipBtn(ownerFilter === key)}
+                        aria-pressed={ownerFilter === key}
+                        onClick={() => setOwnerFilter(key)}
+                      >
+                        {label} <strong>{count}</strong>
+                      </button>
+                    ))}
+                  </div>
+                  {ownerRows.length === 0 ? (
+                    <div style={s.railEmpty}>
+                      {q.trim() ? `No owner matches “${q.trim()}”.`
+                        : ownerFilter === 'hold' ? 'No contracts on hold.'
+                          : 'Every owner has a vehicle listed.'}
+                    </div>
+                  ) : ownerRows.map((o) => personRow(o, ownerLine(o)))}
+                </>
+              )}
+            </div>
+          </nav>
+
+          <article style={s.profile}>
+            {!selected ? (
+              <div style={s.none}>Nobody to show. Clear the search or pick another filter.</div>
+            ) : isClient ? (
+              clientProfile(selected)
             ) : (
-              <div className="table-scroll">
-              <table style={s.historyTable}>
-                <thead>
-                  <tr>
-                    <th style={s.historyTh}>Car</th>
-                    <th style={s.historyTh}>Dates</th>
-                    <th style={s.historyTh}>Status</th>
-                    <th style={s.historyTh}>Refund</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookingsForClient(selectedClient._id).map((b) => (
-                    <tr key={b._id}>
-                      <td style={s.historyTd}>{b.car?.brand} {b.car?.model}</td>
-                      <td style={s.historyTd}>
-                        {new Date(b.startDate).toLocaleDateString()} - {new Date(b.endDate).toLocaleDateString()}
-                      </td>
-                      <td style={s.historyTd}>{b.status}</td>
-                      <td style={s.historyTd}>{b.refundStatus === 'none' ? '—' : b.refundStatus}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
+              ownerProfile(selected)
             )}
-
-            </div>
-          </div>
+          </article>
         </div>
       )}
-
     </AdminLayout>
   );
+
+  // ── the two profiles ────────────────────────────────────────────────
+  function head(person, role, chipKind, chipText) {
+    return (
+      <div style={s.pHead}>
+        {avatarOf(person, true)}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={s.eyebrow}>{role}</div>
+          <h2 style={s.pName}>{person.name}</h2>
+          <div style={s.pContact}>
+            {[person.email, person.phone, person.createdAt && `joined ${day(person.createdAt)}`]
+              .filter(Boolean).join(' · ')}
+          </div>
+        </div>
+        <span style={s.statusChip(chipKind)}>{chipText}</span>
+      </div>
+    );
+  }
+
+  function fact({ label, value, sub, quiet, children }) {
+    return (
+      <div style={s.fact}>
+        <div style={s.factLabel}>{label}</div>
+        <div style={s.factValue(quiet)}>{value}</div>
+        <div style={s.factSub}>{sub}</div>
+        {children}
+      </div>
+    );
+  }
+
+  function history({ months, emptyText, title, count }) {
+    return (
+      <div style={s.section}>
+        <div style={s.histHead}>
+          <h3 style={s.h3}>{title}</h3>
+          {count > 0 && <span style={s.histCount}>{count}</span>}
+        </div>
+        {months.length === 0 ? (
+          <p style={s.histEmpty}>{emptyText}</p>
+        ) : months.map((m) => (
+          <div key={m.key} style={s.monthRow}>
+            <div style={s.monthLabel}>{m.key}</div>
+            <div style={s.monthList}>
+              {m.items.map((b) => {
+                const state = statusOf(b);
+                const money = refundOf(b);
+                return (
+                  <div key={b._id} style={s.histItem}>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ fontWeight: '600' }}>{b.car?.brand} {b.car?.model}</span>
+                      {m.withClient && <span style={{ ...s.histWho, display: 'block' }}>Rented by {b.user?.name || 'someone'}</span>}
+                    </span>
+                    <span style={s.histDates}>{shortDay(b.startDate)} – {shortDay(b.endDate)}</span>
+                    <span style={s.pill(state.kind)}>{state.label}</span>
+                    <span style={s.refund(money.strong)}>{money.text}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function reasonStep({ title, onConfirm, confirmLabel, danger, consequence }) {
+    return (
+      <div style={s.stepBox}>
+        <div style={s.stepTitle}>{title}</div>
+        {reasons.map((r) => (
+          <label key={r} style={s.radioRow}>
+            <input
+              type="radio"
+              name="mc-reason"
+              className="sr-only"
+              checked={reason === r}
+              onChange={() => setReason(r)}
+            />
+            <span style={s.ring(reason === r)}>{reason === r && <span style={s.dot} />}</span>
+            {r}
+          </label>
+        ))}
+        {reason === 'Other' && (
+          <input
+            style={s.otherInput}
+            value={otherText}
+            placeholder="Say why in a few words"
+            onChange={(e) => setOtherText(e.target.value)}
+          />
+        )}
+        <p style={s.consequence}>{consequence}</p>
+        <div style={s.stepBtns}>
+          <button type="button" style={s.outlineBtn} onClick={closeStep}>Cancel</button>
+          <button
+            type="button"
+            style={danger ? s.danger(reasonReady && !working) : s.goldBtn(reasonReady && !working)}
+            disabled={!reasonReady || working}
+            onClick={onConfirm}
+          >
+            {working ? 'Working…' : confirmLabel}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function clientProfile(person) {
+    const { all, finished, late, lastLate } = clientFacts(person);
+    const rated = (person.ratingCount || 0) > 0;
+
+    const standing = !all.length
+      ? `Hasn't booked yet. Joined ${day(person.createdAt)}.`
+      : !finished.length
+        ? `${all.length} booking${all.length === 1 ? '' : 's'}, none finished so far.`
+        : `Finished ${finished.length} of ${all.length} bookings. ${late.length
+          ? `Returned late ${late.length} time${late.length === 1 ? '' : 's'}, most recently on ${day(lastLate)}.`
+          : 'Every trip came back on time.'}`;
+
+    return (
+      <>
+        {head(person, 'Client', person.isBlocked ? 'blocked' : 'plain', person.isBlocked ? 'Blocked' : 'Can book')}
+        <p style={s.standing}>{standing}</p>
+
+        <div style={s.facts}>
+          {fact({
+            label: 'Trips finished',
+            value: finished.length,
+            quiet: !finished.length,
+            sub: `of ${all.length} booking${all.length === 1 ? '' : 's'}`,
+          })}
+          {fact({
+            label: 'Late returns',
+            value: late.length || 'None',
+            quiet: !late.length,
+            sub: late.length ? `Last on ${day(lastLate)}`
+              : finished.length ? 'Every trip back on time' : 'No finished trips to judge',
+          })}
+          {fact({
+            label: 'Rating',
+            value: rated ? (person.avgRating || 0).toFixed(1) : 'None',
+            quiet: !rated,
+            sub: rated ? `out of 5, from ${person.ratingCount} rental${person.ratingCount === 1 ? '' : 's'}` : 'Not rated yet',
+            children: <span style={s.privateChip}><LockIcon />Private · admin only</span>,
+          })}
+        </div>
+
+        {history({
+          title: 'Rental history',
+          count: all.length,
+          months: historyFor(all, false),
+          emptyText: `No bookings yet. ${person.name} joined on ${day(person.createdAt)} and hasn't rented a vehicle.`,
+        })}
+
+        <div style={s.account}>
+          {person.isBlocked ? (
+            <>
+              <div style={s.stoppedBox(true)}>
+                <div style={s.stoppedWhen(true)}><BanIcon />Blocked since {day(person.blockedAt) || 'earlier'}</div>
+                {person.blockReason && <div style={s.stoppedWhy}>Reason: {person.blockReason}</div>}
+                <div style={s.stoppedWhy}>
+                  They can&apos;t make new bookings until you unblock them. Bookings they already have still go ahead.
+                </div>
+              </div>
+              <button type="button" style={s.goldOutline} disabled={working} onClick={liftBlock}>Unblock</button>
+            </>
+          ) : step ? (
+            reasonStep({
+              title: `Why block ${person.name}?`,
+              confirmLabel: `Block ${person.name}`,
+              danger: true,
+              onConfirm: applyBlock,
+              consequence: "They won't be able to make new bookings until you unblock them. Bookings they already have still go ahead. The reason is kept with the block.",
+            })
+          ) : (
+            <div style={s.accountRow}>
+              <div>
+                <div style={s.accountWhat}>Can book</div>
+                <div style={s.accountWhy}>Not blocked. New bookings are allowed.</div>
+              </div>
+              <button type="button" style={s.outlineBtn} onClick={() => setStep(true)}>Block this client ›</button>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  function ownerProfile(person) {
+    const { vehicles, listed, rentals, finished } = ownerFacts(person);
+    const onHold = !!person.suspension?.at;
+
+    const standing = !vehicles.length
+      ? `No vehicles with us yet. Joined ${day(person.createdAt)}.`
+      : `${vehicles.length} vehicle${vehicles.length === 1 ? '' : 's'} with us, ${listed.length} listed. `
+        + (onHold
+          ? 'Off the site while the contract is on hold.'
+          : `${finished.length} finished trip${finished.length === 1 ? '' : 's'} so far.`);
+
+    return (
+      <>
+        {head(person, 'Vehicle owner', onHold ? 'hold' : 'plain', onHold ? 'Contract on hold' : 'Contract active')}
+        <p style={s.standing}>{standing}</p>
+
+        <div style={s.facts}>
+          {fact({ label: 'Vehicles with us', value: vehicles.length, quiet: !vehicles.length, sub: vehicles.length ? '' : 'None yet' })}
+          {fact({
+            label: 'Listed now',
+            value: listed.length,
+            quiet: !listed.length,
+            sub: !vehicles.length ? 'Nothing to list'
+              : onHold ? 'Off the site while on hold'
+                : listed.length === vehicles.length ? 'All bookable' : 'Some are off the site',
+          })}
+          {fact({ label: 'Trips on them', value: finished.length, quiet: !finished.length, sub: finished.length ? 'finished' : 'None yet' })}
+        </div>
+
+        {vehicles.length > 0 && (
+          <div style={s.section}>
+            <h3 style={s.h3}>Their vehicles</h3>
+            <div style={s.vehicleGrid}>
+              {vehicles.map((v) => {
+                const trips = rentals.filter((b) => String(b.car?._id) === String(v._id) && b.status === 'completed').length;
+                const isListed = v.isAvailable !== false && !v.archived;
+                return (
+                  <div key={v._id} style={s.vehicleCard}>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ ...s.vehicleName, display: 'block' }}>{v.brand} {v.model}</span>
+                      <span style={s.vehicleMeta}>{v.plateNumber || 'No plate'} · {trips} trip{trips === 1 ? '' : 's'}</span>
+                    </span>
+                    <span style={s.vehicleState(isListed)}>
+                      {onHold ? 'Off the site' : (isListed ? 'Listed' : 'Not listed')}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {history({
+          title: 'Rentals of their vehicles',
+          count: rentals.length,
+          months: historyFor(rentals, true),
+          emptyText: vehicles.length
+            ? 'Nobody has rented their vehicles yet.'
+            : `No vehicles with us yet, so no rentals. ${person.name} joined on ${day(person.createdAt)}.`,
+        })}
+
+        <div style={s.account}>
+          {onHold ? (
+            <>
+              <div style={s.stoppedBox(false)}>
+                <div style={s.stoppedWhen(false)}>On hold since {day(person.suspension.at)}</div>
+                {person.suspension.reason && <div style={s.stoppedWhy}>Reason: {person.suspension.reason}</div>}
+                <div style={s.stoppedWhy}>
+                  Their vehicles are off the site until you lift the hold. Bookings already made still go ahead.
+                </div>
+              </div>
+              <button type="button" style={s.goldOutline} disabled={working} onClick={liftHold}>Lift hold</button>
+            </>
+          ) : step ? (
+            reasonStep({
+              title: `Why put ${person.name}'s contract on hold?`,
+              confirmLabel: 'Put on hold',
+              onConfirm: applyHold,
+              consequence: 'Their vehicles come off the site until you lift the hold. Bookings already made still go ahead.',
+            })
+          ) : (
+            <div style={s.accountRow}>
+              <div>
+                <div style={s.accountWhat}>Contract active</div>
+                <div style={s.accountWhy}>Their listed vehicles can be booked.</div>
+              </div>
+              <button type="button" style={s.outlineBtn} onClick={() => setStep(true)}>Put contract on hold ›</button>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
 };
 
 export default ManageClients;
