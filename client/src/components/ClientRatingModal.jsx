@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
 import StarRating from './StarRating';
 import useModalA11y from '../hooks/useModalA11y';
@@ -48,7 +49,7 @@ const ClientRatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
     errorBox: { background: '#fef2f2', color: '#dc2626', fontSize: '13px', padding: '10px 14px', borderRadius: '8px', marginBottom: '14px' },
     modalActions: { display: 'flex', gap: '10px' },
     modalCancelBtn: { flex: 1, padding: '10px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
-    modalSubmitBtn: { flex: 1, padding: '10px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
+    modalSubmitBtn: { flex: 1, padding: '10px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '700' },
   };
 
   return (

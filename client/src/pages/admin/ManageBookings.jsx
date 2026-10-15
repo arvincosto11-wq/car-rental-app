@@ -841,14 +841,22 @@ const ManageBookings = () => {
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
     title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
+    // The same shape as Calendar View beside it: both are doors to another
+    // page, not calls to action. It used to be solid purple, a colour from
+    // before the gold rebrand that survived because the button only
+    // appeared when somebody was waiting to be rated.
     rateClientsBtn: {
       display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '9px 16px', background: '#7c3aed', color: '#fff',
-      border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+      padding: '9px 16px',
+      background: isDark ? '#242526' : '#f3f4f6',
+      color: isDark ? '#e4e6eb' : '#374151',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
       whiteSpace: 'nowrap',
     },
+    // Gold is saved for the count, which is the part that wants answering.
     rateClientsBadge: {
-      background: 'rgba(255,255,255,0.25)', color: '#fff', fontSize: '11px', fontWeight: '700',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, fontSize: '11px', fontWeight: '800',
       borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
     },
     table: { width: '100%', borderCollapse: 'collapse', background: isDark ? '#242526' : '#fff', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
