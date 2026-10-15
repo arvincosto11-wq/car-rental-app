@@ -6,6 +6,7 @@ import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { useAuth } from '../../context/AuthContext';
 import usePageTitle from '../../hooks/usePageTitle';
 import api from '../../api';
+import Skeleton from '../../components/Skeleton';
 import PasswordInput from '../../components/PasswordInput';
 import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
 
@@ -463,7 +464,34 @@ const AdminAccount = () => {
           <p style={s.sub}>Who you are in the admin, and how you sign in.</p>
         </div>
 
-        {loading ? null : (
+        {loading ? (
+          /* The server sleeps between visits, so the first load after a
+             quiet spell can take several seconds. Showing the heading over
+             an empty page made that look like a page that had failed. The
+             shapes are the ones about to arrive: a round photo, two fields,
+             then the two rows for signing in. */
+          <>
+            <section style={s.card}>
+              <div style={s.profileRow}>
+                <div style={s.avatarCol}>
+                  <Skeleton width="104px" height="104px" radius="50%" isDark={isDark} />
+                  <Skeleton width="120px" height="32px" radius="8px" isDark={isDark} />
+                </div>
+                <div style={s.profileBody}>
+                  <Skeleton width="90px" height="18px" isDark={isDark} />
+                  <Skeleton width="280px" height="13px" isDark={isDark} />
+                  <div style={s.fields}>
+                    <Skeleton height="42px" radius="8px" isDark={isDark} />
+                    <Skeleton height="42px" radius="8px" isDark={isDark} />
+                  </div>
+                </div>
+              </div>
+            </section>
+            <Skeleton width="320px" height="13px" isDark={isDark} style={{ margin: '0 4px' }} />
+            <Skeleton height="104px" radius="12px" isDark={isDark} />
+            <Skeleton height="104px" radius="12px" isDark={isDark} />
+          </>
+        ) : (
           <>
             {/* ── who you are ─────────────────────────────────────── */}
             <section style={s.card}>
