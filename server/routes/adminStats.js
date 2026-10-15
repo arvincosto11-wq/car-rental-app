@@ -12,6 +12,7 @@ import { fail } from '../utils/respond.js';
 import { isOverdue } from '../utils/overdue.js';
 import { phYmd, phDayStart, addDays } from '../utils/phTime.js';
 import {
+import { riskFor } from '../utils/expiryRisk.js';
   balanceDue, lateFeeSoFar, unsettledCharges, vehicleState, comparePeriods,
 } from '../utils/adminToday.js';
 
@@ -318,10 +319,20 @@ router.get('/expiring-documents', protect, adminOnly, async (req, res) => {
         .sort({ registrationExpiry: 1 }),
     ]);
 
+    // A date on its own is not a problem; a confirmed trip that outlives
+    // it is. Fetched once for the whole list rather than per vehicle.
+    const confirmed = registrationCars.length
+      ? await Booking.find({
+        car: { $in: registrationCars.map((c) => c._id) },
+        status: 'confirmed',
+      }).select('car startDate endDate collectedAt status').lean()
+      : [];
+
     res.json({
       registrations: registrationCars.map((c) => ({
         carId: c._id, brand: c.brand, model: c.model, plateNumber: c.plateNumber,
         ownerName: c.owner?.name || null, expiry: c.registrationExpiry,
+        risk: riskFor(c, confirmed),
       })),
     });
   } catch (err) {

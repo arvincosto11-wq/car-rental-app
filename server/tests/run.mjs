@@ -23,8 +23,9 @@ import drivers from './drivers.test.mjs';
 import noShow from './noShow.test.mjs';
 import adminToday from './adminToday.test.mjs';
 import analytics from './analytics.test.mjs';
+import expiryRisk from './expiryRisk.test.mjs';
 
-const suites = [phTime, availability, pricing, longRental, refunds, adjustOffer, handover, dwell, delivery, appointments, email, drivers, noShow, adminToday, analytics];
+const suites = [phTime, availability, pricing, longRental, refunds, adjustOffer, handover, dwell, delivery, appointments, email, drivers, noShow, adminToday, analytics, expiryRisk];
 
 for (const run of suites) run();
 

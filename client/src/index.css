@@ -1608,3 +1608,40 @@ body.dark .list-row-btn:not(:disabled):active {
     transform: none;
   }
 }
+
+/* Expiring Documents: a row is a whole job, and a dot on the timeline is
+   the same job seen from above. Both take the sidebar's hover — tint,
+   ring, glow — instead of the page-wide button lift, which would peel a
+   row out of its list. The lean toward the pointer is set in the page
+   itself, since it follows the cursor. */
+.doc-row:not(:disabled),
+.doc-dot:not(:disabled) {
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.doc-row:not(:disabled):hover,
+.doc-row:not(:disabled):focus-visible {
+  filter: none;
+  background: rgba(184, 121, 10, 0.08) !important;
+  box-shadow: 0 0 0 1px rgba(184, 121, 10, 0.25), 0 4px 18px rgba(184, 121, 10, 0.18);
+}
+body.dark .doc-row:not(:disabled):hover,
+body.dark .doc-row:not(:disabled):focus-visible {
+  background: rgba(232, 161, 0, 0.12) !important;
+  box-shadow: 0 0 0 1px rgba(232, 161, 0, 0.45), 0 4px 18px rgba(232, 161, 0, 0.22);
+}
+.doc-dot:not(:disabled):hover,
+.doc-dot:not(:disabled):focus-visible {
+  filter: none;
+  transform: none;
+  box-shadow: 0 0 0 3px rgba(184, 121, 10, 0.12), 0 0 0 4px rgba(184, 121, 10, 0.25);
+}
+body.dark .doc-dot:not(:disabled):hover,
+body.dark .doc-dot:not(:disabled):focus-visible {
+  box-shadow: 0 0 0 3px rgba(232, 161, 0, 0.12), 0 0 0 4px rgba(232, 161, 0, 0.45);
+}
+@media (prefers-reduced-motion: reduce) {
+  .doc-row:not(:disabled),
+  .doc-dot:not(:disabled) {
+    transition: none;
+  }
+}

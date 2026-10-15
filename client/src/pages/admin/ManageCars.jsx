@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
@@ -106,6 +106,13 @@ const ManageCars = ({ view = 'active' }) => {
   // Set by picking a suggestion: the list narrows to that one vehicle until
   // the search changes again.
   const [pickedCarId, setPickedCarId] = useState(null);
+  // Where to go back to once this vehicle is dealt with. Only our own
+  // admin pages: a path arrives in the address bar, and following
+  // anything that turns up there is how an open redirect happens.
+  const returnTo = (() => {
+    const asked = params.get('return') || '';
+    return /^\/admin\/[A-Za-z0-9/_-]*$/.test(asked) ? asked : null;
+  })();
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [blockPanelCarId, setBlockPanelCarId] = useState(null);
   const [offRoadTarget, setOffRoadTarget] = useState(null);
@@ -156,7 +163,22 @@ const ManageCars = ({ view = 'active' }) => {
   }, [menuCarId]);
 
   const editingCarData = cars.find((c) => c._id === editingCar) || null;
-  const closeEditModal = () => setEditingCar(null);
+  openEditor.current = handleEdit;
+
+  // Focused once the drawer is actually on the screen, so the admin can
+  // type the new date without hunting for the field.
+  useEffect(() => {
+    if (!editingCarData || params.get('focus') !== 'registrationExpiry') return;
+    const field = document.getElementById('mc-edit-reg-expiry');
+    if (field) {
+      field.focus();
+      field.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, [editingCarData]); // eslint-disable-line react-hooks/exhaustive-deps
+  const closeEditModal = () => {
+    setEditingCar(null);
+    if (returnTo) navigate(returnTo);
+  };
   const editModalRef = useModalA11y(closeEditModal, !!editingCarData);
 
   const editBrandOptions = editVehicleType === 'motorcycle' ? MOTO_BRAND_ORDER : CAR_BRAND_ORDER;
@@ -180,6 +202,16 @@ const ManageCars = ({ view = 'active' }) => {
     try {
       const res = await api.get('/cars');
       setCars(res.data);
+      // A link from Expiring Documents names one vehicle and one field.
+      // Opened here, as the list arrives: the vehicle may be filtered out
+      // of the visible rows or sitting on another page, so it is looked
+      // up in the whole list rather than the ones on screen.
+      // Read off the address bar rather than the hook: this runs once as
+      // the page loads, and taking the hook's value here would drag the
+      // whole fetch into React's dependency graph for no gain.
+      const wanted = new URLSearchParams(window.location.search).get('edit');
+      const asked = wanted && res.data.find((c) => c._id === wanted);
+      if (asked) openEditor.current(asked);
     } catch (err) {
       console.error(err);
     } finally {
@@ -322,6 +354,10 @@ const ManageCars = ({ view = 'active' }) => {
     }
   };
 
+  // Held in a ref so fetchCars can reach it without closing over a
+  // function React rebuilds on every render.
+  const openEditor = useRef(() => {});
+
   const handleEdit = (car) => {
     setEditingCar(car._id);
     setEditExistingPhotos(car.photos?.length ? car.photos : (car.image ? [{ url: car.image, fileId: car.imageFileId }] : []));
@@ -442,6 +478,7 @@ const ManageCars = ({ view = 'active' }) => {
       const res = await api.put(`/cars/${id}`, updatedForm);
       setCars(cars.map((c) => c._id === id ? res.data : c));
       setEditingCar(null);
+      if (returnTo) navigate(returnTo);
       setEditNewPhotos([]);
       setEditNewPhotoPreviews([]);
     } catch (err) {
