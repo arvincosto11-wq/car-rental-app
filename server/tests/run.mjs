@@ -22,8 +22,9 @@ import email from './email.test.mjs';
 import drivers from './drivers.test.mjs';
 import noShow from './noShow.test.mjs';
 import adminToday from './adminToday.test.mjs';
+import analytics from './analytics.test.mjs';
 
-const suites = [phTime, availability, pricing, longRental, refunds, adjustOffer, handover, dwell, delivery, appointments, email, drivers, noShow, adminToday];
+const suites = [phTime, availability, pricing, longRental, refunds, adjustOffer, handover, dwell, delivery, appointments, email, drivers, noShow, adminToday, analytics];
 
 for (const run of suites) run();
 
