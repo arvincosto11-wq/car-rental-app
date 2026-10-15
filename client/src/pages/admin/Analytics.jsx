@@ -580,7 +580,7 @@ const Analytics = () => {
           <div style={s.chips}>
             <span style={s.consignorChip}>{earnings.earning} earned</span>
             <span style={s.consignorChip}>{earnings.idle} earned nothing</span>
-            <span style={s.consignorChip}>{earnings.share} of available days out</span>
+            <span style={s.consignorChip}>{earnings.share}% of available days out</span>
           </div>
 
           <div>

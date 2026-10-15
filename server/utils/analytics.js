@@ -194,7 +194,10 @@ export const vehicleEarnings = (cars, bookings, range, now) => {
     const mine = bookings.filter(
       (b) => COUNTED.includes(b.status) && String(b.car?._id || b.car) === String(car._id),
     );
-    let daysOut = 0;
+    // Days OUT, not days booked: a vehicle cannot be out twice on the same
+    // day, so two trips that overlap are one day each day they share.
+    // Summing trip lengths produced "77 of 76 days · 101%".
+    const daysSeen = new Set();
     let trips = 0;
     let earned = 0;
     for (const b of mine) {
@@ -203,8 +206,14 @@ export const vehicleEarnings = (cars, bookings, range, now) => {
       if (e <= s) continue;
       trips += 1;
       earned += b.totalPrice || 0;
-      daysOut += Math.max(1, Math.round((e - s) / DAY));
+      // A rental day runs from one morning to the next, so a trip of N
+      // days occupies the N days starting the morning it goes out. Naming
+      // each one collapses the overlap; counting hours would hand back a
+      // day the vehicle never spent on the yard.
+      const nights = Math.max(1, Math.round((e - s) / DAY));
+      for (let i = 0; i < nights; i += 1) daysSeen.add(phYmd(new Date(s + i * DAY)));
     }
+    const daysOut = daysSeen.size;
 
     let available = Math.max(0, Math.round((end - from) / DAY));
     const offRoadFrom = car.offRoad?.since ? new Date(car.offRoad.since).getTime() : null;

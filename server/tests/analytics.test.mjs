@@ -123,6 +123,17 @@ export default function run() {
   check('the one that worked', vios.earned, 3000);
   check('one trip', vios.trips, 1);
   check('a day out', vios.daysOut, 1);
+  // Two trips over the same days are not two days out.
+  const overlapping = vehicleEarnings(
+    [{ _id: 'c1', brand: 'Toyota', model: 'Vios' }],
+    [booking(), booking({ _id: 'same' })],
+    thisMonth,
+    now,
+  );
+  check('two trips', overlapping.rows[0].trips, 2);
+  check('but one day out', overlapping.rows[0].daysOut, 1);
+  check('so never more than the days available',
+    overlapping.rows[0].daysOut <= overlapping.rows[0].daysAvailable, true);
   check('the one that did not', civic.earned, 0);
   check('and why', civic.reason, 'Not listed');
   check('counted as idle', earn.idle, 1);
