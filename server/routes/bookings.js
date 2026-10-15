@@ -29,6 +29,7 @@ import { vehiclesForSwap, remainingSpan, repriceForSwap } from '../utils/moveVeh
 import { fail } from '../utils/respond.js';
 import { hideClientRatings } from '../utils/privacy.js';
 import { isAbandoned, NO_SHOW_REASON } from '../utils/noShow.js';
+import { handoverBlock, handoverBlockMessage } from '../utils/handoverGuard.js';
 
 const router = express.Router();
 
@@ -547,7 +548,9 @@ router.get('/all', protect, adminOnly, async (req, res) => {
       // each vehicle's description, blocked dates, papers, promo and GPS
       // position with every booking that mentions it — 664 KB to render a
       // name, a photo and a plate.
-      .populate('car', 'brand model year category image plateNumber pricePerDay owner')
+      // The papers travel with the admin list so the Pickup Desk can say
+      // "this one can't go out" before anybody starts the handover.
+      .populate('car', 'brand model year category image plateNumber pricePerDay owner registrationExpiry offRoad')
       .populate('user', 'name email image avgRating ratingCount licenseExpiry')
       // The number too: this is the list somebody works from when a driver
       // has to be rung on the morning of a pickup.
@@ -1096,6 +1099,17 @@ router.put('/:id/collect', protect, adminOnly, async (req, res) => {
     const earliest = new Date(new Date(booking.startDate).getTime() - EARLY_COLLECT_HOURS * 60 * 60 * 1000);
     if (new Date() < earliest) {
       return res.status(400).json({ message: `This booking can only be marked as picked up within ${EARLY_COLLECT_HOURS} hours of its pickup time.` });
+    }
+
+    // Every other door checks the vehicle's own papers — creating a
+    // booking, confirming one, extending, moving it. This one did not, so
+    // a booking confirmed while the registration was good could hand over
+    // after it had lapsed. The guard belongs here most of all: this is the
+    // moment the vehicle actually goes on the road.
+    const vehicle = await Car.findById(booking.car);
+    const blocked = handoverBlock(vehicle, { endDate: bookingSpan(booking).end });
+    if (blocked) {
+      return res.status(400).json({ message: handoverBlockMessage(blocked) });
     }
 
     // The reading the return is measured against. Refused rather than

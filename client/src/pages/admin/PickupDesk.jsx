@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import usePageTitle from '../../hooks/usePageTitle';
@@ -8,6 +9,7 @@ import { FUEL_STEPS, fuelLabel } from '../../utils/fuel';
 import ConditionPhotos from '../../components/ConditionPhotos';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk} from '../../theme';
 import api from '../../api';
+import { handoverBlock, handoverBlockMessage } from '../../utils/handoverGuard';
 
 // The counter, as its own job.
 //
@@ -33,6 +35,7 @@ const peso = (n) => `₱${(n || 0).toLocaleString()}`;
 const PickupDesk = () => {
   usePageTitle('Pickup Desk');
   const { isDark } = useTheme();
+  const navigate = useNavigate();
   const { toast, confirm } = useUIFeedback();
   const [bookings, setBookings] = useState([]);
   const [clients, setClients] = useState([]);
@@ -113,6 +116,11 @@ const PickupDesk = () => {
     return list;
   };
 
+  // The vehicle's own papers. Checked here so the desk says so before
+  // anybody starts, and checked again on the server, which is what
+  // actually refuses — a screen can be ticked from memory.
+  const vehicleProblem = (booking) => handoverBlockMessage(handoverBlock(booking.car, booking));
+
   const balanceDue = (booking) => Math.max(0, (booking.totalPrice || 0) - (booking.amountPaid || 0));
 
   // Everything that has to be true before a vehicle leaves. The money is on
@@ -121,7 +129,8 @@ const PickupDesk = () => {
   // keys go over" while letting the keys go over anyway. A requirement the
   // screen states and does not hold to is worse than one it never mentions.
   const readyToRelease = (booking) =>
-    docsFor(booking).every((d) => checked[`${booking._id}:${d.key}`])
+    !vehicleProblem(booking)
+    && docsFor(booking).every((d) => checked[`${booking._id}:${d.key}`])
     && balanceDue(booking) === 0
     // Without a reading now there is nothing for the return to be measured
     // against, and section 5 of the terms becomes unenforceable for this
@@ -298,6 +307,19 @@ const PickupDesk = () => {
       color: goldInk(isDark),
     },
     hint: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
+    // Amber, like everywhere else papers are the problem: a job to do.
+    paperBlock: {
+      display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px',
+      padding: '10px 12px', borderRadius: '8px',
+      background: isDark ? 'rgba(217,119,6,0.16)' : '#fef3c7',
+      color: isDark ? '#fbbf24' : '#92400e',
+      fontSize: '12.5px', fontWeight: '600', lineHeight: 1.45,
+    },
+    paperFix: {
+      border: 'none', background: 'transparent', padding: 0, cursor: 'pointer',
+      font: 'inherit', fontWeight: '800', color: 'inherit',
+      textDecoration: 'underline', textUnderlineOffset: '3px',
+    },
     doneRow: {
       display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
       padding: '11px 16px', borderRadius: '12px', marginBottom: '8px', fontSize: '13px',
@@ -467,7 +489,20 @@ const PickupDesk = () => {
               They never came
             </button>
           )}
-          {!readyToRelease(booking) && (
+          {vehicleProblem(booking) && (
+            <span style={s.paperBlock}>
+              {vehicleProblem(booking)}
+              <button
+                type="button"
+                className="text-link-btn"
+                style={s.paperFix}
+                onClick={() => navigate(`/admin/manage-cars?edit=${booking.car?._id}&focus=registrationExpiry&return=/admin/pickups`)}
+              >
+                Open this vehicle
+              </button>
+            </span>
+          )}
+          {!readyToRelease(booking) && !vehicleProblem(booking) && (
             <span style={s.hint}>
               {remaining > 0
                 ? `Take the ${peso(remaining)} and record it, then tick each document you have seen.`

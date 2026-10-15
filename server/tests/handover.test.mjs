@@ -3,6 +3,7 @@ import { hasCollectedVehicle, extendBlocker } from '../utils/extendBooking.js';
 import { instantFrom } from '../utils/phTime.js';
 import { isOverdue, daysOverdue, daysLate, lateFeeFor, lateFeeRecord, isDueSoon, carriedLateFee, wouldCollide, collisionDeadline, COLLISION_HOURS } from '../utils/overdueReturns.js';
 import { registrationProblem, registrationLapsed } from '../utils/registration.js';
+import { handoverBlock, handoverBlockMessage } from '../utils/handoverGuard.js';
 import { occupiedSpan } from '../utils/availability.js';
 import { splitDays, repriceForSwap, remainingSpan } from '../utils/moveVehicle.js';
 import { fuelShortfall, fuelShortfallLabel, isFuelLevel, fuelLabel } from '../utils/fuel.js';
@@ -242,6 +243,30 @@ export default function run() {
   // expired paperwork would be worse than the problem being fixed.
   check('no expiry recorded is not a problem', registrationProblem({}, regTrip, regToday), null);
   check('no vehicle at all is not a problem', registrationProblem(null, regTrip, regToday), null);
+
+  group('what stops the keys going over');
+  // The counter is the last door, and the only one where the vehicle
+  // actually goes on the road. It used to let anything through.
+  const fine = { registrationExpiry: instantFrom('2026-12-01', 0) };
+  check('a vehicle in order', handoverBlock(fine, regTrip, regToday), null);
+  check('papers already run out',
+    handoverBlock({ registrationExpiry: instantFrom('2026-09-20', 0) }, regTrip, regToday).kind, 'expired');
+  // The client would be driving on dead papers before they are due back.
+  check('papers that die mid-trip',
+    handoverBlock({ registrationExpiry: instantFrom('2026-09-29', 0) }, regTrip, regToday).kind, 'expires_during');
+  check('a vehicle taken off the road after it was booked',
+    handoverBlock({ ...fine, offRoad: { since: instantFrom('2026-09-24', 0) } }, regTrip, regToday).kind, 'off_road');
+  // Off the road outranks the papers: it is the thing to fix first.
+  check('off the road is said first',
+    handoverBlock({ registrationExpiry: instantFrom('2026-09-20', 0), offRoad: { since: instantFrom('2026-09-24', 0) } }, regTrip, regToday).kind, 'off_road');
+  check('nothing on file is still not a problem', handoverBlock({}, regTrip, regToday), null);
+
+  // Every refusal names the way out, because it is one click from the desk.
+  check('the expired message says what to do',
+    handoverBlockMessage({ kind: 'expired' }).includes('Renew the expiry date in Manage Cars'), true);
+  check('the off-road message says what to do',
+    handoverBlockMessage({ kind: 'off_road' }).includes('Manage Cars'), true);
+  check('nothing blocked says nothing', handoverBlockMessage(null), '');
 
   // The badge has no trip to measure against, so it asks only about today.
   check('badge: lapsed', registrationLapsed({ registrationExpiry: instantFrom('2026-09-24', 0) }, regToday), true);
