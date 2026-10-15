@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
@@ -11,13 +11,16 @@ import { fuelLabel } from '../../utils/fuel';
 import { formatMoment } from '../../utils/phTime';
 import api from '../../api';
 import { DoneGlyph } from '../../components/Glyphs';
+import StarRating from '../../components/StarRating';
+import ClientRatingModal from '../../components/ClientRatingModal';
+import { clientScoreLabel } from '../../utils/clientScore';
 
 // What the stars mean, said in words beside them. A number out of five is
 // not an opinion anybody holds; "fine" and "good" are.
 const STAR_WORDS = ['Poor', 'Below average', 'Fine', 'Good', 'Excellent'];
 
 const RateClients = () => {
-  usePageTitle('Rate Clients');
+  usePageTitle('Client Ratings');
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
   const navigate = useNavigate();
@@ -29,6 +32,12 @@ const RateClients = () => {
   // Skipped ones go to the back of the queue rather than out of it: the
   // point of skipping is "not now", not "never".
   const [skipped, setSkipped] = useState([]);
+  // Two halves of the same job: the queue of rentals still to judge, and
+  // everything already judged. The page used to be the queue alone, so it
+  // emptied itself out of existence once the work was done.
+  const [tab, setTab] = useState(null);
+  const [openClient, setOpenClient] = useState(null);
+  const [editing, setEditing] = useState(null);
 
   useEffect(() => { fetchBookings(); }, []);
 
@@ -49,9 +58,50 @@ const RateClients = () => {
     ...unrated.filter((b) => skipped.includes(b._id)),
   ];
   const current = queue[0] || null;
-  const upNext = queue.slice(1, 5);
-  const ratedCount = bookings.filter((b) => b.status === 'completed' && b.clientRating?.ratedAt).length;
+  // Everyone still waiting, not the next four: this is the only place the
+  // queue can be seen as a list rather than one card at a time.
+  const upNext = queue.slice(1);
+  const ratedBookings = bookings.filter((b) => b.status === 'completed' && b.clientRating?.ratedAt);
+  const ratedCount = ratedBookings.length;
   const total = ratedCount + unrated.length;
+
+  // One row per person, not per rental: the question this answers is
+  // "how has this client been", and a client with eleven rentals is one
+  // client. Their own rentals sit inside the row they belong to.
+  const ratedClients = (() => {
+    const byClient = new Map();
+    for (const b of ratedBookings) {
+      const id = b.user?._id || b.user?.email || 'unknown';
+      if (!byClient.has(id)) {
+        byClient.set(id, { id, user: b.user, rows: [] });
+      }
+      byClient.get(id).rows.push(b);
+    }
+    return [...byClient.values()]
+      .map((c) => ({
+        ...c,
+        rows: [...c.rows].sort((a, b) => new Date(b.endDate) - new Date(a.endDate)),
+        lastRated: c.rows.reduce((d, b) => {
+          const at = b.clientRating?.updatedAt || b.clientRating?.ratedAt;
+          return !d || new Date(at) > new Date(d) ? at : d;
+        }, null),
+      }))
+      .sort((a, b) => b.rows.length - a.rows.length);
+  })();
+
+  // How a client's scores are spread, so one bad rental among forty good
+  // ones is visible without reading every row.
+  const spreadFor = (rows) => [5, 4, 3, 2, 1].map((n) => ({
+    n,
+    hits: rows.filter((b) => b.clientRating?.rating === n).length,
+  }));
+
+  const RENTALS_SHOWN = 8;
+
+  // Until somebody picks a tab, the page opens on whichever half has
+  // something in it — the queue while there is work, the list once the
+  // work is done.
+  const view = tab || (queue.length > 0 ? 'torate' : 'rated');
 
   const save = async () => {
     if (!current || !rating) return;
@@ -232,6 +282,59 @@ const RateClients = () => {
       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
     },
     empty: { textAlign: 'center', padding: '48px', color: text3 },
+
+    tabs: { display: 'flex', gap: '8px', flexWrap: 'wrap', margin: '0 0 18px' },
+    tab: (on) => ({
+      fontSize: '12.5px', fontWeight: '700', fontFamily: 'inherit', cursor: 'pointer',
+      padding: '8px 15px', borderRadius: '999px',
+      border: `1px solid ${on ? gold : line}`,
+      background: on ? gold : 'transparent',
+      color: on ? ON_GOLD : text2,
+    }),
+    tabCount: { opacity: 0.75, marginLeft: '5px' },
+
+    ratedCard: { background: card, border: `1px solid ${line}`, borderRadius: '16px', padding: '10px 20px 18px' },
+    ratedRow: {
+      display: 'grid', gridTemplateColumns: '34px minmax(0, 1fr) auto auto', gap: '12px', alignItems: 'center',
+      width: 'calc(100% + 20px)', margin: '0 -10px', padding: '11px 10px', borderRadius: '10px',
+      background: 'transparent', border: 'none', borderTop: `1px solid ${divider}`,
+      textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+    },
+    ratedName: { display: 'block', fontSize: '13.5px', fontWeight: '700', color: text },
+    ratedMail: {
+      display: 'block', fontSize: '11.5px', color: text3,
+      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+    },
+    ratedScore: {
+      display: 'flex', alignItems: 'center', gap: '6px',
+      fontSize: '12.5px', color: text2, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
+    },
+    chev: { color: text3, fontSize: '12px', width: '14px', textAlign: 'center' },
+
+    drawer: {
+      margin: '2px -10px 10px', padding: '12px 14px', borderRadius: '10px',
+      background: inset, border: `1px solid ${line}`,
+    },
+    drawerLabel: {
+      fontSize: '10.5px', fontWeight: '800', letterSpacing: '0.08em', textTransform: 'uppercase',
+      color: text3, margin: '0 0 8px',
+    },
+    bar2: {
+      display: 'grid', gridTemplateColumns: '46px 1fr 26px', gap: '8px', alignItems: 'center',
+      fontSize: '11.5px', color: text3, fontVariantNumeric: 'tabular-nums', padding: '2px 0',
+    },
+    track: { height: '6px', borderRadius: '4px', background: divider, overflow: 'hidden' },
+    fill: (pct) => ({ height: '100%', width: `${pct}%`, background: gold, borderRadius: '4px' }),
+    rentalRow: {
+      display: 'grid', gridTemplateColumns: '92px minmax(0, 1fr) auto', gap: '10px', alignItems: 'center',
+      width: '100%', padding: '7px 0', borderTop: `1px solid ${divider}`,
+      background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer',
+      fontFamily: 'inherit', fontSize: '12.5px', color: text2,
+    },
+    rentalWhen: { fontSize: '11.5px', color: text3, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' },
+    rentalWhat: { minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    rentalScore: { fontSize: '12px', fontWeight: '800', color: gold, whiteSpace: 'nowrap' },
+    drawerNote: { fontSize: '11.5px', color: text3, margin: '8px 0 0' },
     emptyLink: {
       border: 'none', background: 'transparent', font: 'inherit', fontWeight: '700',
       color: ink, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '3px',
@@ -241,11 +344,11 @@ const RateClients = () => {
   const done = total - queue.length;
 
   return (
-    <AdminLayout activePage="Manage Bookings">
+    <AdminLayout activePage="Client Ratings">
       <BackButton text="Back to Manage Bookings" onClick={() => navigate('/admin/manage-bookings')} />
       <div style={s.headRow}>
         <div>
-          <h1 style={s.title}>Rate Clients</h1>
+          <h1 style={s.title}>Client Ratings</h1>
           <p style={s.subtitle}>How each renter was to deal with. Only your side ever sees this.</p>
         </div>
         {queue.length > 0 && (
@@ -255,13 +358,106 @@ const RateClients = () => {
         )}
       </div>
 
+      {!loading && (
+        <div style={s.tabs} role="tablist" aria-label="Rating views">
+          <button
+            type="button" role="tab" aria-selected={view === 'torate'}
+            style={s.tab(view === 'torate')} onClick={() => setTab('torate')}
+          >
+            To rate <span style={s.tabCount}>{queue.length}</span>
+          </button>
+          <button
+            type="button" role="tab" aria-selected={view === 'rated'}
+            style={s.tab(view === 'rated')} onClick={() => setTab('rated')}
+          >
+            Rated <span style={s.tabCount}>{ratedClients.length}</span>
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <SkeletonListCard isDark={isDark} count={2} />
+      ) : view === 'rated' ? (
+        ratedClients.length === 0 ? (
+          <div style={s.empty}>
+            <p>Nobody has been rated yet.</p>
+          </div>
+        ) : (
+          <div style={s.ratedCard}>
+            {ratedClients.map((c) => {
+              const isOpen = openClient === c.id;
+              const shown = c.rows.slice(0, RENTALS_SHOWN);
+              return (
+                <Fragment key={c.id}>
+                  <button
+                    type="button"
+                    className="list-row-btn"
+                    style={s.ratedRow}
+                    aria-expanded={isOpen}
+                    onClick={() => setOpenClient(isOpen ? null : c.id)}
+                  >
+                    <span style={s.avatar}>{(c.user?.name || '?').charAt(0).toUpperCase()}</span>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={s.ratedName}>{c.user?.name || 'Unknown'}</span>
+                      <span style={s.ratedMail}>{c.user?.email}</span>
+                    </span>
+                    <span style={s.ratedScore}>
+                      <StarRating value={c.user?.avgRating || 0} size={12} readOnly />
+                      {clientScoreLabel(c.user)}
+                    </span>
+                    <span style={s.chev}>{isOpen ? '▾' : '▸'}</span>
+                  </button>
+
+                  {isOpen && (
+                    <div style={s.drawer}>
+                      <p style={s.drawerLabel}>How the scores are spread</p>
+                      {spreadFor(c.rows).map(({ n, hits }) => (
+                        <div key={n} style={s.bar2}>
+                          <span>{n} star{n === 1 ? '' : 's'}</span>
+                          <span style={s.track}>
+                            <span style={s.fill(c.rows.length ? (hits / c.rows.length) * 100 : 0)} />
+                          </span>
+                          <span>{hits}</span>
+                        </div>
+                      ))}
+
+                      <p style={{ ...s.drawerLabel, margin: '14px 0 2px' }}>Rentals</p>
+                      {shown.map((b) => (
+                        <button
+                          key={b._id}
+                          type="button"
+                          className="list-row-btn"
+                          style={s.rentalRow}
+                          onClick={() => setEditing(b)}
+                        >
+                          <span style={s.rentalWhen}>
+                            {formatMoment(b.endDate, false, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                          <span style={s.rentalWhat}>
+                            {b.car?.brand} {b.car?.model}
+                            {b.clientRating?.comment ? ` · ${b.clientRating.comment}` : ''}
+                          </span>
+                          <span style={s.rentalScore}>{b.clientRating?.rating} ★</span>
+                        </button>
+                      ))}
+                      <p style={s.drawerNote}>
+                        {c.rows.length > RENTALS_SHOWN
+                          ? `Showing the ${RENTALS_SHOWN} most recent of ${c.rows.length}. `
+                          : ''}
+                        Open a rental to change what you gave it.
+                      </p>
+                    </div>
+                  )}
+                </Fragment>
+              );
+            })}
+          </div>
+        )
       ) : !current ? (
         <div style={s.empty}>
           <p><DoneGlyph size={16} /> Everyone is rated.</p>
-          <button type="button" className="text-link-btn" style={s.emptyLink} onClick={() => navigate('/admin/manage-bookings')}>
-            Back to Manage Bookings
+          <button type="button" className="text-link-btn" style={s.emptyLink} onClick={() => setTab('rated')}>
+            See the {ratedClients.length} client{ratedClients.length === 1 ? '' : 's'} you have rated
           </button>
         </div>
       ) : (
@@ -348,7 +544,7 @@ const RateClients = () => {
 
           {upNext.length > 0 && (
             <>
-              <div style={s.upNextLabel}>Up next</div>
+              <div style={s.upNextLabel}>Still waiting · {upNext.length}</div>
               <div style={s.upNextRow}>
                 {upNext.map((b) => (
                   <div key={b._id} style={s.upNextCard}>
@@ -362,6 +558,14 @@ const RateClients = () => {
             </>
           )}
         </>
+      )}
+      {editing && (
+        <ClientRatingModal
+          booking={editing}
+          isDark={isDark}
+          onClose={() => setEditing(null)}
+          onSubmitted={async () => { setEditing(null); await fetchBookings(); }}
+        />
       )}
     </AdminLayout>
   );

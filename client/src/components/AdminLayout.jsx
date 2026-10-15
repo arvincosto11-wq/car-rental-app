@@ -28,6 +28,7 @@ const AvailabilityIcon = () => <NavIcon><circle cx="12" cy="12" r="9" /><polylin
 const AppointmentIcon = () => <NavIcon><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="m9 15 2 2 4-4" /></NavIcon>;
 const DeliveryIcon = () => <NavIcon><path d="M3 16V7h11v9" /><path d="M14 10h4l3 3v3h-7" /><circle cx="7" cy="17" r="2" /><circle cx="17" cy="17" r="2" /></NavIcon>;
 const ReviewsIcon = () => <NavIcon><polygon points="12 2 15 9 22 9.5 16.5 14.3 18.3 21 12 17.2 5.7 21 7.5 14.3 2 9.5 9 9" /></NavIcon>;
+const ClientRatingsIcon = () => <NavIcon><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-6 6-6h.8" /><polygon points="17 12 18.6 15.2 22 15.7 19.5 18.1 20.1 21.5 17 19.9 13.9 21.5 14.5 18.1 12 15.7 15.4 15.2" /></NavIcon>;
 const AccountIcon = () => <NavIcon><circle cx="12" cy="8" r="4" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></NavIcon>;
 const DriverIcon = () => <NavIcon><circle cx="12" cy="7" r="3.2" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /><path d="M8.5 13.5 12 17l3.5-3.5" /></NavIcon>;
 const PickupIcon = () => <NavIcon><path d="M15 7h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2" /><rect x="9" y="3" width="6" height="5" rx="1.5" /><polyline points="9 13 11 15 15 11" /></NavIcon>;
@@ -92,6 +93,7 @@ const AdminLayout = ({ children, activePage }) => {
     {
       label: 'Operations', links: [
         { to: '/admin/manage-clients', label: 'Manage Clients', Icon: ClientsIcon },
+        { to: '/admin/rate-clients', label: 'Client Ratings', Icon: ClientRatingsIcon },
         { to: '/admin/manage-consignments', label: 'Manage Consignments', Icon: ConsignmentsIcon },
         { to: '/admin/appointments', label: 'Appointments', Icon: AppointmentIcon },
         { to: '/admin/drivers', label: 'Drivers', Icon: DriverIcon },

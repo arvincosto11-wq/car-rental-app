@@ -1608,10 +1608,16 @@ const ManageBookings = () => {
               <span style={s.rescheduleFilterBadge}>{pendingRescheduleCount}</span>
             </button>
           )}
-          {!loading && unratedClientCount > 0 && (
+          {/* The way into the ratings, which used to vanish the moment the
+              last client was rated — taking the only link to that page
+              with it. It stays now, and says what it is when there is no
+              work queued. */}
+          {!loading && (
             <button style={s.rateClientsBtn} onClick={() => navigate('/admin/rate-clients')}>
-              <StarGlyph /> Rate Clients
-              <span style={s.rateClientsBadge}>{unratedClientCount}</span>
+              <StarGlyph /> {unratedClientCount > 0 ? 'Rate Clients' : 'Client Ratings'}
+              {unratedClientCount > 0 && (
+                <span style={s.rateClientsBadge}>{unratedClientCount}</span>
+              )}
             </button>
           )}
         </div>
