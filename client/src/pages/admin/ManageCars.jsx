@@ -172,11 +172,15 @@ const ManageCars = ({ view = 'active' }) => {
   // type the new date without hunting for the field.
   useEffect(() => {
     if (!editingCarData || params.get('focus') !== 'registrationExpiry') return;
-    const field = document.getElementById('mc-edit-reg-expiry');
-    if (field) {
+    // After the drawer's own focus handling, which moves focus to the
+    // dialog as it opens and would otherwise take it straight back.
+    const t = setTimeout(() => {
+      const field = document.getElementById('mc-edit-reg-expiry');
+      if (!field) return;
       field.focus();
       field.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    }
+    }, 60);
+    return () => clearTimeout(t);
   }, [editingCarData]); // eslint-disable-line react-hooks/exhaustive-deps
   const closeEditModal = () => {
     setEditingCar(null);
