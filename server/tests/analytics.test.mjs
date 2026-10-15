@@ -99,15 +99,23 @@ export default function run() {
   ];
   const outNow = booking({ _id: 'o1', status: 'confirmed', collectedAt: '2026-10-14T02:00:00Z', returnedAt: null });
   const states = vehicleStates(cars, [outNow], now);
-  check('out with a client', states.out, ['Toyota Vios']);
+  check('out with a client', states.out.map((v) => v.name), ['Toyota Vios']);
   check('free to book', states.free.length, 0);
-  check('not listed', states.unlisted, ['Honda Civic']);
-  check('off the road', states.offRoad, ['BMW X5']);
-  check('papers expired', states.expired, ['Toyota Wigo']);
+  check('not listed', states.unlisted.map((v) => v.name), ['Honda Civic']);
+  check('off the road', states.offRoad.map((v) => v.name), ['BMW X5']);
+  check('papers expired', states.expired.map((v) => v.name), ['Toyota Wigo']);
   // Expired papers beat an unlisted switch: the first is why it cannot go
   // out at all, the second is only how it is shown.
   check('expired outranks unlisted',
     vehicleStates([{ _id: 'c5', brand: 'A', model: 'B', isAvailable: false, registrationExpiry: '2026-01-01' }], [], now).expired.length, 1);
+  // Two vehicles of the same make and model must stay separate things.
+  const twins = vehicleStates([
+    { _id: 't1', brand: 'Honda', model: 'Click 125i' },
+    { _id: 't2', brand: 'Honda', model: 'Click 125i' },
+  ], [], now);
+  check('twins are both there', twins.free.length, 2);
+  check('and tell themselves apart', twins.free[0].id !== twins.free[1].id, true);
+
   check('nothing is counted twice', states.out.length + states.free.length + states.unlisted.length
     + states.offRoad.length + states.expired.length, cars.length);
 

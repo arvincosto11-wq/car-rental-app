@@ -157,12 +157,15 @@ export const vehicleStates = (cars, bookings, now) => {
   );
   const states = { out: [], free: [], unlisted: [], offRoad: [], expired: [] };
   for (const car of cars) {
-    const name = `${car.brand} ${car.model}`;
-    if (outIds.has(String(car._id))) states.out.push(name);
-    else if (car.registrationExpiry && new Date(car.registrationExpiry) < new Date(now)) states.expired.push(name);
-    else if (car.offRoad?.since) states.offRoad.push(name);
-    else if (car.isAvailable === false) states.unlisted.push(name);
-    else states.free.push(name);
+    // The id travels with the name: two vehicles can be the same make and
+    // model, and anything drawing one segment each needs to tell them
+    // apart.
+    const it = { id: String(car._id), name: `${car.brand} ${car.model}` };
+    if (outIds.has(it.id)) states.out.push(it);
+    else if (car.registrationExpiry && new Date(car.registrationExpiry) < new Date(now)) states.expired.push(it);
+    else if (car.offRoad?.since) states.offRoad.push(it);
+    else if (car.isAvailable === false) states.unlisted.push(it);
+    else states.free.push(it);
   }
   const overdue = bookings
     .filter((b) => b.status === 'confirmed' && b.collectedAt && !b.returnedAt && new Date(b.endDate) < new Date(now))

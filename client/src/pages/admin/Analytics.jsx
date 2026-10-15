@@ -543,8 +543,8 @@ const Analytics = () => {
           </p>
           <div style={s.body}>
             <div style={s.segmentBar}>
-              {rows.flatMap((row) => row.names.map((name) => (
-                <div key={`${row.label}-${name}`} style={{ flex: 1, background: row.fill, borderRadius: '3px' }} title={`${name} · ${row.label}`} />
+              {rows.flatMap((row) => row.names.map((v) => (
+                <div key={v.id} style={{ flex: 1, background: row.fill, borderRadius: '3px' }} title={`${v.name} · ${row.label}`} />
               )))}
             </div>
             <div>
@@ -555,7 +555,7 @@ const Analytics = () => {
                     {row.label}
                   </span>
                   <span style={s.stateNum}>{row.names.length}</span>
-                  <span style={s.stateWho}>{row.names.join(' · ') || '—'}</span>
+                  <span style={s.stateWho}>{row.names.map((v) => v.name).join(' · ') || '—'}</span>
                 </div>
               ))}
             </div>
