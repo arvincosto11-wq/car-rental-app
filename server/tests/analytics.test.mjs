@@ -3,6 +3,7 @@
 // rather than trusted to the drawing of it.
 
 import { suite, group, check } from './harness.mjs';
+import { statusTimes } from '../utils/statusTimes.js';
 import {
   rangeFor, inRange, moneyOverTime, weekKey, extraCharges, cancellations,
   vehicleStates, vehicleEarnings, idleReason, demand, clients, operations,
@@ -84,6 +85,21 @@ export default function run() {
   check('money kept', fell.notRefunded, 1);
   // A booking nobody paid for cannot be money kept.
   check('nothing to give back', fell.nothingPaid, 1);
+  group('stamping the times themselves');
+  const t1 = new Date('2026-09-02T02:00:00Z');
+  const t2 = new Date('2026-10-05T02:00:00Z');
+  check('accepting stamps the acceptance', statusTimes('confirmed', {}, t1).confirmedAt, t1);
+  check('and leaves no death date', statusTimes('confirmed', {}, t1).cancelledAt, null);
+  // Confirmed in September, reinstated in October: still won in September.
+  check('the first acceptance is the one that counts',
+    statusTimes('confirmed', { confirmedAt: t1 }, t2).confirmedAt, t1);
+  check('cancelling stamps the death', statusTimes('cancelled', { confirmedAt: t1 }, t2).cancelledAt, t2);
+  check('and keeps the acceptance', statusTimes('cancelled', { confirmedAt: t1 }, t2).confirmedAt, t1);
+  // Nothing live carries a date saying it is dead.
+  check('coming back to life drops the death date',
+    statusTimes('pending', { cancelledAt: t1 }, t2).cancelledAt, null);
+  check('a booking nobody has answered has neither', statusTimes('pending', {}, t2).confirmedAt, null);
+
   group('cancelled before or after the office confirmed it');
   const died = (over) => booking({ status: 'cancelled', amountPaid: 400, ...over });
   const split = cancellations([

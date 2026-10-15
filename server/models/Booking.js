@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { statusTimes } from '../utils/statusTimes.js';
 
 const bookingSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -352,9 +353,9 @@ const bookingSchema = new mongoose.Schema({
 // so nothing live carries a date saying it was cancelled.
 bookingSchema.pre('save', function stampStatusTimes(next) {
   if (this.isModified('status')) {
-    if (this.status === 'confirmed' && !this.confirmedAt) this.confirmedAt = new Date();
-    if (this.status === 'cancelled') this.cancelledAt = new Date();
-    else if (this.cancelledAt) this.cancelledAt = null;
+    const times = statusTimes(this.status, this);
+    this.confirmedAt = times.confirmedAt;
+    this.cancelledAt = times.cancelledAt;
   }
   next();
 });
