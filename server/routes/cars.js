@@ -17,6 +17,7 @@ import Appointment from '../models/Appointment.js';
 import Consignment from '../models/Consignment.js';
 import { INSPECTION_CHECKS, isInspectionCheck } from '../utils/appointments.js';
 import { fail } from '../utils/respond.js';
+import { plateClash, plateClashMessage } from '../utils/plates.js';
 
 const router = express.Router();
 
@@ -813,6 +814,11 @@ router.post('/', protect, adminOnly, async (req, res) => {
   try {
     const { appointmentId, inspectionChecks, ...fields } = req.body;
 
+    // Before anything is written: a plate identifies one vehicle, and the
+    // system used to let two carry the same one.
+    const taken = plateClash(fields.plateNumber, await Car.find().select('brand model plateNumber archived').lean());
+    if (taken) return res.status(400).json({ message: plateClashMessage(taken) });
+
     // An ordinary vehicle of our own: nothing else to do.
     if (!appointmentId) {
       const car = await Car.create(fields);
@@ -924,6 +930,15 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         }
         req.body.turnaroundHours = hours;
       }
+    }
+
+    if ('plateNumber' in req.body) {
+      const clash = plateClash(
+        req.body.plateNumber,
+        await Car.find().select('brand model plateNumber archived').lean(),
+        req.params.id,
+      );
+      if (clash) return res.status(400).json({ message: plateClashMessage(clash) });
     }
 
     const car = await Car.findByIdAndUpdate(

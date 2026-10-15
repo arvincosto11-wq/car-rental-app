@@ -490,6 +490,9 @@ const ManageCars = ({ view = 'active' }) => {
       setEditNewPhotoPreviews([]);
     } catch (err) {
       console.error(err);
+      // A refusal used to land in the console and nowhere else, so the
+      // drawer simply sat there as though the save had not been pressed.
+      toast.error(err.response?.data?.message || 'Could not save this vehicle.');
     } finally {
       setUpdating(false);
     }
