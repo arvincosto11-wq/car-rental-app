@@ -113,6 +113,22 @@ const Analytics = () => {
   const amberBg = isDark ? 'rgba(217,119,6,0.15)' : '#fef3c7';
   // Money promised but not yet in hand is drawn as gold hatching: the same
   // colour as money collected, visibly not solid.
+  // A bar that is not the tallest is still a filled bar, in a lighter
+  // gold. Drawing it as an outline turned the charts into empty boxes.
+  const goldLine = isDark ? 'rgba(232,161,0,0.45)' : '#e6c77a';
+  const green = isDark ? '#22c55e' : '#16a34a';
+  const neutral2 = isDark ? '#4b4f54' : '#d1d5db';
+  // Grey hatching, for the part of something cancelled that never came
+  // back. Cancelled is never gold and never red.
+  const hatchNeutral = isDark
+    ? 'repeating-linear-gradient(135deg, #4b4f54 0 4px, #303132 4px 8px)'
+    : 'repeating-linear-gradient(135deg, #d1d5db 0 4px, #f1f2f4 4px 8px)';
+  // Papers that have run out are amber hatching, not red: red on this
+  // page would be the only one of its kind, and the state is a job to do
+  // rather than an emergency.
+  const hatchAmber = isDark
+    ? 'repeating-linear-gradient(135deg, #f59e0b 0 4px, rgba(217,119,6,0.15) 4px 8px)'
+    : 'repeating-linear-gradient(135deg, #d97706 0 4px, #fef3c7 4px 8px)';
   const hatch = isDark
     ? 'repeating-linear-gradient(135deg, rgba(232,161,0,0.38) 0 4px, rgba(232,161,0,0.1) 4px 8px)'
     : 'repeating-linear-gradient(135deg, #f3dfa8 0 4px, #fbf1d6 4px 8px)';
@@ -349,10 +365,10 @@ const Analytics = () => {
                   borderRadius: '4px 4px 0 0',
                   background: hatchFrom !== null && i >= hatchFrom
                     ? hatch
-                    : (n === max ? gold : 'transparent'),
+                    : (n === max ? gold : goldLine),
                   border: hatchFrom !== null && i >= hatchFrom
                     ? `1px dashed ${gold}`
-                    : (n === max ? 'none' : `1px solid ${gold}`),
+                    : 'none',
                   boxSizing: 'border-box',
                 }}
               />
@@ -504,13 +520,13 @@ const Analytics = () => {
                 ) : (
                   <>
                     <Split parts={[
-                      { label: 'refunded', value: fell.refunded, fill: gold },
-                      { label: 'kept', value: fell.notRefunded, fill: hatch, dashed: true },
+                      { label: 'refunded', value: fell.refunded, fill: neutral2 },
+                      { label: 'kept', value: fell.notRefunded, fill: hatchNeutral },
                       { label: 'nothing paid', value: fell.nothingPaid, fill: neutral },
                     ]} />
                     <Legend parts={[
-                      { label: 'refunded', value: fell.refunded, fill: gold },
-                      { label: 'money kept', value: fell.notRefunded, fill: hatch, dashed: true },
+                      { label: 'refunded', value: fell.refunded, fill: neutral2 },
+                      { label: 'money kept', value: fell.notRefunded, fill: hatchNeutral },
                       { label: 'never paid for', value: fell.nothingPaid, fill: neutral },
                     ]} />
                   </>
@@ -531,10 +547,12 @@ const Analytics = () => {
     states: () => {
       const rows = [
         { label: 'Out with a client', names: states.out, fill: gold },
-        { label: 'Free to book', names: states.free, fill: isDark ? '#4b4f54' : '#d1d5db' },
+        // Free to book says what it means rather than naming ten vehicles
+        // nobody needs to read: the exceptions are what want names.
+        { label: 'Free to book', names: states.free, fill: green, desc: 'Listed, papers valid, on the road' },
         { label: 'Not listed', names: states.unlisted, fill: neutral },
         { label: 'Off the road', names: states.offRoad, fill: isDark ? '#f59e0b' : '#d97706' },
-        { label: 'Papers expired', names: states.expired, fill: isDark ? '#f87171' : '#dc2626' },
+        { label: 'Papers expired', names: states.expired, fill: hatchAmber },
       ];
       return (
         <>
@@ -555,7 +573,7 @@ const Analytics = () => {
                     {row.label}
                   </span>
                   <span style={s.stateNum}>{row.names.length}</span>
-                  <span style={s.stateWho}>{row.names.map((v) => v.name).join(' · ') || '—'}</span>
+                  <span style={s.stateWho}>{row.desc || row.names.map((v) => v.name).join(' · ') || '—'}</span>
                 </div>
               ))}
             </div>
@@ -594,7 +612,7 @@ const Analytics = () => {
             {earnings.rows.map((v) => (
               <div key={v.id} style={s.tableRow}>
                 <span style={s.vehName}>
-                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: v.earned ? text : text3 }}>{v.name}</span>
                   {v.consignor && <span style={s.consignorChip}>Consignor</span>}
                 </span>
                 <span style={s.right}>{v.trips}</span>
@@ -609,7 +627,7 @@ const Analytics = () => {
                   </span>
                 )}
                 <span style={{ ...s.right, fontWeight: '700' }}>{peso(v.earned)}</span>
-                <span style={{ ...s.right, color: text2 }}>{peso(v.perDay)}</span>
+                <span style={{ ...s.right, color: text2 }}>{v.earned ? peso(v.perDay) : '—'}</span>
               </div>
             ))}
           </div>
