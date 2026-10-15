@@ -6,8 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "test": "node tests/run.mjs",
-    "dev": "nodemon index.js"
+    "test": "node scripts/check-syntax.mjs && node tests/run.mjs",
+    "dev": "nodemon index.js",
+    "check:syntax": "node scripts/check-syntax.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

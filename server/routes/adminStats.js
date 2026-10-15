@@ -12,9 +12,9 @@ import { fail } from '../utils/respond.js';
 import { isOverdue } from '../utils/overdue.js';
 import { phYmd, phDayStart, addDays } from '../utils/phTime.js';
 import {
-import { riskFor } from '../utils/expiryRisk.js';
   balanceDue, lateFeeSoFar, unsettledCharges, vehicleState, comparePeriods,
 } from '../utils/adminToday.js';
+import { riskFor } from '../utils/expiryRisk.js';
 
 const router = express.Router();
 
