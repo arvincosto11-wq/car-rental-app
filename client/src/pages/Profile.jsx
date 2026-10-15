@@ -70,6 +70,7 @@ const Profile = () => {
   const [section, setSection] = useState('details');
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({});
+  const [openedWith, setOpenedWith] = useState({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
@@ -99,7 +100,7 @@ const Profile = () => {
   };
 
   const startEdit = () => {
-    setForm({
+    const opening = {
       name: profile.name || '',
       birthDate: '', // only ever sent as a one-time backfill — see the birthdate field below, shown only when profile.birthDate is empty
       phone: profile.phone || '',
@@ -107,7 +108,13 @@ const Profile = () => {
       licenseExpiry: profile.licenseExpiry ? profile.licenseExpiry.split('T')[0] : '',
       emergencyContactName: profile.emergencyContactName || '',
       emergencyContactNumber: profile.emergencyContactNumber || '',
-    });
+    };
+    setForm(opening);
+    // Kept so "Save changes" can tell whether anything has actually been
+    // typed. Pressing Save with nothing changed used to send the same
+    // values back and report success, which reads as though something
+    // happened when nothing did.
+    setOpenedWith(opening);
     setSaveError('');
     setSaveSuccess('');
     setEditMode(true);
@@ -268,6 +275,14 @@ const Profile = () => {
   const inset = isDark ? '#1e1f20' : '#f8f9fa';
   const page = isDark ? '#18191a' : '#f4f5f6';
 
+  // Has anything actually been typed since Edit profile was pressed?
+  // Compared field by field against what the form opened with, so leaving
+  // a field alone — or typing into it and putting it back — counts as no
+  // change.
+  const changed = Object.keys(openedWith).some(
+    (key) => (form[key] ?? '') !== (openedWith[key] ?? ''),
+  );
+
   const s = {
     page: { minHeight: '100vh', background: page },
     main: {
@@ -339,6 +354,14 @@ const Profile = () => {
     btnGold: {
       minHeight: '38px', padding: '0 16px', borderRadius: '10px', border: 'none',
       background: gold, color: ON_GOLD, fontSize: '13px', fontWeight: '800', cursor: 'pointer',
+    },
+    // Asleep until something has been typed, so the button says whether
+    // there is anything to save rather than waiting to be pressed.
+    btnGoldOff: {
+      minHeight: '38px', padding: '0 16px', borderRadius: '10px', border: 'none',
+      background: isDark ? '#303132' : '#e5e7eb',
+      color: isDark ? '#6b6e72' : '#9ca3af',
+      fontSize: '13px', fontWeight: '800', cursor: 'default',
     },
     group: { display: 'flex', flexDirection: 'column' },
     groupLabel: {
@@ -456,7 +479,12 @@ const Profile = () => {
             {editMode ? (
               <>
                 <button type="button" style={s.btn} onClick={cancelEdit} disabled={saving}>Cancel</button>
-                <button type="submit" style={s.btnGold} disabled={saving}>
+                <button
+                  type="submit"
+                  style={changed ? s.btnGold : s.btnGoldOff}
+                  disabled={saving || !changed}
+                  title={changed ? undefined : 'Nothing has changed yet.'}
+                >
                   {saving ? 'Saving...' : 'Save changes'}
                 </button>
               </>
