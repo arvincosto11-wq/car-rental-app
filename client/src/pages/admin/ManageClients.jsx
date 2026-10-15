@@ -38,12 +38,34 @@ const initialsOf = (name) => {
 };
 
 const peso = (n) => `₱${Math.round(n || 0).toLocaleString()}`;
-const day = (iso) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
-const shortDay = (iso) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
-const monthKey = (iso) => new Date(iso).toLocaleDateString('en-GB', {
-  month: 'long',
-  ...(new Date(iso).getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }),
-});
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+// Our own month names rather than the browser's: en-GB says "Sept", and
+// every other date in the admin says "Sep".
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
+const day = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`;
+};
+
+// "12 – 13 Oct" when a trip stays inside one month, "30 Sep – 1 Oct" when
+// it does not. The month is said once where once is enough.
+const dateRange = (startIso, endIso) => {
+  const a = new Date(startIso);
+  const b = new Date(endIso);
+  const left = a.getMonth() === b.getMonth() ? `${a.getDate()}` : `${a.getDate()} ${MON[a.getMonth()]}`;
+  const year = b.getFullYear() !== new Date().getFullYear() ? ` ${b.getFullYear()}` : '';
+  return `${left} – ${b.getDate()} ${MON[b.getMonth()]}${year}`;
+};
+
+const monthKey = (iso) => {
+  const d = new Date(iso);
+  const year = d.getFullYear() !== new Date().getFullYear() ? ` ${d.getFullYear()}` : '';
+  return `${MONTHS[d.getMonth()]}${year}`;
+};
 
 const SearchIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -350,6 +372,11 @@ const ManageClients = () => {
       flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto',
       background: card, border: `1px solid ${line}`, borderRadius: '12px', paddingBottom: '8px',
     },
+    // The design is drawn on a 1260px canvas. Left to itself on a wide
+    // monitor the history spreads its four columns across the whole
+    // screen, with a date floating a foot away from the vehicle it
+    // belongs to.
+    profileInner: { maxWidth: '1100px' },
     pHead: { display: 'flex', gap: '20px', padding: '28px 32px 0', alignItems: 'flex-start' },
     avatarLg: {
       width: '72px', height: '72px', flexShrink: 0, borderRadius: '50%',
@@ -392,11 +419,14 @@ const ManageClients = () => {
 
     histHead: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' },
     histCount: { fontSize: '13px', color: text3 },
-    monthRow: { display: 'grid', gridTemplateColumns: '110px minmax(0, 1fr)', gap: '12px', marginBottom: '14px' },
-    monthLabel: { fontSize: '13px', fontWeight: '600', color: text3, paddingTop: '6px' },
+    monthRow: {
+      display: 'grid', gridTemplateColumns: '110px minmax(0, 1fr)', gap: '16px',
+      padding: '12px 0', borderTop: `1px solid ${line2}`,
+    },
+    monthLabel: { fontSize: '13px', fontWeight: '700', color: text2, paddingTop: '9px' },
     monthList: { borderLeft: `2px solid ${line}`, paddingLeft: '16px', display: 'flex', flexDirection: 'column' },
     histItem: {
-      display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) 120px auto minmax(0, 0.9fr)',
+      display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr) 160px minmax(0, 1fr)',
       gap: '12px', alignItems: 'center', padding: '8px 0', fontSize: '13px', color: text,
     },
     histWho: { fontSize: '12px', color: text3 },
@@ -407,7 +437,7 @@ const ManageClients = () => {
       border: `1px solid ${kind === 'finished' ? chip : (kind === 'upcoming' ? goldLine : (kind === 'late' ? text3 : line))}`,
       color: kind === 'finished' ? text2 : (kind === 'upcoming' ? ink : (kind === 'late' ? text : text3)),
     }),
-    refund: (strong) => ({ fontSize: '13px', color: strong ? text : text3, textAlign: 'right' }),
+    refund: (strong) => ({ fontSize: '13px', color: strong ? text : text3 }),
     histEmpty: { fontSize: '13.5px', lineHeight: 1.6, color: text3, maxWidth: '620px' },
 
     account: { margin: '24px 32px 32px', paddingTop: '20px', borderTop: `1px solid ${line}`, maxWidth: '560px' },
@@ -510,7 +540,7 @@ const ManageClients = () => {
     if (b.refundStatus === 'approved') return { text: `Refunded ${peso(b.refundAmount)}`, strong: true };
     if (b.refundStatus === 'declined') return { text: 'Refund declined', strong: true };
     if (b.status === 'cancelled') return { text: 'No refund due', strong: false };
-    if (b.status === 'completed') return { text: '', strong: false };
+    if (b.status === 'completed') return { text: 'No refund due', strong: false };
     return { text: 'Paid, not started', strong: false };
   };
 
@@ -632,10 +662,10 @@ const ManageClients = () => {
           <article style={s.profile}>
             {!selected ? (
               <div style={s.none}>Nobody to show. Clear the search or pick another filter.</div>
-            ) : isClient ? (
-              clientProfile(selected)
             ) : (
-              ownerProfile(selected)
+              <div style={s.profileInner}>
+                {isClient ? clientProfile(selected) : ownerProfile(selected)}
+              </div>
             )}
           </article>
         </div>
@@ -677,7 +707,7 @@ const ManageClients = () => {
       <div style={s.section}>
         <div style={s.histHead}>
           <h3 style={s.h3}>{title}</h3>
-          {count > 0 && <span style={s.histCount}>{count}</span>}
+          {count > 0 && <span style={s.histCount}>{plural(count, 'booking')}</span>}
         </div>
         {months.length === 0 ? (
           <p style={s.histEmpty}>{emptyText}</p>
@@ -694,7 +724,7 @@ const ManageClients = () => {
                       <span style={{ fontWeight: '600' }}>{b.car?.brand} {b.car?.model}</span>
                       {m.withClient && <span style={{ ...s.histWho, display: 'block' }}>Rented by {b.user?.name || 'someone'}</span>}
                     </span>
-                    <span style={s.histDates}>{shortDay(b.startDate)} – {shortDay(b.endDate)}</span>
+                    <span style={s.histDates}>{dateRange(b.startDate, b.endDate)}</span>
                     <span style={s.pill(state.kind)}>{state.label}</span>
                     <span style={s.refund(money.strong)}>{money.text}</span>
                   </div>
@@ -752,11 +782,14 @@ const ManageClients = () => {
     const { all, finished, late, lastLate } = clientFacts(person);
     const rated = (person.ratingCount || 0) > 0;
 
+    const cancelled = all.filter((b) => b.status === 'cancelled');
     const standing = !all.length
       ? `Hasn't booked yet. Joined ${day(person.createdAt)}.`
       : !finished.length
-        ? `${all.length} booking${all.length === 1 ? '' : 's'}, none finished so far.`
-        : `Finished ${finished.length} of ${all.length} bookings. ${late.length
+        ? `${all.length === 1 ? 'One booking' : plural(all.length, 'booking')}, ${cancelled.length === all.length
+          ? (all.length === 1 ? 'cancelled' : 'all cancelled')
+          : 'none finished yet'}. No finished trips so far.`
+        : `Finished ${finished.length} of ${plural(all.length, 'booking')}. ${late.length
           ? `Returned late ${late.length} time${late.length === 1 ? '' : 's'}, most recently on ${day(lastLate)}.`
           : 'Every trip came back on time.'}`;
 
@@ -768,16 +801,19 @@ const ManageClients = () => {
         <div style={s.facts}>
           {fact({
             label: 'Trips finished',
-            value: finished.length,
+            value: finished.length || 'None',
             quiet: !finished.length,
-            sub: `of ${all.length} booking${all.length === 1 ? '' : 's'}`,
+            sub: all.length ? `of ${plural(all.length, 'booking')}` : "Hasn't booked yet",
           })}
           {fact({
             label: 'Late returns',
-            value: late.length || 'None',
+            // "Never" is a different answer from "None": one means they
+            // brought everything back on time, the other that there is
+            // nothing to judge them on yet.
+            value: !finished.length ? 'None' : (late.length || 'Never'),
             quiet: !late.length,
-            sub: late.length ? `Last on ${day(lastLate)}`
-              : finished.length ? 'Every trip back on time' : 'No finished trips to judge',
+            sub: !finished.length ? 'No finished trips to judge'
+              : late.length ? `Last on ${day(lastLate)}` : 'Every trip back on time',
           })}
           {fact({
             label: 'Rating',
@@ -796,6 +832,7 @@ const ManageClients = () => {
         })}
 
         <div style={s.account}>
+          <h3 style={s.h3}>Account</h3>
           {person.isBlocked ? (
             <>
               <div style={s.stoppedBox(true)}>
@@ -835,10 +872,9 @@ const ManageClients = () => {
 
     const standing = !vehicles.length
       ? `No vehicles with us yet. Joined ${day(person.createdAt)}.`
-      : `${vehicles.length} vehicle${vehicles.length === 1 ? '' : 's'} with us, ${listed.length} listed. `
-        + (onHold
-          ? 'Off the site while the contract is on hold.'
-          : `${finished.length} finished trip${finished.length === 1 ? '' : 's'} so far.`);
+      : `${vehicles.length === 1 ? 'One vehicle' : plural(vehicles.length, 'vehicle')} with us, `
+        + `${onHold ? 'off the site while the contract is on hold' : `${listed.length} listed`}. `
+        + (finished.length ? `${plural(finished.length, 'finished trip')} so far.` : 'No rentals yet.');
 
     return (
       <>
@@ -846,16 +882,26 @@ const ManageClients = () => {
         <p style={s.standing}>{standing}</p>
 
         <div style={s.facts}>
-          {fact({ label: 'Vehicles with us', value: vehicles.length, quiet: !vehicles.length, sub: vehicles.length ? '' : 'None yet' })}
+          {fact({
+            label: 'Vehicles with us',
+            value: vehicles.length || 'None',
+            quiet: !vehicles.length,
+            sub: vehicles.length ? (vehicles.length === 1 ? 'One vehicle on contract' : 'On contract') : "Hasn't added one yet",
+          })}
           {fact({
             label: 'Listed now',
             value: listed.length,
             quiet: !listed.length,
-            sub: !vehicles.length ? 'Nothing to list'
-              : onHold ? 'Off the site while on hold'
-                : listed.length === vehicles.length ? 'All bookable' : 'Some are off the site',
+            sub: onHold ? 'Off the site while on hold'
+              : !vehicles.length ? 'Nothing to list'
+                : listed.length === vehicles.length ? 'All bookable' : `${vehicles.length - listed.length} not listed`,
           })}
-          {fact({ label: 'Trips on them', value: finished.length, quiet: !finished.length, sub: finished.length ? 'finished' : 'None yet' })}
+          {fact({
+            label: 'Trips on them',
+            value: finished.length || 'None',
+            quiet: !finished.length,
+            sub: finished.length ? 'Finished rentals' : 'No rentals yet',
+          })}
         </div>
 
         {vehicles.length > 0 && (
@@ -891,6 +937,7 @@ const ManageClients = () => {
         })}
 
         <div style={s.account}>
+          <h3 style={s.h3}>Contract</h3>
           {onHold ? (
             <>
               <div style={s.stoppedBox(false)}>
