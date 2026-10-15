@@ -18,3 +18,15 @@ export const withoutClientRating = (booking) => {
 };
 
 export const hideClientRatings = (bookings) => bookings.map(withoutClientRating);
+
+// The office's running score for a client — the average of every rating
+// admin has given them, and how many there are. Same reasoning as the
+// rating itself: it is written about the person, for the office. Their
+// own profile arrives as a whole record, so without this the number sat
+// in the response their own browser received.
+export const withoutOfficeScore = (user) => {
+  const plain = typeof user?.toObject === 'function' ? user.toObject() : { ...user };
+  delete plain.avgRating;
+  delete plain.ratingCount;
+  return plain;
+};

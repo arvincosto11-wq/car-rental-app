@@ -10,6 +10,7 @@ import { sendVerificationCodeEmail } from '../utils/email.js';
 import { notifyAdmins } from '../utils/notify.js';
 import { checkAndNotifyExpiringDocs } from '../utils/expiryNotify.js';
 import { fail } from '../utils/respond.js';
+import { withoutOfficeScore } from '../utils/privacy.js';
 
 const router = express.Router();
 
@@ -36,7 +37,7 @@ router.get('/me', protect, async (req, res) => {
     const user = await User.findById(req.user.id).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
     await checkAndNotifyExpiringDocs(user);
-    res.json(user);
+    res.json(withoutOfficeScore(user));
   } catch (err) {
     fail(res, err);
   }
@@ -91,7 +92,7 @@ router.put('/me', protect, async (req, res) => {
     await user.save();
 
     const { password, ...safeUser } = user.toObject();
-    res.json(safeUser);
+    res.json(withoutOfficeScore(safeUser));
   } catch (err) {
     fail(res, err);
   }

@@ -10,6 +10,7 @@ import { SkeletonListCard } from '../../components/Skeleton';
 import Pagination from '../../components/Pagination';
 import StatusDropdown from '../../components/StatusDropdown';
 import { paginate } from '../../utils/paginate';
+import { hasClientScore, clientScoreLabel } from '../../utils/clientScore';
 import { vehicleOutOfService } from '../../utils/blockedDates';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk} from '../../theme';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
@@ -1231,6 +1232,10 @@ const ManageBookings = () => {
     },
     panelTitle: { fontSize: '18px', fontWeight: '800', color: text, margin: 0, wordBreak: 'break-word' },
     panelEmail: { fontSize: '12.5px', color: text2, marginTop: '2px' },
+    panelScore: {
+      display: 'flex', alignItems: 'center', gap: '6px',
+      fontSize: '12px', color: text3, marginTop: '3px',
+    },
     panelMeta: { display: 'flex', alignItems: 'center', gap: '9px', flexWrap: 'wrap', marginTop: '7px' },
     panelRef: {
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '11px', color: text3,
@@ -1810,6 +1815,15 @@ const ManageBookings = () => {
                     {selected.user?.name || 'Unknown'} · {selected.car?.brand} {selected.car?.model}
                   </h2>
                   <div style={s.panelEmail}>{selected.user?.email}</div>
+                  {/* How this client has behaved on past rentals, where the
+                      person deciding on the booking is already looking.
+                      Admin only: the client never sees their own score. */}
+                  <div style={s.panelScore}>
+                    {hasClientScore(selected.user) && (
+                      <StarRating value={selected.user.avgRating} size={11} readOnly />
+                    )}
+                    <span>{clientScoreLabel(selected.user)}</span>
+                  </div>
                   <div style={s.panelMeta}>
                     <span style={s.pill(stageOf(selected))}>{STAGE_LABEL[stageOf(selected)]}</span>
                     {selected.paymongoPaymentId && (

@@ -2,7 +2,7 @@ import { suite, group, check } from './harness.mjs';
 import {
   balanceDue, lateFeeSoFar, unsettledCharges, vehicleState, comparePeriods,
 } from '../utils/adminToday.js';
-import { withoutClientRating, hideClientRatings } from '../utils/privacy.js';
+import { withoutClientRating, hideClientRatings, withoutOfficeScore } from '../utils/privacy.js';
 import { phInstant } from '../utils/appointments.js';
 
 export default function run() {
@@ -97,4 +97,14 @@ export default function run() {
   // A mongoose document, which is what the routes actually hand it.
   const asDoc = { toObject: () => ({ ...rated }) };
   check('a mongoose document too', withoutClientRating(asDoc).clientRating, undefined);
+
+  // The running score the office keeps on a client is the same secret as
+  // the note, and their own profile used to carry it home.
+  const me = { name: 'John', email: 'j@x.com', avgRating: 2.5, ratingCount: 4, licenseExpiry: '2027-01-01' };
+  check('the score is gone', withoutOfficeScore(me).avgRating, undefined);
+  check('how many were given is gone too', withoutOfficeScore(me).ratingCount, undefined);
+  check('the profile itself survives', withoutOfficeScore(me).licenseExpiry, '2027-01-01');
+  check('the original is untouched', me.avgRating, 2.5);
+  const meDoc = { toObject: () => ({ ...me }) };
+  check('a mongoose document too', withoutOfficeScore(meDoc).avgRating, undefined);
 }

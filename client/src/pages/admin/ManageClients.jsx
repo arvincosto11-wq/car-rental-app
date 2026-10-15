@@ -4,6 +4,8 @@ import AdminLayout from '../../components/AdminLayout';
 import { SkeletonTableRows } from '../../components/Skeleton';
 import Pagination from '../../components/Pagination';
 import { paginate } from '../../utils/paginate';
+import StarRating from '../../components/StarRating';
+import { hasClientScore, clientScoreLabel } from '../../utils/clientScore';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, goldInk} from '../../theme';
@@ -168,6 +170,8 @@ const ManageClients = () => {
     td: { padding: '12px 16px', fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`, verticalAlign: 'middle' },
     nameCell: { fontWeight: '600' },
     subCell: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    scoreCell: { display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', whiteSpace: 'nowrap' },
+    scoreNone: { fontSize: '12.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
     clientCell: { display: 'flex', alignItems: 'center', gap: '10px' },
     clientAvatar: {
       width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
@@ -294,12 +298,15 @@ const ManageClients = () => {
               <th style={s.th}>Phone</th>
               <th style={s.th}>Joined</th>
               <th style={s.th}>{tab === 'owners' ? 'Vehicles' : 'Bookings'}</th>
+              {/* Owners are never rated — only the people who take a
+                  vehicle out are. */}
+              {tab !== 'owners' && <th style={s.th}>Rating</th>}
               <th style={s.th}>{tab === 'owners' ? 'Contract' : 'Account'}</th>
               <th style={s.th}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? <SkeletonTableRows isDark={isDark} columns={7} /> : pageClients.map((client) => (
+            {loading ? <SkeletonTableRows isDark={isDark} columns={tab === 'owners' ? 6 : 7} /> : pageClients.map((client) => (
               <tr key={client._id}>
                 <td style={s.td}>
                   <div style={s.clientCell}>
@@ -323,6 +330,18 @@ const ManageClients = () => {
                     ? `${client.liveVehicleCount || 0} listed${client.vehicleCount !== client.liveVehicleCount ? ` of ${client.vehicleCount}` : ''}`
                     : bookingsForClient(client._id).length}
                 </td>
+                {tab !== 'owners' && (
+                  <td style={s.td}>
+                    {hasClientScore(client) ? (
+                      <span style={s.scoreCell}>
+                        <StarRating value={client.avgRating} size={12} readOnly />
+                        {clientScoreLabel(client)}
+                      </span>
+                    ) : (
+                      <span style={s.scoreNone}>{clientScoreLabel(client)}</span>
+                    )}
+                  </td>
+                )}
                 <td style={s.td}>
                   {tab === 'owners' ? (
                     <>
