@@ -106,6 +106,10 @@ const ManageCars = ({ view = 'active' }) => {
   // Set by picking a suggestion: the list narrows to that one vehicle until
   // the search changes again.
   const [pickedCarId, setPickedCarId] = useState(null);
+  // A stable handle on the editor opener. fetchCars runs once on mount and
+  // reaches the opener through this, rather than closing over a function
+  // React rebuilds on every render.
+  const openEditor = useRef(() => {});
   // Where to go back to once this vehicle is dealt with. Only our own
   // admin pages: a path arrives in the address bar, and following
   // anything that turns up there is how an open redirect happens.
@@ -163,7 +167,6 @@ const ManageCars = ({ view = 'active' }) => {
   }, [menuCarId]);
 
   const editingCarData = cars.find((c) => c._id === editingCar) || null;
-  openEditor.current = handleEdit;
 
   // Focused once the drawer is actually on the screen, so the admin can
   // type the new date without hunting for the field.
@@ -354,10 +357,6 @@ const ManageCars = ({ view = 'active' }) => {
     }
   };
 
-  // Held in a ref so fetchCars can reach it without closing over a
-  // function React rebuilds on every render.
-  const openEditor = useRef(() => {});
-
   const handleEdit = (car) => {
     setEditingCar(car._id);
     setEditExistingPhotos(car.photos?.length ? car.photos : (car.image ? [{ url: car.image, fileId: car.imageFileId }] : []));
@@ -391,6 +390,10 @@ const ManageCars = ({ view = 'active' }) => {
     // still has to be worked out.
     setEditVehicleType(car.category === 'Motorcycle' ? 'motorcycle' : 'car');
   };
+
+  // Assigned here, below the declaration it points at: doing this higher
+  // up ran before handleEdit existed and crashed the page on render.
+  openEditor.current = handleEdit;
 
   const handleEditVehicleTypeChange = (type) => {
     setEditVehicleType(type);
