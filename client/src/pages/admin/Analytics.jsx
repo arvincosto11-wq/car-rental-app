@@ -9,7 +9,7 @@ import api from '../../api';
 import {
   RANGES, RANGE_LABELS, rangeFor, moneyOverTime, extraCharges, cancellations,
   vehicleStates, vehicleEarnings, demand, clients, operations,
-  DOW, LEAD_BUCKETS, TRIP_BUCKETS,
+  DOW, TRIP_BUCKETS,
 } from '../../utils/analytics';
 
 // The eight things somebody opens this page to find out. The rail asks
@@ -36,6 +36,16 @@ const KICKERS = {
   clients: '07 · Clients',
   ops: '08 · What it costs us',
 };
+
+// The rail speaks in sentences, so it needs the whole word: "Fris are
+// busiest" is a chart label pretending to be English.
+const DAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// "same day ahead" is not a thing anybody says.
+const leadPhrase = (i) => [
+  'on the day of pickup', '1 to 2 days ahead', '3 to 7 days ahead',
+  '8 to 14 days ahead', '2 to 4 weeks ahead', 'over a month ahead',
+][i] || 'ahead';
 
 const peso = (n) => `₱${Math.round(n || 0).toLocaleString()}`;
 const pct = (part, whole) => (whole > 0 ? `${Math.round((part / whole) * 100)}%` : '0%');
@@ -145,7 +155,7 @@ const Analytics = () => {
       ? `${earnings.idle} of ${cars.length} vehicles earned nothing`
       : 'Every vehicle earned something',
     demand: shape.total
-      ? `${DOW[busiestDay]}s are busiest; most book ${LEAD_BUCKETS[commonLead].toLowerCase()} ahead`
+      ? `${DAYS_FULL[busiestDay]}s are busiest; most book ${leadPhrase(commonLead)}`
       : 'No pickups in this range',
     clients: who.booked
       ? `${plural(who.booked, 'client')} booked, ${who.returning} came back`
@@ -626,13 +636,13 @@ const Analytics = () => {
                 title="Pickup day"
                 values={shape.byDay}
                 labels={DOW}
-                note={`${DOW[busiestDay]}s are busiest: ${shape.byDay[busiestDay]} of ${shape.total} pickups.`}
+                note={`${DAYS_FULL[busiestDay]}s are busiest: ${shape.byDay[busiestDay]} of ${shape.total} pickups.`}
               />
               <BarChart
                 title="How far ahead people book"
                 values={shape.byLead}
                 labels={['Same day', '1–2 d', '3–7 d', '8–14 d', '15–30 d', '30+ d']}
-                note={`Most book ${LEAD_BUCKETS[commonLead].toLowerCase()} ahead. ${shape.byLead[0]} booked on the day of pickup.`}
+                note={`Most book ${leadPhrase(commonLead)}. ${shape.byLead[0]} booked on the day of pickup.`}
               />
               <BarChart
                 title="Trip length"
