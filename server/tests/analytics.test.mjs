@@ -84,6 +84,24 @@ export default function run() {
   check('money kept', fell.notRefunded, 1);
   // A booking nobody paid for cannot be money kept.
   check('nothing to give back', fell.nothingPaid, 1);
+  group('cancelled before or after the office confirmed it');
+  const died = (over) => booking({ status: 'cancelled', amountPaid: 400, ...over });
+  const split = cancellations([
+    // Confirmed on the 2nd, called off on the 5th: a vehicle was held.
+    died({ _id: 'a1', confirmedAt: '2026-10-02T02:00:00Z', cancelledAt: '2026-10-05T02:00:00Z' }),
+    // Never confirmed, so it cost nobody anything.
+    died({ _id: 'a2', confirmedAt: null, cancelledAt: '2026-10-05T02:00:00Z' }),
+    // From before either time was recorded: not guessed at.
+    died({ _id: 'a3', confirmedAt: null, cancelledAt: null }),
+  ], thisMonth);
+  check('all three are still cancelled', split.cancelled, 3);
+  check('only two can answer the question', split.recorded, 2);
+  check('one died after it was confirmed', split.afterConfirming, 1);
+  check('one died before anybody confirmed it', split.beforeConfirming, 1);
+  // The old ones are left out rather than counted as "before confirming",
+  // which would read as good news that nobody can vouch for.
+  check('the unrecorded one is in neither half', split.afterConfirming + split.beforeConfirming, 2);
+
   // Counted by the day it was taken, so a booking made in September and
   // called off in October belongs to September.
   const madeInSeptember = booking({ _id: 'x4', status: 'cancelled', createdAt: '2026-09-10T02:00:00Z' });
@@ -149,6 +167,14 @@ export default function run() {
   // Unlisting leaves no date behind, so the footnote has to say how many
   // vehicles the assumption covers.
   check('the assumption is counted', earn.assumed, 1);
+  // Once a hidden vehicle carries the date it was hidden, those days come
+  // out of "available" and the assumption no longer covers it.
+  const hidden = vehicleEarnings(
+    [{ _id: 'c2', brand: 'Honda', model: 'Civic', isAvailable: false, unlistedSince: '2026-10-08T00:00:00Z' }],
+    [], thisMonth, now,
+  );
+  check('hidden days are not available days', hidden.rows[0].daysAvailable, 7);
+  check('and nothing is assumed about it', hidden.assumed, 0);
   // A trip that runs past the edge of the range is cut at the edge.
   const straddling = booking({ startDate: '2026-09-28T23:00:00Z', endDate: '2026-10-03T23:00:00Z', totalDays: 5 });
   const cut = vehicleEarnings([{ _id: 'c1', brand: 'Toyota', model: 'Vios' }], [straddling], thisMonth, now);

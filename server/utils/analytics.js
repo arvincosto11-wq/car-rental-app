@@ -134,6 +134,17 @@ export const cancellations = (bookings, range) => {
   // A booking nobody ever paid for has nothing to give back, so counting
   // it as "not refunded" would read as money kept.
   const hadMoney = cancelled.filter((b) => (b.amountPaid || 0) > 0);
+
+  // When a booking was confirmed and when it died were not recorded until
+  // October 2026, so only the ones carrying a cancelled time can answer
+  // this. The rest are not guessed at and not counted — the page says how
+  // many it could read, so a small bar is never mistaken for a small
+  // problem.
+  const answerable = cancelled.filter((b) => b.cancelledAt);
+  const afterConfirming = answerable.filter(
+    (b) => b.confirmedAt && new Date(b.confirmedAt) <= new Date(b.cancelledAt),
+  );
+
   return {
     made: made.length,
     kept: made.length - cancelled.length,
@@ -141,6 +152,10 @@ export const cancellations = (bookings, range) => {
     refunded: refunded.length,
     notRefunded: Math.max(0, hadMoney.length - refunded.length),
     nothingPaid: cancelled.length - hadMoney.length,
+    // The split, and how much of the pile it speaks for.
+    recorded: answerable.length,
+    afterConfirming: afterConfirming.length,
+    beforeConfirming: answerable.length - afterConfirming.length,
   };
 };
 
@@ -223,7 +238,15 @@ export const vehicleEarnings = (cars, bookings, range, now) => {
     const expiredFrom = car.registrationExpiry && new Date(car.registrationExpiry).getTime() < end
       ? new Date(car.registrationExpiry).getTime()
       : null;
-    const blockedFrom = [offRoadFrom, expiredFrom].filter((t) => t !== null).sort((a, b) => a - b)[0];
+    // Days the listing was switched off, now that switching it off leaves a
+    // date behind. A vehicle nobody could see is not a vehicle nobody
+    // happened to book.
+    const hiddenFrom = car.isAvailable === false && car.unlistedSince
+      ? new Date(car.unlistedSince).getTime()
+      : null;
+    const blockedFrom = [offRoadFrom, expiredFrom, hiddenFrom]
+      .filter((t) => t !== null)
+      .sort((a, b) => a - b)[0];
     if (blockedFrom) {
       const lost = Math.max(0, Math.round((end - Math.max(blockedFrom, from)) / DAY));
       available = Math.max(daysOut, available - lost);
@@ -252,7 +275,7 @@ export const vehicleEarnings = (cars, bookings, range, now) => {
     idle: idle.length,
     earning: rows.length - idle.length,
     share: totalAvailable > 0 ? Math.round((totalOut / totalAvailable) * 100) : 0,
-    assumed: cars.filter((c) => c.isAvailable === false && !c.offRoad?.since).length,
+    assumed: cars.filter((c) => c.isAvailable === false && !c.offRoad?.since && !c.unlistedSince).length,
   };
 };
 

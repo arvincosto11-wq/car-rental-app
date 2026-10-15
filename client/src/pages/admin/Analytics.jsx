@@ -533,10 +533,30 @@ const Analytics = () => {
                 )}
               </div>
 
+              {fell.recorded > 0 && (
+                <div style={s.splitRow}>
+                  <div style={s.splitHead}>
+                    <span style={s.splitName}>Of those cancelled, when they died</span>
+                    <span style={s.splitTotal}>{fell.recorded}</span>
+                  </div>
+                  <Split parts={[
+                    { label: 'before confirming', value: fell.beforeConfirming, fill: neutral },
+                    { label: 'after confirming', value: fell.afterConfirming, fill: neutral2 },
+                  ]} />
+                  <Legend parts={[
+                    { label: 'before the office confirmed', value: fell.beforeConfirming, fill: neutral },
+                    { label: 'after it was confirmed', value: fell.afterConfirming, fill: neutral2 },
+                  ]} />
+                </div>
+              )}
+
               <p style={s.note}>
                 {pct(fell.cancelled, fell.made)} of bookings taken in this range were called off.
-                Whether a booking was called off before or after the office confirmed it is not
-                recorded, so that split is not shown rather than guessed at.
+                {fell.recorded === 0
+                  ? ' When a booking was confirmed and when it died were only recorded from 16 October 2026, so none of these can say which side of the office’s decision they fell on.'
+                  : fell.recorded < fell.cancelled
+                    ? ` ${fell.recorded} of the ${fell.cancelled} carry the times to say which side of the office’s decision they fell on; the rest were cancelled before those times were recorded.`
+                    : ' A booking called off before the office confirmed it held no vehicle and cost nothing.'}
               </p>
             </>
           )}

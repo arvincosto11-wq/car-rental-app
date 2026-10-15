@@ -932,6 +932,20 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
       }
     }
 
+    // When the listing was switched off, so Analytics can leave those days
+    // out of "days available" instead of counting a hidden vehicle as one
+    // that nobody happened to book. Set here because this document is
+    // updated in place, which skips the kind of rule the Booking model uses.
+    if ('isAvailable' in req.body) {
+      const current = await Car.findById(req.params.id).select('isAvailable').lean();
+      if (req.body.isAvailable === false && current?.isAvailable !== false) {
+        req.body.unlistedSince = new Date();
+      }
+      // Listed again: the clock stops and the vehicle keeps no date saying
+      // it is hidden.
+      if (req.body.isAvailable === true) req.body.unlistedSince = null;
+    }
+
     if ('plateNumber' in req.body) {
       const clash = plateClash(
         req.body.plateNumber,

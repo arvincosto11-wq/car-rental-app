@@ -41,6 +41,12 @@ const carSchema = new mongoose.Schema({
   // falls back to the single `image` for those.
   photos: [{ url: String, fileId: String }],
   isAvailable: { type: Boolean, default: true },
+  // When the listing was switched off. Without it, days a vehicle sat
+  // hidden counted as days it was available to rent, which flattered every
+  // utilisation figure on the Analytics page. Set where the listing is
+  // toggled: this document is updated in place, which skips the kind of
+  // rule the Booking model uses.
+  unlistedSince: { type: Date, default: null },
   // Hours needed between one client returning this vehicle and the next
   // collecting it. Blank means the standard two (see turnaroundHoursFor in
   // utils/phTime.js) — only set on vehicles that genuinely need longer,

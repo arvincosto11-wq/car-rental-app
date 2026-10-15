@@ -62,6 +62,16 @@ const bookingSchema = new mongoose.Schema({
   // offer) can put it back afterwards instead of silently dropping it.
   deliveryFee: { type: Number, default: 0 },
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'pending' },
+  // When the office accepted this booking, and when it died. Neither was
+  // recorded, so "half our bookings are cancelled" could never say whether
+  // they fell through before anybody confirmed them — costing nothing — or
+  // after a vehicle had been held for them.
+  //
+  // Stamped by the rule at the foot of this file rather than by each route:
+  // a booking is saved from about thirty places, and a field only some of
+  // them fill is worse than no field, because it still looks like evidence.
+  confirmedAt: { type: Date, default: null },
+  cancelledAt: { type: Date, default: null },
   // When the keys actually changed hands, recorded by admin at the counter.
   // Before this existed the system inferred it from the clock — "the pickup
   // hour has passed, so they must have it" — which is wrong for anybody
@@ -332,6 +342,22 @@ const bookingSchema = new mongoose.Schema({
     updatedAt: { type: Date },
   },
 }, { timestamps: true });
+
+// Every path that changes a booking's status goes through save(), so this
+// is the one place that has to be right.
+//
+// confirmedAt is the FIRST acceptance and stays put — a booking confirmed
+// in September and reinstated in October was still won in September.
+// cancelledAt is the latest death, and is cleared if a booking comes back,
+// so nothing live carries a date saying it was cancelled.
+bookingSchema.pre('save', function stampStatusTimes(next) {
+  if (this.isModified('status')) {
+    if (this.status === 'confirmed' && !this.confirmedAt) this.confirmedAt = new Date();
+    if (this.status === 'cancelled') this.cancelledAt = new Date();
+    else if (this.cancelledAt) this.cancelledAt = null;
+  }
+  next();
+});
 
 // Without these, every question about a booking reads the whole collection.
 // Fine at a few hundred; it degrades in a straight line forever, and the
