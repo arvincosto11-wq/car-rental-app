@@ -11,6 +11,15 @@ import { SunGlyph, MoonGlyph } from './Glyphs';
 // Small line icons for the sidebar nav — hand-drawn inline SVGs (same
 // approach as FlowButton's arrow) rather than pulling in an icon library
 // for a handful of simple glyphs.
+// "Admin" -> A, "Maria Santos" -> MS. Kept identical to the rule on the
+// Account Settings page: two screens showing different initials for one
+// person would look like two accounts.
+const initialsOf = (name) => {
+  const words = String(name || 'Admin').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return 'A';
+  return ((words[0][0] || '') + (words.length > 1 ? words[words.length - 1][0] : '')).toUpperCase();
+};
+
 const NavIcon = ({ children }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
     {children}
@@ -52,7 +61,8 @@ const AdminLayout = ({ children, activePage }) => {
     logoutBtn: { padding: '7px 16px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' },
     layout: { display: 'grid', gridTemplateColumns: '180px 1fr' },
     sidebar: { background: isDark ? '#242526' : '#fff', borderRight: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, padding: '24px 0', minHeight: 'calc(100vh - 45px)' },
-    avatar: { width: '48px', height: '48px', borderRadius: '50%', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '600', margin: '0 auto 8px' },
+    avatarImg: { width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' },
+    avatar: { width: '48px', height: '48px', overflow: 'hidden', borderRadius: '50%', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '600', margin: '0 auto 8px' },
     adminName: { textAlign: 'center', fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '24px' },
     sideNav: { display: 'flex', flexDirection: 'column', padding: '0 12px' },
     sideGroup: { display: 'flex', flexDirection: 'column', gap: '2px' },
@@ -140,7 +150,15 @@ const AdminLayout = ({ children, activePage }) => {
       </div>
       <div className="admin-layout" style={s.layout}>
         <div className={`admin-sidebar${sidebarOpen ? ' open' : ''}`} style={s.sidebar}>
-          <div style={s.avatar}>{user?.name?.charAt(0).toUpperCase()}</div>
+          {/* The photo once there is one, the initials until then — the
+              same two states Account Settings shows. Initials are the
+              first and last words, so "Maria Santos" reads MS rather
+              than one lonely letter. */}
+          <div style={s.avatar}>
+            {user?.image
+              ? <img src={user.image} alt="" style={s.avatarImg} />
+              : initialsOf(user?.name)}
+          </div>
           <div style={s.adminName}>{user?.name}</div>
           <nav style={s.sideNav}>
             {sideGroups.map((group, gi) => (

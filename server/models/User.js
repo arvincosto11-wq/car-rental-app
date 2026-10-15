@@ -40,6 +40,10 @@ const userSchema = new mongoose.Schema({
   licenseExpiryNotifiedAt: { type: Date },
   emergencyContactName: { type: String, default: '' },
   emergencyContactNumber: { type: String, default: '' },
+  // When the password was last changed, so Account Settings can say so.
+  // Null means it has never been changed since the account was made, which
+  // the screen says plainly rather than guessing a date.
+  passwordChangedAt: { type: Date, default: null },
   isBlocked: { type: Boolean, default: false },
 
   // A vehicle owner whose contract is on hold.

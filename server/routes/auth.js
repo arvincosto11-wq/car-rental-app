@@ -168,6 +168,7 @@ router.post('/reset-password', async (req, res) => {
     }
 
     user.password = await bcrypt.hash(newPassword, 10);
+    user.passwordChangedAt = new Date();
     await user.save();
     await EmailVerification.deleteOne({ email });
     res.json({ message: 'Password reset successfully.' });
@@ -199,6 +200,7 @@ router.put('/change-password', protect, async (req, res) => {
     }
 
     user.password = await bcrypt.hash(newPassword, 10);
+    user.passwordChangedAt = new Date();
     await user.save();
     await EmailVerification.deleteOne({ email: user.email });
     res.json({ message: 'Password updated successfully.' });
