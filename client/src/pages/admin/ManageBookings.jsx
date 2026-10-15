@@ -581,6 +581,19 @@ const ManageBookings = () => {
     ];
   };
 
+  // What has been paid, in pesos rather than as a share of the total. A
+  // percentage describes the arrangement; the amount describes what is
+  // actually in hand. GCash is named only when PayMongo gave us a payment
+  // to name — anything else was settled at the counter.
+  const paidLine = (b) => {
+    const paid = b.amountPaid || 0;
+    const how = b.paymongoPaymentId ? ' by GCash' : '';
+    if (paid >= (b.totalPrice || 0)) {
+      return `paid in full${how}${b.payment === 'gcash_pending' ? ', GCash pending' : ''}`;
+    }
+    return `₱${paid.toLocaleString()} deposit paid${how}`;
+  };
+
   // What happened to this booking, from the times the system actually
   // recorded. There is no cancelledAt or confirmedAt on a booking, so those
   // steps carry no clock rather than borrowing `updatedAt`, which only says
@@ -589,9 +602,9 @@ const ManageBookings = () => {
     const steps = [{
       title: 'Booked',
       at: b.createdAt,
-      detail: (b.amountPaid || 0) >= (b.totalPrice || 0)
-        ? 'Paid in full'
-        : `${Math.round(((b.amountPaid || 0) / (b.totalPrice || 1)) * 100)}% deposit paid`,
+      // On a booking nobody has answered yet, the entry says what the
+      // office still owes the client: a decision.
+      detail: `${paidLine(b)}${b.status === 'pending' ? ' · waiting for you to confirm' : ''}`,
     }];
 
     if (b.collectedAt) {
@@ -646,9 +659,7 @@ const ManageBookings = () => {
     const paidInFull = (b.amountPaid || 0) >= (b.totalPrice || 0);
     rows.push({
       title: 'Rental',
-      sub: paidInFull
-        ? `paid in full${b.payment === 'gcash_pending' ? ', GCash pending' : ''}`
-        : `${Math.round(((b.amountPaid || 0) / (b.totalPrice || 1)) * 100)}% deposit paid`,
+      sub: paidLine(b),
       amount: b.totalPrice || 0,
       state: b.status === 'cancelled' && b.refundStatus === 'approved' ? 'refunded'
         : paidInFull ? 'settled' : 'due',
@@ -925,6 +936,18 @@ const ManageBookings = () => {
     // running the expected action is none at all, and a gold button reads
     // as the next thing to do @ on a label that already sounds like a
     // statement of fact rather than something you are about to do.
+    decideRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' },
+    confirmBtn: (ready) => ({
+      ...ACT_PRIMARY,
+      flex: '0 1 auto', minWidth: '130px',
+      opacity: ready ? 1 : 0.5,
+      cursor: ready ? 'pointer' : 'not-allowed',
+    }),
+    declineBtn: ACT_DANGER,
+    awaitPay: {
+      fontSize: '10.5px', color: isDark ? '#b0b3b8' : '#6b7280',
+      fontStyle: 'italic', marginTop: '5px',
+    },
     returnBtn: () => (ACT_PRIMARY),
     pickedUpBtn: ACT_PRIMARY,
     returnLabel: {
@@ -1037,7 +1060,6 @@ const ManageBookings = () => {
     cancelRowBtn: ACT_DANGER,
     noShowBtn: ACT_DANGER,
     acceptBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: '500' },
-    declineBtn: { padding: '4px 10px', fontSize: '11px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
     editRatingBtn: ACT_SECONDARY,
     detailsBtn: {
       padding: '5px 12px', fontSize: '12px', fontWeight: '500', borderRadius: '6px', cursor: 'pointer',
@@ -1259,7 +1281,13 @@ const ManageBookings = () => {
       display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
       border: `1px solid ${line}`, borderRadius: '12px', overflow: 'hidden', marginBottom: '14px',
     },
-    moneyCell: { padding: '11px 12px', borderLeft: `1px solid ${divider}` },
+    // Money still to come in is the one figure somebody acts on, so it
+    // carries the tint the due-back line uses rather than sitting as a
+    // fourth equal number.
+    moneyCell: (owing) => ({
+      padding: '11px 12px', borderLeft: `1px solid ${divider}`,
+      background: owing ? (isDark ? 'rgba(232,161,0,0.10)' : 'rgba(184,121,10,0.07)') : 'transparent',
+    }),
     moneyCellLabel: { fontSize: '10px', fontWeight: '800', letterSpacing: '0.08em', textTransform: 'uppercase', color: text3 },
     // A figure of nothing is not news: it goes quiet rather than shouting a
     // zero in gold.
@@ -1559,7 +1587,40 @@ const ManageBookings = () => {
             </>
           )}
         </div>
+      ) : booking.status === 'pending' ? (
+        /* A request somebody has to answer, so both answers are on the
+           screen. They used to sit inside a dropdown, where confirming
+           was a thing you had to go looking for and declining read as
+           changing a status rather than turning a request down. */
+        <div>
+          <div style={s.decideRow}>
+            <button
+              type="button"
+              style={s.confirmBtn(booking.payment === 'paid')}
+              disabled={booking.payment !== 'paid'}
+              onClick={() => handleStatus(booking._id, 'confirmed')}
+              title={booking.payment === 'paid'
+                ? 'Accept this booking and hold the vehicle for these dates.'
+                : 'The deposit has not arrived yet.'}
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              style={s.declineBtn}
+              onClick={() => handleStatus(booking._id, 'cancelled')}
+              title="Turn this request down. The client is told, and any deposit is refunded under the usual policy."
+            >
+              Decline
+            </button>
+          </div>
+          {booking.payment !== 'paid' && (
+            <div style={s.awaitPay}>Awaiting GCash payment</div>
+          )}
+        </div>
       ) : (
+        /* Everything else that lands here is a cancelled booking, where
+           the dropdown is still the way back to pending or confirmed. */
         <div>
           <StatusDropdown
             isDark={isDark}
@@ -1572,9 +1633,7 @@ const ManageBookings = () => {
             ]}
           />
           {booking.payment !== 'paid' && (
-            <div style={{ fontSize: '10px', color: isDark ? '#b0b3b8' : '#6b7280', fontStyle: 'italic', marginTop: '4px' }}>
-              Awaiting GCash payment
-            </div>
+            <div style={s.awaitPay}>Awaiting GCash payment</div>
           )}
         </div>
       )}
@@ -1844,9 +1903,9 @@ const ManageBookings = () => {
                 <div style={s.datesRow}>
                   <div>
                     <div style={s.datesMain}>
-                      {formatMoment(selected.startDate, selected.hasPickupTime, { month: 'short', day: 'numeric' })}
+                      {formatMoment(selected.startDate, selected.hasPickupTime, { weekday: 'short', month: 'short', day: 'numeric' })}
                       {' → '}
-                      {formatMoment(selected.endDate, selected.hasPickupTime, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {formatMoment(selected.endDate, selected.hasPickupTime, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                     </div>
                     <div style={s.datesSub}>
                       {selected.totalDays} day{selected.totalDays === 1 ? '' : 's'}
@@ -1921,7 +1980,7 @@ const ManageBookings = () => {
                 <div style={{ ...s.sectionLabel, marginTop: '22px' }}>Money</div>
                 <div style={s.moneyStrip}>
                   {moneyStripFor(selected).map((f) => (
-                    <div key={f.label} style={s.moneyCell}>
+                    <div key={f.label} style={s.moneyCell(f.tone === 'gold' && f.amount > 0)}>
                       <div style={s.moneyCellLabel}>{f.label}</div>
                       <div style={s.moneyCellNum(f.tone, f.amount)}>₱{f.amount.toLocaleString()}</div>
                     </div>
