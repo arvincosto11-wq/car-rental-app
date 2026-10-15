@@ -290,10 +290,16 @@ const ManageClients = () => {
   const s = {
     title: { margin: 0, fontSize: '26px', fontWeight: '700', color: text },
     lead: { margin: '6px 0 20px', fontSize: '14px', lineHeight: 1.5, color: text2, maxWidth: '760px' },
-    body: { display: 'flex', gap: '20px', alignItems: 'flex-start' },
+    // The design is a page that fills the screen with two panes scrolling
+    // on their own. Letting the whole page scroll instead took the rail
+    // away with it, and a client with 101 bookings ran for metres.
+    body: {
+      display: 'flex', gap: '20px', alignItems: 'stretch',
+      height: 'calc(100vh - 215px)', minHeight: '440px',
+    },
 
     rail: {
-      width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column',
+      width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0,
       background: card, border: `1px solid ${line}`, borderRadius: '12px', overflow: 'hidden',
     },
     searchWrap: { padding: '12px', borderBottom: `1px solid ${line}` },
@@ -305,7 +311,7 @@ const ManageClients = () => {
       flex: 1, border: 'none', background: 'transparent', outline: 'none',
       fontSize: '13px', color: text, fontFamily: 'inherit', minWidth: 0,
     },
-    list: { padding: '8px 8px 12px', display: 'flex', flexDirection: 'column', gap: '4px' },
+    list: { flex: 1, minHeight: 0, overflow: 'auto', padding: '8px 8px 12px', display: 'flex', flexDirection: 'column', gap: '4px' },
     groupBtn: {
       display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 8px',
       border: 'none', borderRadius: '8px', background: 'transparent',
@@ -341,8 +347,8 @@ const ManageClients = () => {
     railEmpty: { padding: '8px 8px 12px', fontSize: '13px', lineHeight: 1.5, color: text3 },
 
     profile: {
-      flex: 1, minWidth: 0, background: card, border: `1px solid ${line}`, borderRadius: '12px',
-      paddingBottom: '8px',
+      flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto',
+      background: card, border: `1px solid ${line}`, borderRadius: '12px', paddingBottom: '8px',
     },
     pHead: { display: 'flex', gap: '20px', padding: '28px 32px 0', alignItems: 'flex-start' },
     avatarLg: {
