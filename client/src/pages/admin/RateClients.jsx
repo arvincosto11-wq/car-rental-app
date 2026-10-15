@@ -323,8 +323,11 @@ const RateClients = () => {
       display: 'grid', gridTemplateColumns: '46px 1fr 26px', gap: '8px', alignItems: 'center',
       fontSize: '11.5px', color: text3, fontVariantNumeric: 'tabular-nums', padding: '2px 0',
     },
-    track: { height: '6px', borderRadius: '4px', background: divider, overflow: 'hidden' },
-    fill: (pct) => ({ height: '100%', width: `${pct}%`, background: gold, borderRadius: '4px' }),
+    // Both are spans inside a grid row, so they need to be told to behave
+    // as blocks — width on an inline element is ignored, which left every
+    // bar an empty track.
+    track: { display: 'block', height: '6px', borderRadius: '4px', background: divider, overflow: 'hidden' },
+    fill: (pct) => ({ display: 'block', height: '100%', width: `${pct}%`, background: gold, borderRadius: '4px' }),
     rentalRow: {
       display: 'grid', gridTemplateColumns: '92px minmax(0, 1fr) auto', gap: '10px', alignItems: 'center',
       width: '100%', padding: '7px 0', borderTop: `1px solid ${divider}`,
