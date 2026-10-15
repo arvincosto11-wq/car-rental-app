@@ -85,6 +85,59 @@ const StepRail = ({ step, labels, s }) => {
   );
 };
 
+const EyeIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1.5 8s2.4-4 6.5-4 6.5 4 6.5 4-2.4 4-6.5 4-6.5-4-6.5-4z" /><circle cx="8" cy="8" r="1.8" />
+  </svg>
+);
+const EyeOffIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6.3 4.2A6.6 6.6 0 018 4c4.1 0 6.5 4 6.5 4a12 12 0 01-2.2 2.6M4 5.5A12 12 0 001.5 8s2.4 4 6.5 4c.8 0 1.5-.1 2.1-.4" />
+    <path d="M2.5 2.5l11 11" />
+  </svg>
+);
+
+// A password field you can look at.
+//
+// Typing a password you cannot see, twice, to a form that then asks for a
+// code is three chances to mistype in a row. The eye is the cheapest fix:
+// it reveals only while this one field is open, never remembers, and says
+// which state it is in out loud for a screen reader.
+//
+// Declared out here rather than inside the page, because a component built
+// during a render is a new component each time and would lose what it was
+// showing on every keystroke.
+const PasswordField = ({ id, label, value, onChange, shown, onToggle, s, muted }) => (
+  <label style={s.label} htmlFor={id}>
+    {label}
+    <span style={{ position: 'relative', display: 'block' }}>
+      <input
+        id={id}
+        style={{ ...s.input, width: '100%', paddingRight: '44px' }}
+        type={shown ? 'text' : 'password'}
+        required
+        value={value}
+        onChange={onChange}
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-pressed={shown}
+        aria-label={shown ? 'Hide password' : 'Show password'}
+        title={shown ? 'Hide password' : 'Show password'}
+        style={{
+          position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: '32px', height: '32px', padding: 0, borderRadius: '7px',
+          border: 'none', background: 'transparent', color: muted, cursor: 'pointer',
+        }}
+      >
+        {shown ? <EyeOffIcon /> : <EyeIcon />}
+      </button>
+    </span>
+  </label>
+);
+
 const AdminAccount = () => {
   usePageTitle('Account Settings');
   const { isDark } = useTheme();
@@ -115,6 +168,8 @@ const AdminAccount = () => {
   const [pwBusy, setPwBusy] = useState(false);
   const [pwError, setPwError] = useState('');
   const [cooldown, setCooldown] = useState(0);
+  const [shownPw, setShownPw] = useState({});
+  const toggleShown = (key) => setShownPw((p) => ({ ...p, [key]: !p[key] }));
 
   useEffect(() => {
     api.get('/auth/me')
@@ -611,14 +666,16 @@ const AdminAccount = () => {
                           onChange={(e) => setEmailForm({ ...emailForm, newEmail: e.target.value })}
                         />
                       </label>
-                      <label style={s.label} htmlFor="aa-email-pw">
-                        Your current password
-                        <input
-                          id="aa-email-pw" style={s.input} type="password" required
-                          value={emailForm.currentPassword}
-                          onChange={(e) => setEmailForm({ ...emailForm, currentPassword: e.target.value })}
-                        />
-                      </label>
+                      <PasswordField
+                        id="aa-email-pw"
+                        label="Your current password"
+                        value={emailForm.currentPassword}
+                        onChange={(e) => setEmailForm({ ...emailForm, currentPassword: e.target.value })}
+                        shown={!!shownPw.emailPw}
+                        onToggle={() => toggleShown('emailPw')}
+                        s={s}
+                        muted={text3}
+                      />
                       <div style={s.sendRow}>
                         <button type="submit" style={s.primary} disabled={emailBusy}>
                           {emailBusy ? 'Sending…' : 'Send code to the new address'}
@@ -704,30 +761,36 @@ const AdminAccount = () => {
                       <p style={s.help}>
                         At least 8 characters. A code then goes to your email address to confirm it is really you.
                       </p>
-                      <label style={s.label} htmlFor="aa-cur-pw">
-                        Current password
-                        <input
-                          id="aa-cur-pw" style={s.input} type="password" required
-                          value={pwForm.currentPassword}
-                          onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
-                        />
-                      </label>
-                      <label style={s.label} htmlFor="aa-new-pw">
-                        New password
-                        <input
-                          id="aa-new-pw" style={s.input} type="password" required
-                          value={pwForm.newPassword}
-                          onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
-                        />
-                      </label>
-                      <label style={s.label} htmlFor="aa-confirm-pw">
-                        Confirm new password
-                        <input
-                          id="aa-confirm-pw" style={s.input} type="password" required
-                          value={pwForm.confirmPassword}
-                          onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
-                        />
-                      </label>
+                      <PasswordField
+                        id="aa-cur-pw"
+                        label="Current password"
+                        value={pwForm.currentPassword}
+                        onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
+                        shown={!!shownPw.current}
+                        onToggle={() => toggleShown('current')}
+                        s={s}
+                        muted={text3}
+                      />
+                      <PasswordField
+                        id="aa-new-pw"
+                        label="New password"
+                        value={pwForm.newPassword}
+                        onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
+                        shown={!!shownPw.fresh}
+                        onToggle={() => toggleShown('fresh')}
+                        s={s}
+                        muted={text3}
+                      />
+                      <PasswordField
+                        id="aa-confirm-pw"
+                        label="Confirm new password"
+                        value={pwForm.confirmPassword}
+                        onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
+                        shown={!!shownPw.again}
+                        onToggle={() => toggleShown('again')}
+                        s={s}
+                        muted={text3}
+                      />
                       <div style={s.sendRow}>
                         <button type="submit" style={s.primary} disabled={pwBusy}>
                           {pwBusy ? 'Sending…' : 'Send confirmation code'}
