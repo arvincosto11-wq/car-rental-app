@@ -108,10 +108,6 @@ const MyBookings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refundModalId, setRefundModalId] = useState(null);
-  const [refundReason, setRefundReason] = useState('');
-  const [refundError, setRefundError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [retryingPaymentId, setRetryingPaymentId] = useState(null);
   const [ratingModalId, setRatingModalId] = useState(null);
   const [rescheduleModalId, setRescheduleModalId] = useState(null);
@@ -142,6 +138,14 @@ const MyBookings = () => {
   // Read once rather than on every render: a booking's tone depends on
   // the time, and calling the clock mid-render is not a pure thing to do.
   const [now] = useState(() => new Date());
+  // The one panel open inside a booking, what it has collected so far,
+  // and what the client was told once it was sent.
+  const [panel, setPanel] = useState(null);
+  const [panelReason, setPanelReason] = useState('');
+  const [panelNote, setPanelNote] = useState('');
+  const [panelBusy, setPanelBusy] = useState(false);
+  const [panelError, setPanelError] = useState('');
+  const [sentFor, setSentFor] = useState({});
   // Which booking's full record is open. Everything the card used to show
   // lives in there now, so the list can stay one line per booking.
 
@@ -357,45 +361,8 @@ const MyBookings = () => {
 
 
 
-  const openRefundModal = (bookingId) => {
-    setRefundModalId(bookingId);
-    setRefundReason('');
-    setRefundError('');
-  };
 
-  const closeRefundModal = () => {
-    setRefundModalId(null);
-    setRefundReason('');
-    setRefundError('');
-  };
 
-  const handleSubmitRefund = async () => {
-    if (!refundReason) {
-      setRefundError('Please select a reason for your refund request.');
-      return;
-    }
-    const ok = await confirm(
-      'Send this cancellation request to our team? Your booking is held until they answer, '
-      + 'and how much comes back depends on how long ago you booked, so asking again later may be worth less.',
-      { confirmLabel: 'Send request', cancelLabel: 'Keep my booking', danger: true }
-    );
-    if (!ok) return;
-    setSubmitting(true);
-    setRefundError('');
-    try {
-      const res = await api.post(`/bookings/${refundModalId}/refund`, { reason: refundReason });
-      setBookings(bookings.map((b) =>
-        b._id === refundModalId
-          ? { ...b, refundStatus: res.data.refundStatus, refundReason: res.data.refundReason }
-          : b
-      ));
-      closeRefundModal();
-    } catch (err) {
-      setRefundError(err.response?.data?.message || 'Failed to submit refund request');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   // Re-attempts GCash payment for a booking that already exists but never
   // completed payment (abandoned/cancelled checkout) — same endpoint the
@@ -415,7 +382,7 @@ const MyBookings = () => {
   const openRescheduleModal = (booking) => {
     setRescheduleModalId(booking._id);
     setReschedulePreferredHour(null);
-    setRescheduleOpenedAt(Date.now());
+    setRescheduleOpenedAt(() => Date.now());
     setNewStartDate('');
     setNewEndDate('');
     setRescheduleError('');
@@ -500,12 +467,6 @@ const MyBookings = () => {
       : (rescheduleHours.length ? rescheduleHours[0] : null))
     : null;
 
-  const activeBooking = bookings.find((b) => b._id === refundModalId);
-  // Only a preview of what the request will be worth; the server works the
-  // figure out again when it arrives, from the same shared rule.
-  const refund = activeBooking ? refundOutcome(activeBooking) : { percent: 0, basis: 'none' };
-  const refundAmount = activeBooking ? Math.round(activeBooking.amountPaid * (refund.percent / 100)) : 0;
-  const refundModalRef = useModalA11y(closeRefundModal, !!(refundModalId && activeBooking));
 
   const openRatingModal = (booking) => setRatingModalId(booking._id);
   const closeRatingModal = () => setRatingModalId(null);
@@ -593,6 +554,105 @@ const MyBookings = () => {
     return years;
   })();
 
+  const openPanel = (bookingId, key) => {
+    // Only one at a time, and opening the one already open closes it.
+    if (panel?.bookingId === bookingId && panel?.key === key) return setPanel(null);
+    setPanelReason('');
+    setPanelNote('');
+    setPanelError('');
+    return setPanel({ bookingId, key });
+  };
+
+  const sendRefundRequest = async (booking) => {
+    if (!panelReason) return;
+    setPanelBusy(true);
+    setPanelError('');
+    try {
+      const reason = panelNote.trim() ? `${panelReason} — ${panelNote.trim()}` : panelReason;
+      const res = await api.post(`/bookings/${booking._id}/refund`, { reason });
+      setBookings((list) => list.map((b) => (b._id === booking._id
+        ? { ...b, refundStatus: res.data.refundStatus, refundReason: res.data.refundReason }
+        : b)));
+      setPanel(null);
+      setSentFor((sent) => ({
+        ...sent,
+        [booking._id]: 'Request sent. The office will decide and tell you how much comes back.',
+      }));
+    } catch (err) {
+      setPanelError(err.response?.data?.message || 'Could not send that request.');
+    } finally {
+      setPanelBusy(false);
+    }
+  };
+
+  // Asking for a refund, inside the booking it belongs to. The policy
+  // line stays: what comes back depends on how close the pickup is, and
+  // a client deciding whether to ask needs that before they ask, not
+  // after.
+  const refundPanel = (booking) => {
+    const outcome = refundOutcome(booking, now);
+    const back = Math.round(((booking.amountPaid || 0) * (outcome.percent || 0)) / 100);
+    return (
+      <div style={mb.panel}>
+        <div style={mb.panelHead}>
+          <span style={mb.panelTitle}>Ask for a refund</span>
+          <button type="button" style={mb.panelClose} aria-label="Close" onClick={() => setPanel(null)}>×</button>
+        </div>
+
+        <p style={mb.panelNote}>
+          Asking doesn&apos;t cancel anything yet — the office looks at it and decides.
+          {outcome.basis === 'full' && ' Your pickup is more than 3 days away, so this qualifies for a full refund.'}
+          {outcome.basis === 'half' && ' Your pickup is less than 3 days away, so this qualifies for half back.'}
+          {outcome.basis === 'none' && ' Your pickup is less than 24 hours away, so nothing is due back.'}
+          {booking.amountPaid > 0 && outcome.percent > 0 && ` You paid ${peso(booking.amountPaid)}, so about ${peso(back)} would come back.`}
+        </p>
+
+        <div style={mb.chipRow}>
+          {REFUND_REASONS.map((reason) => (
+            <button
+              key={reason}
+              type="button"
+              style={mb.reasonChip(panelReason === reason)}
+              aria-pressed={panelReason === reason}
+              onClick={() => setPanelReason(reason)}
+            >
+              {reason}
+            </button>
+          ))}
+        </div>
+
+        <textarea
+          style={mb.panelTextarea}
+          rows={2}
+          value={panelNote}
+          placeholder="Anything the office should know? (optional)"
+          onChange={(e) => setPanelNote(e.target.value)}
+        />
+
+        {panelError && <div style={mb.panelError}>{panelError}</div>}
+
+        <button
+          type="button"
+          style={mb.panelSubmit(!!panelReason && !panelBusy)}
+          disabled={!panelReason || panelBusy}
+          onClick={() => sendRefundRequest(booking)}
+        >
+          {panelBusy ? 'Sending…' : 'Send request'}
+        </button>
+      </div>
+    );
+  };
+
+  const panelFor = (booking) => {
+    if (panel?.bookingId !== booking._id) return null;
+    if (panel.key === 'refund') return refundPanel(booking);
+    return null;
+  };
+
+  const sentBanner = (booking) => (sentFor[booking._id] ? (
+    <div style={mb.sentBand}>{sentFor[booking._id]}</div>
+  ) : null);
+
   const ACTION_LABELS = {
     withdrawRefund: 'Keep my booking',
     withdrawDates: 'Cancel the date change',
@@ -611,7 +671,7 @@ const MyBookings = () => {
   // Step one keeps the flows exactly as they are: the buttons are new,
   // what they open is not. They move inside the booking in step two.
   const runAction = (key, booking) => {
-    if (key === 'refund') return openRefundModal(booking._id);
+    if (key === 'refund') return openPanel(booking._id, 'refund');
     if (key === 'rate') return openRatingModal(booking);
     if (key === 'dates') return openRescheduleModal(booking);
     if (key === 'longer') return setExtendBookingId(booking._id);
@@ -758,6 +818,50 @@ const MyBookings = () => {
         padding: '12px 16px', borderTop: `1px solid ${c.border}`,
       },
       histCar: { display: 'block', fontSize: '14px', fontWeight: '650', color: c.text },
+
+      // Asking for something happens inside the booking, not over the
+      // page: on a phone a full-screen form hides what you were looking at.
+      panel: {
+        margin: '0 18px 16px', padding: '14px', borderRadius: '14px',
+        background: c.sunk, border: `1px solid ${c.border}`,
+        display: 'flex', flexDirection: 'column', gap: '12px',
+      },
+      panelHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' },
+      panelTitle: { fontSize: '15px', fontWeight: '700', color: c.text },
+      panelClose: {
+        width: '44px', height: '44px', margin: '-10px -10px -10px 0', border: 'none',
+        background: 'transparent', color: c.muted, fontSize: '22px', lineHeight: 1,
+        cursor: 'pointer', fontFamily: 'inherit',
+      },
+      panelNote: { margin: 0, fontSize: '13px', lineHeight: 1.45, color: c.muted },
+      chipRow: { display: 'flex', flexWrap: 'wrap', gap: '8px' },
+      reasonChip: (on) => ({
+        minHeight: '40px', padding: '0 14px', borderRadius: '999px',
+        border: `1px solid ${on ? c.gold : c.border}`,
+        background: on ? c.goldSoft : 'transparent',
+        color: on ? c.goldInk : c.text,
+        fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit',
+        textAlign: 'left',
+      }),
+      panelTextarea: {
+        width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '10px',
+        border: `1px solid ${c.border}`, background: c.card, color: c.text,
+        fontSize: '13.5px', fontFamily: 'inherit', resize: 'vertical',
+      },
+      panelError: {
+        padding: '9px 11px', borderRadius: '9px', fontSize: '13px',
+        background: c.redSoft, color: c.redInk,
+      },
+      panelSubmit: (ready) => ({
+        minHeight: '48px', padding: '0 18px', borderRadius: '12px', border: 'none',
+        background: ready ? c.gold : c.bar, color: ready ? c.goldText : c.faint,
+        fontSize: '14px', fontWeight: '700', fontFamily: 'inherit',
+        cursor: ready ? 'pointer' : 'not-allowed',
+      }),
+      sentBand: {
+        margin: '0 18px 16px', padding: '12px 14px', borderRadius: '12px',
+        background: c.greenSoft, color: c.green, fontSize: '13.5px', fontWeight: '600', lineHeight: 1.45,
+      },
       histAmount: (back) => ({ fontSize: '14px', fontWeight: '700', color: back ? c.green : c.text, whiteSpace: 'nowrap' }),
     };
   })();
@@ -1512,7 +1616,10 @@ const MyBookings = () => {
                     </div>
                   )}
 
-                  {ticket.actions.length > 0 && !bookingAwaitingDecision(ticket) && (
+                  {panelFor(ticket)}
+                  {sentBanner(ticket)}
+
+                  {ticket.actions.length > 0 && !bookingAwaitingDecision(ticket) && !sentFor[ticket._id] && (
                     <div style={mb.actions}>
                       {ticket.actions.map((key) => (
                         <button
@@ -1622,7 +1729,7 @@ const MyBookings = () => {
                           <span style={mb.histAmount(b.money.back > 0)}>
                             {b.money.back > 0 ? `+${peso(b.money.back)}` : peso(b.money.paid || b.money.cost)}
                           </span>
-                          {b.actions.length > 0 && (
+                          {b.actions.length > 0 && !sentFor[b._id] && (
                             <span style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                               {b.actions.map((key) => (
                                 <button
@@ -1638,6 +1745,10 @@ const MyBookings = () => {
                             </span>
                           )}
                         </span>
+                        {panel?.bookingId === b._id && (
+                          <span style={{ flexBasis: '100%' }}>{panelFor(b)}</span>
+                        )}
+                        {sentFor[b._id] && <span style={{ flexBasis: '100%' }}>{sentBanner(b)}</span>}
                       </div>
                     ))}
                   </section>
@@ -1669,50 +1780,6 @@ const MyBookings = () => {
         />
       )}
 
-      {refundModalId && activeBooking && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent} ref={refundModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-modal-title">
-            <h2 id="refund-modal-title" style={styles.modalTitle}>Request a Refund</h2>
-
-            <div style={styles.warningBox}>
-              {refund.basis === 'mistake' ? (
-                <><DoneGlyph /> You booked this less than an hour ago, so this qualifies for a <strong>full refund</strong>.</>
-              ) : refund.basis === 'full' ? (
-                <><DoneGlyph /> Your pickup is more than 3 days away, so this qualifies for a <strong>full refund</strong>.</>
-              ) : refund.basis === 'half' ? (
-                <><WarnGlyph /> Your pickup is less than 3 days away, so this qualifies for a <strong>50% refund</strong> only.</>
-              ) : (
-                <><WarnGlyph /> Your pickup is less than 24 hours away, so this booking is <strong>not eligible for a refund</strong>.</>
-              )}
-              {' '}You paid ₱{activeBooking.amountPaid}, so you would receive approximately ₱{refundAmount} back if approved.
-            </div>
-
-            {refundError && <div style={styles.errorBox}>{refundError}</div>}
-
-            <label style={styles.modalLabel} htmlFor="refund-reason">Reason for refund</label>
-            <select
-              id="refund-reason"
-              style={styles.modalSelect}
-              value={refundReason}
-              onChange={(e) => setRefundReason(e.target.value)}
-            >
-              <option value="">Select a reason...</option>
-              {REFUND_REASONS.map((reason) => (
-                <option key={reason} value={reason}>{reason}</option>
-              ))}
-            </select>
-
-            <div style={styles.modalActions}>
-              <button style={styles.modalCancelBtn} onClick={closeRefundModal} disabled={submitting}>
-                Cancel
-              </button>
-              <button style={styles.modalSubmitBtn} onClick={handleSubmitRefund} disabled={submitting}>
-                {submitting ? 'Submitting...' : 'Submit Request'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {rescheduleModalId && rescheduleBooking && (
         <div style={styles.modalOverlay}>
