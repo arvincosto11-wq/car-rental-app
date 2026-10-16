@@ -685,9 +685,12 @@ const MyBookings = () => {
     longer: 'Keep it longer',
     call: 'Call the office',
   };
-  // Gold is spent only where something has gone wrong or needs doing.
-  const isPrimaryAction = (key, tone) => ['longer', 'pay', 'offer', 'rate'].includes(key)
-    && (tone === 'red' || tone === 'amber');
+  // Gold is spent only where something has gone wrong or needs doing —
+  // and on one button, not two. A trip that owes money and wants rating
+  // was lighting up both, so neither read as the thing to do first.
+  const PRIMARY_RANK = ['pay', 'offer', 'longer', 'rate'];
+  const isPrimaryAction = (key, tone, actions) => (tone === 'red' || tone === 'amber')
+    && key === PRIMARY_RANK.find((k) => actions.includes(k));
 
   // Step one keeps the flows exactly as they are: the buttons are new,
   // what they open is not. They move inside the booking in step two.
@@ -1661,7 +1664,7 @@ const MyBookings = () => {
                         <button
                           key={key}
                           type="button"
-                          style={mb.actionBtn(isPrimaryAction(key, ticket.toneKey))}
+                          style={mb.actionBtn(isPrimaryAction(key, ticket.toneKey, ticket.actions))}
                           disabled={withdrawingId === ticket._id}
                           onClick={() => runAction(key, ticket)}
                         >
@@ -1816,7 +1819,7 @@ const MyBookings = () => {
                                     <button
                                       key={key}
                                       type="button"
-                                      style={mb.smallBtn(isPrimaryAction(key, b.toneKey))}
+                                      style={mb.smallBtn(isPrimaryAction(key, b.toneKey, b.actions))}
                                       disabled={withdrawingId === b._id}
                                       onClick={() => runAction(key, b)}
                                     >
