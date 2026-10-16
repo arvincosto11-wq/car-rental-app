@@ -814,7 +814,7 @@ const MyBookings = () => {
       yearNote: { display: 'block', fontSize: '12px', color: c.faint, marginTop: '2px' },
 
       histRow: {
-        display: 'flex', alignItems: 'flex-start', gap: '12px',
+        display: 'flex', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap',
         padding: '12px 16px', borderTop: `1px solid ${c.border}`,
       },
       histCar: { display: 'block', fontSize: '14px', fontWeight: '650', color: c.text },
@@ -822,7 +822,7 @@ const MyBookings = () => {
       // Asking for something happens inside the booking, not over the
       // page: on a phone a full-screen form hides what you were looking at.
       panel: {
-        margin: '0 18px 16px', padding: '14px', borderRadius: '14px',
+        width: '100%', margin: '0 0 2px', padding: '14px', borderRadius: '14px',
         background: c.sunk, border: `1px solid ${c.border}`,
         display: 'flex', flexDirection: 'column', gap: '12px',
       },
@@ -859,7 +859,7 @@ const MyBookings = () => {
         cursor: ready ? 'pointer' : 'not-allowed',
       }),
       sentBand: {
-        margin: '0 18px 16px', padding: '12px 14px', borderRadius: '12px',
+        width: '100%', margin: '0', padding: '12px 14px', borderRadius: '12px',
         background: c.greenSoft, color: c.green, fontSize: '13.5px', fontWeight: '600', lineHeight: 1.45,
       },
       histAmount: (back) => ({ fontSize: '14px', fontWeight: '700', color: back ? c.green : c.text, whiteSpace: 'nowrap' }),
@@ -1616,8 +1616,10 @@ const MyBookings = () => {
                     </div>
                   )}
 
-                  {panelFor(ticket)}
-                  {sentBanner(ticket)}
+                  <div style={{ padding: '0 18px 16px' }}>
+                    {panelFor(ticket)}
+                    {sentBanner(ticket)}
+                  </div>
 
                   {ticket.actions.length > 0 && !bookingAwaitingDecision(ticket) && !sentFor[ticket._id] && (
                     <div style={mb.actions}>
