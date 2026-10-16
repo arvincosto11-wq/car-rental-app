@@ -28,3 +28,27 @@ export function latenessLabel(hours, chargedDays = 0) {
   const days = chargedDays || Math.floor(hours / 24);
   return `Returned ${days} day${days === 1 ? '' : 's'} late`;
 }
+
+// The same measure for a vehicle that has not come back yet. "1 day
+// overdue" for a vehicle three hours past its time reads as a lost day
+// and sends somebody chasing a client who is on their way.
+//
+// The fee is still charged by the day — three hours over is a day's
+// rental — but how late somebody IS and what they OWE are two different
+// sentences, and only the second one is about days.
+export function overdueLabel(hours, chargedDays = 0) {
+  if (hours <= 0) return '';
+  if (hours < 1) return 'Under an hour overdue';
+  if (hours < 24) return `${Math.round(hours)} h overdue`;
+  const days = chargedDays || Math.floor(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} overdue`;
+}
+
+// Short form for a chip beside a row: "5 h late", "2 days late".
+export function lateChip(hours, chargedDays = 0) {
+  if (hours <= 0) return '';
+  if (hours < 1) return 'under an hour late';
+  if (hours < 24) return `${Math.round(hours)} h late`;
+  const days = chargedDays || Math.floor(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} late`;
+}

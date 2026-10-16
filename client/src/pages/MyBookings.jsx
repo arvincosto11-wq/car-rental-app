@@ -18,7 +18,7 @@ import ExtendBookingModal from '../components/ExtendBookingModal';
 import { paginate } from '../utils/paginate';
 import { bookingAwaitingDecision, timeLeftLabel } from '../utils/offerWindow';
 import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays } from '../utils/phTime';
-import { daysOverdue } from '../utils/overdue';
+import { hoursLate, overdueLabel, lateChip } from '../utils/lateness';
 import { refundOutcome } from '../utils/refundPolicy';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
@@ -566,8 +566,7 @@ const MyBookings = () => {
   const attentionLine = (b) => {
     if (bookingAwaitingDecision(b)) return { tone: 'gold', text: timeLeftLabel(b.adjustOffer?.deadline) };
     if (isStillOut(b)) {
-      const late = daysOverdue(b);
-      return { tone: 'red', text: `Overdue · ${late} day${late === 1 ? '' : 's'}` };
+      return { tone: 'red', text: `Overdue · ${overdueLabel(hoursLate(b.endDate, new Date()), b.lateFee?.days).replace(' overdue', '')}` };
     }
     if (isDueSoon(b)) return { tone: 'gold', text: `Due back ${formatMoment(b.endDate, b.hasPickupTime)}` };
     if (b.payment === 'gcash_pending' && b.status !== 'cancelled') return { tone: 'muted', text: 'GCash payment not finished' };
@@ -1682,7 +1681,7 @@ const MyBookings = () => {
               const decision = bookingAwaitingDecision(b);
               const out = isStillOut(b);
               const soon = isDueSoon(b);
-              const late = out ? daysOverdue(b) : 0;
+              const late = out ? lateChip(hoursLate(b.endDate, new Date()), b.lateFee?.days) : '';
               // The card's colour, and the pill's, are not always the same:
               // "Action needed" is the only one that fills, because it is the
               // only one with a deadline running against the client.
@@ -1690,7 +1689,7 @@ const MyBookings = () => {
               const pill = decision ? 'solid' : out ? 'red' : soon ? 'gold' : 'muted';
               const kicker = decision ? 'Action needed' : out ? 'Overdue' : soon ? 'Due back soon' : 'Payment';
               const head = decision ? timeLeftLabel(b.adjustOffer?.deadline)
-                : out ? `${late} day${late === 1 ? '' : 's'} late`
+                : out ? late
                   : soon ? formatMoment(b.endDate, b.hasPickupTime)
                     : 'GCash not finished';
               const body = decision

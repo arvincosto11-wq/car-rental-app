@@ -21,7 +21,8 @@ import RefundNoticeLine from '../components/RefundNoticeLine';
 import PlacePicker from '../components/PlacePicker';
 import { deliveryQuote } from '../utils/delivery';
 import { registrationLapsed } from '../utils/registration';
-import { isOverdue, daysOverdue } from '../utils/overdue';
+import { isOverdue } from '../utils/overdue';
+import { hoursLate, overdueLabel } from '../utils/lateness';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
@@ -1674,8 +1675,7 @@ const CarDetail = () => {
                 <p style={s.offRoadNote}>
                   {overdueBooking.car?.brand
                     ? `Your ${overdueBooking.car.brand} ${overdueBooking.car.model}`
-                    : 'A vehicle you booked'} is {daysOverdue(overdueBooking)} day
-                  {daysOverdue(overdueBooking) === 1 ? '' : 's'} overdue and hasn&apos;t been returned yet,
+                    : 'A vehicle you booked'} is {overdueLabel(hoursLate(overdueBooking.endDate, new Date()), overdueBooking.lateFee?.days).toLowerCase()} and hasn&apos;t been returned yet,
                   so you can&apos;t book another vehicle until it&apos;s back.
                 </p>
                 <p style={{ ...s.offRoadNote, fontWeight: '500', marginTop: '8px' }}>

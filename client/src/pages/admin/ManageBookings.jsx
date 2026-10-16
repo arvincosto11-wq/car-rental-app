@@ -10,6 +10,7 @@ import { SkeletonListCard } from '../../components/Skeleton';
 import Pagination from '../../components/Pagination';
 import StatusDropdown from '../../components/StatusDropdown';
 import { paginate } from '../../utils/paginate';
+import { hoursLate, overdueLabel, lateChip } from '../../utils/lateness';
 import { hasClientScore, clientScoreLabel } from '../../utils/clientScore';
 import { vehicleOutOfService } from '../../utils/blockedDates';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk} from '../../theme';
@@ -98,7 +99,10 @@ const dueBackLabel = (list, now = new Date()) => {
   if (day === phYmd(new Date(now.getTime() + 24 * 60 * 60 * 1000))) return 'tomorrow';
   return 'in the next 24 hours';
 };
-const daysOverdue = (b) => Math.max(1, Math.ceil((Date.now() - new Date(b.endDate).getTime()) / (24 * 60 * 60 * 1000)));
+// How far past its return time a vehicle is, in hours until it has been a
+// whole day. The fee is still charged by the day — see the ledger line —
+// but "1 day overdue" for a vehicle three hours over reads as a lost day.
+const overdueBy = (b) => hoursLate(b.endDate, new Date());
 // Confirmed was one label over four situations, each wanting a different
 // thing from you: nothing yet, check them in, nothing again, chase them.
 // Splitting it is what lets a row show the one action that belongs to it
@@ -631,7 +635,7 @@ const ManageBookings = () => {
     } else if (isOverdue(b)) {
       steps.push({
         title: 'Still out',
-        detail: `${daysOverdue(b)} day${daysOverdue(b) === 1 ? '' : 's'} past its return time`,
+        detail: `${overdueLabel(overdueBy(b), b.lateFee?.days)} — past its return time`,
         bad: true,
       });
     }
@@ -1440,7 +1444,7 @@ const ManageBookings = () => {
             <>
               <span style={isOverdue(booking) ? s.overdueNote : s.pickedUpNote}>
                 {isOverdue(booking)
-                  ? `${daysOverdue(booking)} day${daysOverdue(booking) === 1 ? '' : 's'} overdue`
+                  ? overdueLabel(overdueBy(booking), booking.lateFee?.days)
                   : `Picked up ${formatMoment(booking.collectedAt, true, { month: 'numeric', day: 'numeric' })}`}
               </span>
               <button
@@ -1703,7 +1707,7 @@ const ManageBookings = () => {
               <li key={b._id} style={s.outPanelItem}>
                 <strong>{b.car?.brand} {b.car?.model}</strong> {DASH_JS} {b.user?.name || 'a client'} {DASH_JS}{' '}
                 <span style={s.outPanelLate}>
-                  {daysOverdue(b)} day{daysOverdue(b) === 1 ? '' : 's'} overdue
+                  {overdueLabel(overdueBy(b), b.lateFee?.days)}
                 </span>
                 , due {formatMoment(b.endDate, b.hasPickupTime)}
               </li>
@@ -1845,7 +1849,7 @@ const ManageBookings = () => {
                       )}
                       {isOverdue(b) && (
                         <span style={s.lateFlag}>
-                          {daysOverdue(b)} day{daysOverdue(b) === 1 ? '' : 's'} late
+                          {lateChip(overdueBy(b), b.lateFee?.days)}
                         </span>
                       )}
                       {b.lateFee?.days > 0 && b.status === 'completed' && (
@@ -1922,7 +1926,7 @@ const ManageBookings = () => {
                   </div>
                   {isOverdue(selected) && (
                     <span style={s.lateFlag}>
-                      {daysOverdue(selected)} day{daysOverdue(selected) === 1 ? '' : 's'} late
+                      {lateChip(overdueBy(selected), selected.lateFee?.days)}
                     </span>
                   )}
                 </div>

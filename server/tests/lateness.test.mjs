@@ -2,7 +2,7 @@
 // it — the same days the late fee was charged on.
 
 import { suite, group, check } from './harness.mjs';
-import { hoursLate, latenessLabel } from '../utils/lateness.js';
+import { hoursLate, latenessLabel, overdueLabel, lateChip } from '../utils/lateness.js';
 
 export default function run() {
   suite('Returns · how late, in words');
@@ -31,4 +31,17 @@ export default function run() {
   check('three days', latenessLabel(72, 3), 'Returned 3 days late');
   // Nothing charged on file: fall back to whole days elapsed.
   check('with no charge recorded', latenessLabel(50, 0), 'Returned 2 days late');
+
+  group('a vehicle that is still out');
+  // Three hours past its time is not a lost day, and saying so sends
+  // somebody chasing a client who is probably on their way.
+  check('a few hours over', overdueLabel(3, 1), '3 h overdue');
+  check('a day over', overdueLabel(26, 2), '2 days overdue');
+  check('barely over', overdueLabel(0.4), 'Under an hour overdue');
+  check('not over at all', overdueLabel(0), '');
+
+  group('the chip beside a row');
+  check('hours', lateChip(7, 1), '7 h late');
+  check('days', lateChip(49, 3), '3 days late');
+  check('nothing to say', lateChip(0), '');
 }

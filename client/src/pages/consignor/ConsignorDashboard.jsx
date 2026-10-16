@@ -14,6 +14,7 @@ import BookInspection from './BookInspection';
 import api from '../../api';
 import { formatMoment } from '../../utils/phTime';
 import { fuelLabel } from '../../utils/fuel';
+import { hoursLate, overdueLabel } from '../../utils/lateness';
 
 
 
@@ -22,7 +23,8 @@ import { fuelLabel } from '../../utils/fuel';
 // Mirrors the server's own rule; this only decides what the owner is shown.
 const isOut = (b) => b.status === 'confirmed' && !!b.collectedAt && !b.returnedAt;
 const overdueNow = (b) => isOut(b) && new Date(b.endDate) < new Date();
-const daysOverdue = (b) => Math.max(1, Math.ceil((Date.now() - new Date(b.endDate).getTime()) / (24 * 60 * 60 * 1000)));
+// Hours until it has been a whole day — see utils/lateness.js.
+const overdueBy = (b) => hoursLate(b.endDate, new Date());
 
 // Drawn, not emoji: the system font renders those in its own colours,
 // which is how the old footer ended up with red and pink icons on gold.
@@ -543,7 +545,7 @@ const ConsignorDashboard = () => {
         {isOut(b) && (
           <span style={overdueNow(b) ? s.chip('red') : s.chip('blue')}>
             {overdueNow(b)
-              ? `Still out · ${daysOverdue(b)} day${daysOverdue(b) === 1 ? '' : 's'} past its return`
+              ? `Still out · ${overdueLabel(overdueBy(b), b.lateFee?.days).toLowerCase()}`
               : 'Currently out with the client'}
           </span>
         )}
