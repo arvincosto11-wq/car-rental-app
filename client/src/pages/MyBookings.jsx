@@ -668,7 +668,12 @@ const MyBookings = () => {
       ticketBody: { padding: '14px 18px 4px', display: 'flex', flexDirection: 'column', gap: '12px' },
       whenLine: { fontSize: '13px', color: c.muted },
 
-      steps: { display: 'flex', alignItems: 'center', gap: '6px', listStyle: 'none', margin: 0, padding: 0 },
+      // Four steps and their labels do not fit across a phone, so the row
+      // wraps rather than running off the edge of the card.
+      steps: {
+        display: 'flex', alignItems: 'center', gap: '6px 8px', flexWrap: 'wrap',
+        listStyle: 'none', margin: 0, padding: 0,
+      },
       step: { display: 'flex', alignItems: 'center', gap: '6px' },
       stepDot: (reached, t) => ({
         width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0,
@@ -705,8 +710,9 @@ const MyBookings = () => {
         color: primary ? c.goldText : c.text,
         fontSize: '14px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
       }),
+      // A tap target on a phone, not a mouse target.
       smallBtn: (primary) => ({
-        minHeight: '34px', padding: '0 12px', borderRadius: '9px',
+        minHeight: '44px', padding: '0 14px', borderRadius: '10px',
         border: `1px solid ${primary ? c.gold : c.border}`,
         background: primary ? c.gold : 'transparent',
         color: primary ? c.goldText : c.text,
