@@ -1296,6 +1296,10 @@ const ManageBookings = () => {
       display: 'flex', flexDirection: 'column', gap: '4px',
     },
     actionsWrap: { marginTop: '18px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' },
+    // The row of actions inside it. Without a width it shrank to its
+    // contents, so the primary button — which is meant to grow — filled
+    // that small box and pushed Cancel onto a line of its own.
+    actionRow: { width: '100%', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
     moneyStrip: {
       display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
       border: `1px solid ${line}`, borderRadius: '12px', overflow: 'hidden', marginBottom: '14px',
@@ -1440,7 +1444,7 @@ const ManageBookings = () => {
           </button>
         </div>
       ) : booking.status === 'confirmed' ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={s.actionRow}>
           {/* The panel states this above, in the same pill the list uses. */}
           {/* One sequence, in the order it happens at the
               counter: waiting, then handed over, then back. Until
@@ -1532,7 +1536,7 @@ const ManageBookings = () => {
           </button>
         </div>
       ) : booking.status === 'cancelled' ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={s.actionRow}>
           <span style={s.cancelled}><span style={s.statusDot(isDark ? '#fca5a5' : '#991b1b')} />Cancelled</span>
           {/* A breakdown the client caused ends the booking and
               leaves a repair bill behind it. */}
@@ -1547,7 +1551,7 @@ const ManageBookings = () => {
           )}
         </div>
       ) : booking.status === 'completed' ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={s.actionRow}>
           <span style={s.completed}><span style={s.statusDot(isDark ? '#93c5fd' : '#1e40af')} />Completed</span>
           {/* A booking that came back three days late used to be
               indistinguishable from one that came back on time
