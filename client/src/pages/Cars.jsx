@@ -644,7 +644,7 @@ const Cars = () => {
               checked={availableOnly}
               onChange={(e) => setAvailableOnly(e.target.checked)}
             />
-            Bookable only
+            Available only
           </label>
         </div>
       </div>
