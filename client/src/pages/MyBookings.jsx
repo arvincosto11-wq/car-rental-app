@@ -40,6 +40,10 @@ const DATE_ONLY = { month: 'short', day: 'numeric', year: 'numeric' };
 const DATE_SHORT = { weekday: 'short', month: 'short', day: 'numeric' };
 const STEP_LABELS = ['Booked', 'Confirmed', 'Picked up', 'Returned'];
 const OFFICE_PHONE = '0950-651-0479';
+// Something short a client can quote on the phone, rather than the
+// twenty-four characters the database knows it by.
+const refOf = (b) => String(b._id || '').slice(-6).toUpperCase();
+
 const peso = (n) => `₱${Math.round(Math.abs(n || 0)).toLocaleString('en-US')}`;
 
 // Out, and due back within the day. Amber rather than red: nothing has gone
@@ -146,6 +150,8 @@ const MyBookings = () => {
   const [panelBusy, setPanelBusy] = useState(false);
   const [panelError, setPanelError] = useState('');
   const [sentFor, setSentFor] = useState({});
+  const [openRows, setOpenRows] = useState({});
+  const [showAllYears, setShowAllYears] = useState({});
   // Which booking's full record is open. Everything the card used to show
   // lives in there now, so the list can stay one line per booking.
 
@@ -653,6 +659,12 @@ const MyBookings = () => {
     <div style={mb.sentBand}>{sentFor[booking._id]}</div>
   ) : null);
 
+  // Forty rows under one year is a scroll, not a list. The rest are one
+  // button away, and everything is already loaded — there is nothing to
+  // fetch.
+  const ROWS_PER_YEAR = 6;
+  const shownRows = (group) => (showAllYears[group.year] ? group.rows : group.rows.slice(0, ROWS_PER_YEAR));
+
   const ACTION_LABELS = {
     withdrawRefund: 'Keep my booking',
     withdrawDates: 'Cancel the date change',
@@ -716,8 +728,12 @@ const MyBookings = () => {
       c,
       // Two columns on a desktop, one on a phone — the class is in
       // index.css, where the media query lives.
-      wrap: { display: 'flex', gap: '28px', alignItems: 'flex-start', flexWrap: 'wrap' },
-      column: { flex: '1 1 420px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '16px' },
+      // One column on a phone, two from 1024px — the ticket on the left,
+      // staying in view while history scrolls beside it. The class holds
+      // the media query; index.css is where ours live.
+      wrap: { maxWidth: '1320px', display: 'grid', gap: '48px', alignItems: 'start' },
+      column: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: '16px' },
+      stickyColumn: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: '16px' },
 
       ticket: { background: c.card, border: `1px solid ${c.border}`, borderRadius: '20px', overflow: 'hidden' },
       ticketHead: (t) => ({ background: T(t).bg, padding: '16px 18px 14px' }),
@@ -746,7 +762,14 @@ const MyBookings = () => {
       stepLine: (reached, t) => ({ width: '18px', height: '2px', background: reached ? T(t).c : c.bar }),
 
       // The ticket tears here: status above, money below.
-      tear: { margin: '14px 0 0', borderTop: `2px dashed ${c.border}` },
+      tearWrap: { position: 'relative', margin: '14px 0 0', height: '2px' },
+      tear: { borderTop: `2px dashed ${c.border}`, margin: '0 11px' },
+      // Bitten out of the card in the page's own colour, so the ticket
+      // reads as something you tear along.
+      notch: (side) => ({
+        position: 'absolute', top: '-11px', [side]: '-11px',
+        width: '22px', height: '22px', borderRadius: '50%', background: c.page,
+      }),
       receipt: { padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '8px' },
       receiptRow: { display: 'flex', alignItems: 'baseline', gap: '8px', fontSize: '14px', color: c.text },
       receiptLabel: { color: c.muted, whiteSpace: 'nowrap' },
@@ -813,9 +836,21 @@ const MyBookings = () => {
       yearCount: { fontSize: '13px', fontWeight: '500', color: c.muted },
       yearNote: { display: 'block', fontSize: '12px', color: c.faint, marginTop: '2px' },
 
+      histBlock: { borderTop: `1px solid ${c.border}` },
       histRow: {
-        display: 'flex', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap',
-        padding: '12px 16px', borderTop: `1px solid ${c.border}`,
+        width: '100%', display: 'flex', alignItems: 'flex-start', gap: '12px',
+        padding: '12px 16px', background: 'transparent', border: 'none',
+        textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+      },
+      histOpen: {
+        display: 'flex', flexDirection: 'column', gap: '10px',
+        padding: '0 16px 16px', marginTop: '-2px',
+      },
+      showAll: {
+        width: '100%', minHeight: '48px', padding: '0 16px',
+        background: 'transparent', border: 'none', borderTop: `1px solid ${c.border}`,
+        color: c.goldInk, fontSize: '13.5px', fontWeight: '700',
+        cursor: 'pointer', fontFamily: 'inherit',
       },
       histCar: { display: 'block', fontSize: '14px', fontWeight: '650', color: c.text },
 
@@ -1539,15 +1574,15 @@ const MyBookings = () => {
           </button>
         </div>
       ) : (
-        <div style={mb.wrap}>
+        <div className="mb-grid" style={mb.wrap}>
           {/* ── what is going on now ─────────────────────────────── */}
           {liveBookings.length > 0 && (
-            <div style={mb.column}>
+            <div className="mb-live" style={mb.stickyColumn}>
               {ticket && (
                 <article style={mb.ticket}>
                   <div style={mb.ticketHead(ticket.toneKey)}>
                     <div style={mb.eyebrow(ticket.toneKey)}>
-                      {ticket.car?.brand} {ticket.car?.model}
+                      {ticket.car?.brand} {ticket.car?.model} · #{refOf(ticket)}
                     </div>
                     <h2 style={mb.sentence(ticket.toneKey)}>{ticket.sentence}</h2>
                   </div>
@@ -1572,7 +1607,11 @@ const MyBookings = () => {
                     </ol>
                   </div>
 
-                  <div style={mb.tear} />
+                  <div style={mb.tearWrap}>
+                    <span style={mb.notch('left')} />
+                    <div style={mb.tear} />
+                    <span style={mb.notch('right')} />
+                  </div>
 
                   <div style={mb.receipt}>
                     {ticket.money.lines.map((line) => (
@@ -1717,42 +1756,92 @@ const MyBookings = () => {
                       <span style={mb.chevron}>{open ? '⌄' : '›'}</span>
                     </button>
 
-                    {open && group.rows.map((b) => (
-                      <div key={b._id} style={mb.histRow}>
-                        <span style={mb.toneDot(b.toneKey)} />
-                        <span style={{ minWidth: 0, flex: 1 }}>
-                          <span style={mb.histCar}>{b.car?.brand} {b.car?.model}</span>
-                          <span style={mb.alsoSentence(b.toneKey)}>{b.sentence}</span>
-                          <span style={mb.alsoMeta}>
-                            {formatMoment(b.startDate, false, DATE_SHORT)} → {formatMoment(b.endDate, false, DATE_SHORT)}
-                          </span>
-                        </span>
-                        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                          <span style={mb.histAmount(b.money.back > 0)}>
-                            {b.money.back > 0 ? `+${peso(b.money.back)}` : peso(b.money.paid || b.money.cost)}
-                          </span>
-                          {b.actions.length > 0 && !sentFor[b._id] && (
-                            <span style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                              {b.actions.map((key) => (
-                                <button
-                                  key={key}
-                                  type="button"
-                                  style={mb.smallBtn(isPrimaryAction(key, b.toneKey))}
-                                  disabled={withdrawingId === b._id}
-                                  onClick={() => runAction(key, b)}
-                                >
-                                  {ACTION_LABELS[key]}
-                                </button>
-                              ))}
+                    {open && shownRows(group).map((b) => {
+                      const expanded = !!openRows[b._id] || panel?.bookingId === b._id || !!sentFor[b._id];
+                      return (
+                        <div key={b._id} style={mb.histBlock}>
+                          {/* A row is a line until you ask for more: forty
+                              rows each carrying their own buttons is a wall
+                              of gold, and the ones that need doing stop
+                              standing out. */}
+                          <button
+                            type="button"
+                            style={mb.histRow}
+                            aria-expanded={expanded}
+                            onClick={() => setOpenRows((r) => ({ ...r, [b._id]: !expanded }))}
+                          >
+                            <span style={mb.toneDot(b.toneKey)} />
+                            <span style={{ minWidth: 0, flex: 1 }}>
+                              <span style={mb.histCar}>{b.car?.brand} {b.car?.model}</span>
+                              <span style={mb.alsoSentence(b.toneKey)}>{b.sentence}</span>
+                              <span style={mb.alsoMeta}>
+                                {formatMoment(b.startDate, false, DATE_SHORT)} → {formatMoment(b.endDate, false, DATE_SHORT)}
+                              </span>
                             </span>
+                            <span style={mb.histAmount(b.money.back > 0)}>
+                              {b.money.back > 0 ? `+${peso(b.money.back)}` : peso(b.money.paid || b.money.cost)}
+                            </span>
+                            <span style={{ ...mb.chevron, transform: expanded ? 'rotate(90deg)' : 'none' }}>›</span>
+                          </button>
+
+                          {expanded && (
+                            <div style={mb.histOpen}>
+                              {b.money.lines.map((line) => (
+                                <div key={line.label} style={mb.receiptRow}>
+                                  <span style={mb.receiptLabel}>{line.label}</span>
+                                  <span style={mb.leader} />
+                                  <span style={mb.receiptAmount(line.kind)}>
+                                    {line.amount < 0 ? '− ' : line.kind === 'fee' ? '+ ' : ''}
+                                    {peso(line.amount)}
+                                  </span>
+                                </div>
+                              ))}
+                              <div style={{ ...mb.receiptRow, fontWeight: '700' }}>
+                                <span style={mb.receiptLabel}>You paid</span>
+                                <span style={mb.leader} />
+                                <span style={mb.receiptAmount()}>{peso(b.money.paid)}</span>
+                              </div>
+                              {b.money.back > 0 && (
+                                <div style={mb.receiptRow}>
+                                  <span style={mb.receiptLabel}>Came back</span>
+                                  <span style={mb.leader} />
+                                  <span style={{ ...mb.receiptAmount(), color: mb.c.green }}>{peso(b.money.back)}</span>
+                                </div>
+                              )}
+
+                              {panelFor(b)}
+                              {sentBanner(b)}
+
+                              {b.actions.length > 0 && !sentFor[b._id] && !panelFor(b) && (
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                  {b.actions.map((key) => (
+                                    <button
+                                      key={key}
+                                      type="button"
+                                      style={mb.smallBtn(isPrimaryAction(key, b.toneKey))}
+                                      disabled={withdrawingId === b._id}
+                                      onClick={() => runAction(key, b)}
+                                    >
+                                      {ACTION_LABELS[key]}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           )}
-                        </span>
-                        {panel?.bookingId === b._id && (
-                          <span style={{ flexBasis: '100%' }}>{panelFor(b)}</span>
-                        )}
-                        {sentFor[b._id] && <span style={{ flexBasis: '100%' }}>{sentBanner(b)}</span>}
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
+
+                    {open && group.rows.length > shownRows(group).length && (
+                      <button
+                        type="button"
+                        style={mb.showAll}
+                        onClick={() => setShowAllYears((y) => ({ ...y, [group.year]: true }))}
+                      >
+                        Show all {group.rows.length} {histTab === 'trips' ? 'trips' : 'cancellations'} from {group.year}
+                      </button>
+                    )}
                   </section>
                 );
               })

@@ -1645,3 +1645,18 @@ body.dark .doc-dot:not(:disabled):focus-visible {
     transition: none;
   }
 }
+
+/* My Bookings: one column on a phone, two from 1024px — the live ticket
+   on the left, staying in view while history scrolls beside it. */
+.mb-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 1024px) {
+  .mb-grid {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  }
+  .mb-grid .mb-live {
+    position: sticky;
+    top: 80px;
+  }
+}
