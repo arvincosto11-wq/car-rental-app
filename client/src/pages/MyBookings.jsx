@@ -6,25 +6,21 @@ import { useUIFeedback } from '../context/UIFeedbackContext';
 import { useNotifications } from '../context/NotificationContext';
 import api from '../api';
 import DriverAvatar from '../components/DriverAvatar';
-import { ratingLabel } from '../utils/drivers';
 import StarRating from '../components/StarRating';
 import RatingModal from '../components/RatingModal';
 import BookingConfirmationModal from '../components/BookingConfirmationModal';
 import { SkeletonListCard } from '../components/Skeleton';
-import Pagination from '../components/Pagination';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import AdjustOfferPanel from '../components/AdjustOfferPanel';
 import ExtendBookingModal from '../components/ExtendBookingModal';
-import { paginate } from '../utils/paginate';
-import { bookingAwaitingDecision, timeLeftLabel } from '../utils/offerWindow';
+import { bookingAwaitingDecision } from '../utils/offerWindow';
 import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays } from '../utils/phTime';
-import { hoursLate, overdueLabel, lateChip } from '../utils/lateness';
+import { toneOf, stepOf, moneyFor, moneySummary, sentenceFor, actionKeysFor, isLive } from '../utils/myBookings';
 import { refundOutcome } from '../utils/refundPolicy';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk } from '../theme';
 import LAYERS from '../layers';
-import { fuelShortfallLabel, fuelLabel } from '../utils/fuel';
 import ModalClose from '../components/ModalClose';
 import { DoneGlyph, WarnGlyph } from '../components/Glyphs';
 import { StarGlyph } from '../components/Glyphs';
@@ -33,23 +29,7 @@ import { StarGlyph } from '../components/Glyphs';
 // list covered in badges says nothing at all.
 const ACTIVITY_WINDOW_HOURS = 24;
 
-// A late fee can be two charges added together: the days late as things
-// finally stood, at the full daily rate, plus any days the client was
-// already late when they extended, which the server carries over at half
-// rate. Only the totals are stored, so the full-rate half is what is left
-// after taking the carried half away.
-const lateFeeSplit = (booking) => ({
-  freshDays: (booking.lateFee?.days || 0) - (booking.lateFee?.carriedDays || 0),
-  freshAmount: (booking.lateFee?.amount || 0) - (booking.lateFee?.carriedAmount || 0),
-});
 
-const agoLabel = (at) => {
-  const mins = Math.round((Date.now() - new Date(at).getTime()) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
-  const hrs = Math.round(mins / 60);
-  return hrs === 1 ? 'an hour ago' : `${hrs} hours ago`;
-};
 
 // Position is decided by urgency now, so a change has to announce itself
 // where it sits rather than by jumping the queue.
@@ -57,24 +37,15 @@ const agoLabel = (at) => {
 // decides what the client is shown on their own booking.
 // Rows name the day only; the hour belongs in the drawer beside the rest.
 const DATE_ONLY = { month: 'short', day: 'numeric', year: 'numeric' };
+const DATE_SHORT = { weekday: 'short', month: 'short', day: 'numeric' };
+const STEP_LABELS = ['Booked', 'Confirmed', 'Picked up', 'Returned'];
+const OFFICE_PHONE = '0950-651-0479';
+const peso = (n) => `₱${Math.round(Math.abs(n || 0)).toLocaleString('en-US')}`;
 
-const isStillOut = (b) => b.status === 'confirmed' && !!b.collectedAt && !b.returnedAt
-  && new Date(b.endDate) < new Date();
-const daysOut = (b) => Math.max(1, Math.ceil((Date.now() - new Date(b.endDate).getTime()) / 86400000));
 // Out, and due back within the day. Amber rather than red: nothing has gone
 // wrong yet, and the point of saying it now is that it still hasn't.
 const DUE_SOON_HOURS = 24;
-const isDueSoon = (b) => b.status === 'confirmed' && !!b.collectedAt && !b.returnedAt
-  && new Date(b.endDate) >= new Date()
-  && new Date(b.endDate) <= new Date(Date.now() + DUE_SOON_HOURS * 3600000);
 
-const freshActivity = (b) => {
-  const at = b.lastActivity?.at;
-  if (!at) return '';
-  const hrs = (Date.now() - new Date(at).getTime()) / 3600000;
-  if (hrs > ACTIVITY_WINDOW_HOURS || hrs < 0) return '';
-  return `Updated ${agoLabel(at)}${b.lastActivity.what ? ` — ${b.lastActivity.what}` : ''}`;
-};
 
 
 const PAGE_SIZE = 10;
@@ -137,8 +108,6 @@ const MyBookings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [page, setPage] = useState(1);
   const [refundModalId, setRefundModalId] = useState(null);
   const [refundReason, setRefundReason] = useState('');
   const [refundError, setRefundError] = useState('');
@@ -165,9 +134,16 @@ const MyBookings = () => {
   const [offerBusyId, setOfferBusyId] = useState('');
   const [withdrawingId, setWithdrawingId] = useState('');
   const [extendBookingId, setExtendBookingId] = useState(null);
+  // Which live booking is in the ticket, which half of history is in
+  // view, and which years are open.
+  const [focusId, setFocusId] = useState(null);
+  const [histTab, setHistTab] = useState('trips');
+  const [openYears, setOpenYears] = useState({});
+  // Read once rather than on every render: a booking's tone depends on
+  // the time, and calling the clock mid-render is not a pure thing to do.
+  const [now] = useState(() => new Date());
   // Which booking's full record is open. Everything the card used to show
   // lives in there now, so the list can stay one line per booking.
-  const [drawerBookingId, setDrawerBookingId] = useState(null);
 
   useEffect(() => {
     if (!user) return navigate('/login');
@@ -278,7 +254,7 @@ const MyBookings = () => {
       setOfferBusyId(booking._id);
       try {
         const res = await api.post(`/bookings/${booking._id}/adjust/top-up`, payload);
-        window.location.href = res.data.checkoutUrl;
+        window.location.assign(res.data.checkoutUrl);
         return { ok: true };
       } catch (err) {
         console.error(err);
@@ -378,26 +354,8 @@ const MyBookings = () => {
     })();
   }, [bookings]);
 
-  const getStatusStyle = (status) => {
-    if (status === 'confirmed') return styles.badgeConfirmed;
-    if (status === 'cancelled') return styles.badgeCancelled;
-    if (status === 'completed') return styles.badgeCompleted;
-    return styles.badgePending;
-  };
 
-  const getRefundBadgeStyle = (refundStatus) => {
-    if (refundStatus === 'requested') return styles.badgeRefundRequested;
-    if (refundStatus === 'approved') return styles.badgeRefundApproved;
-    if (refundStatus === 'declined') return styles.badgeRefundDeclined;
-    return null;
-  };
 
-  const getRefundBadgeText = (refundStatus) => {
-    if (refundStatus === 'requested') return 'Refund Requested';
-    if (refundStatus === 'approved') return 'Refund Approved';
-    if (refundStatus === 'declined') return 'Refund Declined';
-    return '';
-  };
 
   const openRefundModal = (bookingId) => {
     setRefundModalId(bookingId);
@@ -447,7 +405,7 @@ const MyBookings = () => {
     setRetryingPaymentId(bookingId);
     try {
       const { data } = await api.post('/payments/gcash/checkout-session', { bookingId });
-      window.location.href = data.checkoutUrl;
+      window.location.assign(data.checkoutUrl);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not start the GCash payment. Please try again.');
       setRetryingPaymentId(null);
@@ -563,58 +521,240 @@ const MyBookings = () => {
   // booking says nothing at all rather than repeating its own status.
   //
   // Derived, never stored — every input is already on the booking.
-  const attentionLine = (b) => {
-    if (bookingAwaitingDecision(b)) return { tone: 'gold', text: timeLeftLabel(b.adjustOffer?.deadline) };
-    if (isStillOut(b)) {
-      return { tone: 'red', text: `Overdue · ${overdueLabel(hoursLate(b.endDate, new Date()), b.lateFee?.days).replace(' overdue', '')}` };
-    }
-    if (isDueSoon(b)) return { tone: 'gold', text: `Due back ${formatMoment(b.endDate, b.hasPickupTime)}` };
-    if (b.payment === 'gcash_pending' && b.status !== 'cancelled') return { tone: 'muted', text: 'GCash payment not finished' };
-    if (b.refundStatus === 'requested') return { tone: 'muted', text: 'Refund waiting for approval' };
-    if (b.rescheduleRequest?.status === 'pending') return { tone: 'muted', text: 'Reschedule waiting for approval' };
-    if (b.rescheduleRequest?.status === 'declined') return { tone: 'red', text: 'Reschedule declined — see note' };
-    if (b.refundStatus === 'declined') return { tone: 'red', text: 'Refund declined' };
-    const owed = [
-      b.condition?.damageCharge > 0 && !b.condition?.damageCollectedAt,
-      b.fuel?.charge > 0 && !b.fuel?.collectedAt,
-      b.lateFee?.days > 0 && !b.lateFee?.collectedAt,
-    ].filter(Boolean).length;
-    if (owed > 0) return { tone: 'red', text: `${owed} charge${owed === 1 ? '' : 's'} not yet settled` };
-    if (b.status === 'completed' && !b.carRating?.ratedAt) return { tone: 'gold', text: 'Not rated yet' };
-    if (b.refundStatus === 'approved') return { tone: 'blue', text: `Refunded ₱${(b.refundAmount || 0).toLocaleString()}` };
-    return null;
-  };
 
-  // Anything that wants the client now, whatever tab they are looking at.
-  // A booking three days overdue should not be hidden behind "Upcoming".
-  const needsAttention = bookings.filter((b) => bookingAwaitingDecision(b) || isStillOut(b) || isDueSoon(b)
-    || (b.payment === 'gcash_pending' && b.status !== 'cancelled'));
-
-  const drawerBooking = bookings.find((b) => b._id === drawerBookingId);
-  // Numbered by its place in the whole list, not the page, so the number in
-  // the drawer matches the row that opened it however they got there.
-  const drawerNumber = drawerBooking ? bookings.indexOf(drawerBooking) + 1 : 0;
-  const drawerRef = useModalA11y(() => setDrawerBookingId(null), !!drawerBooking);
-
-  const totalSpent = bookings.reduce((sum, b) => sum + b.totalPrice, 0);
-  const confirmedCount = bookings.filter((b) => b.status === 'confirmed').length;
+  // Still counted, because the header still offers to rate them.
   const unratedCount = bookings.filter((b) => b.status === 'completed' && !b.carRating?.ratedAt).length;
 
-  // "Upcoming" here is the same underlying 'confirmed' status Manage Bookings
-  // uses — just relabeled for how a client actually thinks about a booking
-  // that's been accepted and is waiting on pickup.
-  const statusTabs = [
-    { value: 'all', label: 'All', count: bookings.length },
-    { value: 'pending', label: 'Pending', count: bookings.filter((b) => b.status === 'pending').length },
-    { value: 'confirmed', label: 'Upcoming', count: bookings.filter((b) => b.status === 'confirmed').length },
-    { value: 'completed', label: 'Completed', count: bookings.filter((b) => b.status === 'completed').length },
-    { value: 'cancelled', label: 'Cancelled', count: bookings.filter((b) => b.status === 'cancelled').length },
-  ];
-  const filteredBookings = statusFilter === 'all' ? bookings : bookings.filter((b) => b.status === statusFilter);
+  // ── the page, as a customer reads it ─────────────────────────────
+  //
+  // Live first, settled below. A booking is in exactly one of them: the
+  // old page put the same booking in an "Action needed" strip AND in the
+  // list underneath, wording it differently in each.
+  const TONE_ORDER = { red: 0, amber: 1, ok: 2, wait: 3, done: 4 };
 
-  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
-  const pageBookings = paginate(filteredBookings, page, PAGE_SIZE);
-  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
+  const described = bookings.map((b) => {
+    const actions = actionKeysFor(b, now);
+    // A request already with the office can be taken back, which is the
+    // one action the rules file does not know about: it is about the
+    // request, not the booking.
+    if (b.refundStatus === 'requested') actions.unshift('withdrawRefund');
+    if (b.rescheduleRequest?.status === 'pending') actions.unshift('withdrawDates');
+    return {
+      ...b,
+      toneKey: toneOf(b, now),
+      step: stepOf(b),
+      sentence: sentenceFor(b, now),
+      money: moneyFor(b),
+      actions,
+    };
+  });
+
+  const liveBookings = described
+    .filter((b) => isLive(b, now))
+    .sort((a, bb) => TONE_ORDER[a.toneKey] - TONE_ORDER[bb.toneKey]
+      || new Date(a.startDate) - new Date(bb.startDate));
+
+  const ticket = liveBookings.find((b) => b._id === focusId) || liveBookings[0] || null;
+  const alsoGoingOn = liveBookings.filter((b) => b._id !== ticket?._id);
+
+  const settled = described.filter((b) => !isLive(b, now));
+  const historyCounts = {
+    trips: settled.filter((b) => b.status === 'completed').length,
+    cancelled: settled.filter((b) => b.status === 'cancelled').length,
+  };
+
+  // Cancelled bookings live behind their own chip. One client has 25 of
+  // them against 11 trips, and mixed together the trips disappear.
+  const historyRows = settled
+    .filter((b) => (histTab === 'trips' ? b.status === 'completed' : b.status === 'cancelled'))
+    .sort((a, bb) => new Date(bb.startDate) - new Date(a.startDate));
+
+  const historyYears = (() => {
+    const years = [];
+    for (const b of historyRows) {
+      const year = String(new Date(b.startDate).getFullYear());
+      let group = years.find((y) => y.year === year);
+      if (!group) {
+        group = { year, rows: [], trips: 0, cancelled: 0, spent: 0, back: 0 };
+        years.push(group);
+      }
+      group.rows.push(b);
+    }
+    // The totals count everything that year, not just the chip in view,
+    // so the headline does not change when the chip does.
+    for (const group of years) {
+      const all = settled.filter((b) => String(new Date(b.startDate).getFullYear()) === group.year);
+      group.trips = all.filter((b) => b.status === 'completed').length;
+      group.cancelled = all.filter((b) => b.status === 'cancelled').length;
+      group.spent = all.filter((b) => b.status === 'completed').reduce((sum, b) => sum + (b.money.paid || 0), 0);
+      group.back = all.reduce((sum, b) => sum + (b.money.back || 0), 0);
+    }
+    years.forEach((group, i) => { group.latest = i === 0; });
+    return years;
+  })();
+
+  const ACTION_LABELS = {
+    withdrawRefund: 'Keep my booking',
+    withdrawDates: 'Cancel the date change',
+    refund: 'Ask for a refund',
+    rate: 'Rate this trip',
+    dates: 'Change dates',
+    offer: 'Choose',
+    pay: 'Finish payment',
+    longer: 'Keep it longer',
+    call: 'Call the office',
+  };
+  // Gold is spent only where something has gone wrong or needs doing.
+  const isPrimaryAction = (key, tone) => ['longer', 'pay', 'offer', 'rate'].includes(key)
+    && (tone === 'red' || tone === 'amber');
+
+  // Step one keeps the flows exactly as they are: the buttons are new,
+  // what they open is not. They move inside the booking in step two.
+  const runAction = (key, booking) => {
+    if (key === 'refund') return openRefundModal(booking._id);
+    if (key === 'rate') return openRatingModal(booking);
+    if (key === 'dates') return openRescheduleModal(booking);
+    if (key === 'longer') return setExtendBookingId(booking._id);
+    if (key === 'pay') return handleRetryPayment(booking._id);
+    if (key === 'call') return window.open(`tel:${OFFICE_PHONE}`);
+    if (key === 'withdrawRefund') return withdrawRequest(booking, 'refund');
+    if (key === 'withdrawDates') return withdrawRequest(booking, 'reschedule');
+    // An offer is answered in the panel the booking already carries.
+    return setFocusId(booking._id);
+  };
+
+  // ── the look, from the handoff's own tokens ──────────────────────
+  const mb = (() => {
+    const c = isDark
+      ? {
+        page: '#18191a', card: '#242526', sunk: '#1f2021', border: '#3a3b3c',
+        text: '#e4e6eb', muted: '#b0b3b8', faint: '#8d9095',
+        gold: '#e8a100', goldText: '#17130e', goldSoft: '#3a2f17', goldInk: '#f2b93b',
+        red: '#f07067', redSoft: '#3d2321', redInk: '#ff8f86',
+        green: '#5cc58a', greenSoft: '#1e3227',
+        wait: '#a9b4c2', waitSoft: '#2c2f33', bar: '#333436',
+      }
+      : {
+        page: '#f3f2ef', card: '#ffffff', sunk: '#f6f5f2', border: '#e3e1dc',
+        text: '#1c1b19', muted: '#5f5c55', faint: '#8a867e',
+        gold: '#b8790a', goldText: '#17130e', goldSoft: '#fbf1dc', goldInk: '#875800',
+        red: '#c0352b', redSoft: '#fdecea', redInk: '#a12a21',
+        green: '#2f7d4f', greenSoft: '#e6f3eb',
+        wait: '#5b6676', waitSoft: '#eef0f3', bar: '#ebe9e4',
+      };
+
+    const tone = {
+      red: { c: c.red, bg: c.redSoft, ink: c.redInk },
+      amber: { c: c.gold, bg: c.goldSoft, ink: c.goldInk },
+      ok: { c: c.green, bg: c.greenSoft, ink: c.green },
+      wait: { c: c.wait, bg: c.waitSoft, ink: c.text },
+      done: { c: c.faint, bg: c.sunk, ink: c.muted },
+    };
+    const T = (key) => tone[key] || tone.done;
+
+    return {
+      c,
+      // Two columns on a desktop, one on a phone — the class is in
+      // index.css, where the media query lives.
+      wrap: { display: 'flex', gap: '28px', alignItems: 'flex-start', flexWrap: 'wrap' },
+      column: { flex: '1 1 420px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '16px' },
+
+      ticket: { background: c.card, border: `1px solid ${c.border}`, borderRadius: '20px', overflow: 'hidden' },
+      ticketHead: (t) => ({ background: T(t).bg, padding: '16px 18px 14px' }),
+      eyebrow: (t) => ({
+        fontSize: '12px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase', color: T(t).ink,
+      }),
+      sentence: (t) => ({ margin: '4px 0 0', fontSize: '21px', fontWeight: '800', lineHeight: 1.25, color: T(t).ink, textWrap: 'pretty' }),
+      ticketBody: { padding: '14px 18px 4px', display: 'flex', flexDirection: 'column', gap: '12px' },
+      whenLine: { fontSize: '13px', color: c.muted },
+
+      steps: { display: 'flex', alignItems: 'center', gap: '6px', listStyle: 'none', margin: 0, padding: 0 },
+      step: { display: 'flex', alignItems: 'center', gap: '6px' },
+      stepDot: (reached, t) => ({
+        width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0,
+        background: reached ? T(t).c : c.bar,
+      }),
+      stepLabel: (current) => ({
+        fontSize: '11px', fontWeight: current ? '700' : '500',
+        color: current ? c.text : c.faint, whiteSpace: 'nowrap',
+      }),
+      stepLine: (reached, t) => ({ width: '18px', height: '2px', background: reached ? T(t).c : c.bar }),
+
+      // The ticket tears here: status above, money below.
+      tear: { margin: '14px 0 0', borderTop: `2px dashed ${c.border}` },
+      receipt: { padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '8px' },
+      receiptRow: { display: 'flex', alignItems: 'baseline', gap: '8px', fontSize: '14px', color: c.text },
+      receiptLabel: { color: c.muted, whiteSpace: 'nowrap' },
+      leader: { flex: 1, borderBottom: `1px dotted ${c.border}`, transform: 'translateY(-4px)' },
+      receiptAmount: (kind) => ({
+        fontWeight: '600', whiteSpace: 'nowrap',
+        color: kind === 'off' ? c.green : kind === 'fee' ? c.goldInk : c.text,
+      }),
+      owedRow: {
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+        background: c.goldSoft, borderRadius: '10px', padding: '10px 12px',
+      },
+      owedLabel: { fontSize: '13.5px', fontWeight: '700', color: c.goldInk },
+      owedAmount: { fontSize: '16px', fontWeight: '800', color: c.goldInk },
+
+      actions: { display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '0 18px 18px' },
+      actionBtn: (primary) => ({
+        flex: '1 1 auto', minHeight: '48px', padding: '0 16px', borderRadius: '12px',
+        border: `1px solid ${primary ? c.gold : c.border}`,
+        background: primary ? c.gold : 'transparent',
+        color: primary ? c.goldText : c.text,
+        fontSize: '14px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
+      }),
+      smallBtn: (primary) => ({
+        minHeight: '34px', padding: '0 12px', borderRadius: '9px',
+        border: `1px solid ${primary ? c.gold : c.border}`,
+        background: primary ? c.gold : 'transparent',
+        color: primary ? c.goldText : c.text,
+        fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
+      }),
+
+      alsoCard: { background: c.card, border: `1px solid ${c.border}`, borderRadius: '16px', overflow: 'hidden' },
+      alsoTitle: { margin: 0, padding: '14px 16px 8px', fontSize: '13px', fontWeight: '800', letterSpacing: '0.05em', textTransform: 'uppercase', color: c.faint },
+      alsoRow: {
+        width: '100%', minHeight: '60px', display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '12px 16px', borderTop: `1px solid ${c.border}`, background: 'transparent',
+        border: 'none', borderBottom: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+      },
+      toneDot: (t) => ({ width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0, background: T(t).c }),
+      alsoSentence: (t) => ({ display: 'block', fontSize: '14px', fontWeight: '650', color: T(t).ink }),
+      alsoMeta: { display: 'block', fontSize: '12px', color: c.faint, marginTop: '2px' },
+      chevron: { color: c.faint, fontSize: '18px', flexShrink: 0 },
+
+      historyHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' },
+      historyTitle: { margin: 0, fontSize: '20px', fontWeight: '800', color: c.text },
+      chips: { display: 'flex', gap: '8px' },
+      chip: (on) => ({
+        minHeight: '36px', padding: '0 14px', borderRadius: '999px',
+        border: `1px solid ${on ? c.text : c.border}`,
+        background: on ? c.text : 'transparent',
+        color: on ? c.card : c.muted,
+        fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
+      }),
+      historyEmpty: { fontSize: '14px', color: c.muted, margin: '4px 0' },
+
+      yearCard: { background: c.card, border: `1px solid ${c.border}`, borderRadius: '16px', overflow: 'hidden' },
+      yearHead: {
+        width: '100%', display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px',
+        background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+      },
+      year: { fontSize: '22px', fontWeight: '800', color: c.text },
+      yearSpend: { display: 'block', fontSize: '15px', fontWeight: '700', color: c.text },
+      yearCount: { fontSize: '13px', fontWeight: '500', color: c.muted },
+      yearNote: { display: 'block', fontSize: '12px', color: c.faint, marginTop: '2px' },
+
+      histRow: {
+        display: 'flex', alignItems: 'flex-start', gap: '12px',
+        padding: '12px 16px', borderTop: `1px solid ${c.border}`,
+      },
+      histCar: { display: 'block', fontSize: '14px', fontWeight: '650', color: c.text },
+      histAmount: (back) => ({ fontSize: '14px', fontWeight: '700', color: back ? c.green : c.text, whiteSpace: 'nowrap' }),
+    };
+  })();
 
   const styles = {
     container: { maxWidth: '1100px', margin: '0 auto', padding: '32px' },
@@ -1264,369 +1404,6 @@ const MyBookings = () => {
   // The whole of the old booking card, unchanged. It used to be the list
   // item; it is now what the drawer shows. A row can therefore stay a row,
   // and not one of these states had to be rewritten to move them.
-  const bookingDetail = (booking, number) => (
-    <>
-          <div className="booking-grid" style={styles.topSection}>
-            <div className="grid-cell" style={{ ...styles.imgWrap, ...styles.imgWrapCell }}>
-              {booking.car?.image ? (
-                <img src={booking.car.image} alt="" style={styles.img} />
-              ) : (
-                <div style={styles.noImg}>No Image</div>
-              )}
-            </div>
-
-            <div className="grid-cell" style={styles.middleCol}>
-              <div style={styles.topRow}>
-                <span style={styles.bookingNum}>Booking #{number}</span>
-                <span style={getStatusStyle(booking.status)}>
-                  {booking.status}
-                </span>
-                {booking.refundStatus && booking.refundStatus !== 'none' && (
-                  <span style={getRefundBadgeStyle(booking.refundStatus)}>
-                    {getRefundBadgeText(booking.refundStatus)}
-                  </span>
-                )}
-                {booking.rescheduleRequest?.status === 'pending' && (
-                  <span style={styles.badgeReschedulePending}>Reschedule Requested</span>
-                )}
-                {booking.rescheduleRequest?.status === 'declined' && (
-                  <span style={styles.badgeRescheduleDeclined}>Reschedule Declined</span>
-                )}
-                {booking.payment === 'gcash_pending' && booking.status !== 'cancelled' && (
-                  <span style={styles.badgeRefundRequested}>GCash Pending</span>
-                )}
-                {bookingAwaitingDecision(booking) && (
-                  <span style={styles.badgeActionNeeded}>Action Needed</span>
-                )}
-              </div>
-
-              <div className="booking-trip-row" style={styles.detailsRow}>
-                <div style={styles.info}>
-                  <div style={{ ...styles.lineWithIcon, ...styles.carName }}>
-                    <CarLineIcon color={goldInk(isDark)} />
-                    <span style={styles.carSub}>
-                      {booking.car?.brand} {booking.car?.model} · {booking.car?.year} · {booking.car?.category}
-                    </span>
-                  </div>
-                  <div style={{ ...styles.lineWithIcon, ...styles.meta }}>
-                    <CalendarLineIcon color={goldInk(isDark)} />
-                    {/* The same shape as the row that opened this drawer.
-                        Raw toLocaleDateString gave "9/30/2026 To 10/1/2026"
-                        directly above a row reading "Sep 30, 2026 → Oct 1,
-                        2026", which looked like two different bookings. */}
-                    {formatMoment(booking.startDate, false, DATE_ONLY)} → {formatMoment(booking.endDate, false, DATE_ONLY)}
-                  </div>
-                </div>
-
-                {(booking.status === 'confirmed' || booking.status === 'pending') && (
-                  <div style={styles.pickupPanel}>
-                    <div style={styles.pickupLine}>
-                      <PinLineIcon /> Pickup: {formatMoment(booking.startDate, booking.hasPickupTime)}
-                    </div>
-                    <div style={styles.returnLine}>
-                      <ReturnLineIcon /> Return: {formatMoment(booking.endDate, booking.hasPickupTime)}
-                    </div>
-                    {/* What it was before they made it longer. A booking
-                        that now runs a week reads very differently from
-                        one booked as a week, and the price says so. */}
-                    {booking.extensions?.length > 0 && (
-                      <div style={styles.extendedNote}>
-                        Extended from {formatMoment(booking.extensions[0].previousEndDate, booking.hasPickupTime, { month: 'numeric', day: 'numeric', year: 'numeric' })}
-                        {booking.extensions.length > 1 ? ` · ${booking.extensions.length} extensions` : ''}
-                      </div>
-                    )}
-                    {/* Once somebody is named, name them. "Your driver will
-                        meet you" is true but says nothing a client can act
-                        on, and they paid for a driver. */}
-                    <div style={{ ...styles.driverNote, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {booking.bookingType === 'with-driver' && booking.driver?.name && (
-                        <DriverAvatar driver={booking.driver} isDark={isDark} size={28} />
-                      )}
-                      <span>
-                        {booking.bookingType === 'self-drive'
-                          ? "Bring a valid ID and your driver's license to pick up the vehicle."
-                          : booking.driver?.name
-                            ? `${booking.driver.name} · ${ratingLabel(booking.driver)} — will meet you at the pickup location.`
-                            : 'Your driver will meet you at the pickup location. We will tell you who is coming before then.'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="booking-card-price grid-cell" style={{ ...styles.priceCol, ...styles.priceColCell }}>
-              <span style={styles.priceLabel}>Total Price</span>
-              <div style={styles.priceDetails}>
-                <span style={styles.price}>₱{booking.totalPrice.toLocaleString()}</span>
-                {booking.payment === 'paid' && booking.amountPaid < booking.totalPrice && booking.status !== 'cancelled' && (
-                  <div style={styles.paymentPanel}>
-                    <div style={styles.paidAmount}>₱{booking.amountPaid.toLocaleString()} Paid</div>
-                    <div style={styles.balanceDue}>
-                      Bring ₱{(booking.totalPrice - booking.amountPaid).toLocaleString()} at pickup
-                    </div>
-                  </div>
-                )}
-                <span style={styles.bookedOn}>
-                  Booked on {formatMoment(booking.createdAt, false, DATE_ONLY)}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid-cell" style={styles.actionsCell}>
-            {/* Nothing has been paid on a booking still showing "Retry
-                GCash Payment", so there is nothing to refund — and admin
-                never sees an unpaid booking, so a reschedule request on
-                one would sit forever with nobody able to answer it. */}
-            {(booking.status === 'pending' || booking.status === 'confirmed') &&
-              booking.payment === 'paid' &&
-              !bookingAwaitingDecision(booking) &&
-              (!booking.refundStatus || booking.refundStatus === 'none') && (
-                  <div style={styles.actionsIndent}>
-                    <button className="btn-ghost-rose" style={styles.refundBtn} onClick={() => openRefundModal(booking._id)}>
-                      <ReturnLineIcon /> Request Refund
-                    </button>
-                    {/* Gone once the vehicle is theirs: there are no
-                        dates left to move, only days already spent. */}
-                    {booking.rescheduleRequest?.status !== 'pending' && !booking.collectedAt && (
-                      <button className="btn-ghost-amber" style={styles.rescheduleBtn} onClick={() => openRescheduleModal(booking)}>
-                        <CalendarPlusIcon /> Reschedule
-                      </button>
-                    )}
-                    {/* While there is still a booking to lengthen, and
-                        while somebody is late with the vehicle — which
-                        this used to call "somebody else's conversation"
-                        and hide the button for. It is the same client,
-                        sitting in the same car, and extending is the one
-                        cooperative thing available to them. */}
-                    {booking.payment === 'paid'
-                      && (new Date(booking.endDate) > new Date() || isStillOut(booking)) && (
-                      <button className="btn-ghost-amber" style={styles.rescheduleBtn} onClick={() => setExtendBookingId(booking._id)}>
-                        <CalendarPlusIcon /> Keep it longer
-                      </button>
-                    )}
-                  </div>
-            )}
-            {(booking.refundStatus === 'requested' || booking.rescheduleRequest?.status === 'pending')
-              && booking.status !== 'cancelled' && (
-                <div style={styles.actionsIndent}>
-                  {booking.refundStatus === 'requested' && (
-                    <button
-                      className="btn-ghost-amber"
-                      style={styles.rescheduleBtn}
-                      disabled={withdrawingId === booking._id}
-                      onClick={() => withdrawRequest(booking, 'refund')}
-                    >
-                      <ReturnLineIcon /> Cancel refund request
-                    </button>
-                  )}
-                  {booking.rescheduleRequest?.status === 'pending' && (
-                    <button
-                      className="btn-ghost-amber"
-                      style={styles.rescheduleBtn}
-                      disabled={withdrawingId === booking._id}
-                      onClick={() => withdrawRequest(booking, 'reschedule')}
-                    >
-                      <CalendarPlusIcon /> Cancel reschedule request
-                    </button>
-                  )}
-                </div>
-            )}
-            {(booking.status === 'pending' || booking.status === 'confirmed') &&
-              booking.payment !== 'paid' &&
-              booking.refundStatus !== 'requested' && (
-                  <div style={styles.actionsIndent}>
-                    <button
-                      className="btn-solid-gold"
-                      style={styles.bookAgainBtn}
-                      onClick={() => handleRetryPayment(booking._id)}
-                      disabled={retryingPaymentId === booking._id}
-                    >
-                      {retryingPaymentId === booking._id ? 'Redirecting...' : 'Retry GCash Payment'}
-                    </button>
-                  </div>
-            )}
-            {/* They should not have to hear it from us first. The sum
-                is the clause, not a figure somebody chose. */}
-            {/* What actually happened, not only what it cost. Everything
-                here was already recorded and the client was shown none
-                of it, so they heard from us only when something came
-                with a bill — which makes a charge feel like an ambush
-                rather than a line in an account they can already see. */}
-            {freshActivity(booking) && (
-              <div style={styles.activityNote}>{freshActivity(booking)}</div>
-            )}
-            {/* The chase, where they would actually look for it. It was
-                reaching them by email and in the notification bell, and
-                the one place it was missing is the booking it is about. */}
-            {isDueSoon(booking) && (
-              <div style={styles.dueSoonBanner}>
-                Due back {formatMoment(booking.endDate, booking.hasPickupTime)}. Returning on time avoids
-                a late fee of one day&apos;s rental for every day it is late — and if you need it longer,
-                you can extend below.
-              </div>
-            )}
-            {isStillOut(booking) && (
-              <div style={styles.overdueBanner}>
-                This vehicle is overdue. It was due back on{' '}
-                {formatMoment(booking.endDate, booking.hasPickupTime)}, {daysOut(booking)} day
-                {daysOut(booking) === 1 ? '' : 's'} ago. Please return it as soon as you can, or contact us
-                if something has gone wrong — our terms charge a late fee for every day it is late.
-              </div>
-            )}
-            {booking.collectedAt && (
-              <div style={styles.tripRecord}>
-                {/* Said plainly: these two times are a record somebody made at
-                    the counter, not the clock's opinion of when the trip ran. */}
-                <span style={styles.statLabel}>Recorded by staff</span>
-                <span>
-                  <strong>Picked up</strong> {formatMoment(booking.collectedAt, true)}
-                  {booking.fuel?.atPickup !== null && booking.fuel?.atPickup !== undefined
-                    ? ` — fuel at ${fuelLabel(booking.fuel.atPickup)}`
-                    : ''}
-                </span>
-                {booking.returnedAt && (
-                  <span>
-                    <strong>Returned</strong> {formatMoment(booking.returnedAt, true)}
-                    {booking.fuel?.atReturn !== null && booking.fuel?.atReturn !== undefined
-                      ? ` — fuel at ${fuelLabel(booking.fuel.atReturn)}`
-                      : ''}
-                  </span>
-                )}
-                {booking.condition?.atPickup?.photos?.length > 0 && (
-                  <span style={styles.tripPhotosRow}>
-                    {booking.condition.atPickup.photos.map((url, i) => (
-                      <img
-                        key={url}
-                        src={url}
-                        alt={`Vehicle at pickup ${i + 1}`}
-                        style={styles.tripPhoto}
-                        onClick={() => window.open(url, '_blank', 'noopener')}
-                      />
-                    ))}
-                    {(booking.condition?.atReturn?.photos || []).map((url, i) => (
-                      <img
-                        key={url}
-                        src={url}
-                        alt={`Vehicle at return ${i + 1}`}
-                        style={styles.tripPhoto}
-                        onClick={() => window.open(url, '_blank', 'noopener')}
-                      />
-                    ))}
-                  </span>
-                )}
-              </div>
-            )}
-            {/* A record, not a demand. All three of these are found with
-                the client standing at the counter, so telling them here
-                is telling them something they were just told — and
-                "please settle it" is plainly wrong if they paid on the
-                spot and nobody has pressed Collect yet. Red only while
-                something is genuinely outstanding. */}
-            {booking.status === 'completed' && booking.condition?.damageCharge > 0 && (
-              <div style={styles.chargeNote(!!booking.condition.damageCollectedAt)}>
-                Damage recorded on return
-                {booking.condition.atReturn?.note ? `: ${booking.condition.atReturn.note}` : ''}
-                {' '}— ₱{booking.condition.damageCharge.toLocaleString()} damage charge.
-                {booking.condition.damageCollectedAt ? ' Settled.' : ' Not yet settled.'}
-              </div>
-            )}
-            {booking.status === 'completed' && booking.fuel?.charge > 0 && (
-              <div style={styles.chargeNote(!!booking.fuel.collectedAt)}>
-                {fuelShortfallLabel(booking)
-                  ? `Returned ${fuelShortfallLabel(booking)} short of the fuel it went out with`
-                  : 'Refuelled after this return'}
-                {' '}— ₱{booking.fuel.charge.toLocaleString()} refuelling charge.
-                {booking.fuel.collectedAt ? ' Settled.' : ' Not yet settled.'}
-              </div>
-            )}
-            {booking.status === 'completed' && booking.lateFee?.days > 0 && (
-              <div style={styles.chargeNote(!!booking.lateFee.collectedAt)}>
-                Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late
-                {' '}— ₱{booking.lateFee.amount.toLocaleString()} late fee.
-                {/* A day carried over from an extension is charged at half
-                    rate, so on those bookings the total is NOT the day count
-                    times the daily rate — and saying only "one day's rental
-                    rate per day of delay" made the figure look miscalculated
-                    to anyone who checked it. Spell the two parts out. */}
-                {booking.lateFee.carriedDays > 0 ? (
-                  <>
-                    {' '}{lateFeeSplit(booking).freshDays} day
-                    {lateFeeSplit(booking).freshDays === 1 ? '' : 's'} at one day&apos;s rental rate each
-                    {' '}(₱{lateFeeSplit(booking).freshAmount.toLocaleString()}), plus
-                    {' '}{booking.lateFee.carriedDays} day
-                    {booking.lateFee.carriedDays === 1 ? '' : 's'} carried from your extension at half
-                    rate (₱{(booking.lateFee.carriedAmount || 0).toLocaleString()}).
-                  </>
-                ) : (
-                  <> One day&apos;s rental rate per day of delay.</>
-                )}
-                {booking.lateFee.collectedAt ? ' Settled.' : ' Not yet settled.'}
-              </div>
-            )}
-            {booking.status === 'completed' && (
-                <div style={{ ...styles.actionsIndent, alignItems: 'center' }}>
-                  <button className="btn-solid-gold" style={styles.bookAgainBtn} onClick={() => navigate(`/cars/${booking.car._id}?book=true`)}>
-                    <RepeatIcon /> Book Again
-                  </button>
-                  {/* A booking that says "Not rated yet" and offers nothing
-                      to do about it is a dead end: the only way to rate was
-                      the button at the top of the page, which meant closing
-                      this, finding it, and finding this booking again. */}
-                  {!booking.carRating?.ratedAt && (
-                    <button className="btn-ghost-amber" style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>
-                      <StarLineIcon /> Rate This Trip
-                    </button>
-                  )}
-                  {booking.carRating?.ratedAt && (
-                    <>
-                      <button className="btn-ghost-amber" style={styles.editRatingBtn} onClick={() => openRatingModal(booking)}>
-                        <PencilIcon /> Edit Rating
-                      </button>
-                      <div style={styles.ratingSummary}>
-                        <StarRating value={booking.carRating.overall} size={14} readOnly />
-                        <span style={styles.ratingScore}>{booking.carRating.overall.toFixed(1)}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-            )}
-            {booking.discountAmount > 0 && (
-              <span style={styles.promoSaved}>
-                <span>{booking.promoLabel || 'Promo'} · saved ₱{booking.discountAmount.toLocaleString()}</span>
-                <span style={styles.promoSavedWas}>₱{booking.subtotal.toLocaleString()}</span>
-              </span>
-            )}
-            </div>
-          </div>
-
-          {bookingAwaitingDecision(booking) && (
-            <AdjustOfferPanel
-              booking={booking}
-              isDark={isDark}
-              busy={offerBusyId === booking._id}
-              onDecide={(decision, payload) => handleOfferDecision(booking, decision, payload)}
-            />
-          )}
-
-          {(booking.refundStatus === 'requested' || booking.refundStatus === 'approved' || booking.refundStatus === 'declined') && (
-            <div style={styles.refundNoteBox(booking.refundStatus)}>
-              <span style={styles.refundNoteLabel(booking.refundStatus)}>
-                {booking.refundStatus === 'requested' ? 'Refund Requested: ' : booking.refundStatus === 'approved' ? 'Refund Confirmed: ' : 'Refund Declined: '}
-              </span>
-              ₱{booking.refundAmount?.toLocaleString() ?? 0}
-              {booking.refundReason ? ` — Reason: ${booking.refundReason}` : ''}
-              {booking.paymongoRefundId ? ` — Ref: ${booking.paymongoRefundId}` : ''}
-            </div>
-          )}
-          {booking.rescheduleRequest?.status === 'declined' && booking.rescheduleRequest.adminNotes && (
-            <p style={styles.plainNote}>Reschedule declined: {booking.rescheduleRequest.adminNotes}</p>
-          )}
-          {booking.payment === 'paid' && booking.paymongoPaymentId && (
-            <div style={styles.refNote}><TagLineIcon size={11} /> REF: {booking.paymongoPaymentId}</div>
-          )}
-    </>
-  );
   return (
     <div style={styles.container}>
       <div style={styles.headerRow}>
@@ -1642,117 +1419,6 @@ const MyBookings = () => {
         )}
       </div>
 
-      {!loading && bookings.length > 0 && (
-        <div className="responsive-row-3" style={styles.statsRow}>
-          <div style={styles.statCard}>
-            <div style={styles.statIconBadge(isDark ? 'rgba(232,161,0,0.15)' : '#faedc7', goldInk(isDark))}><BookingsIcon /></div>
-            <div>
-              <div style={styles.statLabel}>Total Bookings</div>
-              <div style={styles.statNum}>{bookings.length}</div>
-            </div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statIconBadge(isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7', '#16a34a')}><ConfirmedIcon /></div>
-            <div>
-              <div style={styles.statLabel}>Confirmed</div>
-              <div style={styles.statNum}>{confirmedCount}</div>
-            </div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statIconBadge(isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe', '#2563eb')}><SpentIcon /></div>
-            <div>
-              <div style={styles.statLabel}>Total Spent</div>
-              <div style={styles.statNum}>₱{totalSpent.toLocaleString()}</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {!loading && needsAttention.length > 0 && (
-        <div style={styles.attnWrap}>
-          <div style={styles.attnHeadRow}>
-            <span style={styles.statLabel}>Needs your attention</span>
-            <span style={styles.attnCount}>
-              {needsAttention.length} booking{needsAttention.length === 1 ? '' : 's'}
-            </span>
-          </div>
-          <div style={styles.attnGrid}>
-            {needsAttention.map((b) => {
-              const decision = bookingAwaitingDecision(b);
-              const out = isStillOut(b);
-              const soon = isDueSoon(b);
-              const late = out ? lateChip(hoursLate(b.endDate, new Date()), b.lateFee?.days) : '';
-              // The card's colour, and the pill's, are not always the same:
-              // "Action needed" is the only one that fills, because it is the
-              // only one with a deadline running against the client.
-              const card = out ? 'red' : decision || soon ? 'gold' : 'muted';
-              const pill = decision ? 'solid' : out ? 'red' : soon ? 'gold' : 'muted';
-              const kicker = decision ? 'Action needed' : out ? 'Overdue' : soon ? 'Due back soon' : 'Payment';
-              const head = decision ? timeLeftLabel(b.adjustOffer?.deadline)
-                : out ? late
-                  : soon ? formatMoment(b.endDate, b.hasPickupTime)
-                    : 'GCash not finished';
-              const body = decision
-                ? 'Another reservation was confirmed for your dates. Take another vehicle, other dates, or a full refund.'
-                : out
-                  ? `It was due back ${formatMoment(b.endDate, b.hasPickupTime)}. The late fee is one day's rental for every day it is late.`
-                  : soon
-                    ? 'Return on time to avoid a late fee, or extend now if you need it longer.'
-                    : 'Nothing was charged. Your booking is saved and holds these dates for now.';
-              return (
-                <div key={b._id} style={styles.attnCard(card)}>
-                  <div style={styles.attnTop}>
-                    <span style={styles.attnKicker(pill)}>{kicker}</span>
-                    <span style={styles.attnNum}>#{bookings.indexOf(b) + 1}</span>
-                  </div>
-                  <span style={styles.attnHead(card)}>{head}</span>
-                  <span style={styles.attnCar}>
-                    {b.car?.brand} {b.car?.model} &middot;{' '}
-                    {formatMoment(b.startDate, b.hasPickupTime, DATE_ONLY)} to{' '}
-                    {formatMoment(b.endDate, b.hasPickupTime, DATE_ONLY)}
-                  </span>
-                  <p style={styles.attnBody}>{body}</p>
-                  <div style={styles.attnActions}>
-                    {decision ? (
-                      <button type="button" style={styles.primaryBtn} onClick={() => setDrawerBookingId(b._id)}>Choose an option</button>
-                    ) : b.payment === 'gcash_pending' ? (
-                      <button type="button" style={styles.primaryBtn} disabled={retryingPaymentId === b._id} onClick={() => handleRetryPayment(b._id)}>
-                        {retryingPaymentId === b._id ? 'Redirecting…' : 'Retry GCash Payment'}
-                      </button>
-                    ) : (
-                      <button type="button" style={styles.primaryBtn} onClick={() => setExtendBookingId(b._id)}>Keep it longer</button>
-                    )}
-                    <button type="button" style={styles.ghostBtn} onClick={() => setDrawerBookingId(b._id)}>Details</button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {!loading && bookings.length > 0 && (
-        <div style={styles.statusTabRow} role="tablist" aria-label="Filter by status">
-          {statusTabs.map((tab) => {
-            const active = statusFilter === tab.value;
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                style={styles.statusTab(active)}
-                onClick={() => { setStatusFilter(tab.value); setPage(1); }}
-              >
-                {tab.value === 'pending' && tab.count > 0 && <span className="pending-dot" style={styles.statusTabDot} />}
-                {tab.label}
-                <span style={styles.statusTabCount(active)}>({tab.count})</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {loading ? (
         <SkeletonListCard isDark={isDark} />
       ) : bookings.length === 0 ? (
@@ -1762,76 +1428,219 @@ const MyBookings = () => {
             Browse Cars
           </button>
         </div>
-      ) : filteredBookings.length === 0 ? (
-        <div style={styles.empty}>
-          <p>No {statusTabs.find((t) => t.value === statusFilter)?.label.toLowerCase()} bookings.</p>
-        </div>
       ) : (
-        <div style={styles.rowList}>
-          {pageBookings.map((booking, i) => {
-            const number = (page - 1) * PAGE_SIZE + i + 1;
-            const note = attentionLine(booking);
-            return (
-              <button
-                key={booking._id}
-                type="button"
-                className="booking-row"
-                style={styles.row(booking.status === 'cancelled')}
-                onClick={() => setDrawerBookingId(booking._id)}
-                aria-label={`Booking ${number}, ${booking.car?.brand || ''} ${booking.car?.model || ''}`}
-              >
-                <span style={styles.rowThumb}>
-                  {booking.car?.image
-                    ? <img src={booking.car.image} alt="" style={styles.rowThumbImg} />
-                    : <span style={styles.rowThumbEmpty}>—</span>}
-                </span>
-                <span style={styles.rowMain}>
-                  <span style={styles.rowTitle}>
-                    <span style={styles.rowCar}>{booking.car?.brand} {booking.car?.model}</span>
-                    <span style={styles.rowBadge(booking.status)}>{booking.status}</span>
-                  </span>
-                  <span style={styles.rowDates}>
-                    #{number} &middot; {formatMoment(booking.startDate, false, DATE_ONLY)}
-                    {' → '}
-                    {formatMoment(booking.endDate, false, DATE_ONLY)}
-                  </span>
-                  {note && (
-                    <span style={styles.rowNote(note.tone)}>
-                      <span style={styles.rowDot(note.tone)} />{note.text}
-                    </span>
+        <div style={mb.wrap}>
+          {/* ── what is going on now ─────────────────────────────── */}
+          {liveBookings.length > 0 && (
+            <div style={mb.column}>
+              {ticket && (
+                <article style={mb.ticket}>
+                  <div style={mb.ticketHead(ticket.toneKey)}>
+                    <div style={mb.eyebrow(ticket.toneKey)}>
+                      {ticket.car?.brand} {ticket.car?.model}
+                    </div>
+                    <h2 style={mb.sentence(ticket.toneKey)}>{ticket.sentence}</h2>
+                  </div>
+
+                  <div style={mb.ticketBody}>
+                    <div style={mb.whenLine}>
+                      {formatMoment(ticket.startDate, ticket.hasPickupTime, DATE_SHORT)}
+                      {' → '}
+                      {formatMoment(ticket.endDate, ticket.hasPickupTime, DATE_SHORT)}
+                    </div>
+
+                    <ol style={mb.steps}>
+                      {STEP_LABELS.map((label, i) => (
+                        <li key={label} style={mb.step}>
+                          <span style={mb.stepDot(i <= ticket.step, ticket.toneKey)} />
+                          <span style={mb.stepLabel(i === ticket.step)}>{label}</span>
+                          {i < STEP_LABELS.length - 1 && (
+                            <span style={mb.stepLine(i < ticket.step, ticket.toneKey)} />
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+
+                  <div style={mb.tear} />
+
+                  <div style={mb.receipt}>
+                    {ticket.money.lines.map((line) => (
+                      <div key={line.label} style={mb.receiptRow}>
+                        <span style={mb.receiptLabel}>{line.label}</span>
+                        <span style={mb.leader} />
+                        <span style={mb.receiptAmount(line.kind)}>
+                          {line.amount < 0 ? '− ' : line.kind === 'fee' ? '+ ' : ''}
+                          {peso(line.amount)}
+                        </span>
+                      </div>
+                    ))}
+                    <div style={{ ...mb.receiptRow, fontWeight: '700' }}>
+                      <span style={mb.receiptLabel}>You&apos;ve paid</span>
+                      <span style={mb.leader} />
+                      <span style={mb.receiptAmount()}>{peso(ticket.money.paid)}</span>
+                    </div>
+                    {ticket.money.owe > 0 && (
+                      <div style={mb.owedRow}>
+                        <span style={mb.owedLabel}>Still to pay {ticket.money.oweWhen}</span>
+                        <span style={mb.owedAmount}>{peso(ticket.money.owe)}</span>
+                      </div>
+                    )}
+                    {ticket.money.back > 0 && (
+                      <div style={mb.receiptRow}>
+                        <span style={mb.receiptLabel}>Came back</span>
+                        <span style={mb.leader} />
+                        <span style={{ ...mb.receiptAmount(), color: mb.c.green }}>{peso(ticket.money.back)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {bookingAwaitingDecision(ticket) && (
+                    <div style={{ padding: '0 18px 4px' }}>
+                      <AdjustOfferPanel
+                        booking={ticket}
+                        isDark={isDark}
+                        busy={offerBusyId === ticket._id}
+                        onDecide={(decision, payload) => handleOfferDecision(ticket, decision, payload)}
+                      />
+                    </div>
                   )}
-                </span>
-                <span style={styles.rowTotal}>&#8369;{booking.totalPrice.toLocaleString()}</span>
-              </button>
-            );
-          })}
+
+                  {ticket.actions.length > 0 && !bookingAwaitingDecision(ticket) && (
+                    <div style={mb.actions}>
+                      {ticket.actions.map((key) => (
+                        <button
+                          key={key}
+                          type="button"
+                          style={mb.actionBtn(isPrimaryAction(key, ticket.toneKey))}
+                          disabled={withdrawingId === ticket._id}
+                          onClick={() => runAction(key, ticket)}
+                        >
+                          {ACTION_LABELS[key]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              )}
+
+              {/* The rest of what is live, one line each. */}
+              {alsoGoingOn.length > 0 && (
+                <section style={mb.alsoCard}>
+                  <h3 style={mb.alsoTitle}>Also going on</h3>
+                  {alsoGoingOn.map((b) => (
+                    <button
+                      key={b._id}
+                      type="button"
+                      style={mb.alsoRow}
+                      onClick={() => setFocusId(b._id)}
+                    >
+                      <span style={mb.toneDot(b.toneKey)} />
+                      <span style={{ minWidth: 0, flex: 1 }}>
+                        <span style={mb.alsoSentence(b.toneKey)}>{b.sentence}</span>
+                        <span style={mb.alsoMeta}>
+                          {b.car?.brand} {b.car?.model} · {moneySummary(b.money)}
+                        </span>
+                      </span>
+                      <span style={mb.chevron}>›</span>
+                    </button>
+                  ))}
+                </section>
+              )}
+            </div>
+          )}
+
+          {/* ── what already happened ────────────────────────────── */}
+          <div style={mb.column}>
+            <div style={mb.historyHead}>
+              <h2 style={mb.historyTitle}>History</h2>
+              <div style={mb.chips}>
+                {[['trips', 'Trips', historyCounts.trips], ['cancelled', 'Cancelled', historyCounts.cancelled]].map(
+                  ([key, label, count]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      style={mb.chip(histTab === key)}
+                      aria-pressed={histTab === key}
+                      onClick={() => setHistTab(key)}
+                    >
+                      {label} {count}
+                    </button>
+                  ),
+                )}
+              </div>
+            </div>
+
+            {historyYears.length === 0 ? (
+              <p style={mb.historyEmpty}>
+                {histTab === 'trips'
+                  ? 'No finished trips yet.'
+                  : 'Nothing cancelled — every booking you made went ahead.'}
+              </p>
+            ) : (
+              historyYears.map((group) => {
+                const open = openYears[group.year] ?? group.latest;
+                return (
+                  <section key={group.year} style={mb.yearCard}>
+                    <button
+                      type="button"
+                      style={mb.yearHead}
+                      aria-expanded={open}
+                      onClick={() => setOpenYears((y) => ({ ...y, [group.year]: !open }))}
+                    >
+                      <span style={mb.year}>{group.year}</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={mb.yearSpend}>
+                          {peso(group.spent)} <span style={mb.yearCount}>on {group.trips} trip{group.trips === 1 ? '' : 's'}</span>
+                        </span>
+                        <span style={mb.yearNote}>
+                          {group.cancelled > 0 && `${group.cancelled} cancelled`}
+                          {group.cancelled > 0 && group.back > 0 && ' · '}
+                          {group.back > 0 && <span style={{ color: mb.c.green }}>{peso(group.back)} came back</span>}
+                        </span>
+                      </span>
+                      <span style={mb.chevron}>{open ? '⌄' : '›'}</span>
+                    </button>
+
+                    {open && group.rows.map((b) => (
+                      <div key={b._id} style={mb.histRow}>
+                        <span style={mb.toneDot(b.toneKey)} />
+                        <span style={{ minWidth: 0, flex: 1 }}>
+                          <span style={mb.histCar}>{b.car?.brand} {b.car?.model}</span>
+                          <span style={mb.alsoSentence(b.toneKey)}>{b.sentence}</span>
+                          <span style={mb.alsoMeta}>
+                            {formatMoment(b.startDate, false, DATE_SHORT)} → {formatMoment(b.endDate, false, DATE_SHORT)}
+                          </span>
+                        </span>
+                        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                          <span style={mb.histAmount(b.money.back > 0)}>
+                            {b.money.back > 0 ? `+${peso(b.money.back)}` : peso(b.money.paid || b.money.cost)}
+                          </span>
+                          {b.actions.length > 0 && (
+                            <span style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                              {b.actions.map((key) => (
+                                <button
+                                  key={key}
+                                  type="button"
+                                  style={mb.smallBtn(isPrimaryAction(key, b.toneKey))}
+                                  disabled={withdrawingId === b._id}
+                                  onClick={() => runAction(key, b)}
+                                >
+                                  {ACTION_LABELS[key]}
+                                </button>
+                              ))}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </section>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
-
-      {drawerBooking && (
-        <>
-          <div style={styles.drawerScrim} onClick={() => setDrawerBookingId(null)} aria-hidden="true" />
-          <div
-            className="in-drawer"
-            style={styles.drawer}
-            ref={drawerRef}
-            tabIndex={-1}
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Booking ${drawerNumber}`}
-          >
-            <ModalClose
-              onClose={() => setDrawerBookingId(null)}
-              isDark={isDark}
-              floating={false}
-              extraStyle={{ alignSelf: 'flex-end' }}
-            />
-            {bookingDetail(drawerBooking, drawerNumber)}
-          </div>
-        </>
-      )}
-
-      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} isDark={isDark} />
 
       {extendBookingId && bookings.find((b) => b._id === extendBookingId) && (
         <ExtendBookingModal
