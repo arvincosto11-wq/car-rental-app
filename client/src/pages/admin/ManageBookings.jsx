@@ -10,7 +10,7 @@ import { SkeletonListCard } from '../../components/Skeleton';
 import Pagination from '../../components/Pagination';
 import StatusDropdown from '../../components/StatusDropdown';
 import { paginate } from '../../utils/paginate';
-import { hoursLate, overdueLabel, lateChip } from '../../utils/lateness';
+import { hoursLate, overdueLabel, lateChip, latenessLabel } from '../../utils/lateness';
 import { hasClientScore, clientScoreLabel } from '../../utils/clientScore';
 import { vehicleOutOfService } from '../../utils/blockedDates';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk} from '../../theme';
@@ -103,6 +103,9 @@ const dueBackLabel = (list, now = new Date()) => {
 // whole day. The fee is still charged by the day — see the ledger line —
 // but "1 day overdue" for a vehicle three hours over reads as a lost day.
 const overdueBy = (b) => hoursLate(b.endDate, new Date());
+// And for one that is already back: measured against when it actually
+// came in, not against the days the fee was worked out on.
+const lateOnReturn = (b) => (b.returnedAt ? hoursLate(b.endDate, b.returnedAt) : 0);
 // Confirmed was one label over four situations, each wanting a different
 // thing from you: nothing yet, check them in, nothing again, chase them.
 // Splitting it is what lets a row show the one action that belongs to it
@@ -1243,7 +1246,11 @@ const ManageBookings = () => {
       background: isDark ? '#303132' : '#f1f2f4', color: text2,
     },
     lateFlag: {
-      display: 'inline-block', fontSize: '10.5px', fontWeight: '800',
+      display: 'inline-block', flexShrink: 0, whiteSpace: 'nowrap',
+      padding: '4px 10px', borderRadius: '999px',
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.35)' : '#fecaca'}`,
+      fontSize: '11.5px', fontWeight: '700',
       color: isDark ? '#f87171' : '#b91c1c',
     },
 
@@ -1442,11 +1449,14 @@ const ManageBookings = () => {
               longer any question of a no-show. */}
           {booking.collectedAt ? (
             <>
-              <span style={isOverdue(booking) ? s.overdueNote : s.pickedUpNote}>
-                {isOverdue(booking)
-                  ? overdueLabel(overdueBy(booking), booking.lateFee?.days)
-                  : `Picked up ${formatMoment(booking.collectedAt, true, { month: 'numeric', day: 'numeric' })}`}
-              </span>
+              {/* How late it is belongs in the chip beside the dates,
+                  said once. Here it only crowded the actions and pushed
+                  Cancel onto a line of its own. */}
+              {!isOverdue(booking) && (
+                <span style={s.pickedUpNote}>
+                  {`Picked up ${formatMoment(booking.collectedAt, true, { month: 'numeric', day: 'numeric' })}`}
+                </span>
+              )}
               <button
                 style={s.returnBtn(new Date() >= new Date(booking.endDate))}
                 onClick={() => handleMarkReturned(booking)}
@@ -1575,7 +1585,7 @@ const ManageBookings = () => {
           {booking.lateFee?.days > 0 && (
             <>
               <span style={s.overdueNote}>
-                Returned {booking.lateFee.days} day{booking.lateFee.days === 1 ? '' : 's'} late
+                {latenessLabel(lateOnReturn(booking), booking.lateFee.days)}
               </span>
               {booking.lateFee.collectedAt ? (
                 <span style={s.feeSettled}>
@@ -1854,7 +1864,7 @@ const ManageBookings = () => {
                       )}
                       {b.lateFee?.days > 0 && b.status === 'completed' && (
                         <span style={s.lateFlag}>
-                          Returned {b.lateFee.days} day{b.lateFee.days === 1 ? '' : 's'} late
+                          {latenessLabel(lateOnReturn(b), b.lateFee.days)}
                         </span>
                       )}
                     </span>
@@ -1924,11 +1934,15 @@ const ManageBookings = () => {
                       {selected.bookingType === 'with-driver' ? ' · with driver' : ' · self-drive'}
                     </div>
                   </div>
-                  {isOverdue(selected) && (
+                  {isOverdue(selected) ? (
                     <span style={s.lateFlag}>
                       {lateChip(overdueBy(selected), selected.lateFee?.days)}
                     </span>
-                  )}
+                  ) : selected.status === 'completed' && selected.lateFee?.days > 0 ? (
+                    <span style={s.lateFlag}>
+                      {latenessLabel(lateOnReturn(selected), selected.lateFee.days)}
+                    </span>
+                  ) : null}
                 </div>
 
                 {/* Things worth knowing before accepting, which used to be
