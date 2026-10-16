@@ -4,8 +4,9 @@
 
 import { suite, group, check } from './harness.mjs';
 import {
-  moneyFor, moneySummary, stepOf, toneOf, isLive, sentenceFor, actionKeysFor,
+  moneyFor, moneySummary, stepOf, toneOf, isLive, sentenceFor, actionKeysFor, subFor,
 } from '../utils/myBookings.js';
+import { lateFeeSoFar } from '../utils/adminToday.js';
 
 export default function run() {
   suite('Client · my bookings');
@@ -79,7 +80,7 @@ export default function run() {
   check('a vehicle not brought back is red', toneOf(overdue, now), 'red');
   check('a refund turned down is red', toneOf(booking({ status: 'cancelled', refundStatus: 'declined' }), now), 'red');
   check('an unfinished payment wants doing', toneOf(booking({ payment: 'gcash_pending' }), now), 'amber');
-  check('an offer waiting on the client wants doing', toneOf(booking({ adjustOffer: { status: 'pending' } }), now), 'amber');
+  check('an offer waiting on the client wants doing', toneOf(booking({ adjustOffer: { status: 'open', deadline: '2026-10-20T04:00:00Z', options: [{ startDate: '2026-11-09T23:00:00Z', endDate: '2026-11-10T23:00:00Z' }] } }), now), 'amber');
   check('a trip with money still owed wants doing', toneOf(charged, now), 'amber');
   check('a finished trip nobody rated wants doing', toneOf(booking({ status: 'completed', amountPaid: 2000 }), now), 'amber');
   check('a request the office has not answered waits', toneOf(booking({ status: 'pending' }), now), 'wait');
@@ -122,7 +123,7 @@ export default function run() {
   check('nor while a refund is being decided',
     actionKeysFor(booking({ refundStatus: 'requested' }), now), ['dates']);
   check('an offer leaves one thing to do',
-    actionKeysFor(booking({ adjustOffer: { status: 'pending' } }), now), ['offer']);
+    actionKeysFor(booking({ adjustOffer: { status: 'open', deadline: '2026-10-20T04:00:00Z', options: [{ startDate: '2026-11-09T23:00:00Z', endDate: '2026-11-10T23:00:00Z' }] } }), now), ['offer']);
   check('an unfinished payment leaves one thing to do',
     actionKeysFor(booking({ payment: 'gcash_pending' }), now), ['pay']);
   check('a vehicle still out can be kept longer',
@@ -133,4 +134,56 @@ export default function run() {
     actionKeysFor(booking({ status: 'cancelled' }), now), ['refund']);
   check('and one already asked about',
     actionKeysFor(booking({ status: 'cancelled', refundStatus: 'requested' }), now), []);
+
+  // 'pending' is not a status adjustOffer can hold — the model's enum is
+  // none/open/accepted/declined/expired, and every other reader in the
+  // system looks for 'open'. Reading the wrong word here made an offer
+  // invisible on the one page the client answers it from.
+  group('an offer the client has to answer');
+  const offered = booking({
+    adjustOffer: {
+      status: 'open',
+      deadline: '2026-10-20T04:00:00Z',
+      options: [{ startDate: '2026-11-09T23:00:00Z', endDate: '2026-11-10T23:00:00Z' }],
+    },
+  });
+  check('it is live', isLive(offered, now), true);
+  check('it wants doing', toneOf(offered, now), 'amber');
+  check('it says so', sentenceFor(offered, now).includes('pick new dates or a full refund'), true);
+  // An offer nobody answered in time is settled by the office, not chased
+  // here: past its deadline it stops demanding an answer.
+  const lapsed = { ...offered, adjustOffer: { ...offered.adjustOffer, deadline: '2026-10-15T04:00:00Z' } };
+  check('a lapsed one does not', actionKeysFor(lapsed, now).includes('offer'), false);
+
+  group('a fine that is still running');
+  const still = booking({ collectedAt: '2026-10-12T23:00:00Z', endDate: '2026-10-15T23:00:00Z', amountPaid: 2000 });
+  const running = moneyFor(still, now);
+  check('the receipt says so', running.lines.some((l) => l.label === 'Late fee so far'), true);
+  // The client is quoted the counter's own figure, not a friendlier one.
+  check('at the figure the counter will charge',
+    running.lines.find((l) => l.label === 'Late fee so far').amount,
+    lateFeeSoFar(still, 2000, now));
+  check('and it is owed', running.owe, 2000);
+  check('wanted when it comes back', running.oweWhen, 'when you return it');
+  // Once it is written down it is not counted twice.
+  const written = moneyFor({ ...still, returnedAt: '2026-10-16T04:00:00Z', lateFee: { days: 1, amount: 2000 } }, now);
+  check('a recorded fee is not doubled',
+    written.lines.filter((l) => l.label.startsWith('Late fee')).length, 1);
+
+  group('what the state means for the client');
+  check('a vehicle still out', subFor(still, now).startsWith('The late fee is one day’s rental (₱2,000)'), true);
+  check('one not yet due',
+    subFor(booking({ collectedAt: '2026-10-12T23:00:00Z', endDate: '2026-10-18T23:00:00Z' }), now),
+    'Returning late adds one day’s rental (₱2,000) for each day.');
+  check('a trip ahead says what to bring',
+    subFor(booking(), now), 'Bring your driver’s license and ₱1,600 for the balance.');
+  check('one already paid for',
+    subFor(booking({ amountPaid: 2000 }), now), 'Bring your driver’s license when you pick it up.');
+  check('charges after a trip are named', subFor(charged, now), 'That is ₱2,000 late fee, plus ₱350 fuel.');
+  check('a date change says what holds until then',
+    subFor(booking({ rescheduleRequest: { status: 'pending' } }), now).startsWith('Until they answer, it stays on'), true);
+  check('an offer names the dates',
+    subFor(offered, now).startsWith('The office offered'), true);
+  check('a cancellation that cost nothing',
+    subFor(booking({ status: 'cancelled', amountPaid: 0 }), now), 'Nothing was charged.');
 }

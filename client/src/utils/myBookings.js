@@ -10,6 +10,8 @@
 // booking by the time a client can see it.
 
 import { hoursLate, latenessLabel, overdueLabel } from './lateness.js';
+import { isOfferOpen } from './offerWindow.js';
+import { isOverdue, daysOverdue } from './overdue.js';
 
 const peso = (n) => `₱${Math.round(Math.abs(n || 0)).toLocaleString('en-US')}`;
 
@@ -23,7 +25,18 @@ const unsettled = (b) => (
   + (!b.condition?.damageCollectedAt ? (b.condition?.damageCharge || 0) : 0)
 );
 
-export function moneyFor(b) {
+// The fine as it stands right now on a vehicle still out, before anybody
+// has written it down. One day's rental per day of delay, plus lateness
+// already settled by extending — the same rule and the same arithmetic as
+// lateFeeSoFar in adminToday.js, so a client is quoted the figure the
+// counter is going to charge them, not a friendlier one.
+const lateFeeSoFar = (b, now) => (
+  isOverdue(b, now)
+    ? daysOverdue(b, now) * (b.car?.pricePerDay || 0) + (b.lateFee?.carriedAmount || 0)
+    : 0
+);
+
+export function moneyFor(b, now = new Date()) {
   const days = b.totalDays || 1;
   const rate = b.car?.pricePerDay || 0;
   const lines = [];
@@ -42,6 +55,11 @@ export function moneyFor(b) {
       kind: 'fee',
     });
   }
+  // Once the vehicle is back the fee is recorded above. Until then it is
+  // still running, and a receipt that stays silent about it lets a client
+  // believe the trip costs what it cost yesterday.
+  const accruing = b.lateFee?.amount ? 0 : lateFeeSoFar(b, now);
+  if (accruing) lines.push({ label: 'Late fee so far', amount: accruing, kind: 'fee' });
   if (b.fuel?.charge) lines.push({ label: 'Fuel', amount: b.fuel.charge, kind: 'fee' });
   if (b.condition?.damageCharge) lines.push({ label: 'Damage', amount: b.condition.damageCharge, kind: 'fee' });
 
@@ -52,7 +70,7 @@ export function moneyFor(b) {
   // back or it is not, and either way nobody is collecting more.
   const owe = b.status === 'cancelled'
     ? 0
-    : Math.max(0, (b.totalPrice || 0) - paid) + unsettled(b);
+    : Math.max(0, (b.totalPrice || 0) - paid) + unsettled(b) + accruing;
 
   return { lines, cost, paid, owe, back, oweWhen: oweWhen(b) };
 }
@@ -88,7 +106,7 @@ export function toneOf(b, now = new Date()) {
   if (out && new Date(b.endDate) < new Date(now)) return 'red';
   if (b.status === 'cancelled' && b.refundStatus === 'declined') return 'red';
 
-  if (b.adjustOffer?.status === 'pending') return 'amber';
+  if (isOfferOpen(b.adjustOffer, now)) return 'amber';
   if (b.payment === 'gcash_pending') return 'amber';
   if (b.status === 'completed' && unsettled(b) > 0) return 'amber';
   if (b.status === 'completed' && !b.carRating?.rating) return 'amber';
@@ -108,8 +126,8 @@ export function toneOf(b, now = new Date()) {
 // an unrated trip is worth a nudge, not a place at the top of the page.
 export function isLive(b, now = new Date()) {
   if (b.status === 'pending' || b.status === 'confirmed') return true;
-  if (b.adjustOffer?.status === 'pending') return true;
-  if (b.status === 'completed') return moneyFor(b).owe > 0;
+  if (isOfferOpen(b.adjustOffer, now)) return true;
+  if (b.status === 'completed') return moneyFor(b, now).owe > 0;
   if (b.status === 'cancelled') return b.refundStatus === 'requested';
   return false;
 }
@@ -120,7 +138,7 @@ const dayOf = (iso) => new Date(iso).toLocaleDateString('en-US', { weekday: 'sho
 const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
 
 export function sentenceFor(b, now = new Date()) {
-  const money = moneyFor(b);
+  const money = moneyFor(b, now);
 
   if (b.status === 'cancelled') {
     if (b.refundStatus === 'requested') return 'You asked for a refund — the office is deciding';
@@ -130,7 +148,7 @@ export function sentenceFor(b, now = new Date()) {
     return 'Cancelled — you haven’t asked for a refund';
   }
 
-  if (b.adjustOffer?.status === 'pending') {
+  if (isOfferOpen(b.adjustOffer, now)) {
     return `${b.car?.model || 'That vehicle'} isn’t free on those dates — pick new dates or a full refund`;
   }
 
@@ -167,7 +185,7 @@ export function actionKeysFor(b, now = new Date()) {
   const keys = [];
   const out = !!b.collectedAt && !b.returnedAt;
 
-  if (b.adjustOffer?.status === 'pending') return ['offer'];
+  if (isOfferOpen(b.adjustOffer, now)) return ['offer'];
   if (b.payment === 'gcash_pending') return ['pay'];
 
   if (out) {
@@ -177,7 +195,7 @@ export function actionKeysFor(b, now = new Date()) {
   }
 
   if (b.status === 'completed') {
-    if (moneyFor(b).owe > 0) keys.push('pay');
+    if (moneyFor(b, now).owe > 0) keys.push('pay');
     if (!b.carRating?.rating) keys.push('rate');
     keys.push('call');
     return keys;
@@ -193,4 +211,66 @@ export function actionKeysFor(b, now = new Date()) {
   if (!b.rescheduleRequest || b.rescheduleRequest.status !== 'pending') keys.push('dates');
   if (!b.refundStatus || b.refundStatus === 'none') keys.push('refund');
   return keys;
+}
+
+// ── the line under the steps ─────────────────────────────────────────
+//
+// The sentence above says what state the booking is in; this says what
+// that means for the client — what a fee costs, what to bring, what
+// happens if the office stays quiet. Every one of them is built out of
+// what the booking already carries, so a state we cannot explain from the
+// record gets no line rather than a guess.
+const feeWords = (lines) => {
+  const fees = lines.filter((l) => l.kind === 'fee');
+  // 'Late fee · 6 h late' is a receipt label; in a sentence it is a late fee.
+  const said = fees.map((l) => `${peso(l.amount)} ${l.label.split(' · ')[0].toLowerCase()}`);
+  if (said.length === 0) return '';
+  if (said.length === 1) return said[0];
+  return `${said.slice(0, -1).join(', ')}, plus ${said[said.length - 1]}`;
+};
+
+export function subFor(b, now = new Date()) {
+  const rate = b.car?.pricePerDay || 0;
+  const money = moneyFor(b, now);
+  const out = !!b.collectedAt && !b.returnedAt;
+
+  if (isOfferOpen(b.adjustOffer, now)) {
+    const pick = b.adjustOffer.options?.[0];
+    const by = b.adjustOffer.deadline ? ` Please answer by ${dayOf(b.adjustOffer.deadline)}.` : '';
+    if (pick?.startDate) return `The office offered ${dayOf(pick.startDate)} → ${dayOf(pick.endDate)}.${by}`;
+    return `Nothing is charged either way.${by}`;
+  }
+
+  if (b.status === 'cancelled') {
+    if (b.refundStatus === 'requested') return 'They’ll tell you how much comes back.';
+    if (b.refundStatus === 'declined') return money.paid ? `The ${peso(money.paid)} that was paid was kept.` : '';
+    if (!money.paid) return 'Nothing was charged.';
+    return '';
+  }
+
+  if (b.status === 'completed') {
+    const fees = feeWords(money.lines);
+    if (money.owe > 0 && fees) return `That is ${fees}.`;
+    if (!b.carRating?.rating) return 'Rating it takes a moment, and it is what the next client goes on.';
+    return '';
+  }
+
+  if (out) {
+    if (isOverdue(b, now)) {
+      return `The late fee is one day’s rental (${peso(rate)}) for every day it’s late.`
+        + ' Bring it back, or ask to keep it longer.';
+    }
+    return `Returning late adds one day’s rental (${peso(rate)}) for each day.`;
+  }
+
+  if (b.payment === 'gcash_pending') return 'Nothing has been charged yet.';
+  if (b.rescheduleRequest?.status === 'pending') {
+    return `Until they answer, it stays on ${dayOf(b.startDate)} → ${dayOf(b.endDate)}.`;
+  }
+  if (b.refundStatus === 'requested') return 'Asking doesn’t cancel it. The office decides how much comes back.';
+  if (b.status === 'pending') return 'You’ll get a notification as soon as the office answers.';
+
+  // Confirmed, and the pickup still ahead.
+  if (money.owe > 0) return `Bring your driver’s license and ${peso(money.owe)} for the balance.`;
+  return 'Bring your driver’s license when you pick it up.';
 }

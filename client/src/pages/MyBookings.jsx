@@ -15,7 +15,7 @@ import AdjustOfferPanel from '../components/AdjustOfferPanel';
 import ExtendBookingModal from '../components/ExtendBookingModal';
 import { bookingAwaitingDecision } from '../utils/offerWindow';
 import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays } from '../utils/phTime';
-import { toneOf, stepOf, moneyFor, moneySummary, sentenceFor, actionKeysFor, isLive } from '../utils/myBookings';
+import { toneOf, stepOf, moneyFor, moneySummary, sentenceFor, subFor, actionKeysFor, isLive } from '../utils/myBookings';
 import { refundOutcome } from '../utils/refundPolicy';
 import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
@@ -23,7 +23,6 @@ import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk } from '..
 import LAYERS from '../layers';
 import ModalClose from '../components/ModalClose';
 import { DoneGlyph, WarnGlyph } from '../components/Glyphs';
-import { StarGlyph } from '../components/Glyphs';
 
 // How long a change is worth pointing out. After a day it is history, and a
 // list covered in badges says nothing at all.
@@ -39,6 +38,18 @@ const ACTIVITY_WINDOW_HOURS = 24;
 const DATE_ONLY = { month: 'short', day: 'numeric', year: 'numeric' };
 const DATE_SHORT = { weekday: 'short', month: 'short', day: 'numeric' };
 const STEP_LABELS = ['Booked', 'Confirmed', 'Picked up', 'Returned'];
+
+// Points right when shut, down when open. A text '›' is the wrong weight
+// beside the stroke glyphs the rest of the site uses.
+const Chevron = ({ color, turn = 0 }) => (
+  <svg
+    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+    style={{ flexShrink: 0, transform: turn ? `rotate(${turn}deg)` : 'none', transition: 'transform .15s' }}
+  >
+    <path d="M9 6l6 6-6 6" />
+  </svg>
+);
 const OFFICE_PHONE = '0950-651-0479';
 // Something short a client can quote on the phone, rather than the
 // twenty-four characters the database knows it by.
@@ -489,9 +500,6 @@ const MyBookings = () => {
   //
   // Derived, never stored — every input is already on the booking.
 
-  // Still counted, because the header still offers to rate them.
-  const unratedCount = bookings.filter((b) => b.status === 'completed' && !b.carRating?.ratedAt).length;
-
   // ── the page, as a customer reads it ─────────────────────────────
   //
   // Live first, settled below. A booking is in exactly one of them: the
@@ -511,7 +519,8 @@ const MyBookings = () => {
       toneKey: toneOf(b, now),
       step: stepOf(b),
       sentence: sentenceFor(b, now),
-      money: moneyFor(b),
+      sub: subFor(b, now),
+      money: moneyFor(b, now),
       actions,
     };
   });
@@ -744,13 +753,12 @@ const MyBookings = () => {
       ticketBody: { padding: '14px 18px 4px', display: 'flex', flexDirection: 'column', gap: '12px' },
       whenLine: { fontSize: '13px', color: c.muted },
 
-      // Four steps and their labels do not fit across a phone, so the row
-      // wraps rather than running off the edge of the card.
-      steps: {
-        display: 'flex', alignItems: 'center', gap: '6px 8px', flexWrap: 'wrap',
-        listStyle: 'none', margin: 0, padding: 0,
-      },
-      step: { display: 'flex', alignItems: 'center', gap: '6px' },
+      // One rail across the whole card: each step takes an equal share of
+      // the width and its label sits under its own dot, so the four read
+      // as a journey rather than as four words in a row.
+      steps: { display: 'flex', alignItems: 'flex-start', listStyle: 'none', margin: 0, padding: 0 },
+      step: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '6px' },
+      stepTrack: { display: 'flex', alignItems: 'center' },
       stepDot: (reached, t) => ({
         width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0,
         background: reached ? T(t).c : c.bar,
@@ -759,7 +767,9 @@ const MyBookings = () => {
         fontSize: '11px', fontWeight: current ? '700' : '500',
         color: current ? c.text : c.faint, whiteSpace: 'nowrap',
       }),
-      stepLine: (reached, t) => ({ width: '18px', height: '2px', background: reached ? T(t).c : c.bar }),
+      stepLine: (reached, t) => ({ flex: 1, height: '2px', background: reached ? T(t).c : c.bar }),
+      // What the state above actually means for the client.
+      subLine: { fontSize: '13px', lineHeight: 1.45, color: c.muted, textWrap: 'pretty' },
 
       // The ticket tears here: status above, money below.
       tearWrap: { position: 'relative', margin: '14px 0 0', height: '2px' },
@@ -803,12 +813,15 @@ const MyBookings = () => {
       }),
 
       alsoCard: { background: c.card, border: `1px solid ${c.border}`, borderRadius: '16px', overflow: 'hidden' },
-      alsoTitle: { margin: 0, padding: '14px 16px 8px', fontSize: '13px', fontWeight: '800', letterSpacing: '0.05em', textTransform: 'uppercase', color: c.faint },
-      alsoRow: {
-        width: '100%', minHeight: '60px', display: 'flex', alignItems: 'center', gap: '12px',
-        padding: '12px 16px', borderTop: `1px solid ${c.border}`, background: 'transparent',
-        border: 'none', borderBottom: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+      alsoTitle: {
+        margin: '0 0 8px', padding: '0 2px', fontSize: '12px', fontWeight: '800',
+        letterSpacing: '0.06em', textTransform: 'uppercase', color: c.muted,
       },
+      alsoRow: (first) => ({
+        width: '100%', minHeight: '60px', display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '12px 16px', borderTop: first ? 'none' : `1px solid ${c.border}`, background: 'transparent',
+        border: 'none', borderBottom: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+      }),
       toneDot: (t) => ({ width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0, background: T(t).c }),
       alsoSentence: (t) => ({ display: 'block', fontSize: '14px', fontWeight: '650', color: T(t).ink }),
       alsoMeta: { display: 'block', fontSize: '12px', color: c.faint, marginTop: '2px' },
@@ -902,22 +915,11 @@ const MyBookings = () => {
   })();
 
   const styles = {
-    container: { maxWidth: '1100px', margin: '0 auto', padding: '32px' },
+    container: { maxWidth: '1320px', margin: '0 auto', padding: '16px 32px 48px' },
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
     title: {
-      fontSize: 'clamp(26px, 3.4vw, 36px)', fontWeight: '900', letterSpacing: '-0.01em',
-      textTransform: 'uppercase', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px',
-    },
-    subtitle: { fontSize: '14px', fontStyle: 'italic', color: goldInk(isDark), marginBottom: '24px' },
-    rateBookingsBtn: {
-      display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '10px 18px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
-      border: 'none', borderRadius: '999px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-      whiteSpace: 'nowrap',
-    },
-    rateBookingsBadge: {
-      background: 'rgba(0,0,0,0.2)', color: ON_GOLD, fontSize: '11px', fontWeight: '700',
-      borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
+      fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em',
+      color: isDark ? '#e4e6eb' : '#1c1b19', margin: '6px 0 18px',
     },
     statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '28px' },
     statCard: {
@@ -1551,18 +1553,7 @@ const MyBookings = () => {
   // and not one of these states had to be rewritten to move them.
   return (
     <div style={styles.container}>
-      <div style={styles.headerRow}>
-        <div>
-          <h1 style={styles.title}>My Bookings</h1>
-          <p style={styles.subtitle}>View and manage all your car rental bookings in one place.</p>
-        </div>
-        {!loading && unratedCount > 0 && (
-          <button style={styles.rateBookingsBtn} onClick={() => navigate('/my-bookings/rate')}>
-            <StarGlyph /> Rate My Bookings
-            <span style={styles.rateBookingsBadge}>{unratedCount}</span>
-          </button>
-        )}
-      </div>
+      <h1 style={styles.title}>My bookings</h1>
 
       {loading ? (
         <SkeletonListCard isDark={isDark} />
@@ -1597,14 +1588,18 @@ const MyBookings = () => {
                     <ol style={mb.steps}>
                       {STEP_LABELS.map((label, i) => (
                         <li key={label} style={mb.step}>
-                          <span style={mb.stepDot(i <= ticket.step, ticket.toneKey)} />
+                          <span style={mb.stepTrack}>
+                            <span style={mb.stepDot(i <= ticket.step, ticket.toneKey)} />
+                            {i < STEP_LABELS.length - 1 && (
+                              <span style={mb.stepLine(i < ticket.step, ticket.toneKey)} />
+                            )}
+                          </span>
                           <span style={mb.stepLabel(i === ticket.step)}>{label}</span>
-                          {i < STEP_LABELS.length - 1 && (
-                            <span style={mb.stepLine(i < ticket.step, ticket.toneKey)} />
-                          )}
                         </li>
                       ))}
                     </ol>
+
+                    {ticket.sub && <p style={mb.subLine}>{ticket.sub}</p>}
                   </div>
 
                   <div style={mb.tearWrap}>
@@ -1678,15 +1673,20 @@ const MyBookings = () => {
                 </article>
               )}
 
-              {/* The rest of what is live, one line each. */}
-              {alsoGoingOn.length > 0 && (
-                <section style={mb.alsoCard}>
-                  <h3 style={mb.alsoTitle}>Also going on</h3>
-                  {alsoGoingOn.map((b) => (
+            </div>
+          )}
+
+          {/* ── what already happened ────────────────────────────── */}
+          <div style={mb.column}>
+            {alsoGoingOn.length > 0 && (
+              <section style={{ marginBottom: '18px' }}>
+                <h3 style={mb.alsoTitle}>Also going on</h3>
+                <div style={mb.alsoCard}>
+                  {alsoGoingOn.map((b, i) => (
                     <button
                       key={b._id}
                       type="button"
-                      style={mb.alsoRow}
+                      style={mb.alsoRow(i === 0)}
                       onClick={() => setFocusId(b._id)}
                     >
                       <span style={mb.toneDot(b.toneKey)} />
@@ -1696,16 +1696,13 @@ const MyBookings = () => {
                           {b.car?.brand} {b.car?.model} · {moneySummary(b.money)}
                         </span>
                       </span>
-                      <span style={mb.chevron}>›</span>
+                      <Chevron color={mb.c.faint} />
                     </button>
                   ))}
-                </section>
-              )}
-            </div>
-          )}
+                </div>
+              </section>
+            )}
 
-          {/* ── what already happened ────────────────────────────── */}
-          <div style={mb.column}>
             <div style={mb.historyHead}>
               <h2 style={mb.historyTitle}>History</h2>
               <div style={mb.chips}>
@@ -1753,7 +1750,7 @@ const MyBookings = () => {
                           {group.back > 0 && <span style={{ color: mb.c.green }}>{peso(group.back)} came back</span>}
                         </span>
                       </span>
-                      <span style={mb.chevron}>{open ? '⌄' : '›'}</span>
+                      <Chevron color={mb.c.faint} turn={open ? 90 : 0} />
                     </button>
 
                     {open && shownRows(group).map((b) => {
@@ -1781,11 +1778,12 @@ const MyBookings = () => {
                             <span style={mb.histAmount(b.money.back > 0)}>
                               {b.money.back > 0 ? `+${peso(b.money.back)}` : peso(b.money.paid || b.money.cost)}
                             </span>
-                            <span style={{ ...mb.chevron, transform: expanded ? 'rotate(90deg)' : 'none' }}>›</span>
+                            <Chevron color={mb.c.faint} turn={expanded ? 90 : 0} />
                           </button>
 
                           {expanded && (
                             <div style={mb.histOpen}>
+                              {b.sub && <p style={mb.subLine}>{b.sub}</p>}
                               {b.money.lines.map((line) => (
                                 <div key={line.label} style={mb.receiptRow}>
                                   <span style={mb.receiptLabel}>{line.label}</span>
