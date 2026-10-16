@@ -2,7 +2,7 @@
 // it — the same days the late fee was charged on.
 
 import { suite, group, check } from './harness.mjs';
-import { hoursLate, latenessLabel, overdueLabel, lateChip } from '../utils/lateness.js';
+import { hoursLate, latenessLabel, overdueLabel, lateChip, clockLate } from '../utils/lateness.js';
 
 export default function run() {
   suite('Returns · how late, in words');
@@ -18,11 +18,12 @@ export default function run() {
 
   group('saying it');
   check('on time says nothing at all', latenessLabel(0), '');
-  check('minutes', latenessLabel(0.5), 'Returned under an hour late');
+  check('minutes', latenessLabel(0.5), 'Returned 30 min late');
   check('an afternoon', latenessLabel(5, 1), 'Returned 5 h late');
   // Still a full day on the bill, but five hours is what happened.
-  check('rounded to the nearest hour', latenessLabel(5.4, 1), 'Returned 5 h late');
-  check('just under a day', latenessLabel(23.6, 1), 'Returned 24 h late');
+  // 4 h 49 is not 5 h, and saying so made a measured figure look stock.
+  check('the real time, not a rounded one', latenessLabel(4 + 49 / 60, 1), 'Returned 4 h 49 min late');
+  check('just under a day', latenessLabel(23.5, 1), 'Returned 23 h 30 min late');
 
   group('a day or more speaks in days');
   check('a day', latenessLabel(24, 1), 'Returned 1 day late');
@@ -32,16 +33,23 @@ export default function run() {
   // Nothing charged on file: fall back to whole days elapsed.
   check('with no charge recorded', latenessLabel(50, 0), 'Returned 2 days late');
 
+  group('the clock itself');
+  check('an exact hour says just the hour', clockLate(3), '3 h');
+  check('and otherwise says the minutes too', clockLate(4 + 49 / 60), '4 h 49 min');
+  check('under an hour is minutes alone', clockLate(0.4), '24 min');
+  // 59.7 minutes is an hour, not an hour and sixty minutes.
+  check('a minute that rounds to the hour', clockLate(1 + 59.7 / 60), '2 h');
+
   group('a vehicle that is still out');
   // Three hours past its time is not a lost day, and saying so sends
   // somebody chasing a client who is probably on their way.
   check('a few hours over', overdueLabel(3, 1), '3 h overdue');
   check('a day over', overdueLabel(26, 2), '2 days overdue');
-  check('barely over', overdueLabel(0.4), 'Under an hour overdue');
+  check('barely over', overdueLabel(0.4), '24 min overdue');
   check('not over at all', overdueLabel(0), '');
 
   group('the chip beside a row');
-  check('hours', lateChip(7, 1), '7 h late');
+  check('hours', lateChip(7.25, 1), '7 h 15 min late');
   check('days', lateChip(49, 3), '3 days late');
   check('nothing to say', lateChip(0), '');
 }

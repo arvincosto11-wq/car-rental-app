@@ -18,13 +18,23 @@ export const hoursLate = (dueAt, returnedAt) => {
 
 // `chargedDays` is what the booking's own late fee was worked out on, kept
 // rather than recomputed so one number tells both stories.
+// Hours and minutes, both of them real. Rounding 4 h 49 to "5 h" made a
+// measured figure look like a stock one, and somebody reading it has no
+// way to tell which it is.
+export function clockLate(hours) {
+  const whole = Math.floor(hours);
+  const minutes = Math.round((hours - whole) * 60);
+  // 59.7 minutes rounds to 60, which is an hour, not an hour and no
+  // minutes past it.
+  const h = minutes === 60 ? whole + 1 : whole;
+  const m = minutes === 60 ? 0 : minutes;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}
+
 export function latenessLabel(hours, chargedDays = 0) {
   if (hours <= 0) return '';
-  if (hours < 1) return 'Returned under an hour late';
-  if (hours < 24) {
-    const h = Math.round(hours);
-    return `Returned ${h} h late`;
-  }
+  if (hours < 24) return `Returned ${clockLate(hours)} late`;
   const days = chargedDays || Math.floor(hours / 24);
   return `Returned ${days} day${days === 1 ? '' : 's'} late`;
 }
@@ -38,8 +48,7 @@ export function latenessLabel(hours, chargedDays = 0) {
 // sentences, and only the second one is about days.
 export function overdueLabel(hours, chargedDays = 0) {
   if (hours <= 0) return '';
-  if (hours < 1) return 'Under an hour overdue';
-  if (hours < 24) return `${Math.round(hours)} h overdue`;
+  if (hours < 24) return `${clockLate(hours)} overdue`;
   const days = chargedDays || Math.floor(hours / 24);
   return `${days} day${days === 1 ? '' : 's'} overdue`;
 }
@@ -47,8 +56,7 @@ export function overdueLabel(hours, chargedDays = 0) {
 // Short form for a chip beside a row: "5 h late", "2 days late".
 export function lateChip(hours, chargedDays = 0) {
   if (hours <= 0) return '';
-  if (hours < 1) return 'under an hour late';
-  if (hours < 24) return `${Math.round(hours)} h late`;
+  if (hours < 24) return `${clockLate(hours)} late`;
   const days = chargedDays || Math.floor(hours / 24);
   return `${days} day${days === 1 ? '' : 's'} late`;
 }
