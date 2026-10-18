@@ -12,7 +12,6 @@
 import { hoursLate, latenessLabel, overdueLabel } from './lateness.js';
 import { isOfferOpen } from './offerWindow.js';
 import { isOverdue, daysOverdue } from './overdue.js';
-import { payableNow } from './settlement.js';
 
 const peso = (n) => `₱${Math.round(Math.abs(n || 0)).toLocaleString('en-US')}`;
 
@@ -100,7 +99,7 @@ export function moneyFor(b, now = new Date()) {
 }
 
 const oweWhen = (b) => {
-  if (b.status === 'completed') return 'now';
+  if (b.status === 'completed') return 'at the office';
   if (b.collectedAt) return 'when you return it';
   return 'at pickup';
 };
@@ -219,10 +218,13 @@ export function actionKeysFor(b, now = new Date()) {
   }
 
   if (b.status === 'completed') {
-    // Not 'pay', which finishes an abandoned checkout and refuses a
-    // booking already marked paid. Settling is its own thing, for its
-    // own amount — see payableNow.
-    if (payableNow(b).amount > 0) keys.push('settle');
+    // No 'pay' here, however much is outstanding. The only online payment
+    // this system has is finishing an abandoned GCash checkout — handled
+    // by the gcash_pending branch above — and that endpoint refuses a
+    // booking already marked paid, which every finished trip is. Offering
+    // "Finish payment" on a trip that is over put a button on the page
+    // whose single outcome was the error "This booking is already paid."
+    // A balance after a trip is settled at the counter.
     if (!b.carRating?.rating) keys.push('rate');
     keys.push('call');
     return keys;
@@ -235,7 +237,6 @@ export function actionKeysFor(b, now = new Date()) {
 
   // Still ahead of us: the dates can be questioned and the money asked
   // back, until the keys change hands.
-  if (payableNow(b).amount > 0) keys.push('settle');
   if (!b.rescheduleRequest || b.rescheduleRequest.status !== 'pending') keys.push('dates');
   if (!b.refundStatus || b.refundStatus === 'none') keys.push('refund');
   return keys;

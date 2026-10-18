@@ -24,7 +24,6 @@ import { notifyOverdueReturns, notifyUpcomingReturns, warnOfCollidingBookings, i
 import { isFuelLevel } from '../utils/fuel.js';
 import { licenceProblem, licenceMessage } from '../utils/documents.js';
 import { byUrgency, refundOwed } from '../utils/priority.js';
-import { startSettlement, confirmSettlement } from '../utils/settlePayment.js';
 import { recordActivity } from '../utils/priority.js';
 import { vehiclesForSwap, remainingSpan, repriceForSwap } from '../utils/moveVehicle.js';
 import { fail } from '../utils/respond.js';
@@ -1805,47 +1804,6 @@ router.put('/:id/adjust/top-up/confirm', protect, async (req, res) => {
     }
 
     const result = await confirmTopUp(booking);
-    if (!result.ok) return res.status(400).json({ message: result.message });
-    return res.json(result.booking);
-  } catch (err) {
-    fail(res, err);
-  }
-});
-
-// ---- settling what a booking already owes ----
-//
-// The balance left after a deposit, and the charges a trip ended with.
-// Every other payment here is tied to something the client is agreeing to
-// — these dates, these extra days, this vehicle — and this follows the
-// same shape for money that is simply outstanding. The amount is the
-// server's: nothing the page sends is trusted, or a client could pay ₱1
-// against a ₱6,000 late fee. Damage is not included; that is settled at
-// the counter with the vehicle in front of both parties.
-router.post('/:id/settlement', protect, async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id);
-    if (!booking) return res.status(404).json({ message: 'Booking not found' });
-    if (booking.user.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-    const result = await startSettlement(booking);
-    if (!result.ok) return res.status(400).json({ message: result.message });
-    return res.json({ checkoutUrl: result.checkoutUrl });
-  } catch (err) {
-    fail(res, err);
-  }
-});
-
-// Back from that payment. PayMongo is asked what really happened rather
-// than the redirect being trusted.
-router.put('/:id/settlement/confirm', protect, async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id);
-    if (!booking) return res.status(404).json({ message: 'Booking not found' });
-    if (booking.user.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-    const result = await confirmSettlement(booking);
     if (!result.ok) return res.status(400).json({ message: result.message });
     return res.json(result.booking);
   } catch (err) {
