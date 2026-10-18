@@ -158,10 +158,16 @@ export default function run() {
   group('a fine that is still running');
   const still = booking({ collectedAt: '2026-10-12T23:00:00Z', endDate: '2026-10-15T23:00:00Z', amountPaid: 2000 });
   const running = moneyFor(still, now);
-  check('the receipt says so', running.lines.some((l) => l.label === 'Late fee so far'), true);
+  check('the receipt says so', running.lines.some((l) => l.label.startsWith('Late fee so far')), true);
+  // The sentence counts whole days elapsed, the fee counts every day
+  // started. A booking 5 hours over its second day reads "2 days late"
+  // and costs three, so the line says which number it charged on.
+  check('and on how many days it charged',
+    running.lines.find((l) => l.label.startsWith('Late fee so far')).label,
+    'Late fee so far · 1 day');
   // The client is quoted the counter's own figure, not a friendlier one.
   check('at the figure the counter will charge',
-    running.lines.find((l) => l.label === 'Late fee so far').amount,
+    running.lines.find((l) => l.label.startsWith('Late fee so far')).amount,
     lateFeeSoFar(still, 2000, now));
   check('and it is owed', running.owe, 2000);
   check('wanted when it comes back', running.oweWhen, 'when you return it');
@@ -169,6 +175,17 @@ export default function run() {
   const written = moneyFor({ ...still, returnedAt: '2026-10-16T04:00:00Z', lateFee: { days: 1, amount: 2000 } }, now);
   check('a recorded fee is not doubled',
     written.lines.filter((l) => l.label.startsWith('Late fee')).length, 1);
+
+  // 2 days and 5 hours over: "2 days late" in words, three days charged.
+  const wellOver = booking({ collectedAt: '2026-10-10T23:00:00Z', endDate: '2026-10-13T23:00:00Z', amountPaid: 2000 });
+  const overMoney = moneyFor(wellOver, now);
+  check('whole days elapsed in the sentence',
+    sentenceFor(wellOver, now).endsWith('2 days late'), true);
+  check('every day started in the charge',
+    overMoney.lines.find((l) => l.label.startsWith('Late fee so far')).label,
+    'Late fee so far · 3 days');
+  check('and the money follows the charge, not the sentence',
+    overMoney.lines.find((l) => l.label.startsWith('Late fee so far')).amount, 6000);
 
   group('what the state means for the client');
   check('a vehicle still out', subFor(still, now).startsWith('The late fee is one day’s rental (₱2,000)'), true);

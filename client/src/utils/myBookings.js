@@ -30,6 +30,7 @@ const unsettled = (b) => (
 // already settled by extending — the same rule and the same arithmetic as
 // lateFeeSoFar in adminToday.js, so a client is quoted the figure the
 // counter is going to charge them, not a friendlier one.
+const lateDaysSoFar = (b, now) => (isOverdue(b, now) ? daysOverdue(b, now) : 0);
 const lateFeeSoFar = (b, now) => (
   isOverdue(b, now)
     ? daysOverdue(b, now) * (b.car?.pricePerDay || 0) + (b.lateFee?.carriedAmount || 0)
@@ -59,7 +60,19 @@ export function moneyFor(b, now = new Date()) {
   // still running, and a receipt that stays silent about it lets a client
   // believe the trip costs what it cost yesterday.
   const accruing = b.lateFee?.amount ? 0 : lateFeeSoFar(b, now);
-  if (accruing) lines.push({ label: 'Late fee so far', amount: accruing, kind: 'fee' });
+  if (accruing) {
+    // Named with the days it is charged on. The sentence above says how
+    // late the vehicle IS — whole days elapsed — while the fee counts
+    // every day started, so a vehicle 2 days and 3 hours over reads "2
+    // days late" and costs three. Both are right; side by side and
+    // unexplained they look like an overcharge.
+    const days = lateDaysSoFar(b, now);
+    lines.push({
+      label: `Late fee so far · ${days} day${days === 1 ? '' : 's'}`,
+      amount: accruing,
+      kind: 'fee',
+    });
+  }
   if (b.fuel?.charge) lines.push({ label: 'Fuel', amount: b.fuel.charge, kind: 'fee' });
   if (b.condition?.damageCharge) lines.push({ label: 'Damage', amount: b.condition.damageCharge, kind: 'fee' });
 
