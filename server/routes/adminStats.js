@@ -5,6 +5,7 @@ import Consignment from '../models/Consignment.js';
 import Car from '../models/Car.js';
 import Appointment from '../models/Appointment.js';
 import { protect, adminOnly } from '../middleware/auth.js';
+import { refundOwed } from '../utils/priority.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { expireAdjustOffers } from '../utils/adjustOffer.js';
 import { APPOINTMENT_OPEN } from '../utils/appointments.js';
@@ -37,7 +38,7 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
     // one thing that runs reliably.
     await expireAdjustOffers();
     const expiryCutoff = new Date(Date.now() + EXPIRY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-    const [pendingBookings, refundRequests, rescheduleRequests, needsDriver, pendingConsignments, openAppointments, pendingAvailability, pendingBlockedDates, expiringRegistrations] = await Promise.all([
+    const [pendingBookings, refundRequests, rescheduleRequests, needsDriver, unsentRefunds, pendingConsignments, openAppointments, pendingAvailability, pendingBlockedDates, expiringRegistrations] = await Promise.all([
       Booking.countDocuments({ status: 'pending', payment: 'paid', 'adjustOffer.status': { $ne: 'open' } }),
       Booking.countDocuments({ refundStatus: 'requested' }),
       Booking.countDocuments({ 'rescheduleRequest.status': 'pending' }),
@@ -54,6 +55,15 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
         driver: null,
         collectedAt: null,
       }),
+      // A refund the office approved and PayMongo never sent. Read through
+      // refundOwed rather than rebuilt as a query, because a second
+      // description of the same rule is a second thing to keep in step —
+      // and this one decides whether somebody is quietly owed money. The
+      // candidate set is every approved refund, which is tiny.
+      Booking.find({ refundStatus: 'approved', refundAmount: { $gt: 0 } })
+        .select('refundStatus refundAmount paymongoRefundId refundSettledByHand paymongoPaymentId amountPaid extraPayments')
+        .lean()
+        .then((rows) => rows.filter(refundOwed).length),
       // Manage Clients no longer carries a badge: there is no ID photo to
       // review any more, so nothing arrives there needing a decision. See
       // models/User.js.
@@ -74,7 +84,7 @@ router.get('/pending-counts', protect, adminOnly, async (req, res) => {
       Car.countDocuments({ archived: { $ne: true }, registrationExpiry: { $ne: null, $lte: expiryCutoff } }),
     ]);
     res.json({
-      '/admin/manage-bookings': pendingBookings + refundRequests + rescheduleRequests + needsDriver,
+      '/admin/manage-bookings': pendingBookings + refundRequests + rescheduleRequests + needsDriver + unsentRefunds,
       '/admin/manage-consignments': pendingConsignments,
       '/admin/appointments': openAppointments,
       '/admin/availability-requests': pendingAvailability + (pendingBlockedDates[0]?.count || 0),
