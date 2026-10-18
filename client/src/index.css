@@ -1648,6 +1648,18 @@ body.dark .doc-dot:not(:disabled):focus-visible {
 
 /* My Bookings: one column on a phone, two from 1024px — the live ticket
    on the left, staying in view while history scrolls beside it. */
+/* A phone gives the ticket a 12px gutter, so the card gets the width
+   rather than the margin. A desktop uses the 40px the two columns were
+   drawn inside. */
+.mb-page {
+  padding: 16px 12px 48px;
+}
+@media (min-width: 1024px) {
+  .mb-page {
+    padding: 16px 40px 48px;
+  }
+}
+
 .mb-grid {
   grid-template-columns: minmax(0, 1fr);
 }

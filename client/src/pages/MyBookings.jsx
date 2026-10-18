@@ -726,7 +726,11 @@ const MyBookings = () => {
         wait: '#a9b4c2', waitSoft: '#2c2f33', bar: '#333436',
       }
       : {
-        page: '#f3f2ef', card: '#ffffff', sunk: '#f6f5f2', border: '#e3e1dc',
+        // `page` is the surface BEHIND the ticket, which the tear's
+        // notches are filled with. It has to track --bg in index.css, not
+        // the handoff's own off-white: on our white page that off-white
+        // showed up as a grey crescent instead of a bite out of the card.
+        page: '#ffffff', card: '#ffffff', sunk: '#f6f5f2', border: '#e3e1dc',
         text: '#1c1b19', muted: '#5f5c55', faint: '#8a867e',
         gold: '#b8790a', goldText: '#17130e', goldSoft: '#fbf1dc', goldInk: '#875800',
         red: '#c0352b', redSoft: '#fdecea', redInk: '#a12a21',
@@ -808,7 +812,10 @@ const MyBookings = () => {
       receiptRow: { display: 'flex', alignItems: 'baseline', gap: '6px', color: c.text },
       receiptLabel: { color: c.muted, whiteSpace: 'nowrap' },
       paidRow: { paddingTop: '4px' },
-      leader: { flex: 1, borderBottom: `1px dotted ${c.border}`, transform: 'translateY(-4px)' },
+      leader: { flex: 1, borderBottom: `1px dotted ${c.border}` },
+      // "Came back" and the owed row are spaced, not led: dots imply a
+      // figure you are being asked for.
+      spacer: { flex: 1 },
       receiptAmount: (kind) => ({
         fontWeight: '650', whiteSpace: 'nowrap',
         color: kind === 'off' ? c.green : kind === 'fee' ? c.goldInk : c.text,
@@ -953,11 +960,11 @@ const MyBookings = () => {
   })();
 
   const styles = {
-    container: { maxWidth: '1320px', margin: '0 auto', padding: '16px 32px 48px' },
+    container: { maxWidth: '1320px', margin: '0 auto' },
     headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' },
     title: {
       fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em',
-      color: isDark ? '#e4e6eb' : '#1c1b19', margin: '6px 0 18px',
+      color: isDark ? '#e4e6eb' : '#1c1b19', margin: '6px 0 18px', padding: '0 6px',
     },
     statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '28px' },
     statCard: {
@@ -1590,7 +1597,7 @@ const MyBookings = () => {
   // item; it is now what the drawer shows. A row can therefore stay a row,
   // and not one of these states had to be rewritten to move them.
   return (
-    <div style={styles.container}>
+    <div className="mb-page" style={styles.container}>
       <h1 style={styles.title}>My bookings</h1>
 
       {loading ? (
@@ -1625,7 +1632,11 @@ const MyBookings = () => {
 
                     <ol style={mb.steps}>
                       {STEP_LABELS.map((label, i) => (
-                        <li key={label} style={mb.step}>
+                        <li
+                          key={label}
+                          style={mb.step}
+                          aria-current={i === ticket.step ? 'step' : undefined}
+                        >
                           <span style={mb.stepTrack}>
                             <span style={mb.stepDot(i <= ticket.step, ticket.toneKey)} />
                             {i < STEP_LABELS.length - 1 && (
@@ -1640,7 +1651,7 @@ const MyBookings = () => {
                     {ticket.sub && <p style={mb.subLine}>{ticket.sub}</p>}
                   </div>
 
-                  <div style={mb.tearWrap}>
+                  <div style={mb.tearWrap} aria-hidden="true">
                     <span style={mb.notch('left')} />
                     <div style={mb.tear} />
                     <span style={mb.notch('right')} />
@@ -1670,9 +1681,11 @@ const MyBookings = () => {
                     )}
                     {ticket.money.back > 0 && (
                       <div style={mb.receiptRow}>
-                        <span style={mb.receiptLabel}>Came back</span>
-                        <span style={mb.leader} />
-                        <span style={{ ...mb.receiptAmount(), color: mb.c.green }}>{peso(ticket.money.back)}</span>
+                        <span style={{ color: mb.c.green, fontWeight: '650' }}>Came back</span>
+                        <span style={mb.spacer} />
+                        <span style={{ ...mb.receiptAmount(), fontWeight: '700', color: mb.c.green }}>
+                          {peso(ticket.money.back)}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1688,7 +1701,7 @@ const MyBookings = () => {
                     </div>
                   )}
 
-                  <div style={{ padding: '0 18px 16px' }}>
+                  <div style={{ padding: '0 14px 14px' }}>
                     {panelFor(ticket)}
                     {sentBanner(ticket)}
                   </div>
@@ -1838,9 +1851,11 @@ const MyBookings = () => {
                               </div>
                               {b.money.back > 0 && (
                                 <div style={mb.receiptRow}>
-                                  <span style={mb.receiptLabel}>Came back</span>
-                                  <span style={mb.leader} />
-                                  <span style={{ ...mb.receiptAmount(), color: mb.c.green }}>{peso(b.money.back)}</span>
+                                  <span style={{ color: mb.c.green, fontWeight: '650' }}>Came back</span>
+                                  <span style={mb.spacer} />
+                                  <span style={{ ...mb.receiptAmount(), fontWeight: '700', color: mb.c.green }}>
+                                    {peso(b.money.back)}
+                                  </span>
                                 </div>
                               )}
                               </div>
