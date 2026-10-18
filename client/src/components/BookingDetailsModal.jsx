@@ -12,6 +12,23 @@ import ModalClose from './ModalClose';
 // downpayment bookings on screen at once it was the same gold button
 // repeated down the whole Actions column, which read as noisier than the
 // stuff we'd just moved out.
+// One label-and-value line. At module scope, not inside the component:
+// a component declared during a render is a brand new type on every
+// render, so React throws the old one away and builds it again rather
+// than updating it. Nothing here holds focus or state, so this was waste
+// rather than a bug — but it is the same shape that cost Manage Clients
+// and Account Settings their focus-on-typing, and it is not worth
+// keeping an example of it around.
+//
+// The styles come in as a prop because they are built from isDark, which
+// only the component knows.
+const Row = ({ s, label, value, mono }) => (
+  <div style={s.row}>
+    <span style={s.label}>{label}</span>
+    <span style={{ ...s.value, ...(mono ? s.mono : {}) }}>{value}</span>
+  </div>
+);
+
 const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance, onAssigned }) => {
   const modalRef = useModalA11y(onClose);
   if (!booking) return null;
@@ -34,13 +51,6 @@ const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance, onAss
       background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD, cursor: 'pointer', fontWeight: '600',
     },
   };
-
-  const Row = ({ label, value, mono }) => (
-    <div style={s.row}>
-      <span style={s.label}>{label}</span>
-      <span style={{ ...s.value, ...(mono ? s.mono : {}) }}>{value}</span>
-    </div>
-  );
 
   const remaining = booking.totalPrice - booking.amountPaid;
 
@@ -65,34 +75,36 @@ const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance, onAss
 
         <div style={s.section}>
           <div style={s.sectionTitle}>Payment</div>
-          <Row label="Type" value={booking.paymentType === 'downpayment' ? '20% Downpayment' : 'Full payment'} />
+          <Row s={s} label="Type" value={booking.paymentType === 'downpayment' ? '20% Downpayment' : 'Full payment'} />
           {/* Only shown when a promo was actually applied, so an ordinary
               booking still reads as a single clean total. Values come off
               the booking itself, never the car's current promo — this has
               to keep saying what was agreed. */}
           {booking.discountAmount > 0 && (
             <>
-              <Row label="Subtotal" value={`₱${booking.subtotal.toLocaleString()}`} />
+              <Row s={s} label="Subtotal" value={`₱${booking.subtotal.toLocaleString()}`} />
               <Row
+                s={s}
                 label={booking.promoLabel || 'Promo'}
                 value={<span style={s.discount}>−₱{booking.discountAmount.toLocaleString()}</span>}
               />
             </>
           )}
-          <Row label="Total price" value={`₱${booking.totalPrice.toLocaleString()}`} />
-          <Row label="Paid so far" value={`₱${booking.amountPaid.toLocaleString()}`} />
-          {remaining > 0 && <Row label="Remaining balance" value={`₱${remaining.toLocaleString()}`} />}
+          <Row s={s} label="Total price" value={`₱${booking.totalPrice.toLocaleString()}`} />
+          <Row s={s} label="Paid so far" value={`₱${booking.amountPaid.toLocaleString()}`} />
+          {remaining > 0 && <Row s={s} label="Remaining balance" value={`₱${remaining.toLocaleString()}`} />}
           {/* How a booking came to be the length it is. Without this a
               7-day booking that began as 5 looks identical to one booked
               as 7, and the money it took does not obviously add up. */}
           {(booking.extensions || []).map((ext, i) => (
             <Row
+              s={s}
               key={ext.addedAt || i}
               label={`Extended +${ext.days} day${ext.days === 1 ? '' : 's'}`}
               value={`from ${new Date(ext.previousEndDate).toLocaleDateString()} · ₱${Number(ext.amount || 0).toLocaleString()}`}
             />
           ))}
-          {booking.paymongoPaymentId && <Row label="Payment reference" value={booking.paymongoPaymentId} mono />}
+          {booking.paymongoPaymentId && <Row s={s} label="Payment reference" value={booking.paymongoPaymentId} mono />}
           {remaining > 0 && booking.status !== 'cancelled' && (
             <button type="button" style={s.collectBtn} onClick={() => onCollectBalance(booking)}>
               Mark Balance Received
@@ -103,25 +115,26 @@ const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance, onAss
         {booking.refundStatus !== 'none' && (
           <div style={s.section}>
             <div style={s.sectionTitle}>Refund</div>
-            <Row label="Status" value={booking.refundStatus} />
-            <Row label="Amount" value={`₱${(booking.refundAmount ?? 0).toLocaleString()}`} />
-            {booking.refundReason && <Row label="Reason" value={booking.refundReason} />}
-            {booking.paymongoRefundId && <Row label="Refund reference" value={booking.paymongoRefundId} mono />}
+            <Row s={s} label="Status" value={booking.refundStatus} />
+            <Row s={s} label="Amount" value={`₱${(booking.refundAmount ?? 0).toLocaleString()}`} />
+            {booking.refundReason && <Row s={s} label="Reason" value={booking.refundReason} />}
+            {booking.paymongoRefundId && <Row s={s} label="Refund reference" value={booking.paymongoRefundId} mono />}
           </div>
         )}
 
         {booking.rescheduleRequest?.status !== 'none' && (
           <div style={s.section}>
             <div style={s.sectionTitle}>Reschedule</div>
-            <Row label="Status" value={booking.rescheduleRequest.status} />
+            <Row s={s} label="Status" value={booking.rescheduleRequest.status} />
             {booking.rescheduleRequest.newStartDate && (
               <Row
+                s={s}
                 label="Requested dates"
                 value={`${new Date(booking.rescheduleRequest.newStartDate).toLocaleDateString()} to ${new Date(booking.rescheduleRequest.newEndDate).toLocaleDateString()}`}
               />
             )}
-            {booking.rescheduleRequest.reason && <Row label="Reason" value={booking.rescheduleRequest.reason} />}
-            {booking.rescheduleRequest.adminNotes && <Row label="Admin notes" value={booking.rescheduleRequest.adminNotes} />}
+            {booking.rescheduleRequest.reason && <Row s={s} label="Reason" value={booking.rescheduleRequest.reason} />}
+            {booking.rescheduleRequest.adminNotes && <Row s={s} label="Admin notes" value={booking.rescheduleRequest.adminNotes} />}
           </div>
         )}
 
@@ -133,22 +146,18 @@ const BookingDetailsModal = ({ booking, isDark, onClose, onCollectBalance, onAss
 
         <div style={s.section}>
           <div style={s.sectionTitle}>Booking Info</div>
-          <Row label="Booking type" value={booking.bookingType === 'self-drive' ? 'Self drive' : 'With driver'} />
-          {/* Written out rather than through Row: every Row on this screen
-              is a component made during a render, and the linter counts
-              each one. One more line is not worth another of those. */}
+          <Row s={s} label="Booking type" value={booking.bookingType === 'self-drive' ? 'Self drive' : 'With driver'} />
           {booking.bookingType === 'with-driver' && (
-            <div style={s.row}>
-              <span style={s.label}>Driver</span>
-              <span style={s.value}>
-                {booking.driver
-                  ? `${booking.driver.name}${booking.driver.phone ? ` · ${booking.driver.phone}` : ''}`
-                  : 'Not named'}
-              </span>
-            </div>
+            <Row
+              s={s}
+              label="Driver"
+              value={booking.driver
+                ? `${booking.driver.name}${booking.driver.phone ? ` · ${booking.driver.phone}` : ''}`
+                : 'Not named'}
+            />
           )}
-          <Row label="Booking ID" value={booking._id} mono />
-          <Row label="Requested on" value={new Date(booking.createdAt).toLocaleString()} />
+          <Row s={s} label="Booking ID" value={booking._id} mono />
+          <Row s={s} label="Requested on" value={new Date(booking.createdAt).toLocaleString()} />
         </div>
       </div>
     </div>
