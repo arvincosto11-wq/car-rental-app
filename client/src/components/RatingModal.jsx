@@ -1,97 +1,18 @@
-import { useState, useEffect } from 'react';
-import api from '../api';
-import StarRating from './StarRating';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import LAYERS from '../layers';
 import useModalA11y from '../hooks/useModalA11y';
-import DriverAvatar from './DriverAvatar';
-import { CameraGlyph } from './Glyphs';
+import { RatingFormFields } from './RatingForm';
+import { useRatingForm } from '../utils/ratingForm';
 
-// Shared "rate your experience" modal, used by both the My Bookings list
-// and the dedicated Rate My Bookings panel so the rating flow only lives
-// in one place.
-const uploadToImageKit = async (file) => {
-  const authRes = await api.get('/imagekit/user-auth');
-  const { token, expire, signature, publicKey } = authRes.data;
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('fileName', file.name);
-  formData.append('token', token);
-  formData.append('expire', expire);
-  formData.append('signature', signature);
-  formData.append('publicKey', publicKey);
-  const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', body: formData });
-  const data = await uploadRes.json();
-  return { url: data.url, fileId: data.fileId };
-};
-
+// The rating as a dialog, for the Rate My Bookings page, where there is
+// no booking on screen to put it inside. My Bookings opens the same form
+// inline instead — see ratePanel there. Both share RatingForm, so the
+// three scores, the photos and the driver can't drift apart.
 const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
-  const [form, setForm] = useState({ vehicleCondition: 0, serviceQuality: 0, cleanliness: 0, comment: '' });
-  // Kept apart from the vehicle's scores because it is optional and they
-  // are not: 0 here means "said nothing about the driver", which is a
-  // perfectly good answer and must not read as one star.
-  const [driverScore, setDriverScore] = useState(0);
-  const [driverComment, setDriverComment] = useState('');
-  const [photos, setPhotos] = useState([]);
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!booking) return;
-    setForm({
-      vehicleCondition: booking.carRating?.vehicleCondition || 0,
-      serviceQuality: booking.carRating?.serviceQuality || 0,
-      cleanliness: booking.carRating?.cleanliness || 0,
-      comment: booking.carRating?.comment || '',
-    });
-    setPhotos((booking.carRating?.photos || []).map((p) => ({ id: p.url, url: p.url, fileId: p.fileId })));
-    setDriverScore(booking.driverRating?.rating || 0);
-    setDriverComment(booking.driverRating?.comment || '');
-    setError('');
-  }, [booking]);
-
+  const r = useRatingForm(booking);
   const modalRef = useModalA11y(onClose);
 
   if (!booking) return null;
-
-  const handlePhotosChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    setPhotos((prev) => [...prev, ...files.map((file) => ({ id: URL.createObjectURL(file), file, preview: URL.createObjectURL(file) }))]);
-  };
-
-  const removePhoto = (id) => setPhotos((prev) => prev.filter((p) => p.id !== id));
-
-  const handleSubmit = async () => {
-    const { vehicleCondition, serviceQuality, cleanliness, comment } = form;
-    if (!vehicleCondition || !serviceQuality || !cleanliness) {
-      setError('Please rate all three categories.');
-      return;
-    }
-    setSubmitting(true);
-    setError('');
-    try {
-      const uploadedPhotos = [];
-      for (const p of photos) {
-        if (p.file) {
-          uploadedPhotos.push(await uploadToImageKit(p.file));
-        } else {
-          uploadedPhotos.push({ url: p.url, fileId: p.fileId });
-        }
-      }
-      const res = await api.post(`/bookings/${booking._id}/rate-car`, {
-        vehicleCondition, serviceQuality, cleanliness, comment, photos: uploadedPhotos,
-        // Left out entirely when they said nothing, so the server never
-        // records a rating nobody gave.
-        ...(driverScore ? { driverRating: driverScore, driverComment } : {}),
-      });
-      onSubmitted(res.data.carRating);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to submit rating');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const s = {
     modalOverlay: {
@@ -101,47 +22,22 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
     },
     modalContent: {
       background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px',
-      maxWidth: '440px', width: '90%',
+      maxWidth: '440px', width: '90%', maxHeight: '90vh', overflowY: 'auto',
+      display: 'flex', flexDirection: 'column', gap: '12px',
     },
-    modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '14px' },
+    modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', margin: 0 },
     errorBox: {
-      background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626', fontSize: '13px',
-      padding: '10px 14px', borderRadius: '8px', marginBottom: '14px',
+      background: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDark ? '#fca5a5' : '#dc2626',
+      fontSize: '13px', padding: '10px 14px', borderRadius: '8px',
     },
-    modalLabel: { display: 'block', fontSize: '13px', color: isDark ? '#b0b3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
-    driverBox: {
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '10px',
-      padding: '12px', marginBottom: '14px',
-    },
-    driverHead: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' },
-    driverName: { fontSize: '13.5px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    driverSub: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#9ca3af' },
-    modalTextarea: {
-      width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: isDark ? '#e4e6eb' : '#1a1a1a',
-      fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', background: isDark ? '#18191a' : '#fff',
-    },
-    photoUpload: {
-      position: 'relative', width: '100%', height: '70px', border: `2px dashed ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-      background: isDark ? '#18191a' : '#fff', marginBottom: '10px',
-    },
-    photoUploadHint: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    photoFileInput: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' },
-    photoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))', gap: '8px', marginBottom: '18px' },
-    photoThumbWrap: { position: 'relative', width: '100%', height: '56px', borderRadius: '8px', overflow: 'hidden' },
-    photoThumb: { width: '100%', height: '100%', objectFit: 'cover' },
-    removePhotoBtn: {
-      position: 'absolute', top: '2px', right: '2px', width: '18px', height: '18px', borderRadius: '50%',
-      border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '12px', lineHeight: '18px', cursor: 'pointer', padding: 0,
-    },
-    modalActions: { display: 'flex', gap: '10px' },
+    modalActions: { display: 'flex', gap: '10px', marginTop: '2px' },
     modalCancelBtn: {
-      flex: 1, padding: '10px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151',
+      flex: 1, minHeight: '44px', background: isDark ? '#3a3b3c' : '#f3f4f6',
+      color: isDark ? '#e4e6eb' : '#374151',
       border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500',
     },
     modalSubmitBtn: {
-      flex: 1, padding: '10px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+      flex: 1, minHeight: '44px', background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
       border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600',
     },
   };
@@ -149,85 +45,23 @@ const RatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
   return (
     <div style={s.modalOverlay}>
       <div style={s.modalContent} ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="rating-modal-title">
-        <h2 id="rating-modal-title" style={s.modalTitle}>Rate Your Experience</h2>
+        <h2 id="rating-modal-title" style={s.modalTitle}>Rate your trip</h2>
 
-        {error && <div style={s.errorBox}>{error}</div>}
+        {r.error && <div style={s.errorBox}>{r.error}</div>}
 
-        {[
-          { key: 'vehicleCondition', label: 'Vehicle Condition' },
-          { key: 'serviceQuality', label: 'Service Quality' },
-          { key: 'cleanliness', label: 'Cleanliness' },
-        ].map(({ key, label }) => (
-          <div key={key} style={{ marginBottom: '14px' }} role="group" aria-label={label}>
-            <label style={s.modalLabel}>{label}</label>
-            <StarRating
-              value={form[key]}
-              onChange={(n) => setForm({ ...form, [key]: n })}
-              size={22}
-            />
-          </div>
-        ))}
-
-        {/* The driver is a person, not a feature of the car. Rating them
-            separately keeps a dirty vehicle from dragging down somebody's
-            name, and a good driver from flattering a car nobody enjoyed.
-            Optional, and it only appears when somebody actually drove. */}
-        {booking.driver && (
-          <div style={s.driverBox}>
-            <div style={s.driverHead}>
-              <DriverAvatar driver={booking.driver} isDark={isDark} size={38} />
-              <div>
-                <div style={s.driverName}>{booking.driver.name}</div>
-                <div style={s.driverSub}>Your driver — optional</div>
-              </div>
-            </div>
-            <StarRating value={driverScore} onChange={setDriverScore} size={22} />
-            {driverScore > 0 && (
-              <textarea
-                id="driver-rating-comment"
-                aria-label={`Comment about ${booking.driver.name}`}
-                style={{ ...s.modalTextarea, marginTop: '10px' }}
-                rows={2}
-                value={driverComment}
-                onChange={(e) => setDriverComment(e.target.value)}
-                placeholder={`How was ${booking.driver.name}?`}
-              />
-            )}
-          </div>
-        )}
-
-        <label style={s.modalLabel} htmlFor="rating-comment">Comment (optional)</label>
-        <textarea
-          id="rating-comment"
-          style={s.modalTextarea}
-          rows={3}
-          value={form.comment}
-          onChange={(e) => setForm({ ...form, comment: e.target.value })}
-          placeholder="Tell us more about your experience..."
+        <RatingFormFields
+          r={r}
+          booking={booking}
+          isDark={isDark}
+          surface={isDark ? '#18191a' : '#fff'}
         />
 
-        <label style={s.modalLabel} htmlFor="rating-photos">Photos (optional)</label>
-        <div style={s.photoUpload}>
-          <span style={s.photoUploadHint}><CameraGlyph /> Click to add photos</span>
-          <input id="rating-photos" type="file" accept="image/*" multiple style={s.photoFileInput} onChange={handlePhotosChange} />
-        </div>
-        {photos.length > 0 && (
-          <div style={s.photoGrid}>
-            {photos.map((p, i) => (
-              <div key={p.id} style={s.photoThumbWrap}>
-                <img src={p.preview || p.url} alt={`Review photo ${i + 1}`} style={s.photoThumb} />
-                <button type="button" className="icon-toggle-btn" style={s.removePhotoBtn} onClick={() => removePhoto(p.id)} aria-label={`Remove photo ${i + 1}`}>×</button>
-              </div>
-            ))}
-          </div>
-        )}
-
         <div style={s.modalActions}>
-          <button style={s.modalCancelBtn} onClick={onClose} disabled={submitting}>
+          <button type="button" style={s.modalCancelBtn} onClick={onClose} disabled={r.submitting}>
             Cancel
           </button>
-          <button style={s.modalSubmitBtn} onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Submit Rating'}
+          <button type="button" style={s.modalSubmitBtn} onClick={() => r.submit(onSubmitted)} disabled={r.submitting}>
+            {r.submitting ? 'Sending…' : 'Send rating'}
           </button>
         </div>
       </div>

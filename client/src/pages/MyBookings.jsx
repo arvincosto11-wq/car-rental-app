@@ -7,7 +7,7 @@ import { useNotifications } from '../context/NotificationContext';
 import api from '../api';
 import DriverAvatar from '../components/DriverAvatar';
 import StarRating from '../components/StarRating';
-import RatingModal from '../components/RatingModal';
+import RatingPanel from '../components/RatingPanel';
 import BookingConfirmationModal from '../components/BookingConfirmationModal';
 import { SkeletonListCard } from '../components/Skeleton';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
@@ -131,7 +131,6 @@ const MyBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [retryingPaymentId, setRetryingPaymentId] = useState(null);
-  const [ratingModalId, setRatingModalId] = useState(null);
   const [rescheduleModalId, setRescheduleModalId] = useState(null);
   const [newStartDate, setNewStartDate] = useState('');
   const [newEndDate, setNewEndDate] = useState('');
@@ -492,14 +491,16 @@ const MyBookings = () => {
     : null;
 
 
-  const openRatingModal = (booking) => setRatingModalId(booking._id);
-  const closeRatingModal = () => setRatingModalId(null);
-  const handleRatingSubmitted = (carRating) => {
-    setBookings(bookings.map((b) => (b._id === ratingModalId ? { ...b, carRating } : b)));
-    closeRatingModal();
+  // Rating lands straight on the booking in the list, so the trip stops
+  // saying "not rated yet" without a round trip to the server.
+  const handleRatingSubmitted = (bookingId) => (carRating, driverRating, confirmation) => {
+    setBookings((list) => list.map((b) => (b._id === bookingId
+      ? { ...b, carRating, ...(driverRating ? { driverRating } : {}) }
+      : b)));
+    setPanel(null);
+    setSentFor((sent) => ({ ...sent, [bookingId]: confirmation }));
   };
 
-  const ratingBooking = bookings.find((b) => b._id === ratingModalId);
 
   // Why this booking wants the client, in one line, or null. First match
   // wins: what is urgent outranks what is merely unfinished, and a settled
@@ -668,6 +669,17 @@ const MyBookings = () => {
   const panelFor = (booking) => {
     if (panel?.bookingId !== booking._id) return null;
     if (panel.key === 'refund') return refundPanel(booking);
+    if (panel.key === 'rate') {
+      return (
+        <RatingPanel
+          booking={booking}
+          isDark={isDark}
+          mb={mb}
+          onClose={() => setPanel(null)}
+          onSubmitted={handleRatingSubmitted(booking._id)}
+        />
+      );
+    }
     return null;
   };
 
@@ -703,7 +715,7 @@ const MyBookings = () => {
   // what they open is not. They move inside the booking in step two.
   const runAction = (key, booking) => {
     if (key === 'refund') return openPanel(booking._id, 'refund');
-    if (key === 'rate') return openRatingModal(booking);
+    if (key === 'rate') return openPanel(booking._id, 'rate');
     if (key === 'dates') return openRescheduleModal(booking);
     if (key === 'longer') return setExtendBookingId(booking._id);
     if (key === 'pay') return handleRetryPayment(booking._id);
@@ -1701,11 +1713,6 @@ const MyBookings = () => {
                     </div>
                   )}
 
-                  <div style={{ padding: '0 14px 14px' }}>
-                    {panelFor(ticket)}
-                    {sentBanner(ticket)}
-                  </div>
-
                   {ticket.actions.length > 0 && !bookingAwaitingDecision(ticket) && !sentFor[ticket._id] && (
                     <div style={mb.actions}>
                       {ticket.actions.map((key) => (
@@ -1721,6 +1728,13 @@ const MyBookings = () => {
                       ))}
                     </div>
                   )}
+
+                  {/* What an action opens sits under the buttons that
+                      opened it, and the sent band replaces both. */}
+                  <div style={{ padding: '0 14px 14px' }}>
+                    {panelFor(ticket)}
+                    {sentBanner(ticket)}
+                  </div>
                 </article>
               )}
 
@@ -2001,14 +2015,6 @@ const MyBookings = () => {
         </div>
       )}
 
-      {ratingModalId && ratingBooking && (
-        <RatingModal
-          booking={ratingBooking}
-          isDark={isDark}
-          onClose={closeRatingModal}
-          onSubmitted={handleRatingSubmitted}
-        />
-      )}
     </div>
   );
 };
