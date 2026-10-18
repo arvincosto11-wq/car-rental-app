@@ -39,10 +39,20 @@ const lateFeeSoFar = (b, now) => (
 
 export function moneyFor(b, now = new Date()) {
   const days = b.totalDays || 1;
-  const rate = b.car?.pricePerDay || 0;
+  // What the rental actually cost, taken from the booking rather than
+  // from the vehicle's price today. Editing a vehicle's daily rate must
+  // not rewrite the receipt of a trip somebody already took — the model
+  // says as much about totalPrice: "this receipt can't change".
+  //
+  // totalPrice already has the discount taken off and the delivery added,
+  // so putting those back gives the rental on its own. That also makes
+  // the lines add up to totalPrice, which is the figure `owe` is worked
+  // out from; using the vehicle's current rate made the two disagree.
+  const rentalTotal = Math.max(0, (b.totalPrice || 0) - (b.deliveryFee || 0) + (b.discountAmount || 0));
+  const rate = days ? rentalTotal / days : 0;
   const lines = [];
 
-  if (rate) lines.push({ label: `${days} day${days === 1 ? '' : 's'} × ${peso(rate)}`, amount: rate * days });
+  if (rentalTotal) lines.push({ label: `${days} day${days === 1 ? '' : 's'} × ${peso(rate)}`, amount: rentalTotal });
   if (b.deliveryFee) lines.push({ label: 'Delivery', amount: b.deliveryFee });
   // A discount is money the client never has to find, so it reads as a
   // subtraction rather than as a smaller total with no explanation.
@@ -89,7 +99,7 @@ export function moneyFor(b, now = new Date()) {
 }
 
 const oweWhen = (b) => {
-  if (b.status === 'completed') return 'now';
+  if (b.status === 'completed') return 'at the office';
   if (b.collectedAt) return 'when you return it';
   return 'at pickup';
 };
@@ -208,7 +218,13 @@ export function actionKeysFor(b, now = new Date()) {
   }
 
   if (b.status === 'completed') {
-    if (moneyFor(b, now).owe > 0) keys.push('pay');
+    // No 'pay' here, however much is outstanding. The only online payment
+    // this system has is finishing an abandoned GCash checkout — handled
+    // by the gcash_pending branch above — and that endpoint refuses a
+    // booking already marked paid, which every finished trip is. Offering
+    // "Finish payment" on a trip that is over put a button on the page
+    // whose single outcome was the error "This booking is already paid."
+    // A balance after a trip is settled at the counter.
     if (!b.carRating?.rating) keys.push('rate');
     keys.push('call');
     return keys;

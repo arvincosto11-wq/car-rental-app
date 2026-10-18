@@ -42,6 +42,20 @@ export default function run() {
   check('and is named', discounted.lines[1].label, 'Promo ALBAY300');
   check('leaving less to find', discounted.owe, 1300);
 
+  // A vehicle's price can be edited at any time. The receipt for a trip
+  // already taken must not move with it — and the lines have to keep
+  // adding up to totalPrice, which is what `owe` is worked out from.
+  group('a receipt does not change when the price does');
+  const oldTrip = booking({
+    status: 'completed', totalDays: 2, totalPrice: 260, amountPaid: 52,
+    car: { brand: 'Toyota', model: 'Corolla', pricePerDay: 2000 },
+  });
+  const oldMoney = moneyFor(oldTrip, now);
+  check('the rate is the one that was charged', oldMoney.lines[0].label, '2 days × ₱130');
+  check('not the one on the vehicle today', oldMoney.lines[0].amount, 260);
+  check('so the lines agree with the total', oldMoney.cost, 260);
+  check('and what is left is what is left', oldMoney.owe, 208);
+
   group('charges after a trip');
   const charged = booking({
     status: 'completed',
@@ -57,7 +71,7 @@ export default function run() {
   check('said in hours, as everywhere else', after.lines.find((l) => l.label.startsWith('Late fee')).label, 'Late fee · 6 h late');
   check('fuel too', after.lines.some((l) => l.label === 'Fuel'), true);
   check('all of it owed', after.owe, 2350);
-  check('and wanted now', after.oweWhen, 'now');
+  check('and settled at the counter', after.oweWhen, 'at the office');
   // A charge somebody has already collected is not owed twice.
   const settled = moneyFor({ ...charged, lateFee: { days: 1, amount: 2000, collectedAt: '2026-10-14T06:00:00Z' } });
   check('a collected charge drops out', settled.owe, 350);
@@ -128,8 +142,14 @@ export default function run() {
     actionKeysFor(booking({ payment: 'gcash_pending' }), now), ['pay']);
   check('a vehicle still out can be kept longer',
     actionKeysFor(overdue, now), ['longer', 'call']);
-  check('a finished trip with money owed',
-    actionKeysFor(charged, now), ['pay', 'rate', 'call']);
+  // Never 'pay'. The only online payment in the system finishes an
+  // abandoned checkout, and that endpoint refuses a booking already
+  // marked paid — which every finished trip is. The button's one
+  // possible outcome was the error "This booking is already paid."
+  check('a finished trip with money owed cannot pay online',
+    actionKeysFor(charged, now), ['rate', 'call']);
+  check('but an unfinished checkout still can',
+    actionKeysFor(booking({ payment: 'gcash_pending' }), now), ['pay']);
   check('a cancelled booking nobody asked about',
     actionKeysFor(booking({ status: 'cancelled' }), now), ['refund']);
   check('and one already asked about',
