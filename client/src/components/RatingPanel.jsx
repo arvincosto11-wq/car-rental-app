@@ -30,7 +30,7 @@ const RatingPanel = ({ booking, isDark, mb, onClose, onSubmitted }) => {
           // The server works out the one score from the three, so the
           // confirmation quotes back the number the trip now carries
           // rather than whichever of the three we happened to pick.
-          const stars = carRating?.rating;
+          const stars = carRating?.overall;
           onSubmitted(
             carRating,
             driverRating,

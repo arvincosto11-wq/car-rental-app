@@ -13,6 +13,15 @@ export default function run() {
 
   const now = new Date('2026-10-16T04:00:00Z'); // noon in Manila
 
+  // A rating as the booking actually stores one. There is no `rating`
+  // field: the three scores average into `overall`, and `ratedAt` is what
+  // says somebody gave it. Fixtures that invented `rating` passed happily
+  // while the page told every client their trip was "not rated yet".
+  const RATED = {
+    vehicleCondition: 5, serviceQuality: 5, cleanliness: 5,
+    overall: 5, ratedAt: '2026-10-15T04:00:00Z',
+  };
+
   const booking = (over = {}) => ({
     _id: 'b1',
     status: 'confirmed',
@@ -100,7 +109,15 @@ export default function run() {
   check('a request the office has not answered waits', toneOf(booking({ status: 'pending' }), now), 'wait');
   check('so does a date change', toneOf(booking({ rescheduleRequest: { status: 'pending' } }), now), 'wait');
   check('a confirmed trip is in hand', toneOf(booking(), now), 'ok');
-  check('a settled trip is done', toneOf(booking({ status: 'completed', amountPaid: 2000, carRating: { rating: 5 } }), now), 'done');
+  check('a settled trip is done',
+    toneOf(booking({ status: 'completed', amountPaid: 2000, carRating: RATED }), now), 'done');
+
+  // The field the page reads has to be the field the server writes.
+  group('a trip somebody rated');
+  const rated = booking({ status: 'completed', amountPaid: 2000, carRating: RATED });
+  check('stops asking to be rated', actionKeysFor(rated, now).includes('rate'), false);
+  check('stops saying it is unrated', sentenceFor(rated, now).includes('not rated yet'), false);
+  check('and stops shouting', toneOf(rated, now), 'done');
 
   group('what belongs at the top of the page');
   check('a booking nobody has answered', isLive(booking({ status: 'pending' }), now), true);
@@ -122,7 +139,8 @@ export default function run() {
   check('cancelled, nothing charged',
     sentenceFor(booking({ status: 'cancelled', amountPaid: 0 }), now), 'Cancelled — nothing was charged');
   check('finished and rated',
-    sentenceFor(booking({ status: 'completed', amountPaid: 2000, carRating: { rating: 5 } }), now), 'Returned on time · you gave it 5 stars');
+    sentenceFor(booking({ status: 'completed', amountPaid: 2000, carRating: RATED }), now),
+    'Returned on time · you gave it 5 stars');
   check('finished, not rated',
     sentenceFor(booking({ status: 'completed', amountPaid: 2000 }), now), 'Returned on time · not rated yet');
   check('money still owed after a trip',

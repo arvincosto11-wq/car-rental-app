@@ -132,7 +132,7 @@ export function toneOf(b, now = new Date()) {
   if (isOfferOpen(b.adjustOffer, now)) return 'amber';
   if (b.payment === 'gcash_pending') return 'amber';
   if (b.status === 'completed' && unsettled(b) > 0) return 'amber';
-  if (b.status === 'completed' && !b.carRating?.rating) return 'amber';
+  if (b.status === 'completed' && !b.carRating?.ratedAt) return 'amber';
 
   if (b.status === 'pending') return 'wait';
   if (b.rescheduleRequest?.status === 'pending') return 'wait';
@@ -179,8 +179,11 @@ export function sentenceFor(b, now = new Date()) {
     const late = hoursLate(b.endDate, b.returnedAt);
     const how = late > 0 ? latenessLabel(late, b.lateFee?.days).replace('Returned ', 'Returned ') : 'Returned on time';
     if (money.owe) return `${how} — ${peso(money.owe)} left to pay`;
-    if (!b.carRating?.rating) return `${how} · not rated yet`;
-    return `${how} · you gave it ${b.carRating.rating} star${b.carRating.rating === 1 ? '' : 's'}`;
+    if (!b.carRating?.ratedAt) return `${how} · not rated yet`;
+    // The three scores average into `overall`; that is the one number a
+    // client recognises as what they gave it.
+    const stars = b.carRating.overall;
+    return `${how} · you gave it ${stars} star${stars === 1 ? '' : 's'}`;
   }
 
   const out = !!b.collectedAt && !b.returnedAt;
@@ -225,7 +228,7 @@ export function actionKeysFor(b, now = new Date()) {
     // "Finish payment" on a trip that is over put a button on the page
     // whose single outcome was the error "This booking is already paid."
     // A balance after a trip is settled at the counter.
-    if (!b.carRating?.rating) keys.push('rate');
+    if (!b.carRating?.ratedAt) keys.push('rate');
     keys.push('call');
     return keys;
   }
@@ -280,7 +283,7 @@ export function subFor(b, now = new Date()) {
   if (b.status === 'completed') {
     const fees = feeWords(money.lines);
     if (money.owe > 0 && fees) return `That is ${fees}.`;
-    if (!b.carRating?.rating) return 'A rating takes a moment, and it’s what the next client goes on.';
+    if (!b.carRating?.ratedAt) return 'A rating takes a moment, and it’s what the next client goes on.';
     return '';
   }
 
