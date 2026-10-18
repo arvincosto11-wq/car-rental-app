@@ -34,12 +34,10 @@ function adminPriority(booking, now) {
     // Longest missing first.
     return { tier: TIER.MISSING, at: time(booking.endDate) };
   }
-  if (
-    status === 'pending'
-    || booking.refundStatus === 'requested'
-    || booking.rescheduleRequest?.status === 'pending'
-    || booking.adjustOffer?.status === 'open'
-  ) {
+  // An open offer is in this tier for sorting — it is live and the office
+  // should keep an eye on it — but it is NOT in needsDecision, because the
+  // answer is the client's to give, not the office's.
+  if (needsDecision(booking) || booking.adjustOffer?.status === 'open') {
     // Whoever has waited longest has waited longest.
     return { tier: TIER.DECIDE, at: time(booking.createdAt) };
   }
@@ -68,6 +66,20 @@ function clientPriority(booking, now) {
   }
   return { tier: TIER.SCHEDULED, at: time(isOut(booking) ? booking.endDate : booking.startDate) };
 }
+
+// What the office owes somebody an answer on.
+//
+// Three different questions wearing one label: a booking nobody has
+// confirmed, a client asking to move their dates, and a client asking for
+// their money back. All three sit with the office until a person decides.
+//
+// Manage Bookings counts its Pending tab with this, and that tab is the
+// one that OVERLAPS the others on purpose: a booking due out this evening
+// can also be waiting on an answer, and it has to stay in For Pickup or
+// the desk loses a handover. The tab counts therefore do not sum to All.
+export const needsDecision = (booking) => booking?.status === 'pending'
+  || booking?.refundStatus === 'requested'
+  || booking?.rescheduleRequest?.status === 'pending';
 
 export function bookingPriority(booking, { role = 'admin', now = new Date() } = {}) {
   return role === 'client' ? clientPriority(booking, now) : adminPriority(booking, now);

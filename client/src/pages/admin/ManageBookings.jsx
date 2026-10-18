@@ -2,7 +2,6 @@ import { useState, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
-import BackButton from '../../components/BackButton';
 import StarRating from '../../components/StarRating';
 import ClientRatingModal from '../../components/ClientRatingModal';
 import BookingDetailsModal from '../../components/BookingDetailsModal';
@@ -23,7 +22,7 @@ import { formatMoment, phYmd } from '../../utils/phTime';
 import { FUEL_STEPS, fuelLabel, fuelShortfallLabel } from '../../utils/fuel';
 import ConditionPhotos from '../../components/ConditionPhotos';
 import { licenceProblem } from '../../utils/documents';
-import { RepeatGlyph } from '../../components/Glyphs';
+import { needsDecision } from '../../utils/priority';
 import { StarGlyph } from '../../components/Glyphs';
 
 const LOW_RATING_THRESHOLD = 3;
@@ -186,7 +185,6 @@ const ManageBookings = () => {
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [rescheduleOnly, setRescheduleOnly] = useState(false);
   const [page, setPage] = useState(1);
 
   useEffect(() => { fetchBookings(); }, []);
@@ -715,7 +713,9 @@ const ManageBookings = () => {
     return { amount: b.totalPrice || 0, label: 'total', tone: 'plain' };
   };
   const unratedClientCount = bookings.filter((b) => b.status === 'completed' && !b.clientRating?.ratedAt).length;
-  const pendingRescheduleCount = bookings.filter((b) => b.rescheduleRequest?.status === 'pending').length;
+  // "Pending" answers "what is waiting on me?", not "what carries the
+  // status 'pending'?" — see needsDecision in utils/priority.js, which
+  // the urgency sort reads too so the tab and the order agree.
 
   // Unpaid bookings never show up here at all (see filteredBookings below),
   // so counts for the status tabs are scoped to paid bookings only —
@@ -733,7 +733,7 @@ const ManageBookings = () => {
   // journey rather than a bag of labels.
   const statusTabs = [
     { value: 'all', label: 'All', count: paidBookings.length },
-    { value: 'pending', label: 'Pending', count: paidBookings.filter((b) => b.status === 'pending').length },
+    { value: 'pending', label: 'Pending', count: paidBookings.filter(needsDecision).length },
     { value: 'upcoming', label: 'Upcoming', count: paidBookings.filter(isUpcoming).length },
     { value: 'for_pickup', label: 'For Pickup', count: paidBookings.filter(isForPickup).length },
     { value: 'on_trip', label: 'On Trip', count: paidBookings.filter((b) => isOnTrip(b) && !isOverdue(b)).length },
@@ -756,9 +756,9 @@ const ManageBookings = () => {
       overdue: isOverdue,
     }[statusFilter];
     const matchStatus = statusFilter === 'all' ? true
-      : stage ? stage(b)
-        : b.status === statusFilter;
-    const matchReschedule = !rescheduleOnly || b.rescheduleRequest?.status === 'pending';
+      : statusFilter === 'pending' ? needsDecision(b)
+        : stage ? stage(b)
+          : b.status === statusFilter;
     const q = search.trim().toLowerCase();
     const matchSearch = !q
       || b.user?.name?.toLowerCase().includes(q)
@@ -767,7 +767,7 @@ const ManageBookings = () => {
       // The payment reference is what a client quotes when they ring up
       // about a charge, and it is printed on their own booking.
       || b.paymongoPaymentId?.toLowerCase().includes(q);
-    return matchStatus && matchReschedule && matchSearch;
+    return matchStatus && matchSearch;
   });
   // Two clients racing for the same vehicle are one decision, so they are
   // shown together. The urgency sort has no reason to put them side by side
@@ -1172,16 +1172,6 @@ const ManageBookings = () => {
       padding: '9px 16px', background: isDark ? '#242526' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151',
       border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', fontWeight: '600',
       cursor: 'pointer', whiteSpace: 'nowrap',
-    },
-    rescheduleFilterBtn: {
-      display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '9px 16px', background: isDark ? '#242526' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap',
-    },
-    rescheduleFilterBadge: {
-      background: isDark ? '#3a3b3c' : '#e5e7eb', color: isDark ? '#e4e6eb' : '#374151',
-      fontSize: '11px', fontWeight: '700', borderRadius: '20px', padding: '1px 8px', minWidth: '18px', textAlign: 'center',
     },
   
     // ── List beside detail (design 1c) ────────────────────────────────
@@ -1668,12 +1658,6 @@ const ManageBookings = () => {
 
   return (
     <AdminLayout activePage="Manage Bookings">
-      {!loading && rescheduleOnly && (
-        <BackButton
-          text="Back to All Bookings"
-          onClick={() => { setRescheduleOnly(false); setPage(1); }}
-        />
-      )}
       <div style={s.headerRow}>
         <div>
           <h1 style={s.title}>Manage Bookings</h1>
@@ -1683,16 +1667,6 @@ const ManageBookings = () => {
           <button style={s.calendarBtn} onClick={() => navigate('/admin/bookings-calendar')}>
           <CalendarGlyph /> Calendar View
           </button>
-          {!loading && !rescheduleOnly && pendingRescheduleCount > 0 && (
-            <button
-              type="button"
-              style={s.rescheduleFilterBtn}
-              onClick={() => { setRescheduleOnly(true); setPage(1); }}
-            >
-              <RepeatGlyph /> Pending Reschedules
-              <span style={s.rescheduleFilterBadge}>{pendingRescheduleCount}</span>
-            </button>
-          )}
           {/* The way into the ratings, which used to vanish the moment the
               last client was rated — taking the only link to that page
               with it. It stays now, and says what it is when there is no
