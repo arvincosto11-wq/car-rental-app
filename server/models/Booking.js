@@ -305,6 +305,17 @@ const bookingSchema = new mongoose.Schema({
   // (e.g. 'pending' or 'succeeded'); not tracked further via webhook yet.
   paymongoRefundId: { type: String, default: '' },
   paymongoRefundStatus: { type: String, default: '' },
+  // When the automatic refund could not be sent and somebody paid the
+  // client back by hand instead. Without this there would be no way to
+  // answer "has this one been dealt with?" — the booking would sit in the
+  // admin's Pending tab for ever, because the thing that clears it
+  // (paymongoRefundId) is written only by a PayMongo payout that already
+  // failed. See refundOwed in utils/priority.js.
+  refundSettledByHand: {
+    at: { type: Date },
+    by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    note: { type: String, default: '' },
+  },
   carRating: {
     vehicleCondition: { type: Number, min: 1, max: 5 },
     serviceQuality: { type: Number, min: 1, max: 5 },

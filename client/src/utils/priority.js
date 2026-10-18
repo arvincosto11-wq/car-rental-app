@@ -79,7 +79,34 @@ function clientPriority(booking, now) {
 // the desk loses a handover. The tab counts therefore do not sum to All.
 export const needsDecision = (booking) => booking?.status === 'pending'
   || booking?.refundStatus === 'requested'
-  || booking?.rescheduleRequest?.status === 'pending';
+  || booking?.rescheduleRequest?.status === 'pending'
+  || refundOwed(booking);
+
+// Whether any real money ever reached us for this booking. Mirrors
+// paymentSources in utils/paymongo.js, which is the authority — that file
+// holds PayMongo credentials so it cannot be shared with the client, and
+// a test asserts the two agree on every shape below.
+const moneyWasTaken = (booking) => (
+  (!!booking?.paymongoPaymentId && (booking?.amountPaid || 0) > 0)
+  || (booking?.extraPayments || []).some((p) => p.paymongoPaymentId && p.amount > 0)
+);
+
+// A refund the office said yes to and the client never received.
+//
+// Approving a refund tries to send it back through GCash straight away,
+// and a success writes paymongoRefundId onto the booking. A failure wrote
+// nothing at all: one notification went out and the booking carried on
+// saying "approved", indistinguishable from the ones that worked. Miss
+// the notification and the money was owed by a system that had no idea.
+//
+// Both halves of the test matter. Without `moneyWasTaken` this catches
+// every abandoned checkout — a refund approved against a payment that was
+// never captured, where there is genuinely nothing to send.
+export const refundOwed = (booking) => booking?.refundStatus === 'approved'
+  && (booking?.refundAmount || 0) > 0
+  && moneyWasTaken(booking)
+  && !booking?.paymongoRefundId
+  && !booking?.refundSettledByHand?.at;
 
 export function bookingPriority(booking, { role = 'admin', now = new Date() } = {}) {
   return role === 'client' ? clientPriority(booking, now) : adminPriority(booking, now);

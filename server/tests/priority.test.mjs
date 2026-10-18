@@ -3,7 +3,8 @@
 // needsDecision, so these are the rules behind that number.
 
 import { suite, group, check } from './harness.mjs';
-import { needsDecision, bookingPriority, TIER } from '../utils/priority.js';
+import { needsDecision, refundOwed, bookingPriority, TIER } from '../utils/priority.js';
+import { paymentSources } from '../utils/paymongo.js';
 
 export default function run() {
   suite('Admin · what needs deciding');
@@ -53,6 +54,55 @@ export default function run() {
   check('it wants an answer', needsDecision(dueOutAndAsking), true);
   check('and it is still going out on its original dates',
     dueOutAndAsking.startDate, '2026-10-18T12:00:00Z');
+
+  // Approving a refund sends it back through GCash and records the payout
+  // on the booking. A failure recorded nothing — one notification, and a
+  // booking still reading "approved" exactly like the ones that worked.
+  group('a refund the client never received');
+  const paid = (over = {}) => booking({
+    status: 'cancelled',
+    refundStatus: 'approved',
+    refundAmount: 2000,
+    amountPaid: 2000,
+    paymongoPaymentId: 'pay_abc',
+    ...over,
+  });
+  check('approved, money taken, nothing sent', refundOwed(paid()), true);
+  check('so it is waiting on the office', needsDecision(paid()), true);
+  check('a payout that went through is settled',
+    refundOwed(paid({ paymongoRefundId: 're_abc' })), false);
+  check('and so is one paid back by hand',
+    refundOwed(paid({ refundSettledByHand: { at: '2026-10-18T12:00:00Z' } })), false);
+
+  // The half that stops this flagging every abandoned checkout: a refund
+  // approved against a payment nobody ever captured owes nothing.
+  check('a checkout nobody finished owes nothing',
+    refundOwed(paid({ paymongoPaymentId: '', amountPaid: 0, payment: 'gcash_pending' })), false);
+  check('nor does a refund of nothing', refundOwed(paid({ refundAmount: 0 })), false);
+  check('nor one still being decided', refundOwed(paid({ refundStatus: 'requested' })), false);
+  check('nor one turned down', refundOwed(paid({ refundStatus: 'declined' })), false);
+  // A later payment can be the only one that held money.
+  check('a top-up counts as money taken',
+    refundOwed(paid({
+      paymongoPaymentId: '', amountPaid: 0,
+      extraPayments: [{ paymongoPaymentId: 'pay_top', amount: 500 }],
+    })), true);
+
+  // priority.js cannot import paymongo.js — that file carries the API
+  // credentials and is server-only, while this one is copied to the
+  // client. So it mirrors paymentSources, and this pins the two together.
+  group('and it agrees with the file that actually sends the money');
+  for (const [what, b] of [
+    ['a normal payment', paid()],
+    ['nothing captured', paid({ paymongoPaymentId: '', amountPaid: 0 })],
+    ['a top-up only', paid({
+      paymongoPaymentId: '', amountPaid: 500,
+      extraPayments: [{ paymongoPaymentId: 'pay_top', amount: 500 }],
+    })],
+    ['an id but no money', paid({ amountPaid: 0 })],
+  ]) {
+    check(what, refundOwed({ ...b, refundAmount: 2000 }) === (paymentSources(b).length > 0), true);
+  }
 
   group('the order the work comes in');
   check('a request sits in the decide tier',

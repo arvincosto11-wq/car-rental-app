@@ -22,7 +22,7 @@ import { formatMoment, phYmd } from '../../utils/phTime';
 import { FUEL_STEPS, fuelLabel, fuelShortfallLabel } from '../../utils/fuel';
 import ConditionPhotos from '../../components/ConditionPhotos';
 import { licenceProblem } from '../../utils/documents';
-import { needsDecision } from '../../utils/priority';
+import { needsDecision, refundOwed } from '../../utils/priority';
 import { StarGlyph } from '../../components/Glyphs';
 
 const LOW_RATING_THRESHOLD = 3;
@@ -524,6 +524,29 @@ const ManageBookings = () => {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Something went wrong updating this refund.');
+    }
+  };
+
+  // Recording that somebody sent the money the automatic payout could
+  // not. Asks first, because it is a claim that real pesos left the
+  // business and nothing else in the system can check it.
+  const markRefundSentByHand = async (booking) => {
+    const ok = await confirm(
+      `Record that ₱${(booking.refundAmount || 0).toLocaleString()} has been sent to `
+      + `${booking.user?.name || 'the client'} by hand? `
+      + 'The automatic GCash refund did not go through, so only do this once you have actually sent it.',
+      { confirmLabel: 'Yes, it has been sent', cancelLabel: 'Not yet' },
+    );
+    if (!ok) return;
+    try {
+      const res = await api.put(`/bookings/${booking._id}/refund-by-hand`, {});
+      applyBooking(res.data.booking || res.data);
+      refreshQuietly();
+      refetchPendingCounts();
+      toast.success('Recorded. The client has been told it is on its way.');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Could not record that refund.');
     }
   };
 
@@ -1227,6 +1250,24 @@ const ManageBookings = () => {
         background: t.bg, color: t.fg, border: `1px solid ${t.bd}`,
       };
     },
+    // Not a request — money the client is owed and has not had. It reads
+    // in the same red as an overdue vehicle because it is the same kind of
+    // problem: something that should have happened and did not.
+    unsentRefundCard: {
+      padding: '14px 16px', borderRadius: '12px', marginBottom: '14px',
+      background: isDark ? 'rgba(220,38,38,0.1)' : '#fef2f2',
+      border: `1px solid ${isDark ? 'rgba(220,38,38,0.38)' : '#fecaca'}`,
+    },
+    unsentRefundLabel: {
+      fontSize: '11px', fontWeight: '800', letterSpacing: '0.08em', textTransform: 'uppercase',
+      color: isDark ? '#fca5a5' : '#b91c1c', marginBottom: '6px',
+    },
+    unsentRefundChip: {
+      fontSize: '11px', fontWeight: '700', borderRadius: '20px', padding: '2px 9px',
+      background: isDark ? 'rgba(220,38,38,0.16)' : '#fef2f2',
+      color: isDark ? '#fca5a5' : '#b91c1c',
+      border: `1px solid ${isDark ? 'rgba(220,38,38,0.4)' : '#fecaca'}`,
+    },
     requestChip: {
       display: 'inline-block', fontSize: '10.5px', fontWeight: '700', padding: '3px 8px', borderRadius: '7px',
       background: goldTint, color: ink,
@@ -1826,6 +1867,7 @@ const ManageBookings = () => {
                       <span style={s.pill(stage)}>{STAGE_LABEL[stage]}</span>
                       {b.refundStatus === 'requested' && <span style={s.requestChip}>Refund requested</span>}
                       {b.rescheduleRequest?.status === 'pending' && <span style={s.requestChip}>Reschedule requested</span>}
+                      {refundOwed(b) && <span style={s.unsentRefundChip}>Refund not sent</span>}
                       {/* Two clients asked for the same dates. Confirming one
                           bumps the other, so it belongs where somebody is
                           choosing between them. */}
@@ -1948,6 +1990,24 @@ const ManageBookings = () => {
                       </button>
                       <button type="button" style={s.ghostBtn} onClick={() => handleRefundDecision(selected._id, 'declined')}>
                         Decline
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {refundOwed(selected) && (
+                  <div style={s.unsentRefundCard}>
+                    <div style={s.unsentRefundLabel}>Refund not sent</div>
+                    <div style={s.requestAsk}>
+                      ₱{(selected.refundAmount || 0).toLocaleString()} owed to {selected.user?.name || 'the client'}
+                    </div>
+                    <p style={s.requestWords}>
+                      This refund was approved, but the automatic GCash payout did not go through.
+                      The client has not been paid. Send it by hand, then record it here.
+                    </p>
+                    <div style={s.requestBtns}>
+                      <button type="button" style={s.goldBtn} onClick={() => markRefundSentByHand(selected)}>
+                        I have sent it
                       </button>
                     </div>
                   </div>

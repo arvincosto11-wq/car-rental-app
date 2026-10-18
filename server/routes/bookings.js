@@ -23,7 +23,7 @@ import { instantFrom, isTradingHour, daysBetween, dayAlignedSpan, phDayStart, ph
 import { notifyOverdueReturns, notifyUpcomingReturns, warnOfCollidingBookings, isOverdue, daysOverdue, lateFeeRecord } from '../utils/overdueReturns.js';
 import { isFuelLevel } from '../utils/fuel.js';
 import { licenceProblem, licenceMessage } from '../utils/documents.js';
-import { byUrgency } from '../utils/priority.js';
+import { byUrgency, refundOwed } from '../utils/priority.js';
 import { recordActivity } from '../utils/priority.js';
 import { vehiclesForSwap, remainingSpan, repriceForSwap } from '../utils/moveVehicle.js';
 import { fail } from '../utils/respond.js';
@@ -1018,6 +1018,41 @@ router.put('/:id/move-vehicle', protect, adminOnly, async (req, res) => {
 });
 
 // Admin records the damage charge as settled.
+// A refund the automatic payout could not send, paid back by hand.
+//
+// Approving a refund tries PayMongo immediately and writes the payout id
+// on success. When that throws, the only trace was a notification — so a
+// booking could sit saying "approved" while the client had nothing. This
+// is how one gets closed once somebody has actually sent the money, and
+// it is what takes it back out of the admin's Pending tab.
+router.put('/:id/refund-by-hand', protect, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!refundOwed(booking)) {
+      // Covers all of: never approved, nothing owed, the automatic payout
+      // did go through, and somebody already recorded this one.
+      return res.status(400).json({ message: 'There is no unsent refund on this booking.' });
+    }
+    booking.refundSettledByHand = {
+      at: new Date(),
+      by: req.user._id,
+      note: (req.body?.note || '').trim().slice(0, 500),
+    };
+    await booking.save();
+    await notifyUser(
+      booking.user,
+      'Refund sent',
+      `Your ${'₱'}${(booking.refundAmount || 0).toLocaleString()} refund has been sent.`,
+      '/my-bookings',
+      { email: true },
+    );
+    res.json(booking);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 router.put('/:id/damage-charge/collected', protect, adminOnly, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
