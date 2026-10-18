@@ -274,6 +274,15 @@ const bookingSchema = new mongoose.Schema({
   // A GCash payment in flight for an extension. The dates do not move
   // until it lands, so backing out of the payment changes nothing — see
   // utils/extendBooking.js.
+  // A GCash payment in flight for money the booking already owed — the
+  // balance after a deposit, or the charges a trip ended with. Same shape
+  // as pendingExtension and settled the same way: the page is told
+  // nothing, the server asks PayMongo what actually happened.
+  pendingSettlement: {
+    checkoutSessionId: { type: String, default: '' },
+    amount: { type: Number, default: 0 },
+    startedAt: { type: Date },
+  },
   pendingExtension: {
     checkoutSessionId: { type: String, default: '' },
     amount: { type: Number, default: 0 },

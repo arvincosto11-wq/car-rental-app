@@ -16,6 +16,7 @@ import ExtendBookingPanel from '../components/ExtendBookingPanel';
 import { bookingAwaitingDecision } from '../utils/offerWindow';
 import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays } from '../utils/phTime';
 import { toneOf, stepOf, moneyFor, moneySummary, sentenceFor, subFor, actionKeysFor, isLive } from '../utils/myBookings';
+import { payableNow } from '../utils/settlement';
 import { refundOutcome } from '../utils/refundPolicy';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk } from '../theme';
@@ -315,6 +316,36 @@ const MyBookings = () => {
   // rather than trusting the redirect, and also picks up a payment that
   // finished with the tab already closed.
   const extendChecked = useRef(new Set());
+  const settleChecked = useRef(new Set());
+  // Back from paying what a booking owed. Asks the server what actually
+  // happened rather than trusting the redirect — somebody can land on the
+  // success URL having abandoned the payment. Also runs for a booking
+  // left with a payment in flight, so closing the tab mid-payment does
+  // not strand the money.
+  useEffect(() => {
+    const fromRedirect = searchParams.get('settle') && searchParams.get('bookingId');
+    const paying = bookings.find((b) => b.pendingSettlement?.checkoutSessionId
+      && !settleChecked.current.has(b._id));
+    const id = fromRedirect ? searchParams.get('bookingId') : paying?._id;
+    if (!user || !id || settleChecked.current.has(id)) return;
+    settleChecked.current.add(id);
+    if (fromRedirect) setSearchParams({}, { replace: true });
+    (async () => {
+      try {
+        await api.put(`/bookings/${id}/settlement/confirm`);
+        toast.success('Payment received — thank you.');
+      } catch (err) {
+        if (fromRedirect) toast.info(err.response?.data?.message || 'That payment was not completed.');
+        else console.error(err);
+      }
+      await refreshBookings();
+    })();
+    // Deliberately not depending on toast/refreshBookings/setSearchParams:
+    // the ref above already runs this at most once per booking, and adding
+    // them re-runs it whenever the page re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, searchParams, bookings]);
+
   useEffect(() => {
     const fromRedirect = searchParams.get('extend') && searchParams.get('bookingId');
     const paying = bookings.find((b) => b.pendingExtension?.checkoutSessionId
@@ -596,6 +627,18 @@ const MyBookings = () => {
     return setPanel({ bookingId, key });
   };
 
+  const startSettlement = async (booking) => {
+    setPanelBusy(true);
+    setPanelError('');
+    try {
+      const { data } = await api.post(`/bookings/${booking._id}/settlement`);
+      window.location.assign(data.checkoutUrl);
+    } catch (err) {
+      setPanelError(err.response?.data?.message || 'Could not start that payment.');
+      setPanelBusy(false);
+    }
+  };
+
   const sendRefundRequest = async (booking) => {
     if (!panelReason) return;
     setPanelBusy(true);
@@ -671,6 +714,60 @@ const MyBookings = () => {
           onClick={() => sendRefundRequest(booking)}
         >
           {panelBusy ? 'Sending…' : 'Send request'}
+        </button>
+      </div>
+    );
+  };
+
+  // Paying what the booking already owes. The figure is the server's —
+  // this only shows it, and the server works it out again when the money
+  // lands, because the counter can take the same balance meanwhile.
+  const settlePanel = (booking) => {
+    const due = payableNow(booking);
+    const parts = [
+      due.balance > 0 && ['Balance on the rental', due.balance],
+      due.lateFee > 0 && ['Late fee', due.lateFee],
+      due.fuel > 0 && ['Fuel', due.fuel],
+    ].filter(Boolean);
+    const damage = !booking.condition?.damageCollectedAt ? (booking.condition?.damageCharge || 0) : 0;
+
+    return (
+      <div style={mb.panel}>
+        <div style={mb.panelHead}>
+          <span style={mb.panelTitle}>Pay now</span>
+          <button type="button" style={mb.panelClose} aria-label="Close" onClick={() => setPanel(null)}>×</button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', fontSize: '14px' }}>
+          {parts.map(([label, amount]) => (
+            <div key={label} style={mb.receiptRow}>
+              <span style={mb.receiptLabel}>{label}</span>
+              <span style={mb.leader} />
+              <span style={mb.receiptAmount()}>{peso(amount)}</span>
+            </div>
+          ))}
+          <div style={mb.owedRow}>
+            <span style={mb.owedLabel}>To pay</span>
+            <span style={mb.owedAmount}>{peso(due.amount)}</span>
+          </div>
+        </div>
+
+        {damage > 0 && (
+          <p style={mb.panelNote}>
+            The {peso(damage)} damage charge isn&apos;t here — that one is settled at the
+            office, with the vehicle there.
+          </p>
+        )}
+
+        {panelError && <div style={mb.panelError}>{panelError}</div>}
+
+        <button
+          type="button"
+          style={mb.panelSubmit(!panelBusy)}
+          disabled={panelBusy}
+          onClick={() => startSettlement(booking)}
+        >
+          {panelBusy ? 'Opening GCash…' : `Pay ${peso(due.amount)} with GCash`}
         </button>
       </div>
     );
@@ -756,6 +853,7 @@ const MyBookings = () => {
   const panelFor = (booking) => {
     if (panel?.bookingId !== booking._id) return null;
     if (panel.key === 'refund') return refundPanel(booking);
+    if (panel.key === 'settle') return settlePanel(booking);
     if (panel.key === 'dates') return datesPanel(booking);
     if (panel.key === 'longer') {
       return (
@@ -800,13 +898,14 @@ const MyBookings = () => {
     dates: 'Change dates',
     offer: 'Choose',
     pay: 'Finish payment',
+    settle: 'Pay now',
     longer: 'Keep it longer',
     call: 'Call the office',
   };
   // Gold is spent only where something has gone wrong or needs doing —
   // and on one button, not two. A trip that owes money and wants rating
   // was lighting up both, so neither read as the thing to do first.
-  const PRIMARY_RANK = ['pay', 'offer', 'longer', 'rate'];
+  const PRIMARY_RANK = ['pay', 'settle', 'offer', 'longer', 'rate'];
   const isPrimaryAction = (key, tone, actions) => (tone === 'red' || tone === 'amber')
     && key === PRIMARY_RANK.find((k) => actions.includes(k));
 
@@ -825,6 +924,7 @@ const MyBookings = () => {
     }
     if (key === 'longer') return openPanel(booking._id, 'longer');
     if (key === 'pay') return handleRetryPayment(booking._id);
+    if (key === 'settle') return openPanel(booking._id, 'settle');
     if (key === 'call') return window.open(`tel:${OFFICE_PHONE}`);
     if (key === 'withdrawRefund') return withdrawRequest(booking, 'refund');
     if (key === 'withdrawDates') return withdrawRequest(booking, 'reschedule');

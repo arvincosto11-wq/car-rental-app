@@ -71,7 +71,7 @@ export default function run() {
   check('said in hours, as everywhere else', after.lines.find((l) => l.label.startsWith('Late fee')).label, 'Late fee · 6 h late');
   check('fuel too', after.lines.some((l) => l.label === 'Fuel'), true);
   check('all of it owed', after.owe, 2350);
-  check('and settled at the counter', after.oweWhen, 'at the office');
+  check('and wanted now', after.oweWhen, 'now');
   // A charge somebody has already collected is not owed twice.
   const settled = moneyFor({ ...charged, lateFee: { days: 1, amount: 2000, collectedAt: '2026-10-14T06:00:00Z' } });
   check('a collected charge drops out', settled.owe, 350);
@@ -129,13 +129,17 @@ export default function run() {
     sentenceFor(charged, now).endsWith('₱2,350 left to pay'), true);
 
   group('what the client may do');
-  check('a trip ahead can be questioned or asked back',
-    actionKeysFor(booking(), now), ['dates', 'refund']);
+  // A deposit leaves a balance, and that balance can be paid now rather
+  // than only at the counter.
+  check('a trip ahead can be paid up, questioned or asked back',
+    actionKeysFor(booking(), now), ['settle', 'dates', 'refund']);
+  check('nothing to settle once it is paid in full',
+    actionKeysFor(booking({ amountPaid: 2000 }), now), ['dates', 'refund']);
   // Asking twice is not a thing: the office already has the question.
   check('not while a date change is pending',
-    actionKeysFor(booking({ rescheduleRequest: { status: 'pending' } }), now), ['refund']);
+    actionKeysFor(booking({ rescheduleRequest: { status: 'pending' } }), now), ['settle', 'refund']);
   check('nor while a refund is being decided',
-    actionKeysFor(booking({ refundStatus: 'requested' }), now), ['dates']);
+    actionKeysFor(booking({ refundStatus: 'requested' }), now), ['settle', 'dates']);
   check('an offer leaves one thing to do',
     actionKeysFor(booking({ adjustOffer: { status: 'open', deadline: '2026-10-20T04:00:00Z', options: [{ startDate: '2026-11-09T23:00:00Z', endDate: '2026-11-10T23:00:00Z' }] } }), now), ['offer']);
   check('an unfinished payment leaves one thing to do',
@@ -146,8 +150,10 @@ export default function run() {
   // abandoned checkout, and that endpoint refuses a booking already
   // marked paid — which every finished trip is. The button's one
   // possible outcome was the error "This booking is already paid."
-  check('a finished trip with money owed cannot pay online',
-    actionKeysFor(charged, now), ['rate', 'call']);
+  check('a finished trip with charges can settle them',
+    actionKeysFor(charged, now), ['settle', 'rate', 'call']);
+  check('one with nothing owed just wants rating',
+    actionKeysFor(booking({ status: 'completed', amountPaid: 2000 }), now), ['rate', 'call']);
   check('but an unfinished checkout still can',
     actionKeysFor(booking({ payment: 'gcash_pending' }), now), ['pay']);
   check('a cancelled booking nobody asked about',
