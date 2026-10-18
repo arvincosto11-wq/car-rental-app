@@ -117,8 +117,13 @@ const ExtendBookingPanel = ({ booking, isDark, mb, onClose, onStarted }) => {
     ? Math.round((new Date(`${latest}T00:00:00`) - new Date(`${endYmd}T00:00:00`)) / DAY)
     : 7;
   const maxStep = Math.max(1, Math.min(7, roomToLatest));
+  // The upper bound only applies to stepping UP. Picking a longer
+  // extension on the calendar than the stepper offers used to leave −
+  // looking enabled and doing nothing, because every target it tried was
+  // over the limit.
   const stepTo = (n) => {
-    if (n < 1 || n > maxStep) return;
+    if (n < 1) return;
+    if (n > extraDays && n > maxStep) return;
     setNewEnd(dayAfter(endYmd, n));
   };
 
