@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api';
 import AvailabilityCalendar from './AvailabilityCalendar';
 import { formatMoment, phYmd, instantFrom, phHour } from '../utils/phTime';
-import useModalA11y from '../hooks/useModalA11y';
-import { GOLD, GOLD_DARK, ON_GOLD, goldInk} from '../theme';
-import LAYERS from '../layers';
+import { GOLD, GOLD_DARK, goldInk } from '../theme';
 
 // Making a booking longer, and showing what that costs before a peso moves.
 //
@@ -23,7 +21,12 @@ const toYmd = (date) => {
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString()}`;
 
-const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
+// The handoff draws this as a −/+ stepper and a single "+ ₱x". That
+// would have dropped the calendar, the late-fee reduction and the choice
+// between a deposit and the full amount, so the stepper is here as the
+// quick way to add a day or two and everything else stays. It lives
+// inside the booking now rather than over the page.
+const ExtendBookingPanel = ({ booking, isDark, mb, onClose, onStarted }) => {
   const [limits, setLimits] = useState(null);
   const [ranges, setRanges] = useState([]);
   const [newEnd, setNewEnd] = useState('');
@@ -35,7 +38,6 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
   // choice — see the server's quote.
   const [mode, setMode] = useState('deposit');
 
-  const ref = useModalA11y(onClose, true);
   const carId = booking.car?._id || booking.car;
   const hour = booking.hasPickupTime ? phHour(booking.startDate) : 0;
 
@@ -102,20 +104,38 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
     return ymd > phYmd(currentEnd) && (!latest || ymd <= latest);
   };
 
+  // The stepper and the calendar are two ways to the same newEnd. The
+  // stepper stops at a week, which covers nearly every extension; a
+  // longer one is a tap on the calendar.
+  const DAY = 24 * 60 * 60 * 1000;
+  const dayAfter = (ymd, n) => toYmd(new Date(new Date(`${ymd}T00:00:00`).getTime() + n * DAY));
+  const endYmd = phYmd(currentEnd);
+  const extraDays = newEnd
+    ? Math.round((new Date(`${newEnd}T00:00:00`) - new Date(`${endYmd}T00:00:00`)) / DAY)
+    : 0;
+  const roomToLatest = latest
+    ? Math.round((new Date(`${latest}T00:00:00`) - new Date(`${endYmd}T00:00:00`)) / DAY)
+    : 7;
+  const maxStep = Math.max(1, Math.min(7, roomToLatest));
+  const stepTo = (n) => {
+    if (n < 1 || n > maxStep) return;
+    setNewEnd(dayAfter(endYmd, n));
+  };
+
   const gold = isDark ? GOLD_DARK : GOLD;
   const s = {
-    overlay: {
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: LAYERS.modal,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
-    },
-    card: {
-      width: '100%', maxWidth: '470px', maxHeight: '88vh', overflowY: 'auto',
+    sub: { fontSize: '12.5px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#6b7280', margin: '0 0 12px' },
+    stepper: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' },
+    stepBtn: (on) => ({
+      width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0,
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e3e1dc'}`,
       background: isDark ? '#242526' : '#fff',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      borderRadius: '16px', padding: '24px', outline: 'none',
-    },
-    title: { fontSize: '18px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a', margin: 0 },
-    sub: { fontSize: '12.5px', lineHeight: 1.55, color: isDark ? '#b0b3b8' : '#6b7280', margin: '6px 0 16px' },
+      color: on ? (isDark ? '#e4e6eb' : '#1c1b19') : (isDark ? '#5a5b5d' : '#c4c0b8'),
+      fontSize: '20px', fontFamily: 'inherit', cursor: on ? 'pointer' : 'not-allowed',
+    }),
+    stepDays: { fontSize: '18px', fontWeight: '750', color: isDark ? '#e4e6eb' : '#1c1b19', textAlign: 'center' },
+    stepExtra: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#5f5c55', textAlign: 'center' },
+    newReturn: { fontSize: '13px', color: isDark ? '#e4e6eb' : '#1c1b19', margin: 0 },
     current: {
       padding: '10px 12px', borderRadius: '9px', marginBottom: '14px',
       background: isDark ? '#18191a' : '#f9fafb',
@@ -199,28 +219,62 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
       fontSize: '14px', fontWeight: '800',
       color: active ? gold : (isDark ? '#e4e6eb' : '#1a1a1a'),
     }),
-    actions: { display: 'flex', gap: '9px', marginTop: '18px' },
-    payBtn: {
-      flex: 1, padding: '11px', borderRadius: '9px', border: 'none',
-      background: gold, color: ON_GOLD, fontSize: '13.5px', fontWeight: '800',
-      fontFamily: 'inherit', cursor: 'pointer',
-    },
-    cancelBtn: {
-      padding: '11px 18px', borderRadius: '9px', background: 'transparent',
-      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
-      color: isDark ? '#b0b3b8' : '#4b5563', fontSize: '13.5px', fontWeight: '600',
-      fontFamily: 'inherit', cursor: 'pointer',
-    },
   };
 
   return (
-    <div style={s.overlay}>
-      <div style={s.card} ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="extend-title">
-        <h2 id="extend-title" style={s.title}>Keep the vehicle longer</h2>
+    <div style={mb.panel}>
+      <div style={mb.panelHead}>
+        <span style={mb.panelTitle}>Keep it longer</span>
+        <button type="button" style={mb.panelClose} aria-label="Close" onClick={onClose}>×</button>
+      </div>
+      <div>
         <p style={s.sub}>
-          Pick a new return date. The pickup and return time stay as they are, and you
+          Pick how much longer. The pickup and return time stay as they are, and you
           only pay for the extra days.
         </p>
+
+        <div style={s.stepper}>
+          <button
+            type="button"
+            aria-label="Fewer days"
+            style={s.stepBtn(extraDays > 1)}
+            disabled={extraDays <= 1}
+            onClick={() => stepTo(extraDays - 1)}
+          >
+            −
+          </button>
+          <div>
+            <div style={s.stepDays}>
+              {extraDays ? `${extraDays} more day${extraDays === 1 ? '' : 's'}` : 'No extra days yet'}
+            </div>
+            <div style={s.stepExtra}>
+              {quote && quote.forDate === newEnd
+                ? `+ ${peso(Math.max(0, quote.now.totalPrice - quote.was.totalPrice))}`
+                : 'Pick a day to see the price'}
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="More days"
+            style={s.stepBtn(extraDays < maxStep)}
+            disabled={extraDays >= maxStep}
+            onClick={() => stepTo(extraDays ? extraDays + 1 : 1)}
+          >
+            +
+          </button>
+        </div>
+
+        {newEnd && (
+          <p style={{ ...s.newReturn, margin: '10px 0 0' }}>
+            New return: <strong>{formatMoment(instantFrom(newEnd, hour), booking.hasPickupTime)}</strong>
+          </p>
+        )}
+        {quote?.lateDays > 0 && (
+          <p style={{ ...s.sub, margin: '6px 0 0' }}>
+            This also covers the time it&apos;s already been late.
+          </p>
+        )}
+        <div style={{ height: '12px' }} />
 
         <div style={s.current}>
           Currently returning <strong>{formatMoment(currentEnd, booking.hasPickupTime)}</strong>
@@ -347,20 +401,17 @@ const ExtendBookingModal = ({ booking, isDark, onClose, onStarted }) => {
           </div>
         )}
 
-        <div style={s.actions}>
-          <button type="button" style={s.cancelBtn} onClick={onClose} disabled={busy}>Cancel</button>
-          <button
-            type="button"
-            style={s.payBtn}
-            onClick={pay}
-            disabled={busy || !quote || quote.forDate !== newEnd}
-          >
-            {busy ? 'Opening GCash…' : (quote && quote.forDate === newEnd) ? `Pay ${peso(due?.dueNow)} with GCash` : 'Pick a date'}
-          </button>
-        </div>
+        <button
+          type="button"
+          style={{ ...mb.panelSubmit(!busy && !!quote && quote.forDate === newEnd), width: '100%', marginTop: '14px' }}
+          onClick={pay}
+          disabled={busy || !quote || quote.forDate !== newEnd}
+        >
+          {busy ? 'Opening GCash…' : (quote && quote.forDate === newEnd) ? `Pay ${peso(due?.dueNow)} with GCash` : 'Pick a day'}
+        </button>
       </div>
     </div>
   );
 };
 
-export default ExtendBookingModal;
+export default ExtendBookingPanel;

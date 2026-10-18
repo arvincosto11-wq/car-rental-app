@@ -12,7 +12,7 @@ import BookingConfirmationModal from '../components/BookingConfirmationModal';
 import { SkeletonListCard } from '../components/Skeleton';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import AdjustOfferPanel from '../components/AdjustOfferPanel';
-import ExtendBookingModal from '../components/ExtendBookingModal';
+import ExtendBookingPanel from '../components/ExtendBookingPanel';
 import { bookingAwaitingDecision } from '../utils/offerWindow';
 import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays } from '../utils/phTime';
 import { toneOf, stepOf, moneyFor, moneySummary, sentenceFor, subFor, actionKeysFor, isLive } from '../utils/myBookings';
@@ -149,7 +149,6 @@ const MyBookings = () => {
   const [confirmation, setConfirmation] = useState(null);
   const [offerBusyId, setOfferBusyId] = useState('');
   const [withdrawingId, setWithdrawingId] = useState('');
-  const [extendBookingId, setExtendBookingId] = useState(null);
   // Which live booking is in the ticket, which half of history is in
   // view, and which years are open.
   const [focusId, setFocusId] = useState(null);
@@ -754,6 +753,17 @@ const MyBookings = () => {
     if (panel?.bookingId !== booking._id) return null;
     if (panel.key === 'refund') return refundPanel(booking);
     if (panel.key === 'dates') return datesPanel(booking);
+    if (panel.key === 'longer') {
+      return (
+        <ExtendBookingPanel
+          booking={booking}
+          isDark={isDark}
+          mb={mb}
+          onClose={() => setPanel(null)}
+          onStarted={() => setPanel(null)}
+        />
+      );
+    }
     if (panel.key === 'rate') {
       return (
         <RatingPanel
@@ -802,7 +812,7 @@ const MyBookings = () => {
     if (key === 'refund') return openPanel(booking._id, 'refund');
     if (key === 'rate') return openPanel(booking._id, 'rate');
     if (key === 'dates') { openPanel(booking._id, 'dates'); return openDatesPanel(booking); }
-    if (key === 'longer') return setExtendBookingId(booking._id);
+    if (key === 'longer') return openPanel(booking._id, 'longer');
     if (key === 'pay') return handleRetryPayment(booking._id);
     if (key === 'call') return window.open(`tel:${OFFICE_PHONE}`);
     if (key === 'withdrawRefund') return withdrawRequest(booking, 'refund');
@@ -1999,15 +2009,6 @@ const MyBookings = () => {
             )}
           </div>
         </div>
-      )}
-
-      {extendBookingId && bookings.find((b) => b._id === extendBookingId) && (
-        <ExtendBookingModal
-          booking={bookings.find((b) => b._id === extendBookingId)}
-          isDark={isDark}
-          onClose={() => setExtendBookingId(null)}
-          onStarted={() => setExtendBookingId(null)}
-        />
       )}
 
       {confirmation && (
