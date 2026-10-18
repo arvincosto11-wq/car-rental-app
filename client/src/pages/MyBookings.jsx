@@ -1969,10 +1969,7 @@ const MyBookings = () => {
                               )}
                               </div>
 
-                              {panelFor(b)}
-                              {sentBanner(b)}
-
-                              {b.actions.length > 0 && !sentFor[b._id] && !panelFor(b) && (
+                              {b.actions.length > 0 && !sentFor[b._id] && (
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                   {b.actions.map((key) => (
                                     <button
@@ -1987,6 +1984,13 @@ const MyBookings = () => {
                                   ))}
                                 </div>
                               )}
+
+                              {/* Under the buttons that opened it, as in
+                                  the ticket. The buttons stay, so a second
+                                  one is a tap away rather than a close
+                                  and a re-open. */}
+                              {panelFor(b)}
+                              {sentBanner(b)}
                             </div>
                           )}
                         </div>
