@@ -3,3 +3,7 @@ node_modules
 dist
 # Snapshots the browser-automation tool drops while testing the live site.
 .playwright-mcp
+
+# Run-specific state for the one-off balance script — holds the figures
+# its --undo restores. Local to whoever ran it; not part of the project.
+server/scripts/*.snapshot.json
