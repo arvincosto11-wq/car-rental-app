@@ -37,6 +37,9 @@ import dns from 'dns';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import Booking from '../models/Booking.js';
+// Imported for its side effect: the booking's owner is populated below,
+// and mongoose needs the User schema registered to do that.
+import '../models/User.js';
 
 dotenv.config();
 
