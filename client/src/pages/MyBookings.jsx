@@ -586,6 +586,10 @@ const MyBookings = () => {
   const openPanel = (bookingId, key) => {
     // Only one at a time, and opening the one already open closes it.
     if (panel?.bookingId === bookingId && panel?.key === key) return setPanel(null);
+    // Leaving the dates panel for another one lets go of the booking it
+    // was editing, so the hour list below it stops being derived from a
+    // booking nobody is looking at.
+    if (key !== 'dates') setRescheduleModalId(null);
     setPanelReason('');
     setPanelNote('');
     setPanelError('');
@@ -811,7 +815,14 @@ const MyBookings = () => {
   const runAction = (key, booking) => {
     if (key === 'refund') return openPanel(booking._id, 'refund');
     if (key === 'rate') return openPanel(booking._id, 'rate');
-    if (key === 'dates') { openPanel(booking._id, 'dates'); return openDatesPanel(booking); }
+    if (key === 'dates') {
+      // openPanel toggles, so tapping the open one is a close — and a
+      // close must not re-fetch the vehicle's dates or wipe the form.
+      const alreadyOpen = panel?.bookingId === booking._id && panel?.key === 'dates';
+      if (alreadyOpen) return closeDatesPanel();
+      openPanel(booking._id, 'dates');
+      return openDatesPanel(booking);
+    }
     if (key === 'longer') return openPanel(booking._id, 'longer');
     if (key === 'pay') return handleRetryPayment(booking._id);
     if (key === 'call') return window.open(`tel:${OFFICE_PHONE}`);
