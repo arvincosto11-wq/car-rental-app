@@ -521,7 +521,7 @@ const Cars = () => {
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>All Cars</h1>
-      <p style={styles.subtitle}>Browse our full fleet of well-maintained, ready-to-book vehicles.</p>
+      <p style={styles.subtitle}>Browse our full range of well-maintained, ready-to-book vehicles.</p>
 
       {(pickupDate || returnDate) && (
         <div className="row-stack-sm" style={styles.dateNotice}>
@@ -665,7 +665,7 @@ const Cars = () => {
       ) : filtered.length === 0 ? (
         <div style={styles.emptyState}>
           <strong style={styles.emptyTitle}>No cars found</strong>
-          Widen the price range or clear a filter to see more of the fleet.
+          Widen the price range or clear a filter to see more vehicles.
         </div>
       ) : (
         <>

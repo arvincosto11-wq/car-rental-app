@@ -143,7 +143,7 @@ const Login = () => {
     <div style={styles.container}>
       <div className="login-card" style={styles.card}>
         <div className="login-map-panel" style={styles.panel}>
-          <AuthBrandPanel tagline="Sign in to manage your bookings and explore our fleet." />
+          <AuthBrandPanel tagline="Sign in to manage your bookings and explore our vehicles." />
         </div>
 
         <div style={styles.formSide}>

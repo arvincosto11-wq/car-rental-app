@@ -134,7 +134,7 @@ const Footer = () => {
             <div style={s.colHead}>Navigation</div>
             <ul style={s.list}>
               <li><Link to="/" className="footer-link" style={s.link}>Home</Link></li>
-              <li><Link to="/cars" className="footer-link" style={s.link}>Our Fleet</Link></li>
+              <li><Link to="/cars" className="footer-link" style={s.link}>Our Vehicles</Link></li>
               <li><Link to="/help" className="footer-link" style={s.link}>Help</Link></li>
             </ul>
           </nav>
