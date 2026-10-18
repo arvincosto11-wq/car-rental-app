@@ -17,7 +17,6 @@ import { bookingAwaitingDecision } from '../utils/offerWindow';
 import { formatMoment, formatHour, phDayStart, pickupHours, instantFrom, addDays } from '../utils/phTime';
 import { toneOf, stepOf, moneyFor, moneySummary, sentenceFor, subFor, actionKeysFor, isLive } from '../utils/myBookings';
 import { refundOutcome } from '../utils/refundPolicy';
-import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import { GOLD, GOLD_DARK, ON_GOLD, GOLD_TINT, GOLD_TINT_DARK, goldInk } from '../theme';
 import LAYERS from '../layers';
@@ -402,7 +401,9 @@ const MyBookings = () => {
     }
   };
 
-  const openRescheduleModal = (booking) => {
+  // Kept as its own id rather than read off `panel`, because the hours
+  // list and the chosen hour are both derived from it further down.
+  const openDatesPanel = (booking) => {
     setRescheduleModalId(booking._id);
     setReschedulePreferredHour(null);
     setRescheduleOpenedAt(() => Date.now());
@@ -415,9 +416,10 @@ const MyBookings = () => {
       .catch((err) => console.error(err));
   };
 
-  const closeRescheduleModal = () => {
+  const closeDatesPanel = () => {
     setRescheduleModalId(null);
     setRescheduleError('');
+    setPanel(null);
   };
 
   const handleSelectRescheduleDay = (date) => {
@@ -440,20 +442,26 @@ const MyBookings = () => {
     // part of it was — refusing a client who had correctly picked one of
     // the hours still free on it. The hour list below the calendar is the
     // real answer now, and the server checks it again regardless.
-    const ok = await confirm(
-      'Send these dates to our team to approve? Your booking stays on its current dates until they do, '
-      + 'and you can only have one request open at a time.',
-      { confirmLabel: 'Send request', cancelLabel: 'Go back' }
-    );
-    if (!ok) return;
+    //
+    // The confirm() that used to sit here is gone with the dialog: the
+    // panel already says the booking stays as it is until the office
+    // answers, and asking twice for the same thing is not a safeguard.
     setRescheduleSubmitting(true);
     setRescheduleError('');
     try {
       const res = await api.post(`/bookings/${rescheduleModalId}/reschedule`, {
         newStartDate, newEndDate, pickupHour: rescheduleHour,
       });
-      setBookings(bookings.map((b) => (b._id === rescheduleModalId ? { ...b, rescheduleRequest: res.data.rescheduleRequest } : b)));
-      closeRescheduleModal();
+      const asked = `${formatMoment(newStartDate, false, DATE_SHORT)} → ${formatMoment(newEndDate, false, DATE_SHORT)}`;
+      const id = rescheduleModalId;
+      setBookings((list) => list.map((b) => (b._id === id
+        ? { ...b, rescheduleRequest: res.data.rescheduleRequest }
+        : b)));
+      closeDatesPanel();
+      setSentFor((sent) => ({
+        ...sent,
+        [id]: `You asked for ${asked}. The office will confirm or suggest other dates.`,
+      }));
     } catch (err) {
       setRescheduleError(err.response?.data?.message || 'Failed to submit reschedule request');
     } finally {
@@ -462,7 +470,6 @@ const MyBookings = () => {
   };
 
   const rescheduleBooking = bookings.find((b) => b._id === rescheduleModalId);
-  const rescheduleModalRef = useModalA11y(closeRescheduleModal, !!(rescheduleModalId && rescheduleBooking));
 
   // What the vehicle is really unavailable for. The server sends each
   // booking's span with its turnaround already added, so the hours offered
@@ -666,9 +673,87 @@ const MyBookings = () => {
     );
   };
 
+  // Changing dates, inside the booking. The calendar stays: the handoff
+  // drew two plain date boxes, which would let a client ask for days the
+  // vehicle is already out on and have the office turn them down for it.
+  const datesPanel = (booking) => (
+    <div style={mb.panel}>
+      <div style={mb.panelHead}>
+        <span style={mb.panelTitle}>Change dates</span>
+        <button type="button" style={mb.panelClose} aria-label="Close" onClick={closeDatesPanel}>×</button>
+      </div>
+
+      <p style={mb.panelNote}>
+        Tap a new pickup day — the return is set for you, so the trip stays
+        {' '}{booking.totalDays} day{booking.totalDays === 1 ? '' : 's'} long. There is no fee.
+        {booking.hasPickupTime && ' You can change the pickup time too.'}
+      </p>
+
+      <AvailabilityCalendar
+        bookedRanges={bookedRangesForReschedule}
+        selectedStart={newStartDate}
+        selectedEnd={newEndDate}
+        onSelectDay={handleSelectRescheduleDay}
+        isDark={isDark}
+      />
+
+      {newStartDate && booking.hasPickupTime && (
+        <div style={styles.rescheduleTimeBlock}>
+          <span style={styles.rescheduleTimeLabel}>Pickup time on that day</span>
+          {rescheduleHours.length === 0 ? (
+            <p style={styles.rescheduleNoHours}>There is no pickup time left on that day. Try another one.</p>
+          ) : (
+            <div style={styles.rescheduleTimeRow} role="group" aria-label="Pickup time">
+              {pickupHours().map((h) => {
+                const open = rescheduleHours.includes(h);
+                return (
+                  <button
+                    key={h}
+                    type="button"
+                    aria-pressed={rescheduleHour === h}
+                    disabled={!open}
+                    style={styles.rescheduleTimeChip(rescheduleHour === h, open)}
+                    title={open ? undefined : 'Not available that day — the vehicle is out, or being returned and checked.'}
+                    onClick={() => setReschedulePreferredHour(h)}
+                  >
+                    {formatHour(h)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {newStartDate && newEndDate && (
+        <p style={{ ...mb.panelNote, color: mb.c.text }}>
+          You are asking for {formatMoment(newStartDate, false, DATE_SHORT)}
+          {' → '}{formatMoment(newEndDate, false, DATE_SHORT)}
+          {rescheduleHour !== null && `, ${formatHour(rescheduleHour)} both ends`}.
+        </p>
+      )}
+
+      <p style={mb.panelNote}>Your booking stays as it is until the office answers.</p>
+
+      {rescheduleError && <div style={mb.panelError}>{rescheduleError}</div>}
+
+      <button
+        type="button"
+        style={mb.panelSubmit(!!newStartDate && !rescheduleSubmitting
+          && !(booking.hasPickupTime && rescheduleHour === null))}
+        disabled={rescheduleSubmitting || !newStartDate
+          || (booking.hasPickupTime && rescheduleHour === null)}
+        onClick={handleSubmitReschedule}
+      >
+        {rescheduleSubmitting ? 'Sending…' : 'Send request'}
+      </button>
+    </div>
+  );
+
   const panelFor = (booking) => {
     if (panel?.bookingId !== booking._id) return null;
     if (panel.key === 'refund') return refundPanel(booking);
+    if (panel.key === 'dates') return datesPanel(booking);
     if (panel.key === 'rate') {
       return (
         <RatingPanel
@@ -716,7 +801,7 @@ const MyBookings = () => {
   const runAction = (key, booking) => {
     if (key === 'refund') return openPanel(booking._id, 'refund');
     if (key === 'rate') return openPanel(booking._id, 'rate');
-    if (key === 'dates') return openRescheduleModal(booking);
+    if (key === 'dates') { openPanel(booking._id, 'dates'); return openDatesPanel(booking); }
     if (key === 'longer') return setExtendBookingId(booking._id);
     if (key === 'pay') return handleRetryPayment(booking._id);
     if (key === 'call') return window.open(`tel:${OFFICE_PHONE}`);
@@ -1938,82 +2023,6 @@ const MyBookings = () => {
       )}
 
 
-      {rescheduleModalId && rescheduleBooking && (
-        <div style={styles.modalOverlay}>
-          <div style={{ ...styles.modalContent, maxWidth: '480px' }} ref={rescheduleModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="reschedule-modal-title">
-            <h2 id="reschedule-modal-title" style={styles.modalTitle}>Request a Reschedule</h2>
-            <p style={styles.modalSub}>
-              Move this {rescheduleBooking.totalDays}-day trip to different dates. No fee — but it needs admin approval,
-              and the new dates must total the same {rescheduleBooking.totalDays} day{rescheduleBooking.totalDays === 1 ? '' : 's'}.
-              Tap a start date below — the return date is set for you automatically.
-              {rescheduleBooking.hasPickupTime && ' You can change the pickup time too.'}
-            </p>
-
-            {rescheduleError && <div style={styles.errorBox}>{rescheduleError}</div>}
-
-            <div style={styles.field}>
-              <AvailabilityCalendar
-                bookedRanges={bookedRangesForReschedule}
-                selectedStart={newStartDate}
-                selectedEnd={newEndDate}
-                onSelectDay={handleSelectRescheduleDay}
-                isDark={isDark}
-              />
-            </div>
-
-            {newStartDate && rescheduleBooking.hasPickupTime && (
-              <div style={styles.rescheduleTimeBlock}>
-                <span style={styles.rescheduleTimeLabel}>Pickup time on that day</span>
-                {rescheduleHours.length === 0 ? (
-                  <p style={styles.rescheduleNoHours}>
-                    There is no pickup time left on that day. Try another one.
-                  </p>
-                ) : (
-                  <div style={styles.rescheduleTimeRow} role="group" aria-label="Pickup time">
-                    {pickupHours().map((h) => {
-                      const open = rescheduleHours.includes(h);
-                      return (
-                        <button
-                          key={h}
-                          type="button"
-                          aria-pressed={rescheduleHour === h}
-                          disabled={!open}
-                          style={styles.rescheduleTimeChip(rescheduleHour === h, open)}
-                          title={open ? undefined : 'Not available that day — the vehicle is out, or being returned and checked.'}
-                          onClick={() => setReschedulePreferredHour(h)}
-                        >
-                          {formatHour(h)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {newStartDate && newEndDate && (
-              <p style={styles.rescheduleSelectedNote}>
-                Selected: {new Date(newStartDate).toLocaleDateString()} → {new Date(newEndDate).toLocaleDateString()}
-                {rescheduleHour !== null && `, ${formatHour(rescheduleHour)} both ends`}
-              </p>
-            )}
-
-            <div style={styles.modalActions}>
-              <button style={styles.modalCancelBtn} onClick={closeRescheduleModal} disabled={rescheduleSubmitting}>
-                Cancel
-              </button>
-              <button
-                style={styles.modalSubmitBtn}
-                onClick={handleSubmitReschedule}
-                disabled={rescheduleSubmitting || !newStartDate
-                  || (rescheduleBooking.hasPickupTime && rescheduleHour === null)}
-              >
-                {rescheduleSubmitting ? 'Submitting...' : 'Submit Request'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
