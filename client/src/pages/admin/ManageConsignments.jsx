@@ -23,7 +23,7 @@ const ManageConsignments = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
   const [selectedId, setSelectedId] = useState(null);
-  const [page, setPage] = useState(1);
+  const [pageWanted, setPage] = useState(1);
   const [declineReason, setDeclineReason] = useState('');
   const [showDeclineBox, setShowDeclineBox] = useState(false);
   const [working, setWorking] = useState(false);
@@ -48,8 +48,11 @@ const ManageConsignments = () => {
   // through the signed route like any other document.
   const filtered = consignments.filter((c) => filter === 'all' || c.status === filter);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Clamped here rather than corrected afterwards in an effect. Filtering
+  // down to fewer pages while on a late one used to render that empty page
+  // once, then re-render on the correction; this just never shows it.
+  const page = Math.min(pageWanted, totalPages);
   const pageConsignments = paginate(filtered, page, PAGE_SIZE);
-  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
   const closeModal = () => {
     setSelectedId(null);

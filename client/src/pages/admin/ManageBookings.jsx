@@ -185,7 +185,7 @@ const ManageBookings = () => {
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [page, setPage] = useState(1);
+  const [pageWanted, setPage] = useState(1);
 
   const fetchBookings = async () => {
     try {
@@ -812,12 +812,14 @@ const ManageBookings = () => {
     return out;
   })();
   const totalPages = Math.max(1, Math.ceil(groupedBookings.length / PAGE_SIZE));
+  // Clamped here rather than corrected afterwards in an effect. Filtering
+  // down to fewer pages while on a late one used to render that empty page
+  // once, then re-render on the correction; this just never shows it.
+  const page = Math.min(pageWanted, totalPages);
   const pageBookings = paginate(groupedBookings, page, PAGE_SIZE);
   // Never an empty panel: if nothing is picked, or what was picked has
   // dropped off this tab, the panel follows the list.
   const selected = pageBookings.find((b) => b._id === selectedId) || pageBookings[0] || null;
-
-  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
 
   // The shorthands the list and panel below lean on.
   const card = isDark ? '#242526' : '#ffffff';
