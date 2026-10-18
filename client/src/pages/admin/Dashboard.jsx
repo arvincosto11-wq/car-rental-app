@@ -72,11 +72,6 @@ const Dashboard = () => {
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    if (!user || user.role !== 'admin') return navigate('/login');
-    fetchData();
-  }, [user]);
-
   const fetchData = async () => {
     try {
       // One small request instead of every booking in the system. The
@@ -106,6 +101,11 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!user || user.role !== 'admin') return navigate('/login');
+    fetchData();
+  }, [user]);
 
   const periodCaption = {
     week: `Confirmed bookings created in the last 7 days · ${periodDates.weekStart} – ${periodDates.today}`,

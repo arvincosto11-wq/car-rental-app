@@ -201,10 +201,6 @@ const ManageCars = ({ view = 'active' }) => {
     : [];
   const editModelOptions = editModelRows.map((m) => m.model);
 
-  useEffect(() => {
-    fetchCars();
-  }, []);
-
   const fetchCars = async () => {
     try {
       const res = await api.get('/cars');
@@ -225,6 +221,10 @@ const ManageCars = ({ view = 'active' }) => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchCars();
+  }, []);
 
   const handleOffRoad = (car) => {
     setOffRoadTarget(car);

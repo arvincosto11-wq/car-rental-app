@@ -33,8 +33,6 @@ const ManageReviews = () => {
   const [filter, setFilter] = useState('all');
   const [workingId, setWorkingId] = useState(null);
 
-  useEffect(() => { fetchReviews(); }, []);
-
   // Both lists at once: the counts on the tabs have to be right before
   // anybody clicks one, or the toggle is just two buttons.
   const fetchReviews = async () => {
@@ -51,6 +49,8 @@ const ManageReviews = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => { fetchReviews(); }, []);
 
   const handleToggleHidden = async (review) => {
     const nextHidden = !review.hidden;

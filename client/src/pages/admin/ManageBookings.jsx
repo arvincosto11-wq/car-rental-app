@@ -187,8 +187,6 @@ const ManageBookings = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
 
-  useEffect(() => { fetchBookings(); }, []);
-
   const fetchBookings = async () => {
     try {
       const res = await api.get('/bookings/all');
@@ -199,6 +197,8 @@ const ManageBookings = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => { fetchBookings(); }, []);
 
   // Every action used to end by downloading all 164 bookings again — a few
   // hundred kilobytes and a couple of seconds, to change one word on one

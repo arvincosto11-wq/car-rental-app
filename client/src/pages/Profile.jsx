@@ -87,11 +87,6 @@ const Profile = () => {
   const [pwCode, setPwCode] = useState('');
   const [pwResendCooldown, startPwResendCooldown] = useResendCooldown();
 
-  useEffect(() => {
-    if (!user) return navigate('/login');
-    fetchProfile();
-  }, [user]);
-
   const fetchProfile = async () => {
     try {
       const res = await api.get('/auth/me');
@@ -100,6 +95,11 @@ const Profile = () => {
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    if (!user) return navigate('/login');
+    fetchProfile();
+  }, [user]);
 
   const startEdit = () => {
     const opening = {

@@ -27,8 +27,6 @@ const ManageAvailabilityRequests = () => {
   const [blockWorking, setBlockWorking] = useState(false);
   const blockDeclineModalRef = useModalA11y(() => setBlockDeclineTarget(null), !!blockDeclineTarget);
 
-  useEffect(() => { fetchData(); fetchBlockRequests(); }, []);
-
   const fetchData = async () => {
     try {
       const res = await api.get('/cars/availability-requests');
@@ -50,6 +48,8 @@ const ManageAvailabilityRequests = () => {
       setBlockLoading(false);
     }
   };
+
+  useEffect(() => { fetchData(); fetchBlockRequests(); }, []);
 
   const handleApprove = async (id) => {
     setWorking(true);

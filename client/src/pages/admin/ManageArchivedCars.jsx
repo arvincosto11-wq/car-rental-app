@@ -18,8 +18,6 @@ const ManageArchivedCars = () => {
   const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState(null);
 
-  useEffect(() => { fetchCars(); }, []);
-
   const fetchCars = async () => {
     try {
       const res = await api.get('/cars/archived');
@@ -30,6 +28,8 @@ const ManageArchivedCars = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => { fetchCars(); }, []);
 
   const handleRestore = async (id) => {
     setWorkingId(id);

@@ -28,8 +28,6 @@ const ManageConsignments = () => {
   const [showDeclineBox, setShowDeclineBox] = useState(false);
   const [working, setWorking] = useState(false);
 
-  useEffect(() => { fetchData(); }, []);
-
   const fetchData = async () => {
     try {
       const res = await api.get('/consignments/all');
@@ -40,6 +38,8 @@ const ManageConsignments = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => { fetchData(); }, []);
 
   const selected = consignments.find((c) => c._id === selectedId);
   // The owner's ID is an identity document like any other, so it comes

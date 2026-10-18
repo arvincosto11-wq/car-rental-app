@@ -39,8 +39,6 @@ const RateClients = () => {
   const [openClient, setOpenClient] = useState(null);
   const [editing, setEditing] = useState(null);
 
-  useEffect(() => { fetchBookings(); }, []);
-
   const fetchBookings = async () => {
     try {
       const res = await api.get('/bookings/all');
@@ -51,6 +49,8 @@ const RateClients = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => { fetchBookings(); }, []);
 
   const unrated = bookings.filter((b) => b.status === 'completed' && !b.clientRating?.ratedAt);
   const queue = [

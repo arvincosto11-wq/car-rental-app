@@ -102,14 +102,6 @@ const ConsignorDashboard = () => {
     // renders from the vehicles it actually finds.
     .catch(() => setStage({ stage: 'consignor' }));
 
-  useEffect(() => {
-    if (!user) return navigate('/login');
-    loadStage();
-    loadAccount();
-    fetchConsignments();
-    fetchBookings();
-  }, [user]);
-
   // Same fix as My Bookings: the nav badge is unread-notification-based and
   // only cleared when the client opened the bell and clicked each one, so
   // it stayed lit even after they'd already come here and seen the update.
@@ -138,6 +130,14 @@ const ConsignorDashboard = () => {
       setBookingsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!user) return navigate('/login');
+    loadStage();
+    loadAccount();
+    fetchConsignments();
+    fetchBookings();
+  }, [user]);
 
   // Both directions now need admin sign-off — bringing a vehicle back into
   // public listings is reviewed the same way as taking it down, so this
