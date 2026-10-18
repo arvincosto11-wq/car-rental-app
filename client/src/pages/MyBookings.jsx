@@ -754,9 +754,12 @@ const MyBookings = () => {
       column: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: '16px' },
       stickyColumn: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: '16px' },
 
-      ticket: { background: c.card, border: `1px solid ${c.border}`, borderRadius: '20px', overflow: 'hidden' },
+      ticket: {
+        background: c.card, border: `1px solid ${c.border}`, borderRadius: '20px',
+        position: 'relative',
+      },
       ticketHead: (t) => ({
-        background: T(t).bg, padding: '16px 16px 14px',
+        background: T(t).bg, padding: '16px 16px 14px', borderRadius: '19px 19px 0 0',
         display: 'flex', flexDirection: 'column', gap: '6px',
       }),
       eyebrow: (t) => ({
