@@ -251,7 +251,7 @@ export function subFor(b, now = new Date()) {
   if (b.status === 'completed') {
     const fees = feeWords(money.lines);
     if (money.owe > 0 && fees) return `That is ${fees}.`;
-    if (!b.carRating?.rating) return 'Rating it takes a moment, and it is what the next client goes on.';
+    if (!b.carRating?.rating) return 'A rating takes a moment, and it’s what the next client goes on.';
     return '';
   }
 

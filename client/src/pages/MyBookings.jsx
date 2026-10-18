@@ -41,15 +41,22 @@ const STEP_LABELS = ['Booked', 'Confirmed', 'Picked up', 'Returned'];
 
 // Points right when shut, down when open. A text '›' is the wrong weight
 // beside the stroke glyphs the rest of the site uses.
-const Chevron = ({ color, turn = 0 }) => (
+const Chevron = ({ color, turn = 0, down = false }) => (
   <svg
     width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color}
     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
     style={{ flexShrink: 0, transform: turn ? `rotate(${turn}deg)` : 'none', transition: 'transform .15s' }}
   >
-    <path d="M9 6l6 6-6 6" />
+    <path d={down ? 'M6 9l6 6 6-6' : 'M9 6l6 6-6 6'} />
   </svg>
 );
+
+// What the figure on the right of a history row is: money spent, money
+// that came back, or a cancellation that cost nothing either way.
+const amountKind = (b) => {
+  if (b.money.back > 0) return 'back';
+  return b.status === 'cancelled' && !b.money.paid ? 'none' : 'spent';
+};
 const OFFICE_PHONE = '0950-651-0479';
 // Something short a client can quote on the phone, rather than the
 // twenty-four characters the database knows it by.
@@ -748,12 +755,19 @@ const MyBookings = () => {
       stickyColumn: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: '16px' },
 
       ticket: { background: c.card, border: `1px solid ${c.border}`, borderRadius: '20px', overflow: 'hidden' },
-      ticketHead: (t) => ({ background: T(t).bg, padding: '16px 18px 14px' }),
-      eyebrow: (t) => ({
-        fontSize: '12px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase', color: T(t).ink,
+      ticketHead: (t) => ({
+        background: T(t).bg, padding: '16px 16px 14px',
+        display: 'flex', flexDirection: 'column', gap: '6px',
       }),
-      sentence: (t) => ({ margin: '4px 0 0', fontSize: '21px', fontWeight: '800', lineHeight: 1.25, color: T(t).ink, textWrap: 'pretty' }),
-      ticketBody: { padding: '14px 18px 4px', display: 'flex', flexDirection: 'column', gap: '12px' },
+      eyebrow: (t) => ({
+        fontSize: '12px', fontWeight: '750', letterSpacing: '0.06em',
+        textTransform: 'uppercase', color: T(t).ink, opacity: 0.85,
+      }),
+      sentence: (t) => ({
+        margin: 0, fontSize: '21px', fontWeight: '800', lineHeight: 1.25,
+        letterSpacing: '-0.01em', color: T(t).ink, textWrap: 'pretty',
+      }),
+      ticketBody: { padding: '14px 16px 4px', display: 'flex', flexDirection: 'column', gap: '12px' },
       whenLine: { fontSize: '13px', color: c.muted },
 
       // One rail across the whole card: each step takes an equal share of
@@ -775,49 +789,56 @@ const MyBookings = () => {
       subLine: { fontSize: '13px', lineHeight: 1.45, color: c.muted, textWrap: 'pretty' },
 
       // The ticket tears here: status above, money below.
-      tearWrap: { position: 'relative', margin: '14px 0 0', height: '2px' },
-      tear: { borderTop: `2px dashed ${c.border}`, margin: '0 11px' },
+      // A band of its own, so the notches bite the card's edge rather than
+      // the rows above and below it.
+      tearWrap: { position: 'relative', height: '22px', margin: '4px 0' },
+      tear: { position: 'absolute', left: '18px', right: '18px', top: '10px', borderTop: `2px dashed ${c.border}` },
       // Bitten out of the card in the page's own colour, so the ticket
-      // reads as something you tear along.
+      // reads as something you tear along. The one border it keeps is the
+      // card's own edge, carried around the bite.
       notch: (side) => ({
-        position: 'absolute', top: '-11px', [side]: '-11px',
+        position: 'absolute', top: 0, [side]: '-11px',
         width: '22px', height: '22px', borderRadius: '50%', background: c.page,
+        [side === 'left' ? 'borderRight' : 'borderLeft']: `1px solid ${c.border}`,
       }),
-      receipt: { padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '8px' },
-      receiptRow: { display: 'flex', alignItems: 'baseline', gap: '8px', fontSize: '14px', color: c.text },
+      receipt: { padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: '7px', fontSize: '14px' },
+      receiptRow: { display: 'flex', alignItems: 'baseline', gap: '6px', color: c.text },
       receiptLabel: { color: c.muted, whiteSpace: 'nowrap' },
+      paidRow: { paddingTop: '4px' },
       leader: { flex: 1, borderBottom: `1px dotted ${c.border}`, transform: 'translateY(-4px)' },
       receiptAmount: (kind) => ({
-        fontWeight: '600', whiteSpace: 'nowrap',
+        fontWeight: '650', whiteSpace: 'nowrap',
         color: kind === 'off' ? c.green : kind === 'fee' ? c.goldInk : c.text,
       }),
+      // Set a little wider than the lines above it, so the one figure that
+      // still wants money reads as the end of the receipt.
       owedRow: {
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
-        background: c.goldSoft, borderRadius: '10px', padding: '10px 12px',
+        display: 'flex', alignItems: 'baseline', gap: '10px',
+        background: c.goldSoft, borderRadius: '10px', padding: '8px 10px', margin: '2px -10px 0',
       },
-      owedLabel: { fontSize: '13.5px', fontWeight: '700', color: c.goldInk },
+      owedLabel: { flex: 1, fontSize: '14px', fontWeight: '700', color: c.goldInk },
       owedAmount: { fontSize: '16px', fontWeight: '800', color: c.goldInk },
 
-      actions: { display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '0 18px 18px' },
+      actions: { display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '0 16px 16px' },
       actionBtn: (primary) => ({
         flex: '1 1 auto', minHeight: '48px', padding: '0 16px', borderRadius: '12px',
         border: `1px solid ${primary ? c.gold : c.border}`,
         background: primary ? c.gold : 'transparent',
         color: primary ? c.goldText : c.text,
-        fontSize: '14px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
+        fontSize: '15px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
       }),
       // A tap target on a phone, not a mouse target.
       smallBtn: (primary) => ({
-        minHeight: '44px', padding: '0 14px', borderRadius: '10px',
+        minHeight: '44px', padding: '0 16px', borderRadius: '12px',
         border: `1px solid ${primary ? c.gold : c.border}`,
         background: primary ? c.gold : 'transparent',
         color: primary ? c.goldText : c.text,
-        fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
+        fontSize: '14px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
       }),
 
       alsoCard: { background: c.card, border: `1px solid ${c.border}`, borderRadius: '16px', overflow: 'hidden' },
       alsoTitle: {
-        margin: '0 0 8px', padding: '0 2px', fontSize: '12px', fontWeight: '800',
+        margin: '0 0 8px', padding: '0 2px', fontSize: '12px', fontWeight: '750',
         letterSpacing: '0.06em', textTransform: 'uppercase', color: c.muted,
       },
       alsoRow: (first) => ({
@@ -838,37 +859,44 @@ const MyBookings = () => {
         border: `1px solid ${on ? c.text : c.border}`,
         background: on ? c.text : 'transparent',
         color: on ? c.card : c.muted,
-        fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
+        fontSize: '13px', fontWeight: '650', cursor: 'pointer', fontFamily: 'inherit',
       }),
       historyEmpty: { fontSize: '14px', color: c.muted, margin: '4px 0' },
 
+      years: { display: 'flex', flexDirection: 'column', gap: '10px' },
       yearCard: { background: c.card, border: `1px solid ${c.border}`, borderRadius: '16px', overflow: 'hidden' },
       yearHead: {
-        width: '100%', display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px',
+        width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '14px',
         background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
       },
-      year: { fontSize: '22px', fontWeight: '800', color: c.text },
+      // Fixed, so the spend of one year starts where the spend of the next
+      // one does however many digits the year itself has.
+      year: { width: '58px', flexShrink: 0, fontSize: '22px', fontWeight: '800', letterSpacing: '-0.02em', color: c.text },
       yearSpend: { display: 'block', fontSize: '15px', fontWeight: '700', color: c.text },
       yearCount: { fontSize: '13px', fontWeight: '500', color: c.muted },
-      yearNote: { display: 'block', fontSize: '12px', color: c.faint, marginTop: '2px' },
+      yearNote: { display: 'flex', gap: '8px', flexWrap: 'wrap', fontSize: '12px', color: c.faint, marginTop: '2px' },
 
       histBlock: { borderTop: `1px solid ${c.border}` },
       histRow: {
-        width: '100%', display: 'flex', alignItems: 'flex-start', gap: '12px',
-        padding: '12px 16px', background: 'transparent', border: 'none',
+        width: '100%', minHeight: '58px', display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '10px 14px', background: 'transparent', border: 'none',
         textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
       },
       histOpen: {
-        display: 'flex', flexDirection: 'column', gap: '10px',
-        padding: '0 16px 16px', marginTop: '-2px',
+        display: 'flex', flexDirection: 'column', gap: '8px',
+        padding: '0 14px 12px',
       },
+      // The receipt inside a row is a size down from the ticket's.
+      histReceipt: { display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' },
       showAll: {
         width: '100%', minHeight: '48px', padding: '0 16px',
         background: 'transparent', border: 'none', borderTop: `1px solid ${c.border}`,
-        color: c.goldInk, fontSize: '13.5px', fontWeight: '700',
+        color: c.muted, fontSize: '13px', fontWeight: '650',
         cursor: 'pointer', fontFamily: 'inherit',
       },
       histCar: { display: 'block', fontSize: '14px', fontWeight: '650', color: c.text },
+      histWhen: { display: 'block', fontSize: '12px', color: c.faint },
+      histSentence: (t) => ({ display: 'block', fontSize: '13px', fontWeight: '600', color: T(t).ink }),
 
       // Asking for something happens inside the booking, not over the
       // page: on a phone a full-screen form hides what you were looking at.
@@ -913,7 +941,11 @@ const MyBookings = () => {
         width: '100%', margin: '0', padding: '12px 14px', borderRadius: '12px',
         background: c.greenSoft, color: c.green, fontSize: '13.5px', fontWeight: '600', lineHeight: 1.45,
       },
-      histAmount: (back) => ({ fontSize: '14px', fontWeight: '700', color: back ? c.green : c.text, whiteSpace: 'nowrap' }),
+      // A cancellation that cost nothing is not an amount worth reading.
+      histAmount: (kind) => ({
+        fontSize: '14px', fontWeight: '700', whiteSpace: 'nowrap',
+        color: kind === 'back' ? c.green : kind === 'spent' ? c.text : c.faint,
+      }),
     };
   })();
 
@@ -1622,10 +1654,10 @@ const MyBookings = () => {
                         </span>
                       </div>
                     ))}
-                    <div style={{ ...mb.receiptRow, fontWeight: '700' }}>
+                    <div style={{ ...mb.receiptRow, ...mb.paidRow }}>
                       <span style={mb.receiptLabel}>You&apos;ve paid</span>
                       <span style={mb.leader} />
-                      <span style={mb.receiptAmount()}>{peso(ticket.money.paid)}</span>
+                      <span style={{ ...mb.receiptAmount(), fontWeight: '700' }}>{peso(ticket.money.paid)}</span>
                     </div>
                     {ticket.money.owe > 0 && (
                       <div style={mb.owedRow}>
@@ -1732,7 +1764,8 @@ const MyBookings = () => {
                   : 'Nothing cancelled — every booking you made went ahead.'}
               </p>
             ) : (
-              historyYears.map((group) => {
+              <div style={mb.years}>
+              {historyYears.map((group) => {
                 const open = openYears[group.year] ?? group.latest;
                 return (
                   <section key={group.year} style={mb.yearCard}>
@@ -1748,12 +1781,11 @@ const MyBookings = () => {
                           {peso(group.spent)} <span style={mb.yearCount}>on {group.trips} trip{group.trips === 1 ? '' : 's'}</span>
                         </span>
                         <span style={mb.yearNote}>
-                          {group.cancelled > 0 && `${group.cancelled} cancelled`}
-                          {group.cancelled > 0 && group.back > 0 && ' · '}
+                          {group.cancelled > 0 && <span>{group.cancelled} cancelled</span>}
                           {group.back > 0 && <span style={{ color: mb.c.green }}>{peso(group.back)} came back</span>}
                         </span>
                       </span>
-                      <Chevron color={mb.c.faint} turn={open ? 90 : 0} />
+                      <Chevron color={mb.c.faint} down turn={open ? 180 : 0} />
                     </button>
 
                     {open && shownRows(group).map((b) => {
@@ -1770,23 +1802,22 @@ const MyBookings = () => {
                             aria-expanded={expanded}
                             onClick={() => setOpenRows((r) => ({ ...r, [b._id]: !expanded }))}
                           >
-                            <span style={mb.toneDot(b.toneKey)} />
                             <span style={{ minWidth: 0, flex: 1 }}>
                               <span style={mb.histCar}>{b.car?.brand} {b.car?.model}</span>
-                              <span style={mb.alsoSentence(b.toneKey)}>{b.sentence}</span>
-                              <span style={mb.alsoMeta}>
+                              <span style={mb.histSentence(b.toneKey)}>{b.sentence}</span>
+                              <span style={mb.histWhen}>
                                 {formatMoment(b.startDate, false, DATE_SHORT)} → {formatMoment(b.endDate, false, DATE_SHORT)}
                               </span>
                             </span>
-                            <span style={mb.histAmount(b.money.back > 0)}>
+                            <span style={mb.histAmount(amountKind(b))}>
                               {b.money.back > 0 ? `+${peso(b.money.back)}` : peso(b.money.paid || b.money.cost)}
                             </span>
-                            <Chevron color={mb.c.faint} turn={expanded ? 90 : 0} />
                           </button>
 
                           {expanded && (
                             <div style={mb.histOpen}>
                               {b.sub && <p style={mb.subLine}>{b.sub}</p>}
+                              <div style={mb.histReceipt}>
                               {b.money.lines.map((line) => (
                                 <div key={line.label} style={mb.receiptRow}>
                                   <span style={mb.receiptLabel}>{line.label}</span>
@@ -1797,10 +1828,10 @@ const MyBookings = () => {
                                   </span>
                                 </div>
                               ))}
-                              <div style={{ ...mb.receiptRow, fontWeight: '700' }}>
+                              <div style={mb.receiptRow}>
                                 <span style={mb.receiptLabel}>You paid</span>
                                 <span style={mb.leader} />
-                                <span style={mb.receiptAmount()}>{peso(b.money.paid)}</span>
+                                <span style={{ ...mb.receiptAmount(), fontWeight: '700' }}>{peso(b.money.paid)}</span>
                               </div>
                               {b.money.back > 0 && (
                                 <div style={mb.receiptRow}>
@@ -1809,6 +1840,7 @@ const MyBookings = () => {
                                   <span style={{ ...mb.receiptAmount(), color: mb.c.green }}>{peso(b.money.back)}</span>
                                 </div>
                               )}
+                              </div>
 
                               {panelFor(b)}
                               {sentBanner(b)}
@@ -1845,7 +1877,8 @@ const MyBookings = () => {
                     )}
                   </section>
                 );
-              })
+              })}
+              </div>
             )}
           </div>
         </div>
