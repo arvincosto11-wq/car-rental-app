@@ -9,7 +9,7 @@ import DriverAvatar from '../components/DriverAvatar';
 import StarRating from '../components/StarRating';
 import RatingPanel from '../components/RatingPanel';
 import BookingConfirmationModal from '../components/BookingConfirmationModal';
-import { SkeletonListCard } from '../components/Skeleton';
+import Skeleton from '../components/Skeleton';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import AdjustOfferPanel from '../components/AdjustOfferPanel';
 import ExtendBookingPanel from '../components/ExtendBookingPanel';
@@ -1713,13 +1713,105 @@ const MyBookings = () => {
 
   // The whole of the old booking card, unchanged. It used to be the list
   // item; it is now what the drawer shows. A row can therefore stay a row,
+  // What loads, drawn in the shape of what arrives.
+  //
+  // This used to be the shared list skeleton: three rows of photo-plus-
+  // three-lines. The page has had neither photos nor a flat list since
+  // the rebuild, so it promised one layout and delivered another — the
+  // whole screen jumped the moment the data landed.
+  //
+  // Built from the same `mb` styles the real thing uses, so the card
+  // edges, the tear and the columns cannot drift apart from it.
+  const bar = (width, height, style) => (
+    <Skeleton width={width} height={height} isDark={isDark} style={style} />
+  );
+  const skeletonRow = (key) => (
+    <div key={key} style={mb.alsoRow(key === 0)}>
+      <span style={{ ...mb.toneDot('done'), opacity: 0.4 }} />
+      <span style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {bar('70%', '14px')}
+        {bar('45%', '12px')}
+      </span>
+    </div>
+  );
+  const loadingPage = () => (
+    <div className="mb-grid" style={mb.wrap} aria-busy="true" aria-label="Loading your bookings">
+      <div className="mb-live" style={mb.stickyColumn}>
+        <article style={mb.ticket}>
+          <div style={mb.ticketHead('done')}>
+            {bar('42%', '12px')}
+            {bar('78%', '21px')}
+          </div>
+          <div style={mb.ticketBody}>
+            {bar('56%', '13px')}
+            <ol style={mb.steps}>
+              {STEP_LABELS.map((label, i) => (
+                <li key={label} style={mb.step}>
+                  <span style={mb.stepTrack}>
+                    <span style={mb.stepDot(false, 'done')} />
+                    {i < STEP_LABELS.length - 1 && <span style={mb.stepLine(false, 'done')} />}
+                  </span>
+                  {bar('60%', '11px')}
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div style={mb.tearWrap} aria-hidden="true">
+            <span style={mb.notch('left')} />
+            <div style={mb.tear} />
+            <span style={mb.notch('right')} />
+          </div>
+          <div style={mb.receipt}>
+            {bar('100%', '14px')}
+            {bar('100%', '14px')}
+            {bar('100%', '38px', { borderRadius: '10px', marginTop: '2px' })}
+          </div>
+          <div style={mb.actions}>
+            {bar('48%', '48px', { borderRadius: '12px' })}
+            {bar('44%', '48px', { borderRadius: '12px' })}
+          </div>
+        </article>
+      </div>
+
+      <div style={mb.column}>
+        <section style={{ marginBottom: '18px' }}>
+          {bar('28%', '12px', { marginBottom: '8px' })}
+          <div style={mb.alsoCard}>{[0, 1].map(skeletonRow)}</div>
+        </section>
+        <div style={mb.historyHead}>
+          {bar('90px', '20px')}
+          {bar('150px', '36px', { borderRadius: '999px' })}
+        </div>
+        <div style={mb.yearCard}>
+          <div style={mb.yearHead}>
+            {bar('58px', '22px')}
+            <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {bar('55%', '15px')}
+              {bar('35%', '12px')}
+            </span>
+          </div>
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={{ ...mb.histRow, borderTop: `1px solid ${mb.c.border}` }}>
+              <span style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {bar('40%', '14px')}
+                {bar('65%', '13px')}
+                {bar('30%', '12px')}
+              </span>
+              {bar('56px', '14px')}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   // and not one of these states had to be rewritten to move them.
   return (
     <div className="mb-page" style={styles.container}>
       <h1 style={styles.title}>My bookings</h1>
 
       {loading ? (
-        <SkeletonListCard isDark={isDark} />
+        loadingPage()
       ) : bookings.length === 0 ? (
         <div style={styles.empty}>
           <p>No bookings yet.</p>
