@@ -1772,6 +1772,16 @@ const ManageBookings = () => {
             {dueBackBookings[0].car?.brand} {dueBackBookings[0].car?.model}
             {' · '}
             {dueBackBookings[0].user?.name || 'a client'}
+            {/* Which of their bookings this is. The same client can have
+                the same vehicle out now AND booked again next week, and
+                naming only the two of them leaves the reader matching
+                this against whichever booking the panel happens to show. */}
+            {dueBackBookings[0].collectedAt && (
+              <>
+                {' · '}
+                out since {formatMoment(dueBackBookings[0].collectedAt, false, { weekday: 'short', month: 'short', day: 'numeric' })}
+              </>
+            )}
             {' · '}
             {/* formatMoment already puts the time on the end — handing it
                 time options as well printed the hour twice. */}
@@ -1782,7 +1792,13 @@ const ManageBookings = () => {
             type="button"
             className="text-link-btn"
             style={s.dueLink}
-            onClick={() => { setStatusFilter('on_trip'); setPage(1); }}
+            onClick={() => {
+              setStatusFilter('on_trip');
+              setPage(1);
+              // Open the booking the line is about, not whichever one the
+              // filter happens to put first.
+              if (dueBackBookings.length === 1) setSelectedId(dueBackBookings[0]._id);
+            }}
           >
             Show {dueBackBookings.length === 1 ? 'it' : 'them'}
           </button>
