@@ -7,9 +7,15 @@ import { GOLD, GOLD_DARK } from '../theme';
 // where it is a glyph beside a number and nothing is clickable.
 const STAR = 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z';
 
-const STAR_LABELS = ['Tap a star', 'Poor', 'Not great', 'Okay', 'Good', 'Great'];
+// Index 0 is what it says before anybody has picked. Callers pass their
+// own set: rating a vehicle and rating a renter are different questions
+// and deserve different words.
+const VEHICLE_LABELS = ['Tap a star', 'Poor', 'Not great', 'Okay', 'Good', 'Great'];
 
-const StarPicker = ({ value = 0, onChange, isDark, label, id }) => {
+const StarPicker = ({
+  value = 0, onChange, isDark, label, id,
+  labels = VEHICLE_LABELS, size = 26, hideLabel = false,
+}) => {
   const gold = isDark ? GOLD_DARK : GOLD;
   const idle = isDark ? '#4a4b4d' : '#cfcbc2';
 
@@ -20,17 +26,18 @@ const StarPicker = ({ value = 0, onChange, isDark, label, id }) => {
           key={n}
           type="button"
           className="icon-toggle-btn"
-          aria-label={`${n} star${n === 1 ? '' : 's'}`}
+          aria-label={`${n} star${n === 1 ? '' : 's'}${labels[n] ? ` — ${labels[n]}` : ''}`}
           aria-pressed={n === value}
           onClick={() => onChange(n)}
           style={{
-            width: '44px', height: '44px', border: 'none', background: 'transparent',
+            width: `${Math.max(44, size + 18)}px`, height: `${Math.max(44, size + 18)}px`,
+            border: 'none', background: 'transparent',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', padding: 0, color: n <= value ? gold : idle,
           }}
         >
           <svg
-            width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"
+            width={size} height={size} viewBox="0 0 24 24" aria-hidden="true"
             fill={n <= value ? 'currentColor' : 'none'}
             stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"
           >
@@ -38,16 +45,18 @@ const StarPicker = ({ value = 0, onChange, isDark, label, id }) => {
           </svg>
         </button>
       ))}
-      <span
-        id={id}
-        aria-live="polite"
-        style={{
-          marginLeft: '6px', fontSize: '13px',
-          color: isDark ? '#b0b3b8' : '#5f5c55',
-        }}
-      >
-        {STAR_LABELS[value] || STAR_LABELS[0]}
-      </span>
+      {!hideLabel && (
+        <span
+          id={id}
+          aria-live="polite"
+          style={{
+            marginLeft: '6px', fontSize: '13px',
+            color: isDark ? '#b0b3b8' : '#5f5c55',
+          }}
+        >
+          {labels[value] || labels[0]}
+        </span>
+      )}
     </span>
   );
 };

@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { GOLD, GOLD_DARK, ON_GOLD } from '../theme';
 import api from '../api';
-import StarRating from './StarRating';
+import StarPicker from './StarPicker';
+
+// The same words the Client Ratings page uses, so a rating does not
+// change its name depending on where it was given.
+const STAR_WORDS = ['', 'Poor', 'Below average', 'Fine', 'Good', 'Excellent'];
 import useModalA11y from '../hooks/useModalA11y';
 
 // Shared "rate this client" modal for admin, used by both the Manage
@@ -60,8 +64,14 @@ const ClientRatingModal = ({ booking, isDark, onClose, onSubmitted }) => {
         {error && <div style={s.errorBox}>{error}</div>}
 
         <label style={s.modalLabel}>How did the client return the vehicle?</label>
-        <div style={{ marginBottom: '18px' }} role="group" aria-label="How did the client return the vehicle?">
-          <StarRating value={value} onChange={setValue} size={24} />
+        <div style={{ marginBottom: '18px' }}>
+          <StarPicker
+            value={value}
+            onChange={setValue}
+            isDark={isDark}
+            label="How did the client return the vehicle?"
+            labels={STAR_WORDS}
+          />
         </div>
 
         <label style={s.modalLabel} htmlFor="client-rating-comment">Comment (optional)</label>

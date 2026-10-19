@@ -12,12 +12,15 @@ import { formatMoment } from '../../utils/phTime';
 import api from '../../api';
 import { DoneGlyph } from '../../components/Glyphs';
 import StarRating from '../../components/StarRating';
+import StarPicker from '../../components/StarPicker';
 import ClientRatingModal from '../../components/ClientRatingModal';
 import { clientScoreLabel } from '../../utils/clientScore';
 
 // What the stars mean, said in words beside them. A number out of five is
 // not an opinion anybody holds; "fine" and "good" are.
-const STAR_WORDS = ['Poor', 'Below average', 'Fine', 'Good', 'Excellent'];
+// Index 0 is the nothing-picked case, which this screen shows as a blank
+// line rather than a prompt — the question above it is the prompt.
+const STAR_WORDS = ['', 'Poor', 'Below average', 'Fine', 'Good', 'Excellent'];
 
 const RateClients = () => {
   usePageTitle('Client Ratings');
@@ -242,11 +245,6 @@ const RateClients = () => {
     whoMail: { display: 'block', fontSize: '12.5px', color: text3, marginTop: '1px' },
     ask: { fontSize: '15px', fontWeight: '800', color: text, margin: '0 0 12px' },
     stars: { display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' },
-    star: (on) => ({
-      width: '48px', height: '48px', border: 'none', background: 'transparent', cursor: 'pointer',
-      fontSize: '34px', lineHeight: 1, padding: 0,
-      color: on ? gold : (isDark ? '#4a4b4d' : '#d6d9de'),
-    }),
     starWord: { fontSize: '15px', fontWeight: '800', color: ink, minHeight: '20px' },
     noteLabel: { display: 'block', fontSize: '12.5px', fontWeight: '700', color: text2, margin: '16px 0 6px' },
     note: {
@@ -507,22 +505,18 @@ const RateClients = () => {
 
               <h2 style={s.ask}>How was {(current.user?.name || 'this client').split(' ')[0]} as a renter?</h2>
 
-              <div style={s.stars} role="radiogroup" aria-label="Rating">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    role="radio"
-                    aria-checked={rating === n}
-                    aria-label={`${n} star${n === 1 ? '' : 's'} — ${STAR_WORDS[n - 1]}`}
-                    style={s.star(n <= rating)}
-                    onClick={() => setRating(n)}
-                  >
-                    ★
-                  </button>
-                ))}
+              <div style={s.stars}>
+                <StarPicker
+                  value={rating}
+                  onChange={setRating}
+                  isDark={isDark}
+                  label="How was this client as a renter?"
+                  labels={STAR_WORDS}
+                  size={30}
+                  hideLabel
+                />
               </div>
-              <div style={s.starWord}>{rating ? STAR_WORDS[rating - 1] : ''}</div>
+              <div style={s.starWord}>{STAR_WORDS[rating] || ''}</div>
 
               <label style={s.noteLabel} htmlFor="rate-note">Private note (optional)</label>
               <textarea
