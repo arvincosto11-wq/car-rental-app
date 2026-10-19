@@ -114,19 +114,22 @@ const ManageClients = () => {
 
   const [step, setStep] = useState(false);
   // So the header's Block button can bring the reason form into view.
-  const accountRef = useRef(null);
   const profileRef = useRef(null);
 
-  // Scrolls the profile pane only. scrollIntoView walks every scrollable
-  // ancestor, so it took the whole admin page with it — the sidebar and
-  // the client list slid away and the form landed half off the bottom.
-  const showAccount = () => {
+  // Bringing the reason form into view, once it is actually there.
+  //
+  // Two things had to be got right. It scrolls the profile pane alone:
+  // scrollIntoView walks every scrollable ancestor, so it took the whole
+  // admin page with it and the sidebar slid off the top. And it runs
+  // after the form has rendered rather than in the click, because the
+  // form is the last thing in the pane — scrolling to where the Account
+  // heading was leaves the form itself below the fold, and the pane
+  // cannot scroll past its own end.
+  useEffect(() => {
+    if (!step) return;
     const pane = profileRef.current;
-    const target = accountRef.current;
-    if (!pane || !target) return;
-    const offset = target.getBoundingClientRect().top - pane.getBoundingClientRect().top;
-    pane.scrollTo({ top: pane.scrollTop + offset - 16, behavior: 'smooth' });
-  };
+    if (pane) pane.scrollTo({ top: pane.scrollHeight, behavior: 'smooth' });
+  }, [step]);
   const [reason, setReason] = useState('');
   const [otherText, setOtherText] = useState('');
   const [working, setWorking] = useState(false);
@@ -830,7 +833,7 @@ const ManageClients = () => {
             <button
               type="button"
               style={s.outlineBtn}
-              onClick={() => { setStep(true); showAccount(); }}
+              onClick={() => setStep(true)}
             >
               Block this client ›
             </button>
@@ -871,7 +874,7 @@ const ManageClients = () => {
           emptyText: `No bookings yet. ${person.name} joined on ${day(person.createdAt)} and hasn't rented a vehicle.`,
         })}
 
-        <div style={s.account} ref={accountRef}>
+        <div style={s.account}>
           <h3 style={s.h3}>Account</h3>
           {person.isBlocked ? (
             // No Unblock button here any more: it sits beside the chip it
