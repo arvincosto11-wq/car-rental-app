@@ -115,6 +115,18 @@ const ManageClients = () => {
   const [step, setStep] = useState(false);
   // So the header's Block button can bring the reason form into view.
   const accountRef = useRef(null);
+  const profileRef = useRef(null);
+
+  // Scrolls the profile pane only. scrollIntoView walks every scrollable
+  // ancestor, so it took the whole admin page with it — the sidebar and
+  // the client list slid away and the form landed half off the bottom.
+  const showAccount = () => {
+    const pane = profileRef.current;
+    const target = accountRef.current;
+    if (!pane || !target) return;
+    const offset = target.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+    pane.scrollTo({ top: pane.scrollTop + offset - 16, behavior: 'smooth' });
+  };
   const [reason, setReason] = useState('');
   const [otherText, setOtherText] = useState('');
   const [working, setWorking] = useState(false);
@@ -662,7 +674,7 @@ const ManageClients = () => {
             </div>
           </nav>
 
-          <article style={s.profile}>
+          <article style={s.profile} ref={profileRef}>
             {!selected ? (
               <div style={s.none}>Nobody to show. Clear the search or pick another filter.</div>
             ) : (
@@ -818,7 +830,7 @@ const ManageClients = () => {
             <button
               type="button"
               style={s.outlineBtn}
-              onClick={() => { setStep(true); accountRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
+              onClick={() => { setStep(true); showAccount(); }}
             >
               Block this client ›
             </button>
