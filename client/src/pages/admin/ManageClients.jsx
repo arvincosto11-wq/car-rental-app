@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import { SkeletonListCard } from '../../components/Skeleton';
@@ -113,6 +113,8 @@ const ManageClients = () => {
   const [openOwners, setOpenOwners] = useState(null);
 
   const [step, setStep] = useState(false);
+  // So the header's Block button can bring the reason form into view.
+  const accountRef = useRef(null);
   const [reason, setReason] = useState('');
   const [otherText, setOtherText] = useState('');
   const [working, setWorking] = useState(false);
@@ -387,6 +389,7 @@ const ManageClients = () => {
     eyebrow: { fontSize: '12px', fontWeight: '800', letterSpacing: '0.1em', textTransform: 'uppercase', color: ink },
     pName: { margin: '2px 0 4px', fontSize: '26px', fontWeight: '700', color: text },
     pContact: { fontSize: '14px', color: text2, overflowWrap: 'anywhere' },
+    headStatus: { display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 },
     statusChip: (kind) => ({
       padding: '5px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: '700', whiteSpace: 'nowrap',
       border: `1px solid ${kind === 'blocked' ? redLine : (kind === 'hold' ? text3 : line)}`,
@@ -674,7 +677,9 @@ const ManageClients = () => {
   );
 
   // ── the two profiles ────────────────────────────────────────────────
-  function head(person, role, chipKind, chipText) {
+  // `action` is optional: a client's standing can be changed from here,
+  // a vehicle owner's cannot.
+  function head(person, role, chipKind, chipText, action) {
     return (
       <div style={s.pHead}>
         {avatarOf(person, true)}
@@ -686,7 +691,10 @@ const ManageClients = () => {
               .filter(Boolean).join(' · ')}
           </div>
         </div>
-        <span style={s.statusChip(chipKind)}>{chipText}</span>
+        <div style={s.headStatus}>
+          <span style={s.statusChip(chipKind)}>{chipText}</span>
+          {action}
+        </div>
       </div>
     );
   }
@@ -795,7 +803,27 @@ const ManageClients = () => {
 
     return (
       <>
-        {head(person, 'Client', person.isBlocked ? 'blocked' : 'plain', person.isBlocked ? 'Blocked' : 'Can book')}
+        {head(
+          person,
+          'Client',
+          person.isBlocked ? 'blocked' : 'plain',
+          person.isBlocked ? 'Blocked' : 'Can book',
+          person.isBlocked ? (
+            <button type="button" style={s.goldOutline} disabled={working} onClick={liftBlock}>Unblock</button>
+          ) : (
+            // Blocking asks why first, and that form belongs next to the
+            // sentence saying what blocking does — so this opens it and
+            // takes you there, rather than moving the form up here and
+            // leaving the explanation behind.
+            <button
+              type="button"
+              style={s.outlineBtn}
+              onClick={() => { setStep(true); accountRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
+            >
+              Block this client ›
+            </button>
+          ),
+        )}
         <p style={s.standing}>{standing}</p>
 
         <div style={s.facts}>
@@ -831,19 +859,18 @@ const ManageClients = () => {
           emptyText: `No bookings yet. ${person.name} joined on ${day(person.createdAt)} and hasn't rented a vehicle.`,
         })}
 
-        <div style={s.account}>
+        <div style={s.account} ref={accountRef}>
           <h3 style={s.h3}>Account</h3>
           {person.isBlocked ? (
-            <>
-              <div style={s.stoppedBox(true)}>
-                <div style={s.stoppedWhen(true)}><BanIcon />Blocked since {day(person.blockedAt) || 'earlier'}</div>
-                {person.blockReason && <div style={s.stoppedWhy}>Reason: {person.blockReason}</div>}
-                <div style={s.stoppedWhy}>
-                  They can&apos;t make new bookings until you unblock them. Bookings they already have still go ahead.
-                </div>
+            // No Unblock button here any more: it sits beside the chip it
+            // changes, at the top. This says what the block means.
+            <div style={s.stoppedBox(true)}>
+              <div style={s.stoppedWhen(true)}><BanIcon />Blocked since {day(person.blockedAt) || 'earlier'}</div>
+              {person.blockReason && <div style={s.stoppedWhy}>Reason: {person.blockReason}</div>}
+              <div style={s.stoppedWhy}>
+                They can&apos;t make new bookings until you unblock them. Bookings they already have still go ahead.
               </div>
-              <button type="button" style={s.goldOutline} disabled={working} onClick={liftBlock}>Unblock</button>
-            </>
+            </div>
           ) : step ? (
             reasonStep({
               title: `Why block ${person.name}?`,
@@ -858,7 +885,6 @@ const ManageClients = () => {
                 <div style={s.accountWhat}>Can book</div>
                 <div style={s.accountWhy}>Not blocked. New bookings are allowed.</div>
               </div>
-              <button type="button" style={s.outlineBtn} onClick={() => setStep(true)}>Block this client ›</button>
             </div>
           )}
         </div>
