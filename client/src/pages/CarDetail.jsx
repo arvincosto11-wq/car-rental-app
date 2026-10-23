@@ -58,10 +58,18 @@ const SparkIcon = () => (
 // "1 day", not "1 days".
 const dayWord = (n) => (n === 1 ? 'day' : 'days');
 
+// Five steps rather than three. The old middle step asked for the booking
+// type, the driver, both handover places and the payment option on one
+// screen, which is four unrelated decisions and a map under one heading.
+// Splitting them means each screen asks one question, and the one that can
+// refuse a booking — a place we don't drive to — does it with the map still
+// on screen to change.
 const STEP_HEADINGS = {
-  1: { title: 'Select Dates', sub: 'Tap a pickup date, then a return date, then choose your pickup time.' },
-  2: { title: 'Type & Payment', sub: 'Choose how you drive and how you pay.' },
-  3: { title: 'Final Confirmation', sub: 'Check everything, then pay.' },
+  1: { title: 'When do you need it?', sub: 'Tap a pickup date, then a return date, then choose your pickup time.' },
+  2: { title: 'Who drives?', sub: 'One of our drivers, or you.' },
+  3: { title: 'Where shall we hand it over?', sub: 'Collect it from us, or we bring it to you.' },
+  4: { title: 'How would you like to pay?', sub: 'Pay the deposit now, or all of it.' },
+  5: { title: 'Check it over', sub: 'Change anything that isn\u2019t right, then pay.' },
 };
 
 const CarDetail = () => {
@@ -139,9 +147,11 @@ const CarDetail = () => {
   // rather than at the moment they go to pay.
   const [overdueBooking, setOverdueBooking] = useState(null);
   const BOOKING_STEPS = [
-    { label: 'Select Dates', desc: 'Choose your pickup and return dates' },
-    { label: 'Type & Payment', desc: 'Choose how you drive and pay' },
-    { label: 'Confirmation', desc: 'Check everything, then pay' },
+    { label: 'Dates', desc: 'Your days and a collection time' },
+    { label: 'Driving', desc: 'With one of our drivers, or yourself' },
+    { label: 'Pickup & return', desc: 'Our office, or we deliver' },
+    { label: 'Payment', desc: '20% now, or all of it' },
+    { label: 'Check and pay', desc: 'Look it over, then GCash' },
   ];
 
   const termsModalRef = useModalA11y(() => setShowTerms(false), showTerms);
@@ -429,7 +439,10 @@ const CarDetail = () => {
     setStep(2);
   };
 
-  const goToConfirmNext = () => {
+  // Leaving the driving step. The licence is judged here because choosing
+  // self-drive is what makes it matter — and because this is the last screen
+  // where changing the answer is still cheap.
+  const goToPlaceNext = () => {
     if (licenceIssue) {
       return setError(licenceMessage(licenceIssue));
     }
@@ -438,6 +451,18 @@ const CarDetail = () => {
     }
     setError('');
     setStep(3);
+  };
+
+  // Leaving the handover step. Nothing to validate: a place we don't serve
+  // dims the button below, and PlacePicker has already said why on the map.
+  const goToPaymentNext = () => {
+    setError('');
+    setStep(4);
+  };
+
+  const goToReviewNext = () => {
+    setError('');
+    setStep(5);
   };
 
   const openRefundNotice = () => {
@@ -1289,13 +1314,21 @@ const CarDetail = () => {
                       </>
                     )}
 
+                    {/* This used to promise that a valid ID and licence were
+                        "verified by our team beforehand". Nothing verifies
+                        anything: the gate is isSelfDriveEligible, which asks
+                        only whether a licence expiry is on file, and the ID
+                        fields were deliberately removed from the system. The
+                        real check is two IDs at the counter, so that is what
+                        it now says. */}
                     {supportedBookingTypes.includes('self-drive') && (
                       <p style={s.noteRow}>
                         <InfoIcon />
                         <span>
-                          Self drive needs a <strong style={s.noteStrong}>valid ID and driver&apos;s licence</strong>, verified by our
-                          team beforehand — manage these in your{' '}
-                          <Link to="/profile" style={{ color: goldInk(isDark), fontWeight: '700' }}>Profile</Link>.
+                          For self-drive we need your <strong style={s.noteStrong}>licence expiry date</strong> in your{' '}
+                          <Link to="/profile" style={{ color: goldInk(isDark), fontWeight: '700' }}>Profile</Link>,
+                          so we can check it covers your trip. Bring the licence itself, plus two valid IDs,
+                          when you collect.
                         </span>
                       </p>
                     )}
@@ -1307,7 +1340,24 @@ const CarDetail = () => {
                       </div>
                     )}
 
-                    {deliverySettings?.enabled && (
+                    {/* Moved up from below the maps. It is an answer about
+                        the licence, so it belongs beside the choice that
+                        needs one rather than three sections later. */}
+                    {selfDriveBlocked && (
+                      <div style={s.licenseBox}>
+                        <p style={s.licenseNote}>
+                          Self-drive needs your driver&apos;s licence expiry on file. Add it in your Profile,
+                          and bring the licence itself to the pickup — we check it there.
+                        </p>
+                        <Link to="/profile" style={s.licenseLink}>Go to Profile</Link>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {step === 3 && (
+                  <motion.div key="step3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
+                    {deliverySettings?.enabled ? (
                       <>
                         <div style={s.sectionLabel} id="cd-pickup-place-label">Pickup</div>
                         <PlacePicker
@@ -1339,19 +1389,19 @@ const CarDetail = () => {
                           />
                         )}
                       </>
+                    ) : (
+                      <p style={s.fieldHint}>
+                        {deliverySettings
+                          ? `We\u2019re handing over at ${deliverySettings.base?.label || 'our office'} at the moment, so there\u2019s nothing to choose here.`
+                          : 'Checking where we can hand over\u2026'}
+                      </p>
                     )}
+                  </motion.div>
+                )}
 
-                    {selfDriveBlocked && (
-                      <div style={s.licenseBox}>
-                        <p style={s.licenseNote}>
-                          Self-drive needs your driver&apos;s licence expiry on file. Add it in your Profile,
-                          and bring the licence itself to the pickup — we check it there.
-                        </p>
-                        <Link to="/profile" style={s.licenseLink}>Go to Profile</Link>
-                      </div>
-                    )}
-
-                    <div style={{ ...s.sectionLabel, marginTop: '20px' }} id="cd-payment-option-label">Payment option</div>
+                {step === 4 && (
+                  <motion.div key="step4" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
+                    <div style={s.sectionLabel} id="cd-payment-option-label">Payment option</div>
                     <div role="group" aria-labelledby="cd-payment-option-label" style={s.choiceGrid}>
                       <button
                         type="button"
@@ -1422,8 +1472,8 @@ const CarDetail = () => {
                   </motion.div>
                 )}
 
-                {step === 3 && (
-                  <motion.div key="step3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
+                {step === 5 && (
+                  <motion.div key="step5" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
                     {deliveryFee > 0 && (
                       <div style={s.selectedPill}>
                         <span style={s.pillLeft}>
@@ -1552,6 +1602,22 @@ const CarDetail = () => {
                   <>
                     <button style={s.backStepBtn} onClick={() => goToStep(1)}>Back</button>
                     <span style={s.footPush}>
+                      <button style={s.nextBtn} onClick={goToPlaceNext}>
+                        Continue →
+                      </button>
+                    </span>
+                  </>
+                )}
+                {step === 3 && (
+                  <>
+                    <button style={s.backStepBtn} onClick={() => goToStep(2)}>Back</button>
+                    <span>
+                      <span style={s.footKey}>Delivery</span>
+                      <span style={s.footValue}>
+                        {deliveryBlocked ? 'Too far' : deliveryFee > 0 ? `₱${deliveryFee.toLocaleString()}` : 'None'}
+                      </span>
+                    </span>
+                    <span style={s.footPush}>
                       {/* A place we don't serve stops the booking here, where
                           the map is still on screen to change it — not at
                           the payment screen, and certainly not after. It has
@@ -1562,7 +1628,7 @@ const CarDetail = () => {
                         style={deliveryBlocked
                           ? { ...s.nextBtn, opacity: 0.45, cursor: 'not-allowed', boxShadow: 'none' }
                           : s.nextBtn}
-                        onClick={goToConfirmNext}
+                        onClick={goToPaymentNext}
                         disabled={deliveryBlocked}
                       >
                         Continue →
@@ -1570,9 +1636,23 @@ const CarDetail = () => {
                     </span>
                   </>
                 )}
-                {step === 3 && (
+                {step === 4 && (
                   <>
-                    <button style={s.backStepBtn} onClick={() => goToStep(2)} disabled={booking}>Back</button>
+                    <button style={s.backStepBtn} onClick={() => goToStep(3)}>Back</button>
+                    <span>
+                      <span style={s.footKey}>{paymentType === 'downpayment' ? 'Due now (20%)' : 'Total due'}</span>
+                      <span style={{ ...s.footValue, color: goldInk(isDark) }}>₱{amountToPay.toLocaleString()}</span>
+                    </span>
+                    <span style={s.footPush}>
+                      <button style={s.nextBtn} onClick={goToReviewNext}>
+                        Continue →
+                      </button>
+                    </span>
+                  </>
+                )}
+                {step === 5 && (
+                  <>
+                    <button style={s.backStepBtn} onClick={() => goToStep(4)} disabled={booking}>Back</button>
                     <span style={s.footPush}>
                       <button
                         style={s.nextBtn}

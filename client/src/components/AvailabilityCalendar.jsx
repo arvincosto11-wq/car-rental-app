@@ -170,7 +170,10 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
       // Tints, not full saturation, so the gold selection ring still reads
       // on top of a gold cell.
       boxShadow: selected ? `inset 0 0 0 2px ${isDark ? GOLD_DARK : GOLD}` : 'none',
-      border: 'none', font: 'inherit',
+      // fontFamily, not the `font` shorthand. `font: inherit` sat after the
+      // fontWeight above and reset it, so a selected day never actually came
+      // out bolder — and React warned about the conflict on every rerender.
+      border: 'none', fontFamily: 'inherit',
       cursor: clickable ? 'pointer' : 'default',
       pointerEvents: clickable ? 'auto' : 'none',
     }),
