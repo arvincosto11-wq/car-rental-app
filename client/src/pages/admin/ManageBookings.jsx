@@ -757,35 +757,45 @@ const ManageBookings = () => {
   // status 'pending'?" — see needsDecision in utils/priority.js, which
   // the urgency sort reads too so the tab and the order agree.
 
-  // Unpaid bookings never show up here at all (see filteredBookings below),
-  // so counts for the status tabs are scoped to paid bookings only —
-  // otherwise "All" would include bookings nothing else on this page shows.
-  const paidBookings = bookings.filter((b) => b.payment === 'paid');
-  const overdueBookings = paidBookings.filter(isOverdue);
+  // A checkout somebody opened and walked away from. That is what this
+  // page means by "not worth showing": no vehicle is held, no money has
+  // moved, and there is nothing to do until the client finishes paying.
+  //
+  // It used to test `payment !== 'paid'`, which is a different question.
+  // The model keeps THREE values — 'paid' is a verified online payment,
+  // 'gcash_pending' is a checkout in flight, and 'offline' means paid in
+  // person, cash or GCash, which is an ordinary way to pay. Reading them
+  // as paid-or-not hid 54 finished bookings, every one of them with money
+  // against it: 38 completed trips and 16 cancellations, all invisible
+  // here while the calendar listed them. Clicking one there led to a page
+  // that behaved as though it did not exist.
+  const walkedAway = (b) => b.payment === 'gcash_pending';
+  // Counts are scoped the same way as the list, or "All" would promise
+  // rows the tabs below cannot show.
+  const shownBookings = bookings.filter((b) => !walkedAway(b));
+  const overdueBookings = shownBookings.filter(isOverdue);
   // Worked out here rather than in the markup, so the modal reads as one
   // sentence and this stays above everything that uses it.
   const shortfallNow = returnTarget
     ? fuelShortfallLabel({ fuel: { atPickup: returnTarget.fuel?.atPickup, atReturn: returnForm.fuel } })
     : '';
-  const dueBackBookings = paidBookings.filter(isDueBack);
+  const dueBackBookings = shownBookings.filter(isDueBack);
   const dueBackWhen = dueBackLabel(dueBackBookings);
   // In the order a booking lives through them, so the row of tabs is the
   // journey rather than a bag of labels.
   const statusTabs = [
-    { value: 'all', label: 'All', count: paidBookings.length },
-    { value: 'pending', label: 'Pending', count: paidBookings.filter(needsDecision).length },
-    { value: 'upcoming', label: 'Upcoming', count: paidBookings.filter(isUpcoming).length },
-    { value: 'for_pickup', label: 'For Pickup', count: paidBookings.filter(isForPickup).length },
-    { value: 'on_trip', label: 'On Trip', count: paidBookings.filter((b) => isOnTrip(b) && !isOverdue(b)).length },
+    { value: 'all', label: 'All', count: shownBookings.length },
+    { value: 'pending', label: 'Pending', count: shownBookings.filter(needsDecision).length },
+    { value: 'upcoming', label: 'Upcoming', count: shownBookings.filter(isUpcoming).length },
+    { value: 'for_pickup', label: 'For Pickup', count: shownBookings.filter(isForPickup).length },
+    { value: 'on_trip', label: 'On Trip', count: shownBookings.filter((b) => isOnTrip(b) && !isOverdue(b)).length },
     { value: 'overdue', label: 'Overdue', count: overdueBookings.length },
-    { value: 'completed', label: 'Completed', count: paidBookings.filter((b) => b.status === 'completed').length },
-    { value: 'cancelled', label: 'Cancelled', count: paidBookings.filter((b) => b.status === 'cancelled').length },
+    { value: 'completed', label: 'Completed', count: shownBookings.filter((b) => b.status === 'completed').length },
+    { value: 'cancelled', label: 'Cancelled', count: shownBookings.filter((b) => b.status === 'cancelled').length },
   ];
 
   const filteredBookings = bookings.filter((b) => {
-    // Unpaid bookings (checkout never completed) aren't shown at all —
-    // there's nothing for admin to do with one until it's actually paid.
-    if (b.payment !== 'paid') return false;
+    if (walkedAway(b)) return false;
     const stage = {
       upcoming: isUpcoming,
       for_pickup: isForPickup,
