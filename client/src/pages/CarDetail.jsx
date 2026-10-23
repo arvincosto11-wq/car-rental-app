@@ -127,6 +127,11 @@ const CarDetail = () => {
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
+  // The furthest step they have reached, which is not the same as the one
+  // they are on. The summaries in the step list key off this: jumping back
+  // to change the driver should not blank out the payment they already
+  // chose, because they did still choose it.
+  const [maxStep, setMaxStep] = useState(1);
   // Where the vehicle is handed over and taken back. Null means our own
   // base, which is the ordinary booking and costs nothing.
   const [pickupPlace, setPickupPlace] = useState(null);
@@ -151,12 +156,20 @@ const CarDetail = () => {
   // here means they find out before choosing dates and a booking type
   // rather than at the moment they go to pay.
   const [overdueBooking, setOverdueBooking] = useState(null);
-  const BOOKING_STEPS = [
-    { label: 'Dates', desc: 'Your days and a collection time' },
-    { label: 'Driving', desc: 'With one of our drivers, or yourself' },
-    { label: 'Pickup & return', desc: 'Our office, or we deliver' },
-    { label: 'Payment', desc: '20% now, or all of it' },
-    { label: 'Check and pay', desc: 'Look it over, then GCash' },
+  // The step list doubles as the running summary of the booking: each step
+  // shows what it is for until it has an answer, and the answer afterwards.
+  // Reading back a choice is what makes the step list worth looking at —
+  // "Pickup & return: Our office" answers the question somebody is about to
+  // scroll back two screens to check. Completed steps are already clickable
+  // (see BookingSteps), so the summary is also the way back to it.
+  //
+  // Held until after the choices are derived, further down this component.
+  const bookingStepsFor = (choices) => [
+    { label: 'Dates', desc: choices.dates || 'Your days and a collection time' },
+    { label: 'Driving', desc: choices.driving || 'With one of our drivers, or yourself' },
+    { label: 'Pickup & return', desc: choices.place || 'Our office, or we deliver' },
+    { label: 'Payment', desc: choices.payment || '20% now, or all of it' },
+    { label: 'Check and pay', desc: choices.review || 'Look it over, then GCash' },
   ];
 
   const termsModalRef = useModalA11y(() => setShowTerms(false), showTerms);
@@ -468,9 +481,61 @@ const CarDetail = () => {
     </>
   );
 
+  // What each step has been answered with, or '' while it hasn't been.
+  // Every line is built from the same values the steps themselves use, so
+  // the summary cannot say something the screen behind it doesn't.
+  const stepSummaries = () => {
+    const dates = startDate && endDate && pickupHour !== null
+      ? `${formatPhDate(instantFrom(startDate, pickupHour), { month: 'short', day: 'numeric' })} \u2192 `
+        + `${formatPhDate(instantFrom(endDate, pickupHour), { month: 'short', day: 'numeric' })}`
+        + ` \u00b7 ${totalDays} ${dayWord(totalDays)} \u00b7 ${formatHour(pickupHour)}`
+      : '';
+
+    // Guarded the same way as the handover below: bookingType starts at
+    // 'with-driver', so without this the list claimed they had chosen a
+    // driver before they had seen the question.
+    let driving = '';
+    if (maxStep > 2) {
+      if (bookingType === 'self-drive') {
+        driving = 'Self-drive';
+      } else {
+        const chosen = driverId ? (drivers || []).find((d) => d._id === driverId) : null;
+        driving = chosen ? `With ${chosen.name}` : 'With a driver we assign';
+      }
+    }
+
+    // Only once they have been past the handover step: before that, "our
+    // office" is a default nobody has agreed to yet, and showing it as a
+    // choice they made would be putting words in their mouth.
+    let place = '';
+    if (maxStep > 3) {
+      const out = pickupPlace ? (pickupPlace.label || 'A place on the map') : 'Our office';
+      const back = returnSame
+        ? 'back to the same place'
+        : `back to ${returnPlace ? (returnPlace.label || 'a place on the map') : 'somewhere else'}`;
+      place = `${out} \u00b7 ${back}`;
+    }
+
+    const payment = maxStep > 4
+      ? (paymentType === 'downpayment'
+        ? `20% now \u00b7 \u20b1${downPayment.toLocaleString()}, rest at pickup`
+        : `In full \u00b7 \u20b1${totalPrice.toLocaleString()}`)
+      : '';
+
+    const review = agreedToTerms ? 'Terms agreed' : '';
+
+    return { dates, driving, place, payment, review };
+  };
+
   const goToStep = (n) => {
     setError('');
     setStep(n);
+  };
+
+  // Forward only. Going back deliberately leaves maxStep where it was.
+  const advanceTo = (n) => {
+    setStep(n);
+    setMaxStep((m) => Math.max(m, n));
   };
 
   const goToDatesNext = () => {
@@ -485,7 +550,7 @@ const CarDetail = () => {
       return setError('Please choose a pickup time.');
     }
     setError('');
-    setStep(2);
+    advanceTo(2);
   };
 
   // Leaving the driving step. The licence is judged here because choosing
@@ -499,19 +564,19 @@ const CarDetail = () => {
       return setError("Self-drive isn't available on your account yet — see the notice above for what's needed.");
     }
     setError('');
-    setStep(3);
+    advanceTo(3);
   };
 
   // Leaving the handover step. Nothing to validate: a place we don't serve
   // dims the button below, and PlacePicker has already said why on the map.
   const goToPaymentNext = () => {
     setError('');
-    setStep(4);
+    advanceTo(4);
   };
 
   const goToReviewNext = () => {
     setError('');
-    setStep(5);
+    advanceTo(5);
   };
 
   const openRefundNotice = () => {
@@ -1086,7 +1151,12 @@ const CarDetail = () => {
               <h2 id="booking-modal-title" style={s.bookSideTitle}>Book Vehicle</h2>
               <div style={s.bookSideCar}>{car.brand} {car.model} · {car.year}</div>
 
-              <BookingSteps steps={BOOKING_STEPS} currentStep={step} onStepClick={goToStep} isDark={isDark} />
+              <BookingSteps
+                steps={bookingStepsFor(stepSummaries())}
+                currentStep={step}
+                onStepClick={goToStep}
+                isDark={isDark}
+              />
 
               {(firstLongRentalRule || isPromoVisible(car.promo)) && (
                 <div className="booking-modal-promo" style={s.sidePromo}>
