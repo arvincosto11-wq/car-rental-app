@@ -323,7 +323,13 @@ const BookingsCalendar = () => {
                     type="button"
                     className="list-row-btn"
                     style={s.panelRow}
-                    onClick={() => navigate('/admin/manage-bookings')}
+                    // Carries which booking was clicked, and where to come
+                    // back to. Without the id this landed on whatever
+                    // Manage Bookings happened to show first, which on a
+                    // row naming a client reads as the click being ignored.
+                    onClick={() => navigate(
+                      `/admin/manage-bookings?booking=${b._id}&return=/admin/bookings-calendar`,
+                    )}
                   >
                     <span style={s.panelTime}>{hourLabel(b, which)}</span>
                     <span style={{ minWidth: 0 }}>

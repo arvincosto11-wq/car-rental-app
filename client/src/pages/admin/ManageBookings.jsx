@@ -1,5 +1,5 @@
 import { useState, useEffect, Fragment } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
 import StarRating from '../../components/StarRating';
@@ -23,6 +23,7 @@ import { FUEL_STEPS, fuelLabel, fuelShortfallLabel } from '../../utils/fuel';
 import ConditionPhotos from '../../components/ConditionPhotos';
 import { licenceProblem } from '../../utils/documents';
 import { needsDecision, refundOwed } from '../../utils/priority';
+import BackButton from '../../components/BackButton';
 import { StarGlyph } from '../../components/Glyphs';
 
 const LOW_RATING_THRESHOLD = 3;
@@ -183,6 +184,22 @@ const ManageBookings = () => {
   // The row the panel is about. Null means "the first one in the list",
   // worked out below, so the panel is never empty while there are bookings.
   const [selectedId, setSelectedId] = useState(null);
+  const [params, setParams] = useSearchParams();
+  // Where to go back to, for somebody who arrived from another admin
+  // page. Only our own paths: this comes out of the address bar, and
+  // following whatever turns up there is how an open redirect happens.
+  const returnTo = (() => {
+    const asked = params.get('return') || '';
+    return /^\/admin\/[A-Za-z0-9/_-]*$/.test(asked) ? asked : null;
+  })();
+  // A booking named in the address bar, opened once the list has loaded.
+  // Handled further down, where the pages are worked out — picking it is
+  // not enough on its own, because a booking the current tab filters out
+  // or leaves on page 7 cannot be shown.
+  const wantedBooking = params.get('booking');
+  // Set once a linked booking has been selected, cleared once its page
+  // has been turned to.
+  const [bringIntoView, setBringIntoView] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [pageWanted, setPage] = useState(1);
@@ -817,6 +834,48 @@ const ManageBookings = () => {
   // once, then re-render on the correction; this just never shows it.
   const page = Math.min(pageWanted, totalPages);
   const pageBookings = paginate(groupedBookings, page, PAGE_SIZE);
+
+  // Bringing a linked-to booking into view, in two steps because they
+  // need different information.
+  //
+  // First: clear whatever would hide it — the tab it arrives on may
+  // filter it out, and a leftover search would too — and select it. The
+  // id is dropped from the address bar here, so a refresh behind the
+  // admin cannot drag them back to this booking after they have clicked
+  // elsewhere.
+  useEffect(() => {
+    if (!wantedBooking || loading) return;
+    if (!bookings.some((b) => b._id === wantedBooking)) return;
+    // The extra render is the point: the address bar has asked for a
+    // view the page is not currently in, and this is what moves it.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStatusFilter('all');
+    setSearch('');
+    setSelectedId(wantedBooking);
+    setBringIntoView(wantedBooking);
+    const next = new URLSearchParams(params);
+    next.delete('booking');
+    setParams(next, { replace: true });
+    // params and setParams are left out deliberately: this clears the id
+    // from the address bar, so depending on them would re-run it against
+    // its own change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantedBooking, loading, bookings]);
+
+  // Second: turn to the page holding it. This waits for the render that
+  // the clearing above causes, because the position is read off the list
+  // as it ends up — pairs racing for the same dates are pulled next to
+  // each other, so a booking's place is not simply where it arrived.
+  useEffect(() => {
+    if (!bringIntoView) return;
+    const at = groupedBookings.findIndex((b) => b._id === bringIntoView);
+    if (at < 0) return;
+    // Also a deliberate second pass: the position can only be read once
+    // the list has settled into the state the first effect asked for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPage(Math.floor(at / PAGE_SIZE) + 1);
+    setBringIntoView(null);
+  }, [bringIntoView, groupedBookings]);
   // Never an empty panel: if nothing is picked, or what was picked has
   // dropped off this tab, the panel follows the list.
   const selected = pageBookings.find((b) => b._id === selectedId) || pageBookings[0] || null;
@@ -1701,6 +1760,15 @@ const ManageBookings = () => {
 
   return (
     <AdminLayout activePage="Manage Bookings">
+      {/* Only when somebody arrived from another admin page. Landing on a
+          booking from the calendar with no way back but the sidebar is
+          the sort of dead end that makes a tool feel unfinished. */}
+      {returnTo && (
+        <BackButton
+          text={returnTo === '/admin/bookings-calendar' ? 'Back to Calendar' : 'Back'}
+          onClick={() => navigate(returnTo)}
+        />
+      )}
       <div style={s.headerRow}>
         <div>
           <h1 style={s.title}>Manage Bookings</h1>
