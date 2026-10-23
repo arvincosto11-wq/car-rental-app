@@ -13,13 +13,12 @@ import BackButton from '../components/BackButton';
 import PromoConfetti from '../components/PromoConfetti';
 import PromoBadge from '../components/PromoBadge';
 import useLongRentalRules from '../hooks/useLongRentalRules';
-import { bestLongRentalRule, longRentalDiscountOn, rulesForCar } from '../utils/longRental';
+import { bestLongRentalRule, rulesForCar } from '../utils/longRental';
 import { instantFrom, phDayStart, pickupHours, formatHour, formatPhDate, formatMoment, SHORT_NOTICE_HOURS } from '../utils/phTime';
 import DriverAvatar from '../components/DriverAvatar';
 import { ratingLabel } from '../utils/drivers';
 import RefundNoticeLine from '../components/RefundNoticeLine';
 import PlacePicker from '../components/PlacePicker';
-import { deliveryQuote } from '../utils/delivery';
 import { registrationLapsed } from '../utils/registration';
 import { isOverdue } from '../utils/overdue';
 import { hoursLate, overdueLabel } from '../utils/lateness';
@@ -27,7 +26,8 @@ import useModalA11y from '../hooks/useModalA11y';
 import usePageTitle from '../hooks/usePageTitle';
 import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD, goldInk} from '../theme';
-import { isPromoVisible, promoOffer, promoDateRange, promoCoversRange, promoDiscountOn } from '../utils/promo';
+import { isPromoVisible, promoOffer, promoDateRange, promoCoversRange } from '../utils/promo';
+import { quoteBooking } from '../utils/bookingQuote';
 import api from '../api';
 import { licenceProblem, licenceMessage } from '../utils/documents';
 import ModalClose from '../components/ModalClose';
@@ -243,33 +243,34 @@ const CarDetail = () => {
     ? licenceProblem(profile, { bookingType, endDate: new Date(endDate) })
     : null;
 
-  const totalDays = startDate && endDate
-    ? Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24))
-    : 0;
-
-  // Mirrors computeBookingPrice on the server. The server recomputes all of
-  // this at booking time and its answer is the one that counts — this is
-  // only so the customer sees the right number before committing.
-  const subtotal = totalDays > 0 ? totalDays * car?.pricePerDay : 0;
-  const promoApplies = promoCoversRange(car?.promo, startDate, endDate);
-  const promoAmount = promoApplies ? promoDiscountOn(car.promo, subtotal) : 0;
-  // A trip can qualify for the date promo and a long-rental discount at once.
-  // They never stack — the bigger one wins, same rule as computeBookingPrice.
-  const longRentalRule = car ? bestLongRentalRule(longRentalRules, car._id, totalDays) : null;
-  const longRentalAmount = longRentalDiscountOn(longRentalRule, subtotal);
-  const usingLongRental = longRentalAmount > promoAmount;
-  const discountAmount = Math.max(promoAmount, longRentalAmount);
-  // The shortest-trip rule, for the "Book 7+ days, save 10%" line.
-  const firstLongRentalRule = car ? rulesForCar(longRentalRules, car._id)[0] : null;
-  const vehiclePrice = subtotal - discountAmount;
-  // Mirrors the server: the fee sits outside the discount, because a promo
-  // is the owner discounting their vehicle, not paying for the drive out.
+  // What this trip costs. The ladder itself lives in utils/bookingQuote.js,
+  // copied verbatim from the server, so the figure shown here is the figure
+  // the server will charge. It used to be written out again in this file —
+  // two homes for every money rule, and tests on only one of them.
   const effectiveReturnPlace = returnSame ? pickupPlace : returnPlace;
-  const delivery = deliveryQuote(pickupPlace, effectiveReturnPlace, deliverySettings);
-  const deliveryFee = delivery.fee;
+  const quote = quoteBooking({
+    car,
+    start: startDate,
+    end: endDate,
+    pickupPoint: pickupPlace,
+    returnPoint: effectiveReturnPlace,
+    settings: deliverySettings,
+    longRentalRules,
+    paymentType,
+  });
+  const {
+    totalDays, subtotal, discountAmount,
+    delivery, deliveryFee, totalPrice, depositDue: downPayment, amountToPay,
+  } = quote;
   const deliveryBlocked = !delivery.ok;
-  const totalPrice = vehiclePrice + deliveryFee;
-  const downPayment = Math.ceil(totalPrice * 0.20);
+  const usingLongRental = quote.discountKind === 'longRental';
+
+  // Display only, all three: whether to show the promo badge, which rule
+  // won for "7+ days, 10% off", and the shortest rule there is for the
+  // "book 7+ days and save" nudge on a trip that doesn't qualify yet.
+  const promoApplies = promoCoversRange(car?.promo, startDate, endDate);
+  const longRentalRule = car ? bestLongRentalRule(longRentalRules, car._id, totalDays) : null;
+  const firstLongRentalRule = car ? rulesForCar(longRentalRules, car._id)[0] : null;
 
   // The rates and the base pin, so the quote can be shown while choosing
   // rather than only after submitting. The server recomputes the fee from
@@ -286,7 +287,6 @@ const CarDetail = () => {
   useEffect(() => {
     if (discountAmount > 0) setPromoCelebrated(Date.now());
   }, [discountAmount, car?._id]);
-  const amountToPay = paymentType === 'downpayment' ? downPayment : totalPrice;
 
   // What the vehicle is really unavailable for. The server sends each
   // booking's span with its turnaround already added, so the hours offered
@@ -480,7 +480,10 @@ const CarDetail = () => {
       });
 
       const { data } = await api.post('/payments/gcash/checkout-session', { bookingId: res.data._id });
-      window.location.href = data.checkoutUrl;
+      // assign(), not an href assignment — the same redirect, written the way
+      // MyBookings does it, which the compiler can see is a call and not a
+      // write to something outside the component.
+      window.location.assign(data.checkoutUrl);
     } catch (err) {
       setShowRefundNotice(false);
       setError(err.response?.data?.message || 'Booking failed');

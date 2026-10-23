@@ -31,6 +31,11 @@ export default function run() {
   check('returning the day after does not', promoCoversRange(promo, instantFrom('2026-09-22', 7), instantFrom('2026-09-26', 7)), false);
   check('a booking with no time still works', promoCoversRange(promo, new Date('2026-09-20T00:00:00Z'), new Date('2026-09-23T00:00:00Z')), true);
   check('and so do the plain date strings the site sends', promoCoversRange(promo, '2026-09-20', '2026-09-23'), true);
+  // Asked before any dates are chosen. It used to throw here on the server
+  // while the client's copy answered false — the shared core of the two
+  // files has to give the same answer to the same question.
+  check('no dates at all does not qualify', promoCoversRange(promo, '', ''), false);
+  check('and does not throw', promoCoversRange(promo, null, null), false);
 
   group('it ends when the last day ends in Legazpi');
   check('3:00 PM on the 25th, still running', promoHasEnded(promo, instantFrom('2026-09-25', 15)), false);

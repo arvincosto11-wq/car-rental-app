@@ -6,6 +6,8 @@
 // getters. Using local ones would shift them a day in PH and a promo ending
 // "Sept 25" would appear to end on the 24th.
 
+import { bestLongRentalRule, longRentalDiscountOn, longRentalLabel } from './longRental.js';
+
 const startOfDayUTC = (date) => {
   const d = new Date(date);
   d.setUTCHours(0, 0, 0, 0);
@@ -63,11 +65,43 @@ export const promoDateRange = (promo) => {
     : `${month(s)} ${day(s)} \u2013 ${month(e)} ${day(e)}`;
 };
 
-// What a promo takes off a given subtotal. Mirrors computeBookingPrice.
-export const promoDiscountOn = (promo, subtotal) => {
-  if (!hasPromo(promo)) return 0;
-  const raw = promo.type === 'amount' ? promo.value : Math.round(subtotal * (promo.value / 100));
-  return Math.min(Math.max(raw, 0), subtotal);
+// The one price calculation, identical to the server's. It used to be a
+// promo-only helper here, which could not answer the question the booking
+// form actually asks: a trip can qualify for a date-window promo AND a
+// long-rental discount at once, and the customer gets whichever takes more
+// off. Half the rule on this side meant the form could quote a smaller
+// discount than the server was about to give.
+export const computeBookingPrice = (car, totalDays, start, end, longRentalRules = []) => {
+  const subtotal = totalDays * car.pricePerDay;
+  const candidates = [];
+
+  const promo = car.promo;
+  if (promoCoversRange(promo, start, end)) {
+    const raw = promo.type === 'amount'
+      ? promo.value
+      : Math.round(subtotal * (promo.value / 100));
+    // Never below zero, however the promo was configured.
+    candidates.push({ kind: 'promo', amount: Math.min(Math.max(raw, 0), subtotal), label: promo.label || '' });
+  }
+
+  const rule = bestLongRentalRule(longRentalRules, car._id, totalDays);
+  if (rule) {
+    candidates.push({ kind: 'longRental', amount: longRentalDiscountOn(rule, subtotal), label: longRentalLabel(rule) });
+  }
+
+  const best = candidates.reduce((a, c) => (!a || c.amount > a.amount ? c : a), null);
+  if (!best || best.amount <= 0) {
+    return { subtotal, discountAmount: 0, totalPrice: subtotal, promoLabel: '', discountKind: '' };
+  }
+  return {
+    subtotal,
+    discountAmount: best.amount,
+    totalPrice: subtotal - best.amount,
+    promoLabel: best.label,
+    // Which of the two won, so the form can name it without working the
+    // money out a second time to find out.
+    discountKind: best.kind,
+  };
 };
 
 // What a vehicle's owner is credited for a booking.

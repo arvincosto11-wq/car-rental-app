@@ -41,7 +41,10 @@ const rentalDay = (d) => new Date(new Date(d).getTime() + 8 * 60 * 60 * 1000).to
 // starting inside it but returning after it ends does not qualify, which is
 // what stops a six-day promo discounting a month-long rental.
 export const promoCoversRange = (promo, start, end) => {
-  if (!hasPromo(promo)) return false;
+  // No dates to judge is "doesn't qualify", not a crash. The client copy
+  // has always guarded this because its form asks before dates are picked;
+  // this copy would throw an Invalid time value on the same question.
+  if (!hasPromo(promo) || !start || !end) return false;
   return rentalDay(start) >= promoDay(promo.startDate) && rentalDay(end) <= promoDay(promo.endDate);
 };
 
@@ -69,23 +72,26 @@ export const computeBookingPrice = (car, totalDays, start, end, longRentalRules 
     // Never below zero, however the promo was configured. validatePromo keeps
     // a fixed amount under one day's rate so this can't normally bite, but a
     // price cut after the promo was set could still get here.
-    candidates.push({ amount: Math.min(Math.max(raw, 0), subtotal), label: promo.label || '' });
+    candidates.push({ kind: 'promo', amount: Math.min(Math.max(raw, 0), subtotal), label: promo.label || '' });
   }
 
   const rule = bestLongRentalRule(longRentalRules, car._id, totalDays);
   if (rule) {
-    candidates.push({ amount: longRentalDiscountOn(rule, subtotal), label: longRentalLabel(rule) });
+    candidates.push({ kind: 'longRental', amount: longRentalDiscountOn(rule, subtotal), label: longRentalLabel(rule) });
   }
 
   const best = candidates.reduce((a, c) => (!a || c.amount > a.amount ? c : a), null);
   if (!best || best.amount <= 0) {
-    return { subtotal, discountAmount: 0, totalPrice: subtotal, promoLabel: '' };
+    return { subtotal, discountAmount: 0, totalPrice: subtotal, promoLabel: '', discountKind: '' };
   }
   return {
     subtotal,
     discountAmount: best.amount,
     totalPrice: subtotal - best.amount,
     promoLabel: best.label,
+    // Which of the two won, so the form can name it without working the
+    // money out a second time to find out.
+    discountKind: best.kind,
   };
 };
 
