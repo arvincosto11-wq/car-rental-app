@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { GOLD, GOLD_DARK, goldInk } from '../theme';
-import { instantFrom, phDayStart, phYmd, pickupHours, formatHour, CLOSE_HOUR } from '../utils/phTime';
+import { busySpansFrom, dayState } from '../utils/bookingWindow';
 
 // Drawn rather than typed, so they sit where they are put at the size they
 // are given, instead of wherever the font's ‹ › happen to fall.
@@ -59,38 +59,16 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
 
   const today = normalize(new Date());
 
-  // What a range really occupies. `busyStart`/`busyEnd` come from the server
-  // with each booking's turnaround already added; ranges that arrive without
-  // them (the admin promo and blocked-date pickers) are whole calendar days
-  // in Legazpi, snapped the same way the server snaps them.
-  const spanOf = (r) => (r.busyStart && r.busyEnd
-    ? { start: new Date(r.busyStart).getTime(), end: new Date(r.busyEnd).getTime() }
-    : { start: phDayStart(r.startDate).getTime(), end: phDayStart(r.endDate).getTime() });
-
-  const spans = bookedRanges.map(spanOf);
-  const takenAt = (instant) => spans.some((sp) => instant >= sp.start && instant < sp.end);
-
-  // A day is no longer simply free or booked. A vehicle coming back at
-  // 7:00 AM is free again from 9:00 AM, and losing that whole day is real
-  // money — so every hour the client could actually choose is tested, and
-  // the day reports which of them are still open.
-  const dayInfo = (date) => {
-    const ymd = phYmd(date);
-    const free = pickupHours().filter((h) => !takenAt(instantFrom(ymd, h).getTime()));
-    if (!free.length) return { state: 'busy', free };
-    if (free.length === pickupHours().length) return { state: 'free', free };
-    const from = free[0];
-    const until = free[free.length - 1];
-    return {
-      state: 'part',
-      free,
-      // "From" when the free hours run to closing (the usual changeover
-      // day), "until" when the vehicle goes out partway through instead.
-      label: until === CLOSE_HOUR
-        ? `available ${formatHour(from)} onwards`
-        : `available until ${formatHour(until)}`,
-    };
-  };
+  // What each day has left. Both answers live in utils/bookingWindow.js,
+  // shared verbatim with the server and with the booking form, which used to
+  // normalise these same ranges with its own copy of the same four lines.
+  //
+  // A day is not simply free or booked: a vehicle coming back at 7:00 AM is
+  // free again from 9:00, and losing that whole day is real money — so every
+  // hour the client could choose is tested, and the day reports which of
+  // them are still open.
+  const spans = busySpansFrom(bookedRanges);
+  const dayInfo = (date) => dayState(spans, date);
   const isSelected = (date) => {
     const t = normalize(date);
     if (selectedStart && selectedEnd) return t >= normalize(selectedStart) && t <= normalize(selectedEnd);

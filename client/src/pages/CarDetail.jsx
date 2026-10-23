@@ -14,7 +14,7 @@ import PromoConfetti from '../components/PromoConfetti';
 import PromoBadge from '../components/PromoBadge';
 import useLongRentalRules from '../hooks/useLongRentalRules';
 import { bestLongRentalRule, rulesForCar } from '../utils/longRental';
-import { instantFrom, phDayStart, pickupHours, formatHour, formatPhDate, formatMoment, SHORT_NOTICE_HOURS } from '../utils/phTime';
+import { instantFrom, pickupHours, formatHour, formatPhDate, formatMoment, SHORT_NOTICE_HOURS } from '../utils/phTime';
 import DriverAvatar from '../components/DriverAvatar';
 import { ratingLabel } from '../utils/drivers';
 import RefundNoticeLine from '../components/RefundNoticeLine';
@@ -28,6 +28,7 @@ import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD, goldInk} from '../theme';
 import { isPromoVisible, promoOffer, promoDateRange, promoCoversRange } from '../utils/promo';
 import { quoteBooking } from '../utils/bookingQuote';
+import { busySpansFrom, freeHoursFor, rangeIsBlocked } from '../utils/bookingWindow';
 import api from '../api';
 import { licenceProblem, licenceMessage } from '../utils/documents';
 import ModalClose from '../components/ModalClose';
@@ -288,26 +289,17 @@ const CarDetail = () => {
     if (discountAmount > 0) setPromoCelebrated(Date.now());
   }, [discountAmount, car?._id]);
 
-  // What the vehicle is really unavailable for. The server sends each
-  // booking's span with its turnaround already added, so the hours offered
-  // here are the hours it will actually accept.
-  const busySpans = bookedRanges.map((r) => (r.busyStart && r.busyEnd
-    ? { start: new Date(r.busyStart).getTime(), end: new Date(r.busyEnd).getTime() }
-    : { start: phDayStart(r.startDate).getTime(), end: phDayStart(r.endDate).getTime() }));
-
-  // Every hour this whole trip could run from. Checked across the entire
-  // range, not just the moment of pickup — a 9:00 AM start is no use if the
-  // vehicle is due out again before the client is meant to bring it back.
-  const hoursFor = (start, end) => (start && end
-    ? pickupHours().filter((h) => {
-      const from = instantFrom(start, h).getTime();
-      const to = instantFrom(end, h).getTime();
-      return !busySpans.some((b) => from < b.end && to > b.start);
-    })
-    : []);
-
-  // A range with no workable hour at all is a range that can't be booked.
-  const overlapsBookedDates = (start, end) => hoursFor(start, end).length === 0;
+  // What the vehicle is really unavailable for, and which hours a whole trip
+  // could run from. Both answers come from utils/bookingWindow.js, shared
+  // verbatim with the server: the server sends each booking's span with its
+  // turnaround already added, so the hours offered here are the hours it
+  // will actually accept.
+  //
+  // These used to be written out here, and the calendar below normalised the
+  // very same ranges with its own copy of the same four lines.
+  const busySpans = busySpansFrom(bookedRanges);
+  const hoursFor = (start, end) => freeHoursFor(busySpans, start, end);
+  const overlapsBookedDates = (start, end) => rangeIsBlocked(busySpans, start, end);
 
   // Hours already gone today drop off the list — you can't collect a vehicle
   // at 7:00 AM when it's nine in the morning.
