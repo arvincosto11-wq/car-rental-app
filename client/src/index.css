@@ -1288,6 +1288,16 @@ button.seg-tab:not(:disabled):hover {
   .booking-modal-side .booking-step-connector { display: none !important; }
   .booking-modal-side .booking-step-desc { display: none !important; }
   .booking-modal-promo { margin-top: 16px !important; }
+
+  /* The booking dialog's phone layout. Back moves into the header, the
+     footer's two columns of figures give way to one line plus a drawer,
+     and the drawer is the only place the breakdown appears — below the
+     fold on a phone is the same as absent. */
+  .book-back-top { display: grid !important; }
+  .book-back-foot { display: none !important; }
+  .book-foot-info { display: none !important; }
+  .book-money-mini { display: flex !important; }
+  .book-money-sheet { display: block !important; }
 }
 @media (max-width: 560px) {
   .booking-summary-grid { grid-template-columns: minmax(0, 1fr) !important; }

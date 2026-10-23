@@ -42,6 +42,7 @@ const ModalIcon = ({ children, size = 17 }) => (
     {children}
   </svg>
 );
+const BackArrowIcon = () => <ModalIcon><path d="M19 12H5" /><path d="M11 18l-6-6 6-6" /></ModalIcon>;
 const CalendarIcon = () => <ModalIcon><rect x="3" y="4" width="18" height="17" rx="3" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /></ModalIcon>;
 const ClockIcon = () => <ModalIcon><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" /></ModalIcon>;
 const CardIcon = () => <ModalIcon><rect x="2.5" y="6" width="19" height="13" rx="2.5" /><line x1="2.5" y1="10.5" x2="21.5" y2="10.5" /></ModalIcon>;
@@ -135,6 +136,10 @@ const CarDetail = () => {
   const [returnSame, setReturnSame] = useState(true);
   const [deliverySettings, setDeliverySettings] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  // Phone only: the footer carries the two figures that matter and this
+  // opens the rest. On a narrow screen the breakdown would otherwise sit
+  // below the fold on every step, where nobody scrolls back to find it.
+  const [showMoneySheet, setShowMoneySheet] = useState(false);
   // A booking of their own on THIS vehicle that has not finished. Someone
   // adding days to a trip they already have should extend it rather than
   // start a second one: extending keeps it as one trip, and a long-rental
@@ -419,6 +424,50 @@ const CarDetail = () => {
     setEndDate(clicked);
   };
 
+  // The price breakdown. Rendered in two places now — inside the payment
+  // step, and inside the phone footer's drawer — so it is written once
+  // rather than twice with wording that drifts apart.
+  const renderPriceLines = () => (
+    <>
+      <div style={s.breakdownRow}>
+        <span>{totalDays} {dayWord(totalDays)} × ₱{car.pricePerDay.toLocaleString()}</span>
+        <span>₱{subtotal.toLocaleString()}</span>
+      </div>
+      {discountAmount > 0 && (
+        <div style={{ ...s.breakdownRow, color: goldInk(isDark), fontWeight: '700' }}>
+          <span>
+            {usingLongRental
+              ? `Long-rental discount (${longRentalRule.minDays}+ days, ${longRentalRule.percent}% off)`
+              : `${car.promo.label} (${promoOffer(car.promo)})`}
+          </span>
+          <span>−₱{discountAmount.toLocaleString()}</span>
+        </div>
+      )}
+      {delivery.pickup.fee > 0 && (
+        <div style={s.breakdownRow}>
+          <span>Delivery to you ({delivery.pickup.km} km)</span>
+          <span>₱{delivery.pickup.fee.toLocaleString()}</span>
+        </div>
+      )}
+      {delivery.return.fee > 0 && (
+        <div style={s.breakdownRow}>
+          <span>Collection from you ({delivery.return.km} km)</span>
+          <span>₱{delivery.return.fee.toLocaleString()}</span>
+        </div>
+      )}
+      {paymentType === 'downpayment' && (
+        <div style={s.breakdownRow}>
+          <span>Remaining balance</span>
+          <span>₱{(totalPrice - downPayment).toLocaleString()}</span>
+        </div>
+      )}
+      <div style={s.breakdownTotal}>
+        <span>{paymentType === 'downpayment' ? 'Due now (20%)' : 'Total due'}</span>
+        <span>₱{amountToPay.toLocaleString()}</span>
+      </div>
+    </>
+  );
+
   const goToStep = (n) => {
     setError('');
     setStep(n);
@@ -674,6 +723,29 @@ const CarDetail = () => {
     footKey: { display: 'block', fontSize: '10px', fontWeight: '800', letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? '#8a8d91' : '#9ca3af' },
     footValue: { display: 'block', fontSize: '14px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a' },
     footPush: { marginLeft: 'auto', display: 'flex', gap: '10px' },
+    // Phone only (see .book-back-top in index.css). A 44px target, which is
+    // the smallest thing a thumb finds reliably.
+    backTopBtn: {
+      width: '44px', height: '44px', flexShrink: 0, marginLeft: '-10px',
+      borderRadius: '999px', border: 'none', background: 'transparent',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+      // Hidden by default; .book-back-top turns it on below the breakpoint.
+      // An inline `display: grid` here would beat the media query and leave
+      // the arrow showing on desktop beside the footer's own Back button.
+      display: 'none', placeItems: 'center', cursor: 'pointer', padding: 0,
+    },
+    moneyMini: { display: 'none', flexDirection: 'column', minWidth: 0, flex: 1 },
+    moneyMiniLine: { fontSize: '13px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    moneyMiniToggle: {
+      alignSelf: 'flex-start', minHeight: '28px', padding: 0, border: 'none',
+      background: 'none', color: goldInk(isDark), fontSize: '12.5px', fontWeight: '700',
+      cursor: 'pointer', textAlign: 'left',
+    },
+    moneySheet: {
+      display: 'none',
+      padding: '14px 26px', borderTop: `1px solid ${isDark ? '#303132' : '#eef0f2'}`,
+      background: isDark ? '#1e1f20' : '#f6f7f8',
+    },
     // ---- pieces shared by the steps ----
     selectedPill: {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
@@ -1032,6 +1104,21 @@ const CarDetail = () => {
 
             <section style={s.bookMain}>
               <div style={s.bookHead}>
+                {/* Phone only. On a narrow screen Back belongs where the
+                    thumb already is and where every other app puts it,
+                    not at the bottom beside the action that goes forward. */}
+                {step > 1 && (
+                  <button
+                    type="button"
+                    className="book-back-top icon-toggle-btn"
+                    style={s.backTopBtn}
+                    aria-label="Back"
+                    onClick={() => goToStep(step - 1)}
+                    disabled={booking}
+                  >
+                    <BackArrowIcon />
+                  </button>
+                )}
                 <div style={{ minWidth: 0 }}>
                   <h3 style={s.bookHeadTitle}>{STEP_HEADINGS[step].title}</h3>
                   <p style={s.bookHeadSub}>{STEP_HEADINGS[step].sub}</p>
@@ -1427,42 +1514,7 @@ const CarDetail = () => {
 
                     <div style={{ ...s.priceBreakdown, position: 'relative' }}>
                       <PromoConfetti fireKey={promoCelebrated} isDark={isDark} />
-                      <div style={s.breakdownRow}>
-                        <span>{totalDays} {dayWord(totalDays)} × ₱{car.pricePerDay.toLocaleString()}</span>
-                        <span>₱{subtotal.toLocaleString()}</span>
-                      </div>
-                      {discountAmount > 0 && (
-                        <div style={{ ...s.breakdownRow, color: goldInk(isDark), fontWeight: '700' }}>
-                          <span>
-                            {usingLongRental
-                              ? `Long-rental discount (${longRentalRule.minDays}+ days, ${longRentalRule.percent}% off)`
-                              : `${car.promo.label} (${promoOffer(car.promo)})`}
-                          </span>
-                          <span>−₱{discountAmount.toLocaleString()}</span>
-                        </div>
-                      )}
-                      {delivery.pickup.fee > 0 && (
-                        <div style={s.breakdownRow}>
-                          <span>Delivery to you ({delivery.pickup.km} km)</span>
-                          <span>₱{delivery.pickup.fee.toLocaleString()}</span>
-                        </div>
-                      )}
-                      {delivery.return.fee > 0 && (
-                        <div style={s.breakdownRow}>
-                          <span>Collection from you ({delivery.return.km} km)</span>
-                          <span>₱{delivery.return.fee.toLocaleString()}</span>
-                        </div>
-                      )}
-                      {paymentType === 'downpayment' && (
-                        <div style={s.breakdownRow}>
-                          <span>Remaining balance</span>
-                          <span>₱{(totalPrice - downPayment).toLocaleString()}</span>
-                        </div>
-                      )}
-                      <div style={s.breakdownTotal}>
-                        <span>{paymentType === 'downpayment' ? 'Due now (20%)' : 'Total due'}</span>
-                        <span>₱{amountToPay.toLocaleString()}</span>
-                      </div>
+                      {renderPriceLines()}
                     </div>
 
                     <p style={s.noteRow}>
@@ -1578,14 +1630,40 @@ const CarDetail = () => {
                 </AnimatePresence>
               </div>
 
+              {/* Phone only: the drawer the footer's toggle opens. */}
+              {showMoneySheet && totalDays > 0 && (
+                <div className="book-money-sheet" style={s.moneySheet}>{renderPriceLines()}</div>
+              )}
+
               <div style={s.bookFoot}>
+                {/* Phone only, and first in the row so it takes the space
+                    the desktop figures leave behind. */}
+                <span className="book-money-mini" style={s.moneyMini}>
+                  <span style={s.moneyMiniLine}>
+                    {totalDays > 0
+                      ? `₱${totalPrice.toLocaleString()} total · ₱${amountToPay.toLocaleString()} now`
+                      : 'Pick your dates to see the price.'}
+                  </span>
+                  {totalDays > 0 && (
+                    <button
+                      type="button"
+                      className="text-link-btn"
+                      style={s.moneyMiniToggle}
+                      aria-expanded={showMoneySheet}
+                      onClick={() => setShowMoneySheet((v) => !v)}
+                    >
+                      {showMoneySheet ? 'Hide breakdown' : 'See breakdown'}
+                    </button>
+                  )}
+                </span>
+
                 {step === 1 && (
                   <>
-                    <span>
+                    <span className="book-foot-info">
                       <span style={s.footKey}>Duration</span>
                       <span style={s.footValue}>{totalDays > 0 ? `${totalDays} ${dayWord(totalDays)}` : '—'}</span>
                     </span>
-                    <span style={{ marginLeft: '18px' }}>
+                    <span className="book-foot-info" style={{ marginLeft: '18px' }}>
                       <span style={s.footKey}>Estimated price</span>
                       <span style={{ ...s.footValue, color: goldInk(isDark) }}>
                         {totalDays > 0 ? `₱${totalPrice.toLocaleString()}` : '—'}
@@ -1600,7 +1678,7 @@ const CarDetail = () => {
                 )}
                 {step === 2 && (
                   <>
-                    <button style={s.backStepBtn} onClick={() => goToStep(1)}>Back</button>
+                    <button className="book-back-foot" style={s.backStepBtn} onClick={() => goToStep(1)}>Back</button>
                     <span style={s.footPush}>
                       <button style={s.nextBtn} onClick={goToPlaceNext}>
                         Continue →
@@ -1610,8 +1688,8 @@ const CarDetail = () => {
                 )}
                 {step === 3 && (
                   <>
-                    <button style={s.backStepBtn} onClick={() => goToStep(2)}>Back</button>
-                    <span>
+                    <button className="book-back-foot" style={s.backStepBtn} onClick={() => goToStep(2)}>Back</button>
+                    <span className="book-foot-info">
                       <span style={s.footKey}>Delivery</span>
                       <span style={s.footValue}>
                         {deliveryBlocked ? 'Too far' : deliveryFee > 0 ? `₱${deliveryFee.toLocaleString()}` : 'None'}
@@ -1638,8 +1716,8 @@ const CarDetail = () => {
                 )}
                 {step === 4 && (
                   <>
-                    <button style={s.backStepBtn} onClick={() => goToStep(3)}>Back</button>
-                    <span>
+                    <button className="book-back-foot" style={s.backStepBtn} onClick={() => goToStep(3)}>Back</button>
+                    <span className="book-foot-info">
                       <span style={s.footKey}>{paymentType === 'downpayment' ? 'Due now (20%)' : 'Total due'}</span>
                       <span style={{ ...s.footValue, color: goldInk(isDark) }}>₱{amountToPay.toLocaleString()}</span>
                     </span>
@@ -1652,7 +1730,7 @@ const CarDetail = () => {
                 )}
                 {step === 5 && (
                   <>
-                    <button style={s.backStepBtn} onClick={() => goToStep(4)} disabled={booking}>Back</button>
+                    <button className="book-back-foot" style={s.backStepBtn} onClick={() => goToStep(4)} disabled={booking}>Back</button>
                     <span style={s.footPush}>
                       <button
                         style={s.nextBtn}
