@@ -28,7 +28,9 @@ import useFavorites from '../hooks/useFavorites';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD, goldInk} from '../theme';
 import { isPromoVisible, promoOffer, promoDateRange, promoCoversRange } from '../utils/promo';
 import { quoteBooking } from '../utils/bookingQuote';
-import { busySpansFrom, freeHoursFor, rangeIsBlocked } from '../utils/bookingWindow';
+import {
+  busySpansFrom, freeHoursFor, rangeIsBlocked, nextFreeLabel, blockedFromMessage,
+} from '../utils/bookingWindow';
 import api from '../api';
 import { licenceProblem, licenceMessage } from '../utils/documents';
 import ModalClose from '../components/ModalClose';
@@ -301,6 +303,17 @@ const CarDetail = () => {
   const hoursFor = (start, end) => freeHoursFor(busySpans, start, end);
   const overlapsBookedDates = (start, end) => rangeIsBlocked(busySpans, start, end);
 
+  // Why these dates don't work, in words the client can act on. An empty
+  // list of pickup times is technically true and no use at all: they can see
+  // nothing is offered but not which end to move.
+  const blockedReason = (start, end) => blockedFromMessage(busySpans, start, end);
+
+  // The first moment somebody could actually collect this vehicle, for the
+  // booking card. Worth saying before any dates are picked: on a vehicle
+  // that is out for the next fortnight it saves hunting through the
+  // calendar for the first day that isn't red.
+  const nextFree = nextFreeLabel(busySpans, new Date());
+
   // Hours already gone today drop off the list — you can't collect a vehicle
   // at 7:00 AM when it's nine in the morning.
   const availableHours = hoursFor(startDate, endDate)
@@ -390,7 +403,7 @@ const CarDetail = () => {
       return;
     }
     if (overlapsBookedDates(startDate, clicked)) {
-      setError('That range includes a booked date. Please choose a different range.');
+      setError(blockedReason(startDate, clicked));
       return;
     }
     setEndDate(clicked);
@@ -407,7 +420,7 @@ const CarDetail = () => {
     if (totalDays <= 0) return setError('Return date must be after pickup date');
     if (car.isAvailable === false) return setError('This vehicle is no longer listed for booking.');
     if (overlapsBookedDates(startDate, endDate)) {
-      return setError('This vehicle is already booked for some of your selected dates. Check the calendar above and pick different dates.');
+      return setError(blockedReason(startDate, endDate));
     }
     if (pickupHour === null) {
       return setError('Please choose a pickup time.');
@@ -514,6 +527,15 @@ const CarDetail = () => {
     reviewDate: { fontSize: '11px', color: isDark ? '#8a8d91' : '#9ca3af' },
     reviewComment: { fontSize: '13px', color: isDark ? '#cbd5e1' : '#374151', lineHeight: '1.5', marginTop: '8px' },
     reviewEmpty: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    // Quiet, because it is context rather than an instruction: the gold is
+    // on the date itself and the rest sits back.
+    nextFreeLine: {
+      display: 'flex', alignItems: 'center', gap: '8px',
+      padding: '9px 11px', borderRadius: '10px',
+      background: isDark ? '#3a3b3c' : '#f3f4f6',
+      color: isDark ? '#b0b3b8' : '#4b5563',
+      fontSize: '12.5px', lineHeight: 1.4,
+    },
     reviewFilterRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' },
     reviewFilterBtn: (active) => ({
       padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
@@ -1658,6 +1680,19 @@ const CarDetail = () => {
               <div style={s.longRentalNote}>
                 Book {firstLongRentalRule.minDays}+ days, save {firstLongRentalRule.percent}%
                 {rulesForCar(longRentalRules, car._id).length > 1 && ' — more for longer trips'}
+              </div>
+            )}
+
+            {/* Said before any dates are picked, which is the point: on a
+                vehicle that is out for the next fortnight this saves
+                scanning the calendar for the first day that isn't red. The
+                turnaround is already inside it, so a vehicle back at noon
+                reads 2:00 PM rather than promising the client the hour it
+                is still being cleaned in. */}
+            {car.isAvailable !== false && nextFree && (
+              <div style={s.nextFreeLine}>
+                <CalendarIcon />
+                <span>Next free: <strong>{nextFree}</strong></span>
               </div>
             )}
 
