@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { regions, provinces, cities, barangays } from 'select-philippines-address';
+import { regions, provinces, cities, barangays } from '../utils/phAddress';
 
 // Cascading Region -> Province -> City/Municipality -> Barangay picker for
 // Philippine addresses. Reports the combined address back to the parent as
