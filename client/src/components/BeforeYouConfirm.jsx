@@ -55,19 +55,32 @@ const peso = (n) => `₱${Math.round(n || 0).toLocaleString()}`;
 // slides as the pickup approaches and crosses each line exactly when the
 // refund does.
 const FAR_HOURS = 168;
+
+// Each band keeps the marker inside itself, a little clear of both edges.
+// Sitting it exactly where the arithmetic lands put every booking more
+// than a week out at 2% — hard against the left edge, half the label
+// hanging off the bar, and reading as though it belonged to nothing. The
+// point of the marker is which band you are in, so it stays in that band's
+// middle ground and moves within it.
+const WITHIN = {
+  everything: [8, 45],
+  half: [53, 77],
+  nothing: [83, 95],
+};
+const place = ([from, to], frac) => from + Math.min(1, Math.max(0, frac)) * (to - from);
+
 const markerAt = (noticeHours) => {
   const h = Number.isFinite(noticeHours) ? noticeHours : 0;
   if (h >= FULL_REFUND_NOTICE_HOURS) {
-    // A week out sits at the far left; three days out at this segment's edge.
-    const frac = Math.min(1, Math.max(0, (FAR_HOURS - h) / (FAR_HOURS - FULL_REFUND_NOTICE_HOURS)));
-    return Math.max(2, frac * 50);
+    // A week or more out is as far left as it goes; three days out is at
+    // the inner edge, about to cross into half.
+    return place(WITHIN.everything, (FAR_HOURS - h) / (FAR_HOURS - FULL_REFUND_NOTICE_HOURS));
   }
   if (h >= HALF_REFUND_NOTICE_HOURS) {
-    const within = (FULL_REFUND_NOTICE_HOURS - h) / (FULL_REFUND_NOTICE_HOURS - HALF_REFUND_NOTICE_HOURS);
-    return 50 + within * 30;
+    return place(WITHIN.half,
+      (FULL_REFUND_NOTICE_HOURS - h) / (FULL_REFUND_NOTICE_HOURS - HALF_REFUND_NOTICE_HOURS));
   }
-  const within = (HALF_REFUND_NOTICE_HOURS - Math.max(0, h)) / HALF_REFUND_NOTICE_HOURS;
-  return Math.min(98, 80 + within * 20);
+  return place(WITHIN.nothing, (HALF_REFUND_NOTICE_HOURS - Math.max(0, h)) / HALF_REFUND_NOTICE_HOURS);
 };
 
 const BeforeYouConfirm = ({
