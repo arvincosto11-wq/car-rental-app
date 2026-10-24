@@ -134,6 +134,16 @@ router.get('/defaults', protect, adminOnly, (req, res) => res.json(DEFAULTS));
 // Search is a convenience laid on top, never the thing standing between a
 // customer and a booking.
 
+// NOT REACHED FROM THE SITE ANY MORE, and worth saying so plainly: this
+// code is correct and still answers nothing. OpenStreetMap refuses
+// Nominatim requests from Render's address, as it refuses most shared
+// cloud addresses, so every search here returned empty while the same
+// request answered in under a second from a laptop. The browser does the
+// lookup itself now — see client/src/utils/geocode.js.
+//
+// Kept rather than deleted because the problem is the address we call
+// from, not this: on a host OSM does serve, it would work as written, and
+// it is the version with our own rate limiting and cache.
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
 // Who to blame, as their policy asks.
 const USER_AGENT = 'RentARideAlbay/1.0 (car rental booking, Legazpi PH)';

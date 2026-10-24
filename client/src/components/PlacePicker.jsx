@@ -4,7 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { GOLD, GOLD_DARK, goldInk } from '../theme';
 import { legQuote, deliveryRefusal } from '../utils/delivery';
-import api from '../api';
+import { lookupPlaces, MIN_QUERY } from '../utils/geocode';
 
 // Same divIcon approach as the GPS map: Leaflet's default marker images
 // don't resolve under Vite.
@@ -66,12 +66,10 @@ const PlacePicker = ({ value, onChange, settings, isDark, label, describedBy }) 
   // stops a slow earlier search overwriting a quicker later one.
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 3) return undefined;
+    if (q.length < MIN_QUERY) return undefined;
     let live = true;
     const timer = setTimeout(() => {
-      api.get('/settings/geocode', { params: { q } })
-        .then((res) => { if (live) setFound({ q, list: res.data }); })
-        .catch(() => { if (live) setFound({ q, list: [] }); });
+      lookupPlaces(q).then((list) => { if (live) setFound({ q, list }); });
     }, 450);
     return () => { live = false; clearTimeout(timer); };
   }, [query]);
