@@ -1,4 +1,4 @@
-import { phYmd } from './phTime';
+import { phYmd } from './phTime.js';
 
 // Whether the papers a booking depends on last as long as the booking does.
 //
@@ -35,14 +35,20 @@ export function licenceProblem(user, { bookingType, endDate }, now = new Date())
 
 // What to tell whoever is reading. Written for the client, since they are
 // the ones who have to do something about it.
+// Written for the client, since they are the ones who have to do something
+// about it — and what they have to do is bring the licence to somebody, not
+// type a date. The expiry is recorded by whoever has seen the card, so none
+// of these sends anybody to their Profile to fix it: the Profile cannot.
 export function licenceMessage(problem) {
   if (!problem) return '';
   if (problem.kind === 'missing') {
-    return "Self-drive needs your driver's licence expiry date. Please add it in your Profile, or book with a driver instead.";
+    return "Self-drive needs your driver's licence on record. Bring it to our office, or call us, and we'll "
+      + 'add it. You can book with one of our drivers in the meantime.';
   }
   if (problem.kind === 'expired') {
-    return "Your driver's licence has expired. Please update it in your Profile, or book with a driver instead.";
+    return "Your driver's licence has expired on our records. Bring the current one to our office, or call "
+      + 'us to update it — or book with one of our drivers instead.';
   }
   return `Your driver's licence expires on ${new Date(problem.expiry).toLocaleDateString()}, before this trip ends, so you would be driving on an expired licence. `
-    + 'Please renew it and update your Profile, or book with a driver instead.';
+    + 'Bring the renewed one to our office, or call us to update it — or book with one of our drivers instead.';
 }

@@ -239,6 +239,8 @@ const ManageClients = () => {
   const reasonReady = reason && (reason !== 'Other' || otherText.trim().length >= 3);
 
   const closeStep = () => { setStep(false); setReason(''); setOtherText(''); };
+  const [licenceDate, setLicenceDate] = useState('');
+  const [licenceSaved, setLicenceSaved] = useState(false);
 
   const applyBlock = async () => {
     setWorking(true);
@@ -294,7 +296,39 @@ const ManageClients = () => {
     }
   };
 
-  const pickPerson = (id) => { setSelectedId(id); closeStep(); };
+  const pickPerson = (id) => { setSelectedId(id); closeStep(); setLicenceDate(''); setLicenceSaved(false); };
+
+  // Recording a licence expiry off the card itself.
+  //
+  // This is where it belonged all along and the control was lost when this
+  // page was rebuilt, leaving the route behind with nothing calling it.
+  // Meanwhile the client could set their own on their Profile, which is
+  // the wrong way round twice over: a date somebody types about their own
+  // licence is a claim, and it is the one thing standing between them and
+  // driving our vehicle.
+  const saveLicence = async () => {
+    setWorking(true);
+    try {
+      const { data } = await api.put(`/users/${selected._id}/document-dates`, { licenseExpiry: licenceDate || '' });
+      // Taken from the write's own answer rather than from the next full
+      // refresh. fetchData reloads every client, every consignor, every
+      // booking and every vehicle, and the line somebody is looking at
+      // when they press Record sat on the old date until all four landed.
+      setClients((prev) => prev.map((c) => (String(c._id) === String(selected._id)
+        ? { ...c, licenseExpiry: data.licenseExpiry }
+        : c)));
+      // Back to reading the stored value, so there is one source of truth
+      // for what the field shows.
+      setLicenceDate('');
+      setLicenceSaved(true);
+      toast.success(licenceDate ? 'Licence expiry recorded.' : 'Licence expiry cleared.');
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not record that date.');
+    } finally {
+      setWorking(false);
+    }
+  };
 
   // ── colours ─────────────────────────────────────────────────────────
   const card = isDark ? '#242526' : '#ffffff';
@@ -414,6 +448,20 @@ const ManageClients = () => {
     standing: { margin: '20px 32px 0', fontSize: '20px', fontWeight: '600', lineHeight: 1.45, color: text, maxWidth: '720px' },
 
     facts: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', margin: '20px 32px 0' },
+    licence: {
+      margin: '20px 32px 0', padding: '14px 16px', borderRadius: '10px',
+      background: inset, border: `1px solid ${line}`,
+      display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '12px 16px',
+    },
+    licenceLead: { flex: '1 1 260px', minWidth: 0 },
+    licenceLabel: { fontSize: '11px', fontWeight: '800', letterSpacing: '0.1em', textTransform: 'uppercase', color: text3 },
+    licenceNow: { fontSize: '15px', fontWeight: '650', color: text, marginTop: '2px' },
+    licenceHint: { fontSize: '12.5px', color: text3, marginTop: '2px', textWrap: 'pretty' },
+    licenceInput: {
+      minHeight: '40px', padding: '0 10px', borderRadius: '8px',
+      border: `1px solid ${line}`, background: isDark ? '#18191a' : '#fff',
+      color: text, font: 'inherit', fontSize: '14px',
+    },
     fact: { background: inset, border: `1px solid ${line}`, borderRadius: '10px', padding: '14px 16px' },
     factLabel: { fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em', color: text3 },
     factValue: (quiet) => ({ fontSize: '24px', fontWeight: '700', color: quiet ? text3 : text, margin: '4px 0 2px' }),
@@ -865,6 +913,32 @@ const ManageClients = () => {
             sub: rated ? `out of 5, from ${person.ratingCount} rental${person.ratingCount === 1 ? '' : 's'}` : 'Not rated yet',
             children: <span style={s.privateChip}><LockIcon />Private · admin only</span>,
           })}
+        </div>
+
+        {/* Only clients have one. A consignor is not driving anything. */}
+        <div style={s.licence}>
+          <div style={s.licenceLead}>
+            <div style={s.licenceLabel}>Driver&apos;s licence</div>
+            <div style={s.licenceNow}>
+              {person.licenseExpiry
+                ? `${new Date(person.licenseExpiry) < new Date() ? 'Expired' : 'Expires'} ${new Date(person.licenseExpiry).toLocaleDateString()}`
+                : 'Not on record'}
+            </div>
+            <div style={s.licenceHint}>
+              Read this off the licence itself. The client cannot set it — self-drive turns on it, so a
+              date they typed about their own card would not be evidence of anything.
+            </div>
+          </div>
+          <input
+            type="date"
+            style={s.licenceInput}
+            aria-label={`Licence expiry for ${person.name}`}
+            value={licenceDate || (person.licenseExpiry ? String(person.licenseExpiry).slice(0, 10) : '')}
+            onChange={(e) => { setLicenceDate(e.target.value); setLicenceSaved(false); }}
+          />
+          <button type="button" style={s.goldOutline} disabled={working} onClick={saveLicence}>
+            {licenceSaved ? 'Saved' : 'Record'}
+          </button>
         </div>
 
         {history({

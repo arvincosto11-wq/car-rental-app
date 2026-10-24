@@ -597,11 +597,10 @@ const CarDetail = () => {
   // self-drive is what makes it matter — and because this is the last screen
   // where changing the answer is still cheap.
   const goToPlaceNext = () => {
-    if (licenceIssue) {
-      return setError(licenceMessage(licenceIssue));
-    }
-    if (selfDriveBlocked) {
-      return setError("Self-drive isn't available on your account yet — see the notice above for what's needed.");
+    // Short, because the note above already says the whole of it. Repeating
+    // the sentence in red put the same paragraph on screen twice.
+    if (licenceIssue || selfDriveBlocked) {
+      return setError("Self-drive isn't available for this trip — see the note above.");
     }
     setError('');
     advanceTo(3);
@@ -1695,31 +1694,27 @@ const CarDetail = () => {
                       <p style={s.noteRow}>
                         <InfoIcon />
                         <span>
-                          For self-drive we need your <strong style={s.noteStrong}>licence expiry date</strong> in your{' '}
-                          <Link to="/profile" style={{ color: goldInk(isDark), fontWeight: '700' }}>Profile</Link>,
-                          so we can check it covers your trip. Bring the licence itself, plus two valid IDs,
-                          when you collect.
+                          For self-drive we keep your <strong style={s.noteStrong}>licence expiry</strong> on
+                          record, so we can check it covers your trip. We take it from the licence itself at
+                          our office. Bring it with you, plus two valid IDs, when you collect.
                         </span>
                       </p>
                     )}
 
+                    {/* One explanation, not three. There used to be this box,
+                        a second one saying nearly the same thing whenever no
+                        licence was on file — both conditions are true at once
+                        in that case — and the whole sentence again in the red
+                        bar at the top of the step. licenceProblem already
+                        covers missing, expired and expires-mid-trip, so the
+                        second box said nothing this one does not.
+
+                        No link either: it used to offer "Go to Profile", and
+                        the Profile is exactly where this can no longer be
+                        fixed. */}
                     {licenceIssue && (
                       <div style={s.licenseBox}>
                         <p style={s.licenseNote}>{licenceMessage(licenceIssue)}</p>
-                        <Link to="/profile" style={s.licenseLink}>Go to Profile</Link>
-                      </div>
-                    )}
-
-                    {/* Moved up from below the maps. It is an answer about
-                        the licence, so it belongs beside the choice that
-                        needs one rather than three sections later. */}
-                    {selfDriveBlocked && (
-                      <div style={s.licenseBox}>
-                        <p style={s.licenseNote}>
-                          Self-drive needs your driver&apos;s licence expiry on file. Add it in your Profile,
-                          and bring the licence itself to the pickup — we check it there.
-                        </p>
-                        <Link to="/profile" style={s.licenseLink}>Go to Profile</Link>
                       </div>
                     )}
                   </motion.div>

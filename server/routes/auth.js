@@ -64,7 +64,6 @@ router.put('/me', protect, async (req, res) => {
   try {
     const {
       name, phone, address, birthDate,
-      licenseExpiry,
       emergencyContactName, emergencyContactNumber,
       image, imageFileId
     } = req.body;
@@ -87,9 +86,16 @@ router.put('/me', protect, async (req, res) => {
       user.birthDate = birthDate;
     }
 
-    if (licenseExpiry !== undefined) user.licenseExpiry = licenseExpiry || null;
-
-    await user.save();
+    // licenseExpiry is deliberately NOT read here, and taking the field off
+     // the form would not have been enough on its own — anything can post to
+     // this route.
+     //
+     // A licence expiry a client typed about their own licence is a claim,
+     // and this one decides whether they may drive. Somebody whose licence
+     // ran out could clear the self-drive gate by typing a later date, so
+     // the gate only ever stopped the honest. It is set by whoever has had
+     // the licence in their hand: PUT /users/:id/document-dates, admin only.
+     await user.save();
 
     const { password, ...safeUser } = user.toObject();
     res.json(withoutOfficeScore(safeUser));

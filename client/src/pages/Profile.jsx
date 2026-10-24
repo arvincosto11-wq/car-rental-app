@@ -178,10 +178,12 @@ const Profile = () => {
     setSaving(true);
     setSaveError('');
     try {
-      // Dates go up with everything else now. There is no document on file
-      // for anybody else to read them off, so the person they belong to is
-      // the only one who can say what they are.
-      const payload = { ...form, ...(pendingPhoto || {}) };
+      // Everything except the licence expiry, which is the office's to
+      // record. The server ignores it on this route regardless; leaving it
+      // out of the payload keeps the two ends saying the same thing.
+      const { licenseExpiry, ...editable } = form;
+      void licenseExpiry;
+      const payload = { ...editable, ...(pendingPhoto || {}) };
       const res = await api.put('/auth/me', payload);
       setProfile(res.data);
       if (pendingPhoto) {
@@ -595,22 +597,15 @@ const Profile = () => {
             )}
           </div>
 
-          {/* The licence date is read in its own section, but it is still
-              changed here, with everything else, on the one save. There is
-              no separate editor for it. */}
-          {wantsLicence && editMode && (
-            <div style={s.group}>
-              <div style={s.groupLabel}>Licence</div>
-              {detailRow(
-                'Expiry date',
-                null,
-                <input
-                  style={s.input} type="date" aria-label="Licence expiry date" value={form.licenseExpiry || ''}
-                  onChange={(e) => setForm({ ...form, licenseExpiry: e.target.value })}
-                />,
-              )}
-            </div>
-          )}
+          {/* The licence expiry used to be editable here. It decides
+              whether somebody may drive one of our vehicles, and a date
+              typed by the person it lets through is not evidence — anyone
+              whose licence had run out could put in a later one and the
+              self-drive gate would open. It is recorded by whoever has had
+              the card in their hand, at the counter. The panel still shows
+              the date and whether it has run out; it just cannot be set
+              from here, and the server no longer accepts it from this
+              route either. */}
         </>
       )}
     </form>
@@ -642,7 +637,8 @@ const Profile = () => {
       </div>
 
       <p style={s.hint}>
-        To change this date, open <strong>Account details</strong> and choose Edit profile.
+        We record this from your licence itself. Bring it to our office, or call us, and we&apos;ll
+        update it for you.
       </p>
     </div>
   );
