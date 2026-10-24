@@ -441,6 +441,33 @@ const CarDetail = () => {
     setEndDate(clicked);
   };
 
+  // What the dates step says at the top, in all three of its states. The
+  // box is always there: before anything is picked it is the only thing
+  // telling somebody what to do, and a calendar on its own does not say
+  // "tap twice".
+  //
+  // Dates are written "Tue, Oct 27" throughout, which is the house style
+  // and what the flow was drawn with. This used to print 10/26/2026.
+  const dateHeadline = () => {
+    const DAY = { weekday: 'short', month: 'short', day: 'numeric' };
+    if (!startDate) {
+      return {
+        head: 'No dates yet',
+        sub: 'Tap a day to start, then tap a second day for the return.',
+      };
+    }
+    const out = formatPhDate(instantFrom(startDate, pickupHour ?? 7), DAY);
+    if (!endDate) {
+      return { head: `Out ${out}`, sub: 'Now tap the day you\u2019ll bring it back.' };
+    }
+    const back = formatPhDate(instantFrom(endDate, pickupHour ?? 7), DAY);
+    return {
+      head: `${out} \u2192 ${back}`,
+      sub: `${totalDays} ${dayWord(totalDays)} \u00b7 `
+        + (pickupHour === null ? 'pick a collection time' : `collect at ${formatHour(pickupHour)}`),
+    };
+  };
+
   // The price breakdown. Rendered in two places now — inside the payment
   // step, and inside the phone footer's drawer — so it is written once
   // rather than twice with wording that drifts apart.
@@ -711,6 +738,19 @@ const CarDetail = () => {
       display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '6px',
       fontSize: '12px', fontWeight: '700', color: goldInk(isDark),
     },
+    // Always on screen on the dates step, in all three of its states.
+    dateHeadBox: {
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px',
+      padding: '12px 14px', borderRadius: '10px', marginBottom: '14px',
+      background: isDark ? '#1e1f20' : '#f6f7f8',
+    },
+    dateHeadLine: { fontSize: '16px', fontWeight: '650', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    dateHeadSub: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: '1px' },
+    // Two columns that become one on their own: the flex-basis decides
+    // when, so there is no breakpoint to keep in step with the dialog's.
+    dateSplit: { display: 'flex', flexWrap: 'wrap', gap: '20px 28px', alignItems: 'flex-start' },
+    dateCalCol: { flex: '1 1 300px', minWidth: 0 },
+    dateSideCol: { flex: '1 1 170px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '14px' },
     promoNudge: {
       marginTop: '10px', fontSize: '12px', fontWeight: '600',
       color: goldInk(isDark),
@@ -1232,35 +1272,53 @@ const CarDetail = () => {
                 <AnimatePresence mode="wait">
                 {step === 1 && (
                   <motion.div key="step1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
-                    {(startDate || endDate) && (
-                      <div style={s.selectedPill}>
-                        <span style={s.pillLeft}>
-                          <span style={s.pillIcon}><CalendarIcon /></span>
-                          <span style={{ minWidth: 0 }}>
-                            <span style={s.pillLabel}>Selected dates</span>
-                            <span style={s.pillValue}>
-                              {startDate && endDate
-                                ? `${new Date(startDate).toLocaleDateString()} → ${new Date(endDate).toLocaleDateString()}${atTime} · ${totalDays} ${dayWord(totalDays)}`
-                                : `${new Date(startDate).toLocaleDateString()} → pick your return date`}
-                            </span>
-                          </span>
-                        </span>
-                        <button type="button" className="text-link-btn" style={s.pillAction} onClick={() => { setStartDate(''); setEndDate(''); }}>Clear</button>
+                    <div style={s.dateHeadBox}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={s.dateHeadLine}>{dateHeadline().head}</div>
+                        <div style={s.dateHeadSub}>{dateHeadline().sub}</div>
                       </div>
-                    )}
+                      {(startDate || endDate) && (
+                        <button
+                          type="button"
+                          className="text-link-btn"
+                          style={s.pillAction}
+                          onClick={() => { setStartDate(''); setEndDate(''); }}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
 
-                    <AvailabilityCalendar
-                      bookedRanges={bookedRanges}
-                      selectedStart={startDate}
-                      selectedEnd={endDate}
-                      onSelectDay={handleSelectDay}
-                      isDark={isDark}
-                      promo={isPromoVisible(car.promo) ? car.promo : null}
-                    />
-                    {startDate && endDate && (
+                    {/* Calendar beside the times, not above them. Stacked,
+                        the times sat below the fold on the very screen that
+                        needs them, and the dialog is 740px wide here. They
+                        wrap to one column on their own when it isn't. */}
+                    <div style={s.dateSplit}>
+                      <div style={s.dateCalCol}>
+                        <AvailabilityCalendar
+                          bookedRanges={bookedRanges}
+                          selectedStart={startDate}
+                          selectedEnd={endDate}
+                          onSelectDay={handleSelectDay}
+                          isDark={isDark}
+                          promo={isPromoVisible(car.promo) ? car.promo : null}
+                        />
+                      </div>
+
+                      <div style={s.dateSideCol}>
                       <div style={s.timeBlock}>
                         <div style={s.sectionLabel} id="cd-pickup-time-label">Pickup time</div>
-                        {availableHours.length === 0 ? (
+                        {/* Always on screen, so the column has a shape
+                            before there are any times to put in it and
+                            somebody can see what the second half of this
+                            step is going to ask for. */}
+                        {!startDate || !endDate ? (
+                          <p style={s.timeNote}>
+                            {startDate
+                              ? 'Pick your return day to see the times that work.'
+                              : 'Pick your dates first.'}
+                          </p>
+                        ) : availableHours.length === 0 ? (
                           <p style={s.timeNote}>
                             There is no pickup time left that fits these dates. Please choose a different range.
                           </p>
@@ -1300,7 +1358,6 @@ const CarDetail = () => {
                           </>
                         )}
                       </div>
-                    )}
 
                     {isPromoVisible(car.promo) && startDate && endDate && !promoApplies && !usingLongRental && (
                       <p style={s.promoNudge}>
@@ -1332,6 +1389,8 @@ const CarDetail = () => {
                         </span>
                       </p>
                     )}
+                      </div>
+                    </div>
                   </motion.div>
                 )}
 
