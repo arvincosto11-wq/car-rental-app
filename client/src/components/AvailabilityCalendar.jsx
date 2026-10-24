@@ -55,7 +55,28 @@ const buildGrid = (year, month) => {
 // clickable so the client can pick their pickup/return dates directly on
 // the grid instead of separate date inputs.
 const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSelectDay, isDark, promo, selectableWhenBooked = false }) => {
-  const [cursor, setCursor] = useState(() => { const d = new Date(); d.setDate(1); return d; });
+  // Null until somebody turns a page, and then it wins. While it is null
+  // the month shown follows the dates that are already picked.
+  //
+  // It used to start on the current month whatever was selected, so a trip
+  // chosen for next month opened on this one with nothing highlighted —
+  // picking Nov 1 to Nov 5 on the vehicle page and pressing Book these
+  // dates landed on an October grid that looked untouched, and the dates
+  // only appeared after pressing Next. They had been carried across the
+  // whole time; the calendar was just looking somewhere else.
+  const [cursor, setCursor] = useState(null);
+
+  // The month a picked date falls in, read the same way the selection
+  // comparison below reads it, so the grid shown and the days highlighted
+  // can never be a month apart.
+  const monthOf = (value) => {
+    if (!value) return null;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  };
+  const thisMonth = () => { const d = new Date(); d.setDate(1); return d; };
+  const shown = cursor || monthOf(selectedStart) || thisMonth();
 
   const today = normalize(new Date());
 
@@ -89,7 +110,7 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
     return day >= ymdUTC(promo.startDate) && day <= ymdUTC(promo.endDate);
   };
 
-  const grid = buildGrid(cursor.getFullYear(), cursor.getMonth());
+  const grid = buildGrid(shown.getFullYear(), shown.getMonth());
 
   // Every split day ON THE GRID, not only the ones belonging to the month
   // named at the top. The days either side are drawn, and they are pickable
@@ -234,9 +255,9 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
   return (
     <div style={s.wrap}>
       <div style={s.navRow}>
-        <button type="button" className="cal-nav-btn" style={s.navBtn} aria-label="Previous month" onClick={() => setCursor((p) => new Date(p.getFullYear(), p.getMonth() - 1, 1))}><Chevron dir="left" /></button>
-        <span style={s.monthLabel}>{MONTH_LABELS[cursor.getMonth()]} {cursor.getFullYear()}</span>
-        <button type="button" className="cal-nav-btn" style={s.navBtn} aria-label="Next month" onClick={() => setCursor((p) => new Date(p.getFullYear(), p.getMonth() + 1, 1))}><Chevron dir="right" /></button>
+        <button type="button" className="cal-nav-btn" style={s.navBtn} aria-label="Previous month" onClick={() => setCursor(new Date(shown.getFullYear(), shown.getMonth() - 1, 1))}><Chevron dir="left" /></button>
+        <span style={s.monthLabel}>{MONTH_LABELS[shown.getMonth()]} {shown.getFullYear()}</span>
+        <button type="button" className="cal-nav-btn" style={s.navBtn} aria-label="Next month" onClick={() => setCursor(new Date(shown.getFullYear(), shown.getMonth() + 1, 1))}><Chevron dir="right" /></button>
       </div>
       <div style={s.grid}>
         {WEEKDAY_LABELS.map((wd, i) => <div key={i} style={s.weekday}>{wd}</div>)}
@@ -264,9 +285,14 @@ const AvailabilityCalendar = ({ bookedRanges, selectedStart, selectedEnd, onSele
               type="button"
               style={s.day(inMonth, booked, isSelected(date), past, clickable, promoDay, part)}
               title={`${date.toLocaleDateString()}${partText}${promoDay ? ` — ${promoSummary}` : ''}`}
+              // Which days are chosen was said only in gold. aria-pressed
+              // and the word in the label say it to a screen reader too,
+              // which otherwise heard "available" on a day already picked.
+              aria-pressed={isSelected(date)}
               aria-label={
                 `${date.toLocaleDateString()}` +
                 `${booked ? ', booked' : part ? `, ${info.label}` : clickable ? ', available' : ''}` +
+                `${isSelected(date) ? ', one of your dates' : ''}` +
                 `${promoDay ? `, on promo, ${promoSummary}` : ''}`
               }
               tabIndex={clickable ? 0 : -1}
