@@ -2244,14 +2244,18 @@ const CarDetail = () => {
           {reviewsLoading ? null : commentedReviews.length > 0 ? (
             <div className="review-quotes" style={s.quoteGrid}>
               {(showAllReviews ? commentedReviews : commentedReviews.slice(0, 4)).map((r) => (
-                <figure key={r._id || r.createdAt} style={s.quote}>
+                <figure key={r._id} style={s.quote}>
                   <blockquote style={s.quoteText}>&ldquo;{r.comment}&rdquo;</blockquote>
                   <figcaption style={s.quoteBy}>
                     <span style={{ color: isDark ? GOLD_DARK : GOLD }}>
                       {'★'.repeat(Math.round(r.overall))}
                     </span>
-                    <strong style={{ color: isDark ? '#e4e6eb' : '#1a1a1a' }}>{r.userName || 'Renter'}</strong>
-                    <span>{new Date(r.createdAt).toLocaleDateString()}</span>
+                    {/* reviewerName and ratedAt are what /cars/:id/reviews
+                        actually sends — it masks the name itself and has no
+                        createdAt at all. Reading the wrong two put "Renter"
+                        and "Invalid Date" on every quote. */}
+                    <strong style={{ color: isDark ? '#e4e6eb' : '#1a1a1a' }}>{r.reviewerName || 'Renter'}</strong>
+                    <span>{new Date(r.ratedAt).toLocaleDateString()}</span>
                   </figcaption>
                 </figure>
               ))}

@@ -120,6 +120,14 @@ const ManageAvailabilityRequests = () => {
   };
 
   const handleDeclineBlock = async () => {
+    // The sibling above asks before declining and this did not, though both
+    // send the consignor a notification with the reason attached. The same
+    // action should take the same care.
+    const ok = await confirm(
+      'Decline this request? The owner is told, and your reason is sent to them, so make sure it reads the way you want.',
+      { confirmLabel: 'Decline it', cancelLabel: 'Go back', danger: true }
+    );
+    if (!ok) return;
     setBlockWorking(true);
     try {
       await api.put(`/cars/${blockDeclineTarget.carId}/blocked-dates/${blockDeclineTarget._id}/decision`, { decision: 'declined', adminNotes: blockDeclineReason });
@@ -187,7 +195,7 @@ const ManageAvailabilityRequests = () => {
               </tr>
             </thead>
             <tbody>
-              <SkeletonTableRows isDark={isDark} columns={6} />
+              <SkeletonTableRows isDark={isDark} columns={5} />
             </tbody>
           </table>
         </div>
