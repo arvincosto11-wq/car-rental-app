@@ -8,6 +8,7 @@ import Skeleton from '../components/Skeleton';
 import FavoriteButton from '../components/FavoriteButton';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import TripPanel from '../components/TripPanel';
+import AvailabilityStrip from '../components/AvailabilityStrip';
 import FlowButton from '../components/FlowButton';
 import BackButton from '../components/BackButton';
 import PromoConfetti from '../components/PromoConfetti';
@@ -92,6 +93,10 @@ const CarDetail = () => {
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewFilter, setReviewFilter] = useState('all');
+  // The page leads with what people wrote, and keeps the full rated list —
+  // filters and all — behind "See all". The quotes are what somebody
+  // reads; the breakdown is what they go looking for afterwards.
+  const [showAllReviews, setShowAllReviews] = useState(false);
   const [bookedRanges, setBookedRanges] = useState([]);
   // Pre-filled from the homepage/Cars search box, if the visitor came from there.
   const [startDate, setStartDate] = useState(searchParams.get('pickup') || '');
@@ -616,6 +621,15 @@ const CarDetail = () => {
     setShowRefundNotice(true);
   };
 
+  // "Book these dates" on the availability strip. The strip writes into
+  // the same two dates the wizard reads, so there is nothing to carry
+  // across — opening it lands on step one with these days already picked
+  // and a collection time suggested.
+  const bookTheseDates = () => {
+    setStep(1);
+    openBookingModal();
+  };
+
   const openBookingModal = () => {
     if (!user) return navigate('/login');
     setError('');
@@ -699,12 +713,85 @@ const CarDetail = () => {
     reviewEmpty: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280' },
     // Quiet, because it is context rather than an instruction: the gold is
     // on the date itself and the rest sits back.
+    crumbs: {
+      display: 'flex', gap: '8px', fontSize: '13px', alignItems: 'center',
+      color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '14px',
+    },
+    crumbLink: { color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '2px' },
+    crumbNow: { color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    // One row, ending in the way in. Wraps rather than squashing, because
+    // the price and the button are the two things that must stay legible.
+    vehicleHead: {
+      display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-end',
+      paddingBottom: '20px', marginBottom: '20px',
+      borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    carNameMeta: { fontWeight: '500', fontSize: '21px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    headFacts: {
+      display: 'flex', flexWrap: 'wrap', gap: '8px 16px', alignItems: 'center',
+      fontSize: '13.5px', color: isDark ? '#b0b3b8' : '#6b7280',
+    },
+    headRating: { display: 'flex', alignItems: 'center', gap: '6px' },
+    headPrice: { textAlign: 'right', minWidth: 0 },
+    headBook: {
+      minHeight: '50px', padding: '0 28px', borderRadius: '12px', border: 'none',
+      background: isDark ? GOLD_DARK : GOLD, color: ON_GOLD,
+      font: 'inherit', fontSize: '15px', fontWeight: '700', cursor: 'pointer',
+    },
+    // The photo takes the room; the fortnight sits beside it.
+    vehicleMain: {
+      display: 'grid', gridTemplateColumns: 'minmax(0, 1.55fr) minmax(0, 1fr)',
+      gap: '20px', alignItems: 'start',
+    },
+    notesRow: {
+      display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gap: '20px', margin: '24px 0 8px',
+    },
+    note: { display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 },
+    // Hidden until the breakpoint turns it on, the same way round as the
+    // dialog's own phone pieces — an inline display would beat the query.
+    pinnedBar: {
+      display: 'none', position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 40,
+      alignItems: 'center', gap: '12px', padding: '10px 16px',
+      background: isDark ? '#242526' : '#fff',
+      borderTop: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      boxShadow: '0 -6px 20px rgba(0,0,0,0.12)',
+    },
+    pinnedPrice: { fontSize: '20px', fontWeight: '800', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    noteHead: { fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    noteBody: { margin: 0, fontSize: '13.5px', lineHeight: 1.5, color: isDark ? '#b0b3b8' : '#6b7280', textWrap: 'pretty' },
     nextFreeLine: {
       display: 'flex', alignItems: 'center', gap: '8px',
       padding: '9px 11px', borderRadius: '10px',
       background: isDark ? '#3a3b3c' : '#f3f4f6',
       color: isDark ? '#b0b3b8' : '#4b5563',
       fontSize: '12.5px', lineHeight: 1.4,
+    },
+    reviewsHead: { display: 'flex', flexWrap: 'wrap', gap: '10px 16px', alignItems: 'center', marginBottom: '16px' },
+    reviewsScore: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
+    reviewsSpread: { fontSize: '13.5px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    // auto-fit, not a fixed two: a vehicle with one written review should
+    // show one full-width card, not one half-width card beside a hole.
+    // It also collapses to a single column on a phone without a rule.
+    quoteGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '16px' },
+    quote: {
+      margin: 0, padding: '22px', borderRadius: '16px',
+      background: isDark ? '#242526' : '#fff',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      display: 'flex', flexDirection: 'column', gap: '14px',
+    },
+    quoteText: {
+      margin: 0, fontSize: '16.5px', lineHeight: 1.5, textWrap: 'pretty',
+      color: isDark ? '#e4e6eb' : '#1a1a1a',
+    },
+    quoteBy: {
+      display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center',
+      fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginTop: 'auto',
+    },
+    seeAll: {
+      alignSelf: 'flex-start', marginTop: '16px', padding: 0, border: 'none',
+      background: 'none', font: 'inherit', fontWeight: '650',
+      color: goldInk(isDark), cursor: 'pointer',
     },
     reviewFilterRow: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' },
     reviewFilterBtn: (active) => ({
@@ -1050,6 +1137,10 @@ const CarDetail = () => {
   // field — fall back to that as a one-item gallery.
   const galleryPhotos = car.photos?.length ? car.photos : (car.image ? [{ url: car.image }] : []);
   const activePhoto = galleryPhotos[activePhotoIndex] || galleryPhotos[0];
+
+  // Only the ones somebody actually wrote something in. A wall of bare
+  // five-star rows says less than two sentences from a real trip.
+  const commentedReviews = reviews.filter((r) => r.comment && r.comment.trim());
 
   const filteredReviews = reviews.filter((r) => {
     if (reviewFilter === 'with-comments') return !!r.comment;
@@ -1919,11 +2010,88 @@ const CarDetail = () => {
       )}
       </AnimatePresence>
 
-      <div style={s.container}>
+      <div className="car-detail-page" style={s.container}>
         <BackButton text="Back to all cars" onClick={() => navigate('/cars')} />
 
-        <div className="car-detail-layout" style={s.layout}>
-          {/* Left */}
+        {/* Where this vehicle sits, so the way back is a place and not just
+            a button. */}
+        <nav style={s.crumbs} aria-label="Breadcrumb">
+          <Link to="/cars" style={s.crumbLink}>Vehicles</Link>
+          <span aria-hidden="true">/</span>
+          <Link to={`/cars?category=${encodeURIComponent(car.category || '')}`} style={s.crumbLink}>{car.category}</Link>
+          <span aria-hidden="true">/</span>
+          <span style={s.crumbNow}>{car.brand} {car.model}</span>
+        </nav>
+
+        {/* Everything needed to decide, on one line: what it is, how it
+            rates, what it costs, and the way in. */}
+        <div className="vehicle-head" style={s.vehicleHead}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <h1 style={s.carName}>
+              {car.brand} {car.model} <span style={s.carNameMeta}>{car.category} · {car.year}</span>
+            </h1>
+            <div style={s.headFacts}>
+              {car.ratingCount > 0 ? (
+                <span style={s.headRating}>
+                  <StarRating value={car.avgRating} size={15} readOnly />
+                  <strong style={{ color: isDark ? '#e4e6eb' : '#1a1a1a' }}>{car.avgRating.toFixed(1)}</strong>
+                  <span>·</span>
+                  <a href="#reviews" style={s.crumbLink}>{car.ratingCount} review{car.ratingCount === 1 ? '' : 's'}</a>
+                </span>
+              ) : (
+                <span>No reviews yet</span>
+              )}
+              <span>{car.seats} seats · {car.fuelType} · {car.transmission}</span>
+            </div>
+          </div>
+
+          <div className="vehicle-head-price" style={s.headPrice}>
+            <div>
+              <span style={s.price}>₱{car.pricePerDay.toLocaleString()}</span>
+              <span style={s.perDay}> a day</span>
+            </div>
+            {firstLongRentalRule && (
+              <div style={s.longRentalNote}>
+                ₱{Math.round(car.pricePerDay * (1 - firstLongRentalRule.percent / 100)).toLocaleString()} a day
+                {' '}when you book {firstLongRentalRule.minDays}+
+              </div>
+            )}
+          </div>
+
+          <FavoriteButton
+            carId={car._id}
+            canFavorite={canFavorite}
+            isFavorite={isFavorite(car._id)}
+            onToggle={toggleFavorite}
+            size={44}
+            style={{ background: isDark ? '#242526' : '#fff', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, borderRadius: '12px', color: isFavorite(car._id) ? '#ef4444' : (isDark ? '#b0b3b8' : '#6b7280'), flexShrink: 0 }}
+          />
+
+          {car.isAvailable !== false && !overdueBooking && (
+            <button type="button" className="vehicle-head-book" style={s.headBook} onClick={openBookingModal}>Book now</button>
+          )}
+        </div>
+
+        {car.isAvailable === false && (
+          <div style={s.error}>This vehicle isn&apos;t currently listed for booking. Check back later or browse other cars.</div>
+        )}
+
+        {car.isAvailable !== false && overdueBooking && (
+          <div style={s.offRoadBox}>
+            <p style={s.offRoadNote}>
+              {overdueBooking.car?.brand
+                ? `Your ${overdueBooking.car.brand} ${overdueBooking.car.model}`
+                : 'A vehicle you booked'} is {overdueLabel(hoursLate(overdueBooking.endDate, new Date()), overdueBooking.lateFee?.days).toLowerCase()} and hasn&apos;t been returned yet,
+              so you can&apos;t book another vehicle until it&apos;s back.
+            </p>
+            <p style={{ ...s.offRoadNote, fontWeight: '500', marginTop: '8px' }}>
+              Need it for longer? Use <strong>Keep It Longer</strong> on that booking instead.
+            </p>
+            <Link to="/my-bookings" style={s.licenseLink}>Go to My Bookings</Link>
+          </div>
+        )}
+
+        <div className="vehicle-main" style={s.vehicleMain}>
           <div>
             <div style={s.imgWrap}>
               {activePhoto ? (
@@ -1948,119 +2116,124 @@ const CarDetail = () => {
                 ))}
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-              <h1 style={s.carName}>{car.brand} {car.model}</h1>
-              <FavoriteButton
-                carId={car._id}
-                canFavorite={canFavorite}
-                isFavorite={isFavorite(car._id)}
-                onToggle={toggleFavorite}
-                size={38}
-                style={{ background: isDark ? '#242526' : '#f3f4f6', color: isFavorite(car._id) ? '#ef4444' : (isDark ? '#b0b3b8' : '#6b7280'), flexShrink: 0 }}
-              />
-            </div>
-            <p style={s.carSub}>{car.category} · {car.year}</p>
-            {car.ratingCount > 0 ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', marginTop: '-8px' }}>
-                <StarRating value={car.avgRating} size={16} readOnly />
-                <span style={{ fontSize: '13px', fontWeight: '600', color: isDark ? '#e4e6eb' : '#1a1a1a' }}>
-                  {car.avgRating.toFixed(1)}
-                </span>
-                <span style={{ fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280' }}>
-                  ({car.ratingCount} review{car.ratingCount === 1 ? '' : 's'})
-                </span>
-              </div>
-            ) : (
-              <p style={{ fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '-8px', marginBottom: '16px' }}>
-                No reviews yet
-              </p>
-            )}
-
-            <div className="meta-grid-4" style={s.metaGrid}>
-              <div style={s.metaItem}>
-                <span style={s.metaLabel}>Seats</span>
-                <span style={s.metaValue}>{car.seats}</span>
-              </div>
-              <div style={s.metaItem}>
-                <span style={s.metaLabel}>Fuel</span>
-                <span style={s.metaValue}>{car.fuelType}</span>
-              </div>
-              <div style={s.metaItem}>
-                <span style={s.metaLabel}>Transmission</span>
-                <span style={s.metaValue}>{car.transmission}</span>
-              </div>
-            </div>
-
+            <PromoBadge promo={car.promo} isDark={isDark} style={s.promoBadge} />
             {car.description && (
               <p style={s.description}>{car.description}</p>
             )}
           </div>
 
-          {/* Booking Card */}
-          <div style={s.bookingCard}>
-            <PromoBadge promo={car.promo} isDark={isDark} style={s.promoBadge} />
-            <div style={s.priceRow}>
-              <span style={s.price}>₱{car.pricePerDay.toLocaleString()}</span>
-              <span style={s.perDay}>per day</span>
-            </div>
-            {firstLongRentalRule && (
-              <div style={s.longRentalNote}>
-                Book {firstLongRentalRule.minDays}+ days, save {firstLongRentalRule.percent}%
-                {rulesForCar(longRentalRules, car._id).length > 1 && ' — more for longer trips'}
-              </div>
-            )}
+          <AvailabilityStrip
+            bookedRanges={bookedRanges}
+            startDate={startDate}
+            endDate={endDate}
+            onSelectDay={handleSelectDay}
+            onBook={bookTheseDates}
+            isDark={isDark}
+            message={error}
+            pricePerDay={car.pricePerDay}
+            days={totalDays}
+            discount={discountAmount}
+            total={totalPrice}
+            longRentalRule={longRentalRule || firstLongRentalRule}
+            nextFree={car.isAvailable !== false ? nextFree : ''}
+          />
+        </div>
 
-            {/* Said before any dates are picked, which is the point: on a
-                vehicle that is out for the next fortnight this saves
-                scanning the calendar for the first day that isn't red. The
-                turnaround is already inside it, so a vehicle back at noon
-                reads 2:00 PM rather than promising the client the hour it
-                is still being cleaned in. */}
-            {car.isAvailable !== false && nextFree && (
-              <div style={s.nextFreeLine}>
-                <CalendarIcon />
-                <span>Next free: <strong>{nextFree}</strong></span>
-              </div>
-            )}
-
-            {car.isAvailable === false && (
-              <div style={s.error}>This vehicle isn't currently listed for booking. Check back later or browse other cars.
-              </div>)}
-
-            {car.isAvailable !== false && overdueBooking && (
-              <div style={s.offRoadBox}>
-                <p style={s.offRoadNote}>
-                  {overdueBooking.car?.brand
-                    ? `Your ${overdueBooking.car.brand} ${overdueBooking.car.model}`
-                    : 'A vehicle you booked'} is {overdueLabel(hoursLate(overdueBooking.endDate, new Date()), overdueBooking.lateFee?.days).toLowerCase()} and hasn&apos;t been returned yet,
-                  so you can&apos;t book another vehicle until it&apos;s back.
-                </p>
-                <p style={{ ...s.offRoadNote, fontWeight: '500', marginTop: '8px' }}>
-                  Need it for longer? Use <strong>Keep It Longer</strong> on that booking instead.
-                </p>
-                <Link to="/my-bookings" style={s.licenseLink}>Go to My Bookings</Link>
-              </div>
-            )}
-
-            {car.isAvailable !== false && !overdueBooking && (
-              <>
-                <p style={s.fieldHint}>Pick your dates, choose a booking type, and confirm — takes about a minute.</p>
-                <FlowButton text="Book Now" onClick={openBookingModal} style={{ width: '100%' }} />
-                <p style={s.noCC}>Paid securely via GCash</p>
-              </>
-            )}
+        {/* The three things people ask before they start, answered where
+            they are asked rather than two screens into the wizard. */}
+        <div className="vehicle-notes" style={s.notesRow}>
+          <div style={s.note}>
+            <div style={s.noteHead}>With a driver, or self-drive</div>
+            <p style={s.noteBody}>
+              Self-drive needs your licence expiry date in your{' '}
+              <Link to="/profile" style={s.crumbLink}>Profile</Link>, so we can check it covers your
+              trip. Bring the licence itself, plus two valid IDs, when you collect.
+            </p>
+          </div>
+          <div style={s.note}>
+            <div style={s.noteHead}>Pickup or delivery</div>
+            <p style={s.noteBody}>
+              Collect at our {deliverySettings?.base?.label || 'Salugan'} office, or have it brought to
+              you{deliverySettings?.enabled ? ` for ₱${deliverySettings.ratePerKm || 25} a kilometre by road` : ''}.
+            </p>
+          </div>
+          <div style={s.note}>
+            <div style={s.noteHead}>Pay by GCash</div>
+            <p style={s.noteBody}>
+              20% to reserve, or pay in full. Our office confirms every booking.
+            </p>
           </div>
         </div>
 
-        <div style={s.reviewsSection}>
-          <h2 style={s.reviewsTitle}>Reviews</h2>
-          <p style={s.reviewsSubtitle}>
-            {car.ratingCount > 0
-              ? `${car.avgRating.toFixed(1)} average from ${car.ratingCount} review${car.ratingCount === 1 ? '' : 's'}`
-              : 'What renters are saying about this vehicle.'}
-          </p>
+        {/* Phone only. The price and the way in follow you down the page,
+            so neither is ever something you have to scroll back up for. */}
+        {car.isAvailable !== false && !overdueBooking && (
+          <div className="vehicle-pinned" style={s.pinnedBar}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div>
+                <span style={s.pinnedPrice}>₱{car.pricePerDay.toLocaleString()}</span>
+                <span style={s.perDay}> a day</span>
+              </div>
+              {firstLongRentalRule && (
+                <div style={s.longRentalNote}>
+                  {firstLongRentalRule.minDays}+ days: ₱{Math.round(car.pricePerDay * (1 - firstLongRentalRule.percent / 100)).toLocaleString()} a day
+                </div>
+              )}
+            </div>
+            <button type="button" style={s.headBook} onClick={openBookingModal}>Book now</button>
+          </div>
+        )}
 
-          {!reviewsLoading && reviews.length > 0 && (
+        <div id="reviews" style={s.reviewsSection}>
+          <div style={s.reviewsHead}>
+            <h2 style={s.reviewsTitle}>What renters say</h2>
+            {car.ratingCount > 0 && (
+              <div style={s.reviewsScore}>
+                <span style={{ color: isDark ? GOLD_DARK : GOLD, fontSize: '18px' }}>★</span>
+                <strong style={{ fontSize: '18px' }}>{car.avgRating.toFixed(1)}</strong>
+                <span style={s.reviewsSpread}>
+                  {/* The spread, not just the average: "4.7" says nothing
+                      about whether one person had a bad time. */}
+                  {[5, 4, 3, 2, 1]
+                    .map((n) => ({ n, c: reviews.filter((r) => Math.round(r.overall) === n).length }))
+                    .filter((x) => x.c > 0)
+                    .map((x) => `${x.c} ${x.n}-star`)
+                    .join(', ')}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {reviewsLoading ? null : commentedReviews.length > 0 ? (
+            <div className="review-quotes" style={s.quoteGrid}>
+              {(showAllReviews ? commentedReviews : commentedReviews.slice(0, 4)).map((r) => (
+                <figure key={r._id || r.createdAt} style={s.quote}>
+                  <blockquote style={s.quoteText}>&ldquo;{r.comment}&rdquo;</blockquote>
+                  <figcaption style={s.quoteBy}>
+                    <span style={{ color: isDark ? GOLD_DARK : GOLD }}>
+                      {'★'.repeat(Math.round(r.overall))}
+                    </span>
+                    <strong style={{ color: isDark ? '#e4e6eb' : '#1a1a1a' }}>{r.userName || 'Renter'}</strong>
+                    <span>{new Date(r.createdAt).toLocaleDateString()}</span>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          ) : (
+            <p style={s.reviewEmpty}>
+              {reviews.length > 0
+                ? 'No written reviews yet — the ratings are below.'
+                : 'No reviews yet — be the first to rent and rate this vehicle.'}
+            </p>
+          )}
+
+          {!reviewsLoading && reviews.length > 0 && !showAllReviews && (
+            <button type="button" className="text-link-btn" style={s.seeAll} onClick={() => setShowAllReviews(true)}>
+              See all {reviews.length} rating{reviews.length === 1 ? '' : 's'}
+            </button>
+          )}
+
+          {!reviewsLoading && reviews.length > 0 && showAllReviews && (
             <div style={s.reviewFilterRow} role="group" aria-label="Filter reviews">
               {[
                 { key: 'all', label: `All (${reviews.length})` },
@@ -2086,9 +2259,7 @@ const CarDetail = () => {
 
           {reviewsLoading ? (
             <Skeleton height="80px" radius="12px" isDark={isDark} />
-          ) : reviews.length === 0 ? (
-            <p style={s.reviewEmpty}>No reviews yet — be the first to rent and rate this vehicle.</p>
-          ) : filteredReviews.length === 0 ? (
+          ) : !showAllReviews ? null : filteredReviews.length === 0 ? (
             <p style={s.reviewEmpty}>No reviews match this filter.</p>
           ) : (
             filteredReviews.map((r) => (

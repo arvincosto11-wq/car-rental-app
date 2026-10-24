@@ -1266,6 +1266,23 @@ button.seg-tab:not(:disabled):hover {
 /* ---- Booking modal (pages/CarDetail.jsx) ---- */
 /* Sidebar beside the content on desktop; above it on narrow screens, where
    the steps also collapse to a row and drop their descriptions. */
+/* The vehicle page on a narrow screen. 4b was never drawn for a phone;
+   this is the stack its README suggests — header, photo, the fortnight,
+   the notes, then the reviews — with the price and the way in pinned to
+   the bottom so neither is ever scrolled past. */
+@media (max-width: 900px) {
+  .vehicle-main { grid-template-columns: minmax(0, 1fr) !important; }
+  .vehicle-notes { grid-template-columns: minmax(0, 1fr) !important; gap: 14px !important; }
+  .vehicle-head { align-items: flex-start !important; }
+  /* The header's price and button move to the pinned bar below, so they
+     are not said twice. */
+  .vehicle-head .vehicle-head-price,
+  .vehicle-head .vehicle-head-book { display: none !important; }
+  .vehicle-pinned { display: flex !important; }
+  /* Room for the bar, so the last review is not hidden under it. */
+  .car-detail-page { padding-bottom: 88px !important; }
+}
+
 /* Scrolling inside a dialog stays inside it. Without this, a scrollable
    area that has reached its top or bottom hands the rest of the wheel to
    the page behind, which then scrolls under the backdrop — the dialog
