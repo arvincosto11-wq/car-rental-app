@@ -1266,6 +1266,17 @@ button.seg-tab:not(:disabled):hover {
 /* ---- Booking modal (pages/CarDetail.jsx) ---- */
 /* Sidebar beside the content on desktop; above it on narrow screens, where
    the steps also collapse to a row and drop their descriptions. */
+/* Scrolling inside a dialog stays inside it. Without this, a scrollable
+   area that has reached its top or bottom hands the rest of the wheel to
+   the page behind, which then scrolls under the backdrop — the dialog
+   looks stuck while the page moves. It only affects elements that
+   actually scroll, so applying it to everything inside a dialog costs
+   nothing and saves naming each scroller in twenty files. */
+[role="dialog"],
+[role="dialog"] * {
+  overscroll-behavior: contain;
+}
+
 /* The booking dialog's narrow layout, at the width the flow was drawn to
    change at. Below this the trip panel goes entirely rather than being
    squeezed or stacked: everything on it is either on the step you are
