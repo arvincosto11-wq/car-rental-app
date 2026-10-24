@@ -1266,39 +1266,32 @@ button.seg-tab:not(:disabled):hover {
 /* ---- Booking modal (pages/CarDetail.jsx) ---- */
 /* Sidebar beside the content on desktop; above it on narrow screens, where
    the steps also collapse to a row and drop their descriptions. */
-@media (max-width: 760px) {
+/* The booking dialog's narrow layout, at the width the flow was drawn to
+   change at. Below this the trip panel goes entirely rather than being
+   squeezed or stacked: everything on it is either on the step you are
+   looking at or in the footer, and a 300px column of summaries is not
+   worth a third of a phone screen.
+
+   Back moves into the header, the footer's columns of figures give way to
+   one line plus a drawer, and the progress bar becomes the only thing
+   saying how far along you are. */
+@media (max-width: 1023px) {
   .booking-modal-shell {
     grid-template-columns: minmax(0, 1fr) !important;
-    /* Stacked here, so the steps take their own height and the body gets
-       whatever is left — the row has to be able to shrink or the modal
-       can't scroll. */
-    grid-template-rows: auto minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    /* The drawn height is a desktop dimension; on a phone the dialog
+       takes the screen it is given. */
+    height: auto !important;
     max-height: 92vh !important;
   }
-  .booking-modal-side {
-    border-right: none !important;
-    border-bottom: 1px solid var(--border);
-  }
-  .booking-modal-side .booking-steps-list {
-    flex-direction: row !important;
-    justify-content: space-between;
-  }
-  .booking-modal-side .booking-step-item-wrap { flex: 1; }
-  .booking-modal-side .booking-step-row { flex-direction: column !important; align-items: center !important; gap: 4px !important; }
-  .booking-modal-side .booking-step-connector { display: none !important; }
-  .booking-modal-side .booking-step-desc { display: none !important; }
-  .booking-modal-promo { margin-top: 16px !important; }
-
-  /* The booking dialog's phone layout. Back moves into the header, the
-     footer's two columns of figures give way to one line plus a drawer,
-     and the drawer is the only place the breakdown appears — below the
-     fold on a phone is the same as absent. */
+  .booking-modal-side { display: none !important; }
   .book-back-top { display: grid !important; }
   .book-back-foot { display: none !important; }
   .book-foot-info { display: none !important; }
   .book-money-mini { display: flex !important; }
   .book-money-sheet { display: block !important; }
 }
+
 @media (max-width: 560px) {
   .booking-summary-grid { grid-template-columns: minmax(0, 1fr) !important; }
 }

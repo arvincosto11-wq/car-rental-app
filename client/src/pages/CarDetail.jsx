@@ -7,7 +7,7 @@ import StarRating from '../components/StarRating';
 import Skeleton from '../components/Skeleton';
 import FavoriteButton from '../components/FavoriteButton';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
-import BookingSteps from '../components/BookingSteps';
+import TripPanel from '../components/TripPanel';
 import FlowButton from '../components/FlowButton';
 import BackButton from '../components/BackButton';
 import PromoConfetti from '../components/PromoConfetti';
@@ -65,6 +65,10 @@ const dayWord = (n) => (n === 1 ? 'day' : 'days');
 // Splitting them means each screen asks one question, and the one that can
 // refuse a booking — a place we don't drive to — does it with the map still
 // on screen to change.
+// Counted from the headings, so adding a step cannot leave the header
+// saying "Step 3 of 5" while the progress bar draws six segments.
+const BOOKING_STEP_COUNT = 5;
+
 const STEP_HEADINGS = {
   1: { title: 'When do you need it?', sub: 'Tap a pickup date, then a return date, then choose your pickup time.' },
   2: { title: 'Who drives?', sub: 'One of our drivers, or you.' },
@@ -165,11 +169,11 @@ const CarDetail = () => {
   //
   // Held until after the choices are derived, further down this component.
   const bookingStepsFor = (choices) => [
-    { label: 'Dates', desc: choices.dates || 'Your days and a collection time' },
-    { label: 'Driving', desc: choices.driving || 'With one of our drivers, or yourself' },
-    { label: 'Pickup & return', desc: choices.place || 'Our office, or we deliver' },
-    { label: 'Payment', desc: choices.payment || '20% now, or all of it' },
-    { label: 'Check and pay', desc: choices.review || 'Look it over, then GCash' },
+    { label: 'Dates', summary: choices.dates },
+    { label: 'Driving', summary: choices.driving },
+    { label: 'Pickup & return', summary: choices.place },
+    { label: 'Payment', summary: choices.payment },
+    { label: 'Check and pay', summary: choices.review },
   ];
 
   const termsModalRef = useModalA11y(() => setShowTerms(false), showTerms);
@@ -711,6 +715,13 @@ const CarDetail = () => {
       marginTop: '10px', fontSize: '12px', fontWeight: '600',
       color: goldInk(isDark),
     },
+    longRentalNudge: {
+      display: 'flex', alignItems: 'center', gap: '8px',
+      marginTop: '10px', padding: '10px 12px', borderRadius: '8px',
+      fontSize: '12.5px', fontWeight: '600',
+      background: isDark ? 'rgba(232,161,0,0.12)' : 'rgba(184,121,10,0.09)',
+      color: goldInk(isDark),
+    },
     timeBlock: { marginTop: '18px' },
     timeRow: { display: 'flex', flexWrap: 'wrap', gap: '7px' },
     timeChip: (active, open) => ({
@@ -739,8 +750,13 @@ const CarDetail = () => {
     noCC: { textAlign: 'center', fontSize: '12px', color: isDark ? '#8a8d91' : '#9ca3af', marginTop: '8px' },
     // ---- booking modal shell: sidebar + content, its own scroll ----
     bookShell: {
-      width: '100%', maxWidth: '900px', maxHeight: '88vh', outline: 'none',
-      display: 'grid', gridTemplateColumns: '264px minmax(0, 1fr)',
+      // 1040 x 680, the size the flow was drawn at. Capped by the viewport
+      // so it still fits a short laptop screen.
+      width: '100%', maxWidth: '1040px', height: '680px', maxHeight: '88vh', outline: 'none',
+      // The trip panel sits on the RIGHT, after the step it describes —
+      // reading order as well as layout. It was on the left, which put a
+      // summary of your answers before the question.
+      display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px',
       // Without this the single grid row is sized to its content and simply
       // overflows the shell's max height, which the shell then clips — so
       // the body had nothing left to scroll inside and anything past the
@@ -753,23 +769,23 @@ const CarDetail = () => {
       boxShadow: '0 30px 70px rgba(0,0,0,0.28)',
     },
     bookSide: {
-      background: isDark ? '#1c1d1e' : '#f6f7f9',
-      borderRight: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
-      padding: '26px 22px', overflowY: 'auto',
+      background: isDark ? '#1e1f20' : '#f6f7f8',
+      borderLeft: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+      padding: '22px 18px', overflowY: 'auto',
+      display: 'flex', flexDirection: 'column', gap: '16px',
     },
-    bookSideTitle: { margin: 0, fontSize: '17px', fontWeight: '800', letterSpacing: '-0.01em', color: isDark ? '#e4e6eb' : '#1a1a1a' },
-    bookSideCar: { margin: '3px 0 24px', fontSize: '12px', color: isDark ? '#8a8d91' : '#9ca3af' },
-    sidePromo: {
-      marginTop: '26px', padding: '14px', borderRadius: '14px',
-      background: isDark ? GOLD_TINT_DARK : GOLD_TINT,
-      border: `1px solid ${isDark ? 'rgba(232,161,0,0.45)' : 'rgba(184,121,10,0.45)'}`,
-    },
-    sidePromoHead: {
-      display: 'flex', alignItems: 'center', gap: '7px',
-      fontSize: '10px', fontWeight: '800', letterSpacing: '0.14em', textTransform: 'uppercase',
-      color: goldInk(isDark),
-    },
-    sidePromoText: { margin: '6px 0 0', fontSize: '12px', lineHeight: 1.5, color: isDark ? '#b0b3b8' : '#4b5563' },
+    // Step N of 5, above the question. The step list says the same thing,
+    // but it is on the other side of the dialog and this is the line
+    // somebody reads while deciding whether they have time for this.
+    bookStepOf: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280' },
+    bookBars: { display: 'flex', gap: '4px', padding: '0 26px 12px' },
+    bookBar: (state) => ({
+      height: '4px', flex: 1, borderRadius: '999px',
+      background: state === 'todo'
+        ? (isDark ? '#3a3b3c' : '#e5e7eb')
+        : (isDark ? GOLD_DARK : GOLD),
+      opacity: state === 'now' ? 0.5 : 1,
+    }),
     bookMain: { display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 },
     bookHead: {
       display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px',
@@ -1144,34 +1160,6 @@ const CarDetail = () => {
             aria-modal="true"
             aria-labelledby="booking-modal-title"
           >
-            {/* Sidebar: where you are in the flow, and this vehicle's own
-                discount if it has one. Collapses above the content on
-                narrow screens (see .booking-modal-shell in index.css). */}
-            <aside className="booking-modal-side" style={s.bookSide}>
-              <h2 id="booking-modal-title" style={s.bookSideTitle}>Book Vehicle</h2>
-              <div style={s.bookSideCar}>{car.brand} {car.model} · {car.year}</div>
-
-              <BookingSteps
-                steps={bookingStepsFor(stepSummaries())}
-                currentStep={step}
-                onStepClick={goToStep}
-                isDark={isDark}
-              />
-
-              {(firstLongRentalRule || isPromoVisible(car.promo)) && (
-                <div className="booking-modal-promo" style={s.sidePromo}>
-                  <div style={s.sidePromoHead}>
-                    <SparkIcon /> {firstLongRentalRule ? 'Long-rental discount' : car.promo.label}
-                  </div>
-                  <p style={s.sidePromoText}>
-                    {firstLongRentalRule
-                      ? <>Book <strong>{firstLongRentalRule.minDays}+ days</strong> on this vehicle and save <strong>{firstLongRentalRule.percent}%</strong> automatically.</>
-                      : <>Save <strong>{promoOffer(car.promo)}</strong> on trips inside <strong>{promoDateRange(car.promo)}</strong>.</>}
-                  </p>
-                </div>
-              )}
-            </aside>
-
             <section style={s.bookMain}>
               <div style={s.bookHead}>
                 {/* Phone only. On a narrow screen Back belongs where the
@@ -1190,10 +1178,23 @@ const CarDetail = () => {
                   </button>
                 )}
                 <div style={{ minWidth: 0 }}>
-                  <h3 style={s.bookHeadTitle}>{STEP_HEADINGS[step].title}</h3>
+                  <div style={s.bookStepOf}>Step {step} of {BOOKING_STEP_COUNT}</div>
+                  <h3 id="booking-modal-title" style={s.bookHeadTitle}>{STEP_HEADINGS[step].title}</h3>
                   <p style={s.bookHeadSub}>{STEP_HEADINGS[step].sub}</p>
                 </div>
                 <ModalClose onClose={() => setShowBookingModal(false)} isDark={isDark} floating={false} />
+              </div>
+
+              {/* One segment per step: filled for the ones behind you, half
+                  for the one you are on. The only thing on a phone that
+                  says how far along this is, since the panel is hidden. */}
+              <div className="book-bars" style={s.bookBars} aria-hidden="true">
+                {Array.from({ length: BOOKING_STEP_COUNT }, (_, i) => (
+                  <span
+                    key={i}
+                    style={s.bookBar(i + 1 < step ? 'done' : i + 1 === step ? 'now' : 'todo')}
+                  />
+                ))}
               </div>
 
               <div style={s.bookBody}>
@@ -1305,6 +1306,30 @@ const CarDetail = () => {
                       <p style={s.promoNudge}>
                         Pick dates within {promoDateRange(car.promo)} to save {promoOffer(car.promo)}.
                         The whole rental has to fall inside the promo.
+                      </p>
+                    )}
+
+                    {/* The discount note the side panel used to carry. It
+                        belongs here instead: this is the only screen where
+                        "add two more days" is still something you can do
+                        something about. */}
+                    {firstLongRentalRule && totalDays > 0 && !usingLongRental && totalDays < firstLongRentalRule.minDays && (
+                      <p style={s.longRentalNudge}>
+                        <SparkIcon />
+                        <span>
+                          Add {firstLongRentalRule.minDays - totalDays} more{' '}
+                          {dayWord(firstLongRentalRule.minDays - totalDays)} to save{' '}
+                          {firstLongRentalRule.percent}%.
+                        </span>
+                      </p>
+                    )}
+                    {usingLongRental && (
+                      <p style={s.longRentalNudge}>
+                        <SparkIcon />
+                        <span>
+                          {longRentalRule.percent}% off for {longRentalRule.minDays}+ days — you save
+                          {' '}₱{discountAmount.toLocaleString()}.
+                        </span>
                       </p>
                     )}
                   </motion.div>
@@ -1815,6 +1840,21 @@ const CarDetail = () => {
                 )}
               </div>
             </section>
+
+            {/* Your trip: the vehicle, the choices so far, and the price.
+                Hidden on a phone (see .booking-modal-side in index.css),
+                where the footer carries the money instead. */}
+            <aside className="booking-modal-side" style={s.bookSide} aria-label="Your trip">
+              <TripPanel
+                steps={bookingStepsFor(stepSummaries())}
+                currentStep={step}
+                onStepClick={goToStep}
+                isDark={isDark}
+                vehicleName={`${car.brand} ${car.model}`}
+                vehicleMeta={`${car.year} · ${car.category} · ₱${car.pricePerDay.toLocaleString()} a day`}
+                money={totalDays > 0 ? renderPriceLines() : null}
+              />
+            </aside>
           </motion.div>
         </motion.div>
       )}
