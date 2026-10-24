@@ -117,12 +117,15 @@ const BeforeYouConfirm = ({
       display: 'flex', flexDirection: 'column',
       boxShadow: '0 30px 80px rgba(0,0,0,0.35)',
     },
-    head: { flex: 'none', padding: '20px 22px 16px', borderBottom: `1px solid ${border}` },
-    headTop: { display: 'flex', alignItems: 'flex-start', gap: '12px' },
-    eyebrow: {
-      fontSize: '10px', fontWeight: '800', letterSpacing: '0.16em',
-      textTransform: 'uppercase', color: text2,
+    head: {
+      flex: 'none', padding: '18px 20px 16px', borderBottom: `1px solid ${border}`,
+      display: 'flex', flexDirection: 'column', gap: '12px',
     },
+    headTop: { display: 'flex', alignItems: 'flex-start', gap: '12px' },
+    // Gold and a shade larger than I first had it: this is the only line
+    // that names the screen, and at 10px grey it read as a caption on the
+    // title rather than a heading of its own.
+    eyebrow: { fontSize: '12px', fontWeight: '700', letterSpacing: '0.06em', color: goldInk(isDark) },
     title: { margin: '4px 0 0', fontSize: '20px', fontWeight: '800', color: text, textWrap: 'pretty' },
     grid: {
       // Two columns, which is what it was drawn with. A 150px basis fitted
@@ -130,11 +133,18 @@ const BeforeYouConfirm = ({
       // over two lines, "With a driver we assign" over two. A 210px basis
       // gives two here and one on a phone, with no breakpoint to keep.
       display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-      gap: '12px 16px', marginTop: '16px',
+      gap: '8px 16px', fontSize: '13px',
     },
-    cell: { minWidth: 0 },
-    k: { display: 'block', fontSize: '10px', fontWeight: '800', letterSpacing: '0.12em', textTransform: 'uppercase', color: text2 },
-    v: { display: 'block', fontWeight: '650', color: text, overflowWrap: 'anywhere' },
+    cell: { minWidth: 0, display: 'flex', flexDirection: 'column' },
+    // Quiet, and the same size as the answer beside it. These were 10px
+    // uppercase with wide letter-spacing — a heading style, used six times
+    // in a row against six answers, so the labels fought the values and
+    // nothing came out on top.
+    k: { color: text2 },
+    v: { fontWeight: '650', color: text, overflowWrap: 'anywhere' },
+    // The one figure on this screen anybody is about to act on, and it was
+    // set exactly like the handover address.
+    money: { fontWeight: '800', color: goldInk(isDark), overflowWrap: 'anywhere' },
     body: { flex: 1, minHeight: 0, overflowY: 'auto', padding: '18px 22px' },
     row: { display: 'flex', gap: '12px', alignItems: 'stretch' },
     gutter: { display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 'none' },
@@ -245,7 +255,12 @@ const BeforeYouConfirm = ({
               Pay {peso(amountNow)} for the {vehicle}
             </h2>
           </div>
-          {!busy && <ModalClose onClose={onCancel} isDark={isDark} floating={false} />}
+          {/* Dimmed rather than removed while redirecting: a control that
+              vanishes mid-action reads as the page breaking, and the person
+              is watching this exact corner for a way out. */}
+          <span style={{ opacity: busy ? 0.4 : 1, pointerEvents: busy ? 'none' : 'auto' }}>
+            <ModalClose onClose={onCancel} isDark={isDark} floating={false} />
+          </span>
         </div>
 
         <div style={s.grid}>
@@ -255,12 +270,16 @@ const BeforeYouConfirm = ({
             ['Return by', returnBy || '—'],
             ['Driving', driving === 'self-drive' ? 'Self-drive' : driving],
             ['Handover', handover],
-            ['Charged now', payingInFull ? `${peso(amountNow)} · paid in full` : `${peso(amountNow)} · ${peso(balance)} at pickup`],
-          ].map(([k, val]) => (
-            <span key={k} style={s.cell}>
+            [
+              'Charged now',
+              payingInFull ? `${peso(amountNow)} · paid in full` : `${peso(amountNow)} · ${peso(balance)} at pickup`,
+              true,
+            ],
+          ].map(([k, val, isMoney]) => (
+            <div key={k} style={s.cell}>
               <span style={s.k}>{k}</span>
-              <span style={s.v}>{val}</span>
-            </span>
+              <span style={isMoney ? s.money : s.v}>{val}</span>
+            </div>
           ))}
         </div>
       </div>
