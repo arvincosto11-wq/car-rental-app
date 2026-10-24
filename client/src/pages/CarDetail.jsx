@@ -10,7 +10,6 @@ import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import TripPanel from '../components/TripPanel';
 import AvailabilityStrip from '../components/AvailabilityStrip';
 import FlowButton from '../components/FlowButton';
-import BackButton from '../components/BackButton';
 import PromoConfetti from '../components/PromoConfetti';
 import PromoBadge from '../components/PromoBadge';
 import useLongRentalRules from '../hooks/useLongRentalRules';
@@ -682,10 +681,27 @@ const CarDetail = () => {
 
   const s = {
     page: { minHeight: '100vh', background: isDark ? '#18191a' : '#f9fafb' },
-    container: { maxWidth: '1100px', margin: '0 auto', padding: '24px 32px' },
+    // 1160 with 40px sides, which is what the page was drawn to. At 1100
+    // and 32 the content ran 1036px wide and the whole thing read as
+    // squeezed into the middle of the screen.
+    container: { maxWidth: '1160px', margin: '0 auto', padding: '16px 40px 56px' },
     layout: { gap: '32px' },
-    imgWrap: { width: '100%', height: '300px', borderRadius: '12px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', marginBottom: '16px' },
-    img: { width: '100%', height: '100%', objectFit: 'cover' },
+    // No fixed height. It was pinned at 300px while the availability card
+    // beside it came out at 376, so the photo sat squat with a gap under
+    // it and the row looked unbalanced. The cell now stretches to whatever
+    // the row is and the photo sits centred inside it, which is how the
+    // page was drawn.
+    imgWrap: {
+      // A floor for the no-photo case, low enough that a phone-width photo
+      // reaches it on its own — at 300 a 310px-wide 4:3 shot left a grey
+      // band top and bottom.
+      width: '100%', minHeight: '220px', borderRadius: '16px', overflow: 'hidden',
+      background: isDark ? '#3a3b3c' : '#f3f4f6', marginBottom: '16px',
+      display: 'grid', placeItems: 'center', alignSelf: 'stretch',
+    },
+    // contain, not cover: a vehicle photo cropped to fill is a vehicle
+    // photo with its roof or its number plate cut off.
+    img: { width: '100%', height: '100%', objectFit: 'contain', display: 'block' },
     noImg: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#8a8d91' : '#9ca3af' },
     thumbRow: { display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto' },
     thumbBtn: (active) => ({
@@ -741,7 +757,7 @@ const CarDetail = () => {
     // The photo takes the room; the fortnight sits beside it.
     vehicleMain: {
       display: 'grid', gridTemplateColumns: 'minmax(0, 1.55fr) minmax(0, 1fr)',
-      gap: '20px', alignItems: 'start',
+      gap: '20px', alignItems: 'stretch',
     },
     notesRow: {
       display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
@@ -2011,7 +2027,6 @@ const CarDetail = () => {
       </AnimatePresence>
 
       <div className="car-detail-page" style={s.container}>
-        <BackButton text="Back to all cars" onClick={() => navigate('/cars')} />
 
         {/* Where this vehicle sits, so the way back is a place and not just
             a button. */}
@@ -2092,7 +2107,7 @@ const CarDetail = () => {
         )}
 
         <div className="vehicle-main" style={s.vehicleMain}>
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <div style={s.imgWrap}>
               {activePhoto ? (
                 <img src={activePhoto.url} alt={car.model} style={s.img} />
