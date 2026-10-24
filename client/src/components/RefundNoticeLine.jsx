@@ -24,7 +24,6 @@ import {
 import {
   addDays, addHours, phYmd, phHour, formatHour, formatPhDate,
 } from '../utils/phTime';
-import { WarnGlyph } from './Glyphs';
 
 const SHORT_DATE = { weekday: 'short', month: 'short', day: 'numeric' };
 
@@ -39,6 +38,9 @@ const dayLabel = (d, now) => {
   return formatPhDate(d, SHORT_DATE);
 };
 
+// Just the sentence. The label and the warning glyph it used to carry
+// belonged to the old confirm modal; the timeline that replaced it brings
+// its own title, icon and colour, and was putting them next to these.
 const RefundNoticeLine = ({ pickupAt, amount, now = new Date() }) => {
   const { band } = noticeBand(pickupAt, now);
   const full = peso(amount);
@@ -49,7 +51,7 @@ const RefundNoticeLine = ({ pickupAt, amount, now = new Date() }) => {
   if (band === 'unknown') {
     return (
       <p>
-        <strong>Refund:</strong> What you get back depends on the notice you give — everything
+        What you get back depends on the notice you give — everything
         if you cancel 3 or more days before pickup, half from 1 to 3 days before, and nothing
         in the last 24 hours.
       </p>
@@ -59,7 +61,7 @@ const RefundNoticeLine = ({ pickupAt, amount, now = new Date() }) => {
   if (band === 'none') {
     return (
       <p>
-        <WarnGlyph /> <strong>Refund:</strong> Pickup is less than two hours away, so once you pay, this
+        Pickup is less than two hours away, so once you pay, this
         booking can&apos;t be refunded for any reason. Please check your dates and vehicle
         before you continue.
       </p>
@@ -72,7 +74,7 @@ const RefundNoticeLine = ({ pickupAt, amount, now = new Date() }) => {
     const sameDay = phYmd(pickupAt) === phYmd(now);
     return (
       <p>
-        <WarnGlyph /> <strong>Refund:</strong> Pickup is <strong>{when}</strong>, so there&apos;s no refund
+        Pickup is <strong>{when}</strong>, so there&apos;s no refund
         on this booking — the vehicle is held for you and can&apos;t go to anyone else
         {sameDay ? ' today' : ' that day'}. One exception: if you booked by mistake, cancel
         within the hour and you get the whole <strong>{full}</strong> back.
@@ -85,7 +87,7 @@ const RefundNoticeLine = ({ pickupAt, amount, now = new Date() }) => {
     const noRefundFrom = addHours(pickupAt, -HALF_REFUND_NOTICE_HOURS);
     return (
       <p>
-        <strong>Refund:</strong> Pickup is <strong>{when}</strong>, so cancelling now gets you
+        Pickup is <strong>{when}</strong>, so cancelling now gets you
         half your money back — <strong>{half}</strong>. Changed your mind right away? Cancel
         within the hour and you get the whole {full}. From{' '}
         <strong>{dayLabel(noRefundFrom, now)}</strong> there&apos;s no refund at all.
@@ -97,7 +99,7 @@ const RefundNoticeLine = ({ pickupAt, amount, now = new Date() }) => {
   const safeUntil = addDays(addHours(pickupAt, -FULL_REFUND_NOTICE_HOURS), -1);
   return (
     <p>
-      <strong>Refund:</strong> Cancel any time up to{' '}
+      Cancel any time up to{' '}
       <strong>{formatPhDate(safeUntil, SHORT_DATE)}</strong> and you get your full{' '}
       <strong>{full}</strong> back. Closer to pickup it drops to half, and in the last 24 hours
       there&apos;s no refund.

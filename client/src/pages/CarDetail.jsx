@@ -8,6 +8,7 @@ import Skeleton from '../components/Skeleton';
 import FavoriteButton from '../components/FavoriteButton';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import TripPanel from '../components/TripPanel';
+import BeforeYouConfirm from '../components/BeforeYouConfirm';
 import AvailabilityStrip from '../components/AvailabilityStrip';
 import FlowButton from '../components/FlowButton';
 import PromoConfetti from '../components/PromoConfetti';
@@ -132,6 +133,10 @@ const CarDetail = () => {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showRefundNotice, setShowRefundNotice] = useState(false);
+  // Which of the refusals it was, when the server says. Three of them are
+  // things the client can go and fix, and the confirm screen offers the
+  // right way out only if it knows which one happened.
+  const [errorReason, setErrorReason] = useState('');
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
@@ -617,6 +622,7 @@ const CarDetail = () => {
   const openRefundNotice = () => {
     if (!agreedToTerms) return setError('Please agree to the Terms and Conditions');
     setError('');
+    setErrorReason('');
     setShowRefundNotice(true);
   };
 
@@ -673,10 +679,26 @@ const CarDetail = () => {
       // write to something outside the component.
       window.location.assign(data.checkoutUrl);
     } catch (err) {
-      setShowRefundNotice(false);
+      // The screen stays open. It is the one that said "you are about to be
+      // charged", so it is the one that should say "you have not been" —
+      // closing it and leaving a red line on the page behind asks somebody
+      // to work out for themselves whether their money moved.
       setError(err.response?.data?.message || 'Booking failed');
+      setErrorReason(err.response?.data?.reason || '');
       setBooking(false);
     }
+  };
+
+  // What the button does once it has failed. Two of the three are a step in
+  // this wizard; the third is a different page entirely.
+  const fixAndReturn = () => {
+    setError('');
+    setErrorReason('');
+    setShowRefundNotice(false);
+    if (errorReason === 'taken') return goToStep(1);
+    if (errorReason === 'range') return goToStep(3);
+    if (errorReason === 'licence') return navigate('/profile');
+    return undefined;
   };
 
   const s = {
@@ -1261,31 +1283,31 @@ const CarDetail = () => {
 
       {showRefundNotice && (
         <motion.div style={{ ...s.modal, zIndex: 1001 }} {...backdropMotion}>
-          <motion.div style={s.modalContent} {...modalMotion} ref={refundNoticeModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="refund-notice-title">
-            <h2 id="refund-notice-title" style={s.modalTitle}>Before You Confirm</h2>
-            <div style={s.modalText}>
-              <RefundNoticeLine pickupAt={pickupAt} amount={amountToPay} />
-              <p style={{ marginTop: '10px' }}>
-                <FuelGlyph /> <strong>Fuel Policy:</strong> Please return the vehicle with the same fuel level it had at pickup, or the difference will be charged to you.
-              </p>
-              {/* The one thing on this screen the client can act on, so it
-                  earns its place beside the two policies. Leads with what to
-                  bring rather than what it costs — the instruction is what
-                  stops the penalty ever applying. */}
-              <p style={{ marginTop: '10px' }}>
-                &#129526; <strong>At Pickup:</strong> Bring two valid IDs and a proof of billing address in your name
-                {bookingType === 'self-drive' ? ", plus your driver's licence" : ''}. Without them we can&apos;t release
-                the vehicle, and a cancellation on your pickup date is not refunded.
-              </p>
-            </div>
-            <div style={s.refundNoticeActions}>
-              <button style={s.refundNoticeCancel} onClick={() => setShowRefundNotice(false)} disabled={booking}>
-                Cancel
-              </button>
-              <button style={s.refundNoticeConfirm} onClick={confirmBooking} disabled={booking}>
-                {booking ? 'Booking...' : 'Confirm Booking'}
-              </button>
-            </div>
+          <motion.div {...modalMotion} style={{ width: '100%', maxWidth: '560px', display: 'flex', justifyContent: 'center' }}>
+            <BeforeYouConfirm
+              isDark={isDark}
+              modalRef={refundNoticeModalRef}
+              vehicle={`${car.brand} ${car.model}`}
+              pickupAt={pickupAt}
+              pickupLabel={pickupAt ? `${formatPhDate(pickupAt, { weekday: 'short', month: 'short', day: 'numeric' })} at ${formatHour(pickupHour)}` : ''}
+              returnBy={endDate && pickupHour !== null
+                ? `${formatPhDate(instantFrom(endDate, pickupHour), { weekday: 'short', month: 'short', day: 'numeric' })} at ${formatHour(pickupHour)}`
+                : ''}
+              driving={bookingType === 'self-drive'
+                ? 'self-drive'
+                : (driverId && drivers ? `With ${drivers.find((d) => d._id === driverId)?.name || 'a driver'}` : 'With a driver we assign')}
+              handover={pickupPlace
+                ? `${pickupPlace.label || 'A place on the map'}${returnSame ? '' : ', back elsewhere'}`
+                : 'Our office'}
+              amountNow={amountToPay}
+              balance={totalPrice - downPayment}
+              payingInFull={paymentType === 'full'}
+              busy={booking}
+              error={error}
+              errorReason={errorReason}
+              onCancel={() => { setShowRefundNotice(false); setError(''); setErrorReason(''); }}
+              onConfirm={error && errorReason ? fixAndReturn : confirmBooking}
+            />
           </motion.div>
         </motion.div>
       )}

@@ -300,6 +300,7 @@ router.post('/', protect, async (req, res) => {
     const conflict = await findConflict(carId, requestedSpan.start, requestedSpan.end);
     if (conflict) {
       return res.status(400).json({
+        reason: 'taken',
         message: conflict.kind === 'block'
           ? 'This vehicle is not available during the selected dates. Please choose different dates.'
           : conflict.kind === 'overdue'
@@ -318,7 +319,7 @@ router.post('/', protect, async (req, res) => {
     // discover it at the counter, where nothing can be done about it.
     const licence = licenceProblem(currentUser, { bookingType, endDate: requestedEnd });
     if (licence) {
-      return res.status(400).json({ message: licenceMessage(licence) });
+      return res.status(400).json({ reason: 'licence', message: licenceMessage(licence) });
     }
 
     const start = requestedStart;
@@ -361,7 +362,7 @@ router.post('/', protect, async (req, res) => {
       settings, longRentalRules, paymentType: validPaymentType,
     });
     if (!quote.ok) {
-      return res.status(400).json({ message: deliveryRefusal(quote.reason, settings) });
+      return res.status(400).json({ reason: 'range', message: deliveryRefusal(quote.reason, settings) });
     }
 
     // A label is the client's own words for where they are; it is shown
