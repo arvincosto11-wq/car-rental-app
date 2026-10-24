@@ -43,16 +43,31 @@ const FIXES = {
 
 const peso = (n) => `₱${Math.round(n || 0).toLocaleString()}`;
 
-// Where "now" sits on the Everything / Half / Nothing bar. Measured from
-// the real hours of notice rather than one of a few fixed stops, so the
-// marker moves as the pickup approaches instead of jumping between bands.
-// The bar spans four days: 96 hours out is the left edge, pickup is the
-// right, which puts the 72 and 24 hour lines at a quarter and three
-// quarters — exactly where the bands change.
-const SPAN_HOURS = 96;
+// Where "now" sits on the Everything / Half / Nothing bar.
+//
+// The three segments are fixed at 50, 30 and 20 per cent, as drawn — they
+// are not to scale with time, and should not be: "everything back" covers
+// from three days out to forever, which no honest scale could show beside
+// a single day.
+//
+// So the marker is placed inside whichever segment the booking is in,
+// proportionally within it, rather than at one of four fixed stops. It
+// slides as the pickup approaches and crosses each line exactly when the
+// refund does.
+const FAR_HOURS = 168;
 const markerAt = (noticeHours) => {
-  const clamped = Math.max(0, Math.min(SPAN_HOURS, noticeHours));
-  return Math.max(2, Math.min(98, (1 - clamped / SPAN_HOURS) * 100));
+  const h = Number.isFinite(noticeHours) ? noticeHours : 0;
+  if (h >= FULL_REFUND_NOTICE_HOURS) {
+    // A week out sits at the far left; three days out at this segment's edge.
+    const frac = Math.min(1, Math.max(0, (FAR_HOURS - h) / (FAR_HOURS - FULL_REFUND_NOTICE_HOURS)));
+    return Math.max(2, frac * 50);
+  }
+  if (h >= HALF_REFUND_NOTICE_HOURS) {
+    const within = (FULL_REFUND_NOTICE_HOURS - h) / (FULL_REFUND_NOTICE_HOURS - HALF_REFUND_NOTICE_HOURS);
+    return 50 + within * 30;
+  }
+  const within = (HALF_REFUND_NOTICE_HOURS - Math.max(0, h)) / HALF_REFUND_NOTICE_HOURS;
+  return Math.min(98, 80 + within * 20);
 };
 
 const BeforeYouConfirm = ({
@@ -97,8 +112,12 @@ const BeforeYouConfirm = ({
     },
     title: { margin: '4px 0 0', fontSize: '20px', fontWeight: '800', color: text, textWrap: 'pretty' },
     grid: {
-      display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-      gap: '10px 16px', marginTop: '16px',
+      // Two columns, which is what it was drawn with. A 150px basis fitted
+      // three into the 560 and every value wrapped: "Tue, Oct 27 at 7:00 AM"
+      // over two lines, "With a driver we assign" over two. A 210px basis
+      // gives two here and one on a phone, with no breakpoint to keep.
+      display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+      gap: '12px 16px', marginTop: '16px',
     },
     cell: { minWidth: 0 },
     k: { display: 'block', fontSize: '10px', fontWeight: '800', letterSpacing: '0.12em', textTransform: 'uppercase', color: text2 },
@@ -130,13 +149,18 @@ const BeforeYouConfirm = ({
       color: warn ? (isDark ? '#1a1a1a' : '#fff') : band === 'unknown' ? text2 : ON_GOLD,
       border: band === 'unknown' ? `1px solid ${border}` : 'none',
     },
-    barWrap: { marginTop: '14px', position: 'relative', paddingTop: '18px' },
-    bar: { display: 'flex', height: '8px', borderRadius: '999px', overflow: 'hidden' },
-    seg: (bg, w) => ({ width: w, background: bg }),
-    barKeys: { display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '11px', color: text2 },
+    barWrap: { marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' },
+    // Labelled bands rather than a thin rule with captions under it: the
+    // word sits in the stretch it names, so there is nothing to match up.
+    bar: {
+      display: 'grid', gridTemplateColumns: '5fr 3fr 2fr', height: '30px',
+      borderRadius: '8px', overflow: 'hidden', fontSize: '12px', fontWeight: '650',
+    },
+    seg: (bg, fg) => ({ display: 'grid', placeItems: 'center', background: bg, color: fg }),
+    markerRow: { position: 'relative', height: '18px', fontSize: '12px', color: text2 },
     marker: (left) => ({
       position: 'absolute', top: 0, left: `${left}%`, transform: 'translateX(-50%)',
-      fontSize: '11.5px', fontWeight: '800', whiteSpace: 'nowrap',
+      fontWeight: '800', whiteSpace: 'nowrap',
       color: warn ? danger : goldInk(isDark),
     }),
     chips: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' },
@@ -249,16 +273,13 @@ const BeforeYouConfirm = ({
                   {/* Hidden with no dates, where there is no "now" to mark. */}
                   {band !== 'unknown' && (
                     <div style={s.barWrap}>
-                      <span style={s.marker(markerAt(noticeHours))}>▲ Now</span>
                       <div style={s.bar}>
-                        <span style={s.seg(isDark ? 'rgba(22,163,74,0.5)' : '#86efac', '25%')} />
-                        <span style={s.seg(gold, '50%')} />
-                        <span style={s.seg(isDark ? 'rgba(220,38,38,0.5)' : '#fecaca', '25%')} />
+                        <span style={s.seg(`color-mix(in srgb, ${gold} 34%, ${card})`, text)}>Everything</span>
+                        <span style={s.seg(`color-mix(in srgb, ${gold} 16%, ${card})`, text)}>Half</span>
+                        <span style={s.seg(dangerSoft, danger)}>Nothing</span>
                       </div>
-                      <div style={s.barKeys}>
-                        <span>Everything</span>
-                        <span>Half</span>
-                        <span>Nothing</span>
+                      <div style={s.markerRow}>
+                        <span style={s.marker(markerAt(noticeHours))}>▲ Now</span>
                       </div>
                     </div>
                   )}
