@@ -41,6 +41,7 @@ const EDIT_SECTIONS = [
 // What each state is called on a card. Status is never colour alone.
 const PILL_TEXT = {
   available: 'Available',
+  overdue: 'Overdue',
   hidden: 'Hidden',
   'off-road': 'Off the road',
   papers: 'Papers expired',
@@ -100,9 +101,11 @@ const ManageCars = ({ view = 'active' }) => {
   const [params] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState(() => {
     const asked = params.get('status');
-    return ['available', 'hidden', 'off-road', 'papers', 'featured'].includes(asked) ? asked : 'all';
+    return ['available', 'overdue', 'hidden', 'off-road', 'papers', 'featured'].includes(asked) ? asked : 'all';
   });
   const [sortBy, setSortBy] = useState('newest');
+  // Vehicle id -> the overdue booking holding it, from /bookings/overdue-vehicles.
+  const [overdue, setOverdue] = useState(() => new Map());
   // Set by picking a suggestion: the list narrows to that one vehicle until
   // the search changes again.
   const [pickedCarId, setPickedCarId] = useState(null);
@@ -222,8 +225,28 @@ const ManageCars = ({ view = 'active' }) => {
     }
   };
 
+  // Which of them is out and has not come back.
+  //
+  // A car document knows nothing about bookings, so this list had no way to
+  // tell a vehicle sitting in somebody's garage three days late from one
+  // parked in the yard — both read as Available. It is its own request
+  // rather than part of /cars because the public list is the same endpoint
+  // and has no business asking.
+  //
+  // A failure here is quiet on purpose: not knowing who is overdue is worth
+  // a missing pill, not an error over a page full of vehicles.
+  const fetchOverdue = async () => {
+    try {
+      const res = await api.get('/bookings/overdue-vehicles');
+      setOverdue(new Map((res.data || []).map((row) => [row.car, row])));
+    } catch {
+      setOverdue(new Map());
+    }
+  };
+
   useEffect(() => {
     fetchCars();
+    fetchOverdue();
   }, []);
 
   const handleOffRoad = (car) => {
@@ -546,17 +569,17 @@ const ManageCars = ({ view = 'active' }) => {
       padding: '4px 10px', borderRadius: '20px',
       background: state === 'available'
         ? (isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5')
-        : state === 'off-road' || state === 'papers'
+        : state === 'off-road' || state === 'papers' || state === 'overdue'
           ? (isDark ? 'rgba(248,113,113,0.15)' : '#fef2f2')
           : (isDark ? '#303132' : '#f1f2f4'),
       color: state === 'available'
         ? (isDark ? '#86efac' : '#065f46')
-        : state === 'off-road' || state === 'papers'
+        : state === 'off-road' || state === 'papers' || state === 'overdue'
           ? (isDark ? '#f87171' : '#b91c1c')
           : (isDark ? '#b0b3b8' : '#4b5563'),
       border: `1px solid ${state === 'available'
         ? (isDark ? 'rgba(22,163,74,0.4)' : '#86efac')
-        : state === 'off-road' || state === 'papers'
+        : state === 'off-road' || state === 'papers' || state === 'overdue'
           ? (isDark ? 'rgba(248,113,113,0.35)' : '#fecaca')
           : 'transparent'}`,
     }),
@@ -601,6 +624,18 @@ const ManageCars = ({ view = 'active' }) => {
       padding: '3px 9px', borderRadius: '7px',
       background: isDark ? 'rgba(37,99,235,0.15)' : '#dbeafe',
       color: isDark ? '#93c5fd' : '#1e40af',
+    },
+    // A button, not a chip: knowing a vehicle is three days late is only
+    // half of it, and the other half is the booking it is late on.
+    overdueChip: {
+      alignSelf: 'flex-start', textAlign: 'left',
+      // fontFamily, never the `font` shorthand: it resets size and weight.
+      fontSize: '11.5px', fontWeight: '700', fontFamily: 'inherit',
+      cursor: 'pointer',
+      padding: '4px 10px', borderRadius: '7px',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.45)' : '#fecaca'}`,
+      background: isDark ? 'rgba(248,113,113,0.15)' : '#fef2f2',
+      color: isDark ? '#f87171' : '#b91c1c',
     },
     cardFoot: {
       borderTop: `1px solid ${isDark ? '#303132' : '#eef0f2'}`,
@@ -936,6 +971,11 @@ const ManageCars = ({ view = 'active' }) => {
   // the workshop with expired papers is reported as off the road, because
   // that is the one somebody has to act on first.
   const stateOf = (car) => {
+    // First, and ahead of the rest on purpose. The others describe a
+    // decision somebody made about a vehicle that is here; this one says
+    // the vehicle is not here, which is the more urgent fact and the one
+    // this page could not show at all before.
+    if (overdue.has(car._id)) return 'overdue';
     if (car.offRoad?.since) return 'off-road';
     if (registrationLapsed(car)) return 'papers';
     if (!car.isAvailable) return 'hidden';
@@ -952,6 +992,7 @@ const ManageCars = ({ view = 'active' }) => {
   const statusFilters = [
     { key: 'all', label: 'All', count: listCars.length },
     { key: 'available', label: 'Available', count: countOf('available') },
+    { key: 'overdue', label: 'Overdue', count: countOf('overdue') },
     { key: 'hidden', label: 'Hidden', count: countOf('hidden') },
     { key: 'off-road', label: 'Off the road', count: countOf('off-road') },
     { key: 'papers', label: 'Papers expired', count: countOf('papers') },
@@ -991,6 +1032,12 @@ const ManageCars = ({ view = 'active' }) => {
       // — sits at the end, the same as on the public page, whichever sort
       // is chosen. The fleet that is working is the part somebody scrolls
       // this list to find.
+      // Anything nobody has brought back comes first, whatever the sort
+      // and whatever its age — this is the page you open to chase it, and
+      // the Corolla that went overdue was on page 2 because it happened to
+      // be one of the oldest vehicles on the books.
+      const late = (overdue.has(b._id) ? 1 : 0) - (overdue.has(a._id) ? 1 : 0);
+      if (late) return late;
       const stopped = (unbookable(a) ? 1 : 0) - (unbookable(b) ? 1 : 0);
       if (stopped) return stopped;
       // The id breaks every tie: it begins with the second the row was
@@ -1232,6 +1279,22 @@ const ManageCars = ({ view = 'active' }) => {
                           {blocked} blocked range{blocked === 1 ? '' : 's'} ahead
                         </span>
                       )}
+
+                      {overdue.has(car._id) && (() => {
+                        const row = overdue.get(car._id);
+                        return (
+                          <button
+                            type="button"
+                            style={styles.overdueChip}
+                            onClick={() => navigate(
+                              `/admin/manage-bookings?booking=${row.booking}&return=/admin/manage-cars`,
+                            )}
+                          >
+                            {row.days} day{row.days === 1 ? '' : 's'} overdue
+                            {row.clientName ? ` · ${row.clientName}` : ''} · open booking
+                          </button>
+                        );
+                      })()}
                     </div>
 
                     {isDraftsView ? (

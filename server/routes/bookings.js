@@ -567,6 +567,48 @@ router.get('/all', protect, adminOnly, async (req, res) => {
   }
 });
 
+// Which vehicles are out and have not come back.
+//
+// For Manage Vehicles, which until now had no idea: it loads /cars, and a
+// car document knows nothing about bookings, so a vehicle sitting in
+// somebody's garage three days past its return looked exactly like one
+// parked in the yard ready to go.
+//
+// Deliberately not /all. That list carries every booking ever made with the
+// client, vehicle and driver populated, to answer a question about four or
+// five rows. This query is the overdue rule itself — confirmed, collected,
+// not returned, past its end — and returns one small row per vehicle.
+router.get('/overdue-vehicles', protect, adminOnly, async (req, res) => {
+  try {
+    const now = new Date();
+    const late = await Booking.find({
+      status: 'confirmed',
+      collectedAt: { $ne: null },
+      returnedAt: null,
+      endDate: { $lt: now },
+    })
+      .select('car user endDate collectedAt status returnedAt')
+      .populate('user', 'name')
+      .lean();
+
+    res.json(
+      // isOverdue again rather than trusting the query: the query is an
+      // index-friendly approximation of it and the rule lives in one file.
+      late
+        .filter((b) => isOverdue(b, now) && b.car)
+        .map((b) => ({
+          car: String(b.car),
+          booking: String(b._id),
+          endDate: b.endDate,
+          days: daysOverdue(b, now),
+          clientName: b.user?.name || null,
+        })),
+    );
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 // Get booking history for cars owned by the logged-in consignor (read-only —
 // consignors can track bookings but cannot approve/decline them)
 router.get('/owner', protect, consignorOnly, async (req, res) => {

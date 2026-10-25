@@ -10,6 +10,7 @@
 // same figures can be reproduced in a test for any day.
 
 import { phYmd, phDayStart, addDays } from './phTime.js';
+import { isOverdue } from './overdue.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -183,7 +184,7 @@ export const vehicleStates = (cars, bookings, now) => {
     else states.free.push(it);
   }
   const overdue = bookings
-    .filter((b) => b.status === 'confirmed' && b.collectedAt && !b.returnedAt && new Date(b.endDate) < new Date(now))
+    .filter((b) => isOverdue(b, new Date(now)))
     .map((b) => ({ name: `${b.car?.brand} ${b.car?.model}`, due: b.endDate }));
   return { ...states, overdue, total: cars.length };
 };
@@ -378,9 +379,7 @@ export const operations = (bookings, range, now) => {
     late: late.length,
     lateFees: late.reduce((sum, b) => sum + (b.lateFee?.amount || 0), 0),
     extensions: counted.filter((b) => (b.extensions?.length || 0) > 0).length,
-    overdue: bookings.filter(
-      (b) => b.status === 'confirmed' && b.collectedAt && !b.returnedAt && new Date(b.endDate) < new Date(now),
-    ).length,
+    overdue: bookings.filter((b) => isOverdue(b, new Date(now))).length,
     withDriver: counted.filter((b) => b.driver).length,
     delivered: counted.filter((b) => (b.deliveryFee || 0) > 0).length,
   };

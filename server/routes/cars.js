@@ -18,6 +18,7 @@ import Consignment from '../models/Consignment.js';
 import { INSPECTION_CHECKS, isInspectionCheck } from '../utils/appointments.js';
 import { fail } from '../utils/respond.js';
 import { plateClash, plateClashMessage } from '../utils/plates.js';
+import { isOverdue } from '../utils/overdue.js';
 
 const router = express.Router();
 
@@ -107,7 +108,7 @@ router.get('/:id/booked-dates', async (req, res) => {
 
     const [bookings, car] = await Promise.all([
       Booking.find({ car: req.params.id, status: { $in: statuses } })
-        .select('startDate endDate hasPickupTime collectedAt returnedAt'),
+        .select('status startDate endDate hasPickupTime collectedAt returnedAt'),
       Car.findById(req.params.id).select('blockedDates turnaroundHours offRoad'),
     ]);
 
@@ -127,7 +128,11 @@ router.get('/:id/booked-dates', async (req, res) => {
         // calendar showed free hours the server would then refuse — the
         // same two-answers-to-one-question that bit the off-road block.
         const busy = padded(occupiedSpan(b), hours);
-        const out = b.collectedAt && !b.returnedAt && new Date(b.endDate) < new Date();
+        // The shared rule, not a third hand-written copy. This one mattered:
+        // for admin the query above also returns PENDING bookings, and the
+        // copy never checked the status, so a pending booking somebody had
+        // marked as collected would have been drawn as overdue.
+        const out = isOverdue(b);
         return {
           startDate: b.startDate,
           endDate: b.endDate,

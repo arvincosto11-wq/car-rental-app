@@ -1,6 +1,7 @@
 import Booking from '../models/Booking.js';
 import Car from '../models/Car.js';
 import { dayAlignedSpan, addHours, addDays, turnaroundHoursFor } from './phTime.js';
+import { isOverdue } from './overdue.js';
 
 // One answer to "is this vehicle free then?", used by every route that has
 // to decide it — creating a booking, confirming one, approving a reschedule,
@@ -101,7 +102,10 @@ export async function busySpans(carId, {
 
   const query = { car: carId, status: { $in: statuses } };
   if (excludeBookingId) query._id = { $ne: excludeBookingId };
-  const bookings = await Booking.find(query).select('startDate endDate hasPickupTime collectedAt returnedAt').lean();
+  // status travels because isOverdue reads it. It used to be left out, and
+  // the overdue test here was written out by hand without it — so a booking
+  // that was never confirmed could have been called overdue.
+  const bookings = await Booking.find(query).select('status startDate endDate hasPickupTime collectedAt returnedAt').lean();
 
   return {
     turnaroundHours,
@@ -113,7 +117,10 @@ export async function busySpans(carId, {
       // be baffled by the second.
       ...bookings.map((b) => ({
         ...padded(occupiedSpan(b), turnaroundHours),
-        kind: b.collectedAt && !b.returnedAt && new Date(b.endDate) < new Date() ? 'overdue' : 'booking',
+        // The shared rule, not a copy of it. This line used to spell the
+        // test out again, which is what overdue.js warns against in its own
+        // header — and the copy had already drifted.
+        kind: isOverdue(b) ? 'overdue' : 'booking',
       })),
       ...blockRanges(car, extraBlocks),
     ],
