@@ -8,10 +8,10 @@ import Consignment from '../models/Consignment.js';
 import Booking from '../models/Booking.js';
 import { sumSplit } from '../utils/revenueShare.js';
 import { plateClash, plateClashMessage } from '../utils/plates.js';
-import { protect, adminOnly, consignorOnly, activeAccount } from '../middleware/auth.js';
+import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { sameEmail } from '../middleware/email.js';
 import { registerLimiter } from '../middleware/rateLimit.js';
-import { notifyUser, notifyAdmins } from '../utils/notify.js';
+import { notifyUser } from '../utils/notify.js';
 import { fail } from '../utils/respond.js';
 
 const router = express.Router();
@@ -99,29 +99,19 @@ router.post('/register', registerLimiter, async (req, res) => {
   }
 });
 
-// Submit an additional vehicle (owner already has an account and is logged in)
-router.post('/', protect, consignorOnly, activeAccount, async (req, res) => {
-  try {
-    const {
-      brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,
-      fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
-      vehiclePhotos
-    } = req.body;
-
-    const consignment = await Consignment.create({
-      owner: req.user.id,
-      brand, model, year, plateNumber, registrationExpiry, color, mileage, category, transmission,
-      fuelType, seats, suggestedPricePerDay, description, availableBookingTypes,
-      vehiclePhotos
-    });
-
-    await notifyAdmins('New Consignment Application', `A consignor submitted a new vehicle application (${brand} ${model}).`, '/admin/manage-consignments');
-
-    res.status(201).json(consignment);
-  } catch (err) {
-    fail(res, err);
-  }
-});
+// A consignor used to submit an additional vehicle by filling in a form
+// here. That route is gone, and this note is what is left of it.
+//
+// Vehicles are not consigned by description any more. A consignor books an
+// inspection and brings the vehicle in, and the listing is made at the
+// counter from the vehicle and its papers — see POST /cars, which creates
+// the application already approved because somebody has just stood next to
+// the thing and read its CR.
+//
+// Leaving the old route in place meant a logged-in consignor could still
+// post an application for a vehicle nobody had seen, which is precisely
+// the rule the inspection flow was introduced to enforce. Nothing had
+// called it since that change. Found by listing the routes nothing calls.
 
 // Get the logged-in consignor's own vehicle applications
 router.get('/my', protect, consignorOnly, async (req, res) => {
@@ -251,8 +241,9 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     if (decision === 'approved') {
       // Listing a vehicle for somebody whose contract is paused would put
       // it straight on sale for an owner we are not currently trading with.
-      // Submitting an application already checks this (activeAccount on
-      // POST /); approving one did not.
+      // Booking the inspection that starts all this already refuses while a
+      // contract is on hold; approving the application at the end of it did
+      // not, so the hold could be waited out rather than lifted.
       const owner = await User.findById(consignment.owner).select('suspension isBlocked name');
       if (!owner) return res.status(400).json({ message: 'That owner no longer has an account.' });
       if (owner.suspension?.at) {
