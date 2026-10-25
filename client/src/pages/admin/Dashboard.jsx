@@ -62,9 +62,15 @@ const Dashboard = () => {
     return () => clearInterval(t);
   }, []);
 
-  // The page says the figures refresh, so they do. Half a minute is the
-  // same cadence the sidebar badges already use, and this is an operations
-  // screen: a pickup booked while somebody is looking at it should appear.
+  // Half a minute, the same cadence the sidebar badges already use. This is
+  // an operations screen left open on a counter, so a pickup booked while
+  // somebody is looking at it should appear without anyone reloading.
+  //
+  // It used to say so in the header — a green dot and "Refreshes every 30
+  // seconds". That described how the page was built rather than telling the
+  // one person who uses it anything they could act on, and they learn it on
+  // the first day. If staleness ever needs showing, the useful version is
+  // when the figures were last updated, not when they are due to be.
   useEffect(() => {
     const t = setInterval(() => {
       api.get('/admin/today').then(({ data }) => setToday(data)).catch(() => {});
@@ -139,14 +145,6 @@ const Dashboard = () => {
     },
     title: { fontSize: '22px', fontWeight: '700', color: text, marginBottom: '4px' },
     subtitle: { fontSize: '13px', color: text2, margin: 0 },
-    liveTag: {
-      display: 'inline-flex', alignItems: 'center', gap: '7px', whiteSpace: 'nowrap',
-      fontSize: '12px', color: text3,
-    },
-    liveDot: {
-      width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0,
-      background: isDark ? '#22c55e' : '#16a34a',
-    },
     stack: { display: 'flex', flexDirection: 'column', gap: '16px' },
     card: { background: isDark ? '#242526' : '#fff', border: `1px solid ${line}`, borderRadius: '12px' },
 
@@ -556,10 +554,6 @@ const Dashboard = () => {
           <h1 style={s.title}>{greeting}</h1>
           <p style={s.subtitle}>{stamp}</p>
         </div>
-        <span style={s.liveTag}>
-          <span style={s.liveDot} aria-hidden="true" />
-          Refreshes every 30 seconds
-        </span>
       </div>
       {loading ? (
         <div style={s.stack}>
