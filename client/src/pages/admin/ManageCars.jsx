@@ -19,6 +19,7 @@ import Pagination from '../../components/Pagination';
 import { paginate } from '../../utils/paginate';
 import { formatPlateNumber, sanitizeDigits, sanitizeDecimal } from '../../utils/inputMasks';
 import { registrationLapsed } from '../../utils/registration';
+import { hoursLate, overdueLabel } from '../../utils/lateness';
 import { unbookable } from '../../utils/vehicleAvailability';
 import { isPromoVisible, promoOffer, promoDateRange } from '../../utils/promo';
 import ModalClose from '../../components/ModalClose';
@@ -1290,7 +1291,7 @@ const ManageCars = ({ view = 'active' }) => {
                               `/admin/manage-bookings?booking=${row.booking}&return=/admin/manage-cars`,
                             )}
                           >
-                            {row.days} day{row.days === 1 ? '' : 's'} overdue
+                            {overdueLabel(hoursLate(row.endDate, new Date()), row.chargedDays)}
                             {row.clientName ? ` · ${row.clientName}` : ''} · open booking
                           </button>
                         );

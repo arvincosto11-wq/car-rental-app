@@ -587,7 +587,7 @@ router.get('/overdue-vehicles', protect, adminOnly, async (req, res) => {
       returnedAt: null,
       endDate: { $lt: now },
     })
-      .select('car user endDate collectedAt status returnedAt')
+      .select('car user endDate collectedAt status returnedAt lateFee')
       .populate('user', 'name')
       .lean();
 
@@ -596,11 +596,17 @@ router.get('/overdue-vehicles', protect, adminOnly, async (req, res) => {
       // index-friendly approximation of it and the rule lives in one file.
       late
         .filter((b) => isOverdue(b, now) && b.car)
+        // No count of its own. How late a vehicle IS and what its client
+        // OWES are two different sentences — see lateness.js — and only the
+        // second is whole days rounded up. Saying "1 day overdue" of a
+        // vehicle three hours past its time sends somebody chasing a client
+        // who is on their way. The page says it in the same words as
+        // Manage Bookings, off the same two numbers.
         .map((b) => ({
           car: String(b.car),
           booking: String(b._id),
           endDate: b.endDate,
-          days: daysOverdue(b, now),
+          chargedDays: b.lateFee?.days || 0,
           clientName: b.user?.name || null,
         })),
     );
