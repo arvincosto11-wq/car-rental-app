@@ -429,7 +429,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: user._id, name, email, role: user.role }
+      user: { id: user._id, name, email, role: user.role, image: user.image || '' }
     });
   } catch (err) {
     fail(res, err);
@@ -454,7 +454,15 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     res.json({
       token,
-      user: { id: user._id, name: user.name, email, role: user.role }
+      // The photo travels with the account.
+      //
+      // It did not, and the browser keeps no other copy — AuthContext holds
+      // what this response said, plus anything a page patches on later. So
+      // uploading a photo showed it until you logged out, and the next
+      // login handed back an account with no photo and put the initials
+      // back. The picture was never lost; it was on the server the whole
+      // time and simply never came home.
+      user: { id: user._id, name: user.name, email, role: user.role, image: user.image || '' }
     });
   } catch (err) {
     fail(res, err);

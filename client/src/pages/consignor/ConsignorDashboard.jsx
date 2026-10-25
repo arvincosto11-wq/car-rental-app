@@ -300,7 +300,10 @@ const ConsignorDashboard = () => {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: goldTint, border: `1px solid ${goldLine}`,
       fontSize: '20px', fontWeight: '800', color: ink,
+      overflow: 'hidden',
     },
+    // Fills the circle and keeps its shape, however the photo was cropped.
+    avatarImg: { width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' },
     identityName: { fontSize: '16px', fontWeight: '800', color: text, wordBreak: 'break-word' },
     identitySub: { fontSize: '12.5px', color: text3, marginTop: '2px' },
 
@@ -615,7 +618,16 @@ const ConsignorDashboard = () => {
       <main style={s.main}>
         <div className="consignor-sidebar" style={s.sidebar}>
           <div style={s.identity}>
-            <div style={s.avatar}>{(user?.name || '?').trim().charAt(0).toUpperCase()}</div>
+            {/* The photo once there is one, the initial until then — the
+                same order the navbar and the admin sidebar use. This drew
+                the initial and nothing else, so a consignor who had set a
+                photo saw it beside their name in the bar at the top and a
+                letter in the circle here, on one screen. */}
+            <div style={s.avatar}>
+              {user?.image
+                ? <img src={user.image} alt="" style={s.avatarImg} />
+                : (user?.name || '?').trim().charAt(0).toUpperCase()}
+            </div>
             <div style={{ minWidth: 0 }}>
               <div style={s.identityName}>{user?.name}</div>
               <div style={s.identitySub}>

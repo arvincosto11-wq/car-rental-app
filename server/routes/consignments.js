@@ -92,7 +92,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: user._id, name, email, role: user.role },
+      user: { id: user._id, name, email, role: user.role, image: user.image || '' },
     });
   } catch (err) {
     fail(res, err);
