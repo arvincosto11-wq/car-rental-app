@@ -767,7 +767,11 @@ const Profile = () => {
                 {m.key === 'licence' && licenceFlag && (
                   <>
                     <span style={s.menuDot} aria-hidden="true" />
-                    <span className="sr-only">— expires soon</span>
+                    {/* The dot means one of two things and used to say only
+                        the gentler one, so a licence that ran out last week
+                        was announced as expiring soon. Nobody sighted could
+                        see this text, which is why it stood. */}
+                    <span className="sr-only">{licenceExpired ? '— expired' : '— expires soon'}</span>
                   </>
                 )}
               </button>
