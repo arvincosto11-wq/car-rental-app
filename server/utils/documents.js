@@ -39,16 +39,22 @@ export function licenceProblem(user, { bookingType, endDate }, now = new Date())
 // about it — and what they have to do is bring the licence to somebody, not
 // type a date. The expiry is recorded by whoever has seen the card, so none
 // of these sends anybody to their Profile to fix it: the Profile cannot.
+// The number is spelt out rather than left as "call us". Every other place
+// that asks somebody to ring the office prints it — the footer, the navbar,
+// the help page, the hold notices — and a message telling a client to call
+// while withholding the number asks them to go and find it.
+export const OFFICE_PHONE = '0950-651-0479';
+
 export function licenceMessage(problem) {
   if (!problem) return '';
   if (problem.kind === 'missing') {
-    return "Self-drive needs your driver's licence on record. Bring it to our office, or call us, and we'll "
-      + 'add it. You can book with one of our drivers in the meantime.';
+    return "Self-drive needs your driver's licence on record. Bring it to our office, or call us on "
+      + `${OFFICE_PHONE}, and we'll add it. You can book with one of our drivers in the meantime.`;
   }
   if (problem.kind === 'expired') {
     return "Your driver's licence has expired on our records. Bring the current one to our office, or call "
-      + 'us to update it — or book with one of our drivers instead.';
+      + `us on ${OFFICE_PHONE} to update it — or book with one of our drivers instead.`;
   }
   return `Your driver's licence expires on ${new Date(problem.expiry).toLocaleDateString()}, before this trip ends, so you would be driving on an expired licence. `
-    + 'Bring the renewed one to our office, or call us to update it — or book with one of our drivers instead.';
+    + `Bring the renewed one to our office, or call us on ${OFFICE_PHONE} to update it — or book with one of our drivers instead.`;
 }

@@ -28,6 +28,12 @@ const ManageConsignments = () => {
   const [declineReason, setDeclineReason] = useState('');
   const [showDeclineBox, setShowDeclineBox] = useState(false);
   const [working, setWorking] = useState(false);
+  // The rate this vehicle will actually be listed at. What the consignor
+  // entered is a suggestion — the field says so — but approving used to copy
+  // it to the live price unread, which is how a Vios offered at ₱118 a day
+  // went on sale at ₱118. The price is a term of the deal, so it is agreed
+  // here rather than taken on trust.
+  const [listPrice, setListPrice] = useState('');
 
   const fetchData = async () => {
     try {
@@ -59,14 +65,19 @@ const ManageConsignments = () => {
     setSelectedId(null);
     setShowDeclineBox(false);
     setDeclineReason('');
+    setListPrice('');
   };
 
   const detailModalRef = useModalA11y(closeModal, !!selected);
 
   const handleApprove = async (id) => {
+    const asked = Number(listPrice);
+    if (!Number.isFinite(asked) || asked <= 0) {
+      return toast.error('Set the daily rate this vehicle will be listed at.');
+    }
     setWorking(true);
     try {
-      await api.put(`/consignments/${id}`, { decision: 'approved' });
+      await api.put(`/consignments/${id}`, { decision: 'approved', pricePerDay: asked });
       await fetchData();
       refetchPendingCounts();
       closeModal();
@@ -123,6 +134,22 @@ const ManageConsignments = () => {
       background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
       fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600', border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
     },
+    priceBox: {
+      margin: '18px 0 0', padding: '14px 16px', borderRadius: '10px',
+      background: isDark ? '#1e1f20' : '#f8f9fa',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`,
+    },
+    priceLabel: { display: 'block', fontSize: '12.5px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a' },
+    priceRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' },
+    pricePeso: { fontSize: '15px', fontWeight: '700', color: isDark ? '#b0b3b8' : '#4b5563' },
+    priceInput: {
+      width: '130px', minHeight: '38px', padding: '0 10px', borderRadius: '8px',
+      border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
+      background: isDark ? '#18191a' : '#fff', color: isDark ? '#e4e6eb' : '#1a1a1a',
+      fontFamily: 'inherit', fontSize: '14px', fontVariantNumeric: 'tabular-nums',
+    },
+    priceUnit: { fontSize: '13px', color: isDark ? '#8a8d91' : '#6b7280' },
+    priceHint: { fontSize: '11.5px', color: isDark ? '#8a8d91' : '#6b7280', marginTop: '8px', textWrap: 'pretty' },
     viewBtn: { padding: '5px 12px', fontSize: '12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '6px', background: 'none', color: isDark ? '#e4e6eb' : '#1a1a1a', cursor: 'pointer' },
     empty: { fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', padding: '24px 0', textAlign: 'center' },
 
@@ -229,7 +256,15 @@ const ManageConsignments = () => {
                 <td style={s.td}><span style={badgeStyle(c.status)}>{c.status}</span></td>
                 <td style={s.td}>{new Date(c.createdAt).toLocaleDateString()}</td>
                 <td style={s.td}>
-                  <button style={s.viewBtn} onClick={() => setSelectedId(c._id)}>View Details</button>
+                  <button
+                    style={s.viewBtn}
+                    onClick={() => {
+                      setSelectedId(c._id);
+                      setListPrice(c.suggestedPricePerDay ? String(c.suggestedPricePerDay) : '');
+                    }}
+                  >
+                    View Details
+                  </button>
                 </td>
               </tr>
             ))}
@@ -338,6 +373,30 @@ const ManageConsignments = () => {
 
             {selected.status === 'pending' && (
               <>
+                <div style={s.priceBox}>
+                  <label style={s.priceLabel} htmlFor="mc-price">Daily rate it will be listed at</label>
+                  <div style={s.priceRow}>
+                    <span style={s.pricePeso}>&#8369;</span>
+                    <input
+                      id="mc-price"
+                      style={s.priceInput}
+                      type="text"
+                      inputMode="numeric"
+                      value={listPrice}
+                      disabled={working}
+                      onChange={(e) => setListPrice(e.target.value.replace(/[^0-9]/g, '').slice(0, 7))}
+                    />
+                    <span style={s.priceUnit}>a day</span>
+                  </div>
+                  <p style={s.priceHint}>
+                    {selected.suggestedPricePerDay
+                      ? `${selected.owner?.name || 'The owner'} suggested ₱${Number(selected.suggestedPricePerDay).toLocaleString()}. `
+                      : 'No rate was suggested. '}
+                    This is the price customers will see, so set what you have agreed — you can
+                    change it later in Manage Cars.
+                  </p>
+                </div>
+
                 <div style={s.actionRow}>
                   <button style={s.approveBtn} onClick={() => handleApprove(selected._id)} disabled={working}>
                     {working ? 'Working...' : 'Approve & List Car'}

@@ -9,6 +9,7 @@ import OtpInput from '../components/OtpInput';
 import usePageTitle from '../hooks/usePageTitle';
 import useResendCooldown from '../hooks/useResendCooldown';
 import api from '../api';
+import { OFFICE_PHONE } from '../utils/documents';
 
 // My Profile, as a settings page: a sidebar saying who you are and what
 // there is to change, and one panel at a time beside it. The three things
@@ -637,8 +638,8 @@ const Profile = () => {
       </div>
 
       <p style={s.hint}>
-        We record this from your licence itself. Bring it to our office, or call us, and we&apos;ll
-        update it for you.
+        We record this from your licence itself. Bring it to our office, or call us on{' '}
+        {OFFICE_PHONE}, and we&apos;ll update it for you.
       </p>
     </div>
   );

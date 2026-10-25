@@ -7,6 +7,7 @@ import Car from '../models/Car.js';
 import Consignment from '../models/Consignment.js';
 import Booking from '../models/Booking.js';
 import { sumSplit } from '../utils/revenueShare.js';
+import { plateClash, plateClashMessage } from '../utils/plates.js';
 import { protect, adminOnly, consignorOnly, activeAccount } from '../middleware/auth.js';
 import { sameEmail } from '../middleware/email.js';
 import { registerLimiter } from '../middleware/rateLimit.js';
@@ -227,12 +228,78 @@ router.get('/income', protect, adminOnly, async (req, res) => {
 // On approve: creates a live Car listing from the submitted vehicle data.
 router.put('/:id', protect, adminOnly, async (req, res) => {
   try {
-    const { decision, adminNotes } = req.body; // decision: 'approved' | 'declined'
+    const { decision, adminNotes, pricePerDay } = req.body;
+    let agreedPrice = NaN;
+
+    // Only the two real answers.
+    //
+    // Nothing checked this before, and the notification below sends the
+    // DECLINED message for anything that is not 'approved' — so a request
+    // that left the decision out, or misspelt it, told an owner their
+    // application had been turned down when nobody had turned it down.
+    if (decision !== 'approved' && decision !== 'declined') {
+      return res.status(400).json({ message: 'Say whether this application is approved or declined.' });
+    }
+
     const consignment = await Consignment.findById(req.params.id);
     if (!consignment) return res.status(404).json({ message: 'Application not found' });
 
     if (consignment.status !== 'pending') {
       return res.status(400).json({ message: 'This application has already been reviewed.' });
+    }
+
+    if (decision === 'approved') {
+      // Listing a vehicle for somebody whose contract is paused would put
+      // it straight on sale for an owner we are not currently trading with.
+      // Submitting an application already checks this (activeAccount on
+      // POST /); approving one did not.
+      const owner = await User.findById(consignment.owner).select('suspension isBlocked name');
+      if (!owner) return res.status(400).json({ message: 'That owner no longer has an account.' });
+      if (owner.suspension?.at) {
+        return res.status(400).json({
+          message: `${owner.name}'s contract is on hold, so their vehicle cannot be listed. Lift the hold first, or decline this application.`,
+        });
+      }
+      if (owner.isBlocked) {
+        return res.status(400).json({ message: `${owner.name}'s account is blocked, so their vehicle cannot be listed.` });
+      }
+
+      // The same refusal Add Vehicle and the Edit drawer give. This route
+      // creates vehicles too and was simply missed when the guard went in,
+      // which is how a Nissan Almera came to be listed on the plate a
+      // Toyota Avanza was already carrying. See utils/plates.js.
+      const taken = plateClash(
+        consignment.plateNumber,
+        await Car.find().select('brand model plateNumber archived').lean(),
+      );
+      if (taken) return res.status(400).json({ message: plateClashMessage(taken) });
+
+      // The daily rate is settled here, not taken on trust.
+      //
+      // What the consignor entered is a SUGGESTION — the field is called
+      // that — but approving used to copy it to the live price unread, so a
+      // Toyota Vios offered at ₱118 a day went on sale at ₱118 and had to be
+      // corrected by hand afterwards. The price is a term of the deal, like
+      // the split, so it is agreed rather than declared.
+      //
+      // Admin sends the figure they have agreed; leaving it out keeps the
+      // suggestion, which is the old behaviour and fine when the suggestion
+      // is what was agreed.
+      // Start from what they suggested, so sending no price keeps the old
+      // behaviour — right whenever the suggestion is what was agreed.
+      agreedPrice = Number(consignment.suggestedPricePerDay);
+      if (pricePerDay !== undefined) {
+        const asked = Number(pricePerDay);
+        if (!Number.isFinite(asked) || asked <= 0) {
+          return res.status(400).json({ message: 'Give the daily rate this vehicle will be listed at.' });
+        }
+        agreedPrice = Math.round(asked);
+      }
+      if (!Number.isFinite(agreedPrice) || agreedPrice <= 0) {
+        return res.status(400).json({
+          message: 'This application has no usable daily rate. Set the rate you are listing it at before approving.',
+        });
+      }
     }
 
     consignment.status = decision;
@@ -243,7 +310,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
         brand: consignment.brand,
         model: consignment.model,
         year: consignment.year,
-        pricePerDay: consignment.suggestedPricePerDay,
+        pricePerDay: agreedPrice,
         category: consignment.category,
         transmission: consignment.transmission,
         fuelType: consignment.fuelType,
