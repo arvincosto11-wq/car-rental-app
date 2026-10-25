@@ -1,36 +1,55 @@
 import { useState, useEffect } from 'react';
-import { useTheme } from '../../context/ThemeContext';
 import AdminLayout from '../../components/AdminLayout';
-import { SkeletonTableRows } from '../../components/Skeleton';
+import Skeleton from '../../components/Skeleton';
+import { useTheme } from '../../context/ThemeContext';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
-import useModalA11y from '../../hooks/useModalA11y';
-import usePageTitle from '../../hooks/usePageTitle';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
+import usePageTitle from '../../hooks/usePageTitle';
+import { GOLD, GOLD_DARK, ON_GOLD, goldInk } from '../../theme';
 import api from '../../api';
+import { VehicleIcon, OkIcon, CalIcon, PowerIcon } from '../../components/adminConsignIcons';
+
+// What consignors are asking for.
+//
+// Two different requests used to live here as two separate tables, one
+// under the other, each with its own header row and its own empty state —
+// so on an ordinary day the page was two empty tables stacked up. They are
+// the same job to whoever is working through them: somebody has asked for
+// something about their own vehicle, and it needs a yes or a no. So they
+// are one list now, newest first, with a chip saying which kind it is.
+//
+// And on a day with nothing waiting — which is most days — the page says so
+// plainly and then shows where every consigned vehicle currently stands,
+// because that is the only other thing this screen can usefully tell you.
+
+const DATE = { month: 'short', day: 'numeric' };
+const asked = (d) => new Date(d).toLocaleDateString(undefined, DATE);
 
 const ManageAvailabilityRequests = () => {
   usePageTitle('Availability Requests');
   const { isDark } = useTheme();
-  const { toast, confirm } = useUIFeedback();
+  const { toast } = useUIFeedback();
   const { refetch: refetchPendingCounts } = useAdminPendingCounts();
-  const [cars, setCars] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [declineModalId, setDeclineModalId] = useState(null);
-  const [declineReason, setDeclineReason] = useState('');
-  const [working, setWorking] = useState(false);
-  const declineModalRef = useModalA11y(() => setDeclineModalId(null), !!declineModalId);
 
-  const [blockRequests, setBlockRequests] = useState([]);
-  const [blockLoading, setBlockLoading] = useState(true);
-  const [blockDeclineTarget, setBlockDeclineTarget] = useState(null);
-  const [blockDeclineReason, setBlockDeclineReason] = useState('');
-  const [blockWorking, setBlockWorking] = useState(false);
-  const blockDeclineModalRef = useModalA11y(() => setBlockDeclineTarget(null), !!blockDeclineTarget);
+  const [platform, setPlatform] = useState([]);
+  const [dates, setDates] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [decliningId, setDecliningId] = useState(null);
+  const [reason, setReason] = useState('');
+  const [working, setWorking] = useState(false);
+  const [done, setDone] = useState({});
 
   const fetchData = async () => {
     try {
-      const res = await api.get('/cars/availability-requests');
-      setCars(res.data);
+      const [p, d, income] = await Promise.all([
+        api.get('/cars/availability-requests'),
+        api.get('/cars/blocked-date-requests'),
+        api.get('/consignments/income'),
+      ]);
+      setPlatform(p.data || []);
+      setDates(d.data || []);
+      setVehicles((income.data || []).flatMap((row) => row.vehicles.map((v) => ({ ...v, owner: row.consignor.name }))));
     } catch (err) {
       console.error(err);
     } finally {
@@ -38,333 +57,259 @@ const ManageAvailabilityRequests = () => {
     }
   };
 
-  const fetchBlockRequests = async () => {
-    try {
-      const res = await api.get('/cars/blocked-date-requests');
-      setBlockRequests(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setBlockLoading(false);
-    }
-  };
+  useEffect(() => { fetchData(); }, []);
 
-  useEffect(() => { fetchData(); fetchBlockRequests(); }, []);
+  // One list, both kinds, newest first.
+  const requests = [
+    ...platform.map((car) => ({
+      key: `p:${car._id}`,
+      kind: 'platform',
+      typeLabel: 'On / off platform',
+      title: car.availabilityRequest?.type === 'available'
+        ? `Bring the ${car.brand} ${car.model} back on the platform`
+        : `Take the ${car.brand} ${car.model} off the platform`,
+      owner: car.owner?.name || 'Unknown',
+      at: car.availabilityRequest?.requestedAt,
+      reason: car.availabilityRequest?.reason || '',
+      send: (decision, adminNotes) => api.put(`/cars/${car._id}/availability-request`, { decision, adminNotes }),
+    })),
+    ...dates.map((r) => ({
+      key: `d:${r._id}`,
+      kind: 'dates',
+      typeLabel: 'Blocked dates',
+      title: `Block ${asked(r.startDate)} – ${asked(r.endDate)} on the ${r.brand} ${r.model}`,
+      owner: r.owner?.name || 'Unknown',
+      at: r.createdAt,
+      reason: [r.reason, r.note].filter(Boolean).join(' · '),
+      send: (decision, adminNotes) => api.put(`/cars/${r.carId}/blocked-dates/${r._id}/decision`, { decision, adminNotes }),
+    })),
+  ].sort((x, y) => new Date(y.at || 0) - new Date(x.at || 0));
 
-  const handleApprove = async (id) => {
+  const waiting = requests.filter((r) => !done[r.key]);
+
+  const act = async (req, decision, note) => {
     setWorking(true);
     try {
-      await api.put(`/cars/${id}/availability-request`, { decision: 'approved' });
-      await fetchData();
+      await req.send(decision, note || '');
+      // The chip stands in for the row until the next load takes it away —
+      // so the action is seen to land, without the page turning into a log
+      // of everything ever decided.
+      setDone((d) => ({ ...d, [req.key]: decision }));
+      setDecliningId(null);
+      setReason('');
       refetchPendingCounts();
-      toast.success('Request approved.');
+      fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Something went wrong approving this request.');
+      toast.error(err.response?.data?.message || 'Could not send that decision.');
     } finally {
       setWorking(false);
     }
   };
 
-  const openDeclineModal = (id) => {
-    setDeclineModalId(id);
-    setDeclineReason('');
-  };
+  const card = isDark ? '#242526' : '#ffffff';
+  const inset = isDark ? '#1e1f20' : '#f8f9fa';
+  const line = isDark ? '#3a3b3c' : '#e5e7eb';
+  const text = isDark ? '#e4e6eb' : '#1a1a1a';
+  const text2 = isDark ? '#b0b3b8' : '#4b5563';
+  const text3 = isDark ? '#8a8d91' : '#6b7280';
+  const gold = isDark ? GOLD_DARK : GOLD;
+  const ink = goldInk(isDark);
+  const green = isDark ? '#6fcf8f' : '#15803d';
+  const greenSoft = isDark ? 'rgba(111,207,143,0.12)' : '#eaf6ee';
+  const red = isDark ? '#f28b82' : '#b91c1c';
+  const redSoft = isDark ? 'rgba(242,139,130,0.13)' : '#fdecec';
+  const blue = isDark ? '#8ab4f8' : '#1d4ed8';
+  const blueSoft = isDark ? 'rgba(138,180,248,0.13)' : '#eaf0fd';
 
-  const closeDeclineModal = () => {
-    setDeclineModalId(null);
-    setDeclineReason('');
-  };
+  const chip = (bg, fg, border) => ({
+    display: 'inline-flex', alignItems: 'center', gap: '6px', alignSelf: 'flex-start',
+    padding: '3px 10px', borderRadius: '999px',
+    fontSize: '12px', fontWeight: '700', whiteSpace: 'nowrap',
+    background: bg, color: fg, border: border ? `1px solid ${border}` : 'none',
+  });
 
-  const handleDecline = async () => {
-    const ok = await confirm(
-      'Decline this request? The owner is told, and your reason is sent to them, so make sure it reads the way you want.',
-      { confirmLabel: 'Decline it', cancelLabel: 'Go back', danger: true }
-    );
-    if (!ok) return;
-    setWorking(true);
-    try {
-      await api.put(`/cars/${declineModalId}/availability-request`, { decision: 'declined', adminNotes: declineReason });
-      await fetchData();
-      refetchPendingCounts();
-      closeDeclineModal();
-      toast.info('Request declined.');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Something went wrong declining this request.');
-    } finally {
-      setWorking(false);
-    }
-  };
-
-  const handleApproveBlock = async (req) => {
-    setBlockWorking(true);
-    try {
-      await api.put(`/cars/${req.carId}/blocked-dates/${req._id}/decision`, { decision: 'approved' });
-      await fetchBlockRequests();
-      refetchPendingCounts();
-      toast.success('Blocked dates approved.');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Something went wrong approving this request.');
-    } finally {
-      setBlockWorking(false);
-    }
-  };
-
-  const openBlockDeclineModal = (req) => {
-    setBlockDeclineTarget(req);
-    setBlockDeclineReason('');
-  };
-
-  const closeBlockDeclineModal = () => {
-    setBlockDeclineTarget(null);
-    setBlockDeclineReason('');
-  };
-
-  const handleDeclineBlock = async () => {
-    // The sibling above asks before declining and this did not, though both
-    // send the consignor a notification with the reason attached. The same
-    // action should take the same care.
-    const ok = await confirm(
-      'Decline this request? The owner is told, and your reason is sent to them, so make sure it reads the way you want.',
-      { confirmLabel: 'Decline it', cancelLabel: 'Go back', danger: true }
-    );
-    if (!ok) return;
-    setBlockWorking(true);
-    try {
-      await api.put(`/cars/${blockDeclineTarget.carId}/blocked-dates/${blockDeclineTarget._id}/decision`, { decision: 'declined', adminNotes: blockDeclineReason });
-      await fetchBlockRequests();
-      refetchPendingCounts();
-      closeBlockDeclineModal();
-      toast.info('Request declined.');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Something went wrong declining this request.');
-    } finally {
-      setBlockWorking(false);
-    }
+  const sm = {
+    minHeight: '40px', padding: '0 16px', borderRadius: '9px',
+    fontFamily: 'inherit', fontSize: '14px', fontWeight: '650', cursor: 'pointer',
   };
 
   const s = {
-    title: { fontSize: '22px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '4px' },
-    subtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '24px' },
-    sectionTitle: { fontSize: '16px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginTop: '32px', marginBottom: '4px' },
-    sectionSubtitle: { fontSize: '13px', color: isDark ? '#b0b3b8' : '#6b7280', marginBottom: '16px' },
-    table: { width: '100%', borderCollapse: 'collapse', background: isDark ? '#242526' : '#fff', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}` },
-    th: { textAlign: 'left', padding: '12px 16px', fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#e5e7eb'}`, fontWeight: '500' },
-    td: { padding: '12px 16px', fontSize: '13px', color: isDark ? '#e4e6eb' : '#1a1a1a', borderBottom: `1px solid ${isDark ? '#3a3b3c' : '#f3f4f6'}`, verticalAlign: 'middle' },
-    ownerName: { fontWeight: '600' },
-    ownerMeta: { fontSize: '11px', color: isDark ? '#b0b3b8' : '#6b7280' },
-    carCell: { display: 'flex', alignItems: 'center', gap: '10px' },
-    carThumb: { width: '48px', height: '36px', borderRadius: '6px', overflow: 'hidden', background: isDark ? '#3a3b3c' : '#f3f4f6', flexShrink: 0 },
-    reason: { fontSize: '12px', color: isDark ? '#b0b3b8' : '#6b7280', maxWidth: '220px' },
-    empty: { fontSize: '13px', color: isDark ? '#8a8d91' : '#9ca3af', padding: '24px 0', textAlign: 'center' },
-    typeAvailable: {
-      background: isDark ? 'rgba(22,163,74,0.15)' : '#d1fae5', color: isDark ? '#86efac' : '#065f46',
-      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600', border: isDark ? '1px solid rgba(22,163,74,0.35)' : 'none',
+    title: { margin: 0, fontSize: '24px', fontWeight: '800', color: text },
+    subtitle: { color: text2, marginTop: '4px', marginBottom: '20px', fontSize: '14px', textWrap: 'pretty' },
+
+    calm: {
+      padding: '40px 32px', borderRadius: '16px', background: card, border: `1px solid ${line}`,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', textAlign: 'center',
     },
-    typeUnavailable: {
-      background: isDark ? 'rgba(220,38,38,0.15)' : '#fee2e2', color: isDark ? '#fca5a5' : '#991b1b',
-      fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: '600', border: isDark ? '1px solid rgba(220,38,38,0.35)' : 'none',
+    calmMark: {
+      width: '64px', height: '64px', borderRadius: '999px',
+      background: greenSoft, color: green, display: 'grid', placeItems: 'center',
     },
-    actions: { display: 'flex', gap: '6px' },
-    approveBtn: { padding: '5px 12px', fontSize: '12px', border: 'none', borderRadius: '6px', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: '500' },
-    declineBtn: { padding: '5px 12px', fontSize: '12px', border: 'none', borderRadius: '6px', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: '500' },
-    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
-    modalContent: { background: isDark ? '#242526' : '#fff', borderRadius: '12px', padding: '24px', maxWidth: '440px', width: '100%' },
-    modalTitle: { fontSize: '18px', fontWeight: '700', color: isDark ? '#e4e6eb' : '#1a1a1a', marginBottom: '14px' },
-    modalLabel: { display: 'block', fontSize: '13px', color: isDark ? '#b0b3b8' : '#374151', marginBottom: '6px', fontWeight: '500' },
-    modalTextarea: { width: '100%', padding: '10px 12px', border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`, borderRadius: '8px', fontSize: '13px', marginBottom: '18px', color: isDark ? '#e4e6eb' : '#1a1a1a', background: isDark ? '#18191a' : '#fff', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' },
-    modalActions: { display: 'flex', gap: '10px' },
-    modalCancelBtn: { flex: 1, padding: '10px', background: isDark ? '#3a3b3c' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
-    modalSubmitBtn: { flex: 1, padding: '10px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
+    calmTitle: { fontSize: '20px', fontWeight: '800', color: text },
+    calmLead: { maxWidth: '520px', color: text2, textWrap: 'pretty', margin: 0 },
+    standing: {
+      width: '100%', maxWidth: '720px', marginTop: '16px', paddingTop: '20px',
+      borderTop: `1px solid ${line}`, display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left',
+    },
+    eyebrow: { fontSize: '12px', fontWeight: '700', letterSpacing: '0.06em', color: text3 },
+    standingGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' },
+    standingRow: {
+      display: 'flex', gap: '10px', alignItems: 'center', padding: '10px 12px',
+      borderRadius: '10px', background: inset, border: `1px solid ${line}`,
+    },
+    standingName: { fontWeight: '650', fontSize: '13px', color: text },
+    standingOwner: { fontSize: '12px', color: text3 },
+
+    waitingEyebrow: { fontSize: '12px', fontWeight: '700', letterSpacing: '0.06em', color: ink, marginBottom: '12px' },
+    list: { display: 'flex', flexDirection: 'column', gap: '12px' },
+    req: {
+      padding: '18px 20px', borderRadius: '14px', background: card, border: `1px solid ${line}`,
+      display: 'flex', flexDirection: 'column', gap: '12px',
+    },
+    reqTop: { display: 'flex', gap: '16px', alignItems: 'flex-start' },
+    reqTile: {
+      flex: 'none', width: '44px', height: '44px', borderRadius: '12px',
+      background: blueSoft, color: blue, display: 'grid', placeItems: 'center',
+    },
+    reqMain: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' },
+    reqTitle: { fontSize: '16px', fontWeight: '750', color: text, textWrap: 'pretty' },
+    reqMeta: { fontSize: '13px', color: text3 },
+    reqReason: {
+      marginTop: '6px', padding: '10px 12px', borderRadius: '10px',
+      background: inset, fontSize: '14px', color: text, textWrap: 'pretty',
+    },
+    actions: { display: 'flex', gap: '8px' },
+    btnGold: { ...sm, border: `1px solid ${gold}`, background: gold, color: ON_GOLD },
+    btnLine: { ...sm, border: `1px solid ${line}`, background: card, color: text },
+    btnRed: { ...sm, border: `1px solid ${red}`, background: red, color: isDark ? '#1a1a1a' : '#fff' },
+
+    declineBox: { display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '60px' },
+    label: { fontSize: '13px', fontWeight: '650', color: text },
+    textarea: {
+      width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '10px',
+      border: `1px solid ${line}`, background: card, color: text,
+      fontFamily: 'inherit', fontSize: '14px', resize: 'vertical',
+    },
   };
+
+  const firstName = (name) => String(name || '').trim().split(/\s+/)[0] || 'They';
 
   return (
     <AdminLayout activePage="Availability Requests">
       <h1 style={s.title}>Availability Requests</h1>
-      <p style={s.subtitle}>Consignors need your approval before taking a vehicle off the platform, or bringing it back.</p>
+      <p style={s.subtitle}>
+        Consignors ask here to take a vehicle off the platform, bring it back, or block dates on their
+        own vehicle.
+      </p>
 
       {loading ? (
-        <div className="table-scroll">
-          <table style={s.table}>
-            <thead>
-              <tr>
-                <th style={s.th}>Owner</th>
-                <th style={s.th}>Vehicle</th>
-                <th style={s.th}>Reason</th>
-                <th style={s.th}>Requested</th>
-                <th style={s.th}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <SkeletonTableRows isDark={isDark} columns={5} />
-            </tbody>
-          </table>
+        <div style={s.list}>
+          {[0, 1].map((i) => <Skeleton key={i} height="110px" isDark={isDark} style={{ borderRadius: '14px' }} />)}
         </div>
-      ) : cars.length === 0 ? (
-        <div style={s.table}><p style={s.empty}>No pending requests.</p></div>
-      ) : (
-        <div className="table-scroll">
-        <table style={s.table}>
-          <thead>
-            <tr>
-              <th style={s.th}>Owner</th>
-              <th style={s.th}>Vehicle</th>
-              <th style={s.th}>Request</th>
-              <th style={s.th}>Reason</th>
-              <th style={s.th}>Requested</th>
-              <th style={s.th}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cars.map((car) => (
-              <tr key={car._id}>
-                <td style={s.td}>
-                  <div style={s.ownerName}>{car.owner?.name || 'Unknown'}</div>
-                  <div style={s.ownerMeta}>{car.owner?.email}</div>
-                </td>
-                <td style={s.td}>
-                  <div style={s.carCell}>
-                    <div style={s.carThumb}>
-                      {car.image && <img src={car.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+      ) : waiting.length === 0 ? (
+        <div style={s.calm}>
+          <span style={s.calmMark}><OkIcon size={32} /></span>
+          <div style={s.calmTitle}>Nothing waiting for you</div>
+          <p style={s.calmLead}>
+            New requests show up here to approve or decline. If you decline one, the owner sees the
+            reason you give.
+          </p>
+
+          {vehicles.length > 0 && (
+            <div style={s.standing}>
+              <div style={s.eyebrow}>CONSIGNED VEHICLES RIGHT NOW</div>
+              <div style={s.standingGrid}>
+                {vehicles.map((v) => (
+                  <div key={v.id} style={s.standingRow}>
+                    <span style={{ color: text2, display: 'grid', placeItems: 'center' }}>
+                      <VehicleIcon category={v.category} size={18} />
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={s.standingName}>{v.name}</div>
+                      <div style={s.standingOwner}>{v.owner}</div>
                     </div>
-                    <span>{car.brand} {car.model}</span>
+                    <span style={v.onPlatform
+                      ? chip(greenSoft, green)
+                      : chip(inset, text3, line)}
+                    >
+                      {v.onPlatform ? 'On platform' : 'Off platform'}
+                    </span>
                   </div>
-                </td>
-                <td style={s.td}>
-                  <span style={car.availabilityRequest?.type === 'available' ? s.typeAvailable : s.typeUnavailable}>
-                    {car.availabilityRequest?.type === 'available' ? 'Mark Available' : 'Mark Unavailable'}
-                  </span>
-                </td>
-                <td style={s.td}>
-                  <span style={s.reason}>{car.availabilityRequest?.reason || '—'}</span>
-                </td>
-                <td style={s.td}>
-                  {car.availabilityRequest?.requestedAt ? new Date(car.availabilityRequest.requestedAt).toLocaleDateString() : '—'}
-                </td>
-                <td style={s.td}>
-                  <div style={s.actions}>
-                    <button style={s.approveBtn} onClick={() => handleApprove(car._id)} disabled={working}>Approve</button>
-                    <button style={s.declineBtn} onClick={() => openDeclineModal(car._id)} disabled={working}>Decline</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      )}
-
-      <h2 style={s.sectionTitle}>Blocked Date Requests</h2>
-      <p style={s.sectionSubtitle}>Consignors need your approval before blocking dates on their own vehicle.</p>
-
-      {blockLoading ? (
-        <div className="table-scroll">
-          <table style={s.table}>
-            <thead>
-              <tr>
-                <th style={s.th}>Owner</th>
-                <th style={s.th}>Vehicle</th>
-                <th style={s.th}>Dates</th>
-                <th style={s.th}>Reason</th>
-                <th style={s.th}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <SkeletonTableRows isDark={isDark} columns={5} />
-            </tbody>
-          </table>
-        </div>
-      ) : blockRequests.length === 0 ? (
-        <div style={s.table}><p style={s.empty}>No pending requests.</p></div>
       ) : (
-        <div className="table-scroll">
-        <table style={s.table}>
-          <thead>
-            <tr>
-              <th style={s.th}>Owner</th>
-              <th style={s.th}>Vehicle</th>
-              <th style={s.th}>Dates</th>
-              <th style={s.th}>Reason</th>
-              <th style={s.th}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {blockRequests.map((req) => (
-              <tr key={req._id}>
-                <td style={s.td}>
-                  <div style={s.ownerName}>{req.owner?.name || 'Unknown'}</div>
-                  <div style={s.ownerMeta}>{req.owner?.email}</div>
-                </td>
-                <td style={s.td}>
-                  <div style={s.carCell}>
-                    <div style={s.carThumb}>
-                      {req.image && <img src={req.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+        <>
+          <div style={s.waitingEyebrow}>
+            {waiting.length} WAITING FOR YOU
+          </div>
+          <div style={s.list}>
+            {requests.map((r) => {
+              const decided = done[r.key];
+              return (
+                <article key={r.key} style={s.req}>
+                  <div style={s.reqTop}>
+                    <span style={s.reqTile}>
+                      {r.kind === 'dates' ? <CalIcon size={22} /> : <PowerIcon size={22} />}
+                    </span>
+                    <div style={s.reqMain}>
+                      <span style={chip(blueSoft, blue)}>{r.typeLabel}</span>
+                      <div style={s.reqTitle}>{r.title}</div>
+                      <div style={s.reqMeta}>{r.owner}{r.at ? ` · asked ${asked(r.at)}` : ''}</div>
+                      {r.reason && <div style={s.reqReason}>“{r.reason}”</div>}
                     </div>
-                    <span>{req.brand} {req.model}</span>
-                  </div>
-                </td>
-                <td style={s.td}>
-                  {new Date(req.startDate).toLocaleDateString()} → {new Date(req.endDate).toLocaleDateString()}
-                </td>
-                <td style={s.td}>
-                  <span style={s.reason}>{req.reason || '—'}</span>
-                </td>
-                <td style={s.td}>
-                  <div style={s.actions}>
-                    <button style={s.approveBtn} onClick={() => handleApproveBlock(req)} disabled={blockWorking}>Approve</button>
-                    <button style={s.declineBtn} onClick={() => openBlockDeclineModal(req)} disabled={blockWorking}>Decline</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-      )}
 
-      {declineModalId && (
-        <div style={s.modalOverlay}>
-          <div style={s.modalContent} ref={declineModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="decline-modal-title">
-            <h2 id="decline-modal-title" style={s.modalTitle}>Decline Request</h2>
-            <label style={s.modalLabel} htmlFor="avail-decline-reason">Reason (shown to the consignor)</label>
-            <textarea
-              id="avail-decline-reason"
-              style={s.modalTextarea}
-              rows={3}
-              value={declineReason}
-              onChange={(e) => setDeclineReason(e.target.value)}
-              placeholder="e.g. This vehicle has upcoming confirmed bookings."
-            />
-            <div style={s.modalActions}>
-              <button style={s.modalCancelBtn} onClick={closeDeclineModal} disabled={working}>Cancel</button>
-              <button style={s.modalSubmitBtn} onClick={handleDecline} disabled={working}>
-                {working ? 'Working...' : 'Confirm Decline'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                    {decided ? (
+                      <span style={decided === 'approved' ? chip(greenSoft, green) : chip(redSoft, red)}>
+                        {decided === 'approved' ? 'Approved' : 'Declined · reason sent'}
+                      </span>
+                    ) : decliningId === r.key ? null : (
+                      <div style={s.actions}>
+                        <button type="button" style={s.btnGold} disabled={working} onClick={() => act(r, 'approved')}>
+                          Approve
+                        </button>
+                        <button type="button" style={s.btnLine} disabled={working} onClick={() => { setDecliningId(r.key); setReason(''); }}>
+                          Decline
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
-      {blockDeclineTarget && (
-        <div style={s.modalOverlay}>
-          <div style={s.modalContent} ref={blockDeclineModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="block-decline-modal-title">
-            <h2 id="block-decline-modal-title" style={s.modalTitle}>Decline Blocked Dates</h2>
-            <label style={s.modalLabel} htmlFor="block-decline-reason">Reason (shown to the consignor)</label>
-            <textarea
-              id="block-decline-reason"
-              style={s.modalTextarea}
-              rows={3}
-              value={blockDeclineReason}
-              onChange={(e) => setBlockDeclineReason(e.target.value)}
-              placeholder="e.g. Those dates already have interest from renters."
-            />
-            <div style={s.modalActions}>
-              <button style={s.modalCancelBtn} onClick={closeBlockDeclineModal} disabled={blockWorking}>Cancel</button>
-              <button style={s.modalSubmitBtn} onClick={handleDeclineBlock} disabled={blockWorking}>
-                {blockWorking ? 'Working...' : 'Confirm Decline'}
-              </button>
-            </div>
+                  {decliningId === r.key && !decided && (
+                    <div style={s.declineBox}>
+                      <label style={s.label} htmlFor={`reason-${r.key}`}>
+                        Reason for declining · {firstName(r.owner)} will see this
+                      </label>
+                      <textarea
+                        id={`reason-${r.key}`}
+                        rows={2}
+                        style={s.textarea}
+                        value={reason}
+                        disabled={working}
+                        onChange={(e) => setReason(e.target.value)}
+                      />
+                      <div style={s.actions}>
+                        <button
+                          type="button"
+                          style={s.btnRed}
+                          disabled={working || !reason.trim()}
+                          onClick={() => act(r, 'declined', reason.trim())}
+                        >
+                          Send decline
+                        </button>
+                        <button type="button" style={s.btnLine} disabled={working} onClick={() => setDecliningId(null)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
           </div>
-        </div>
+        </>
       )}
     </AdminLayout>
   );

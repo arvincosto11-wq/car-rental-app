@@ -157,8 +157,11 @@ router.get('/income', protect, adminOnly, async (req, res) => {
     if (to && !Number.isNaN(Date.parse(to))) span.$lte = new Date(to);
 
     const cars = await Car.find({ owner: { $ne: null } })
-      .select('brand model plateNumber owner archived')
-      .populate('owner', 'name email')
+      // The register draws each vehicle as a card, not a row in a table, so
+      // it needs what a card shows: what kind of vehicle, what it rents for,
+      // and whether it is on the platform at all.
+      .select('brand model plateNumber category pricePerDay isAvailable owner archived')
+      .populate('owner', 'name email phone')
       .lean();
     if (!cars.length) return res.json([]);
 
@@ -180,7 +183,12 @@ router.get('/income', protect, adminOnly, async (req, res) => {
       const id = String(car.owner?._id || car.owner);
       if (!byConsignor.has(id)) {
         byConsignor.set(id, {
-          consignor: { id, name: car.owner?.name || 'Unknown', email: car.owner?.email || '' },
+          consignor: {
+            id,
+            name: car.owner?.name || 'Unknown',
+            email: car.owner?.email || '',
+            phone: car.owner?.phone || '',
+          },
           rental: 0,
           ownerEarned: 0,
           weKept: 0,
@@ -194,6 +202,12 @@ router.get('/income', protect, adminOnly, async (req, res) => {
         id: String(car._id),
         name: `${car.brand} ${car.model}`,
         plateNumber: car.plateNumber || '',
+        category: car.category || '',
+        pricePerDay: car.pricePerDay || 0,
+        // On the platform, or taken off it at the owner's request. The other
+        // reasons a vehicle cannot go out — off the road, papers lapsed —
+        // are not this question and are not asked here.
+        onPlatform: car.isAvailable !== false,
         archived: !!car.archived,
         rental: totals.base,
         ownerEarned: totals.owner,
