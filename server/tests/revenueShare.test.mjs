@@ -8,6 +8,8 @@ import {
   agreedPercent,
   splitFor,
   sumSplit,
+  afterDiscount,
+  worstCaseDiscount,
 } from '../utils/revenueShare.js';
 
 export default function run() {
@@ -89,6 +91,53 @@ export default function run() {
   check('across two bookings', mixed.count, 2);
   check('an empty list is zero, not NaN', sumSplit([]).base, 0);
   check('and sums still reconcile', mixed.owner + mixed.operator, mixed.base);
+
+  group('What a discount costs us');
+
+  // The user's own example: a 5,000 rental run at 2,500 on promo. The owner
+  // is still paid on 5,000 because the promotion was not their idea.
+  const half = afterDiscount({ rental: 5000, discount: 2500, percent: 80 });
+  check('the owner is paid on the full price', half.owner, 4000);
+  check('but only half of it came in', half.collected, 2500);
+  check('so the promotion costs us 1,500', half.weKeep, -1500);
+
+  // Our share IS the whole margin, so it is also the break-even point.
+  check('a discount of exactly our share earns us nothing',
+    afterDiscount({ rental: 5000, discount: 1000, percent: 80 }).weKeep, 0);
+  check('a penny less and we are still ahead',
+    afterDiscount({ rental: 5000, discount: 999, percent: 80 }).weKeep, 1);
+  check('a penny more and we are paying for the trip',
+    afterDiscount({ rental: 5000, discount: 1001, percent: 80 }).weKeep, -1);
+  check('no discount leaves us our whole share',
+    afterDiscount({ rental: 5000, discount: 0, percent: 80 }).weKeep, 1000);
+  check('a wider share leaves more room before it hurts',
+    afterDiscount({ rental: 5000, discount: 1400, percent: 70 }).weKeep, 100);
+  check('a discount cannot exceed the rental',
+    afterDiscount({ rental: 2000, discount: 9999, percent: 80 }).collected, 0);
+  check('nonsense is zero, not NaN', afterDiscount({}).weKeep, 0);
+
+  group('How deep a promo cuts');
+
+  check('a percentage is the same at any length',
+    worstCaseDiscount({ type: 'percent', value: 30 }, 1500), 450);
+  // A fixed amount bites hardest on the shortest possible hire, which is
+  // why the warning is worked out on one day.
+  check('a fixed amount is worst on a one-day hire',
+    worstCaseDiscount({ type: 'amount', value: 500 }, 1500), 500);
+  check('and never takes more than the day itself',
+    worstCaseDiscount({ type: 'amount', value: 9000 }, 1500), 1500);
+  check('an over-100 percentage is clamped',
+    worstCaseDiscount({ type: 'percent', value: 250 }, 1500), 1500);
+  check('nothing typed yet is nothing off', worstCaseDiscount({ type: 'percent', value: '' }, 1500), 0);
+
+  // The two together: this is the test the warning actually asks.
+  const promoOn = (promo, day, pct) => afterDiscount({
+    rental: day, discount: worstCaseDiscount(promo, day), percent: pct,
+  }).weKeep;
+  check('20% off at an 80/20 split breaks even',
+    promoOn({ type: 'percent', value: 20 }, 1500, 80), 0);
+  check('25% off costs us', promoOn({ type: 'percent', value: 25 }, 1500, 80) < 0, true);
+  check('15% off still earns', promoOn({ type: 'percent', value: 15 }, 1500, 80) > 0, true);
 
   group('What admin is allowed to set');
 

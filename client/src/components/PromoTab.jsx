@@ -3,6 +3,7 @@ import api from '../api';
 import { useUIFeedback } from '../context/UIFeedbackContext';
 import AvailabilityCalendar from './AvailabilityCalendar';
 import { hasPromo, isPromoVisible, promoOffer, promoDateRange } from '../utils/promo';
+import { afterDiscount, worstCaseDiscount, DEFAULT_OWNER_PERCENT } from '../utils/revenueShare';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
 
 // The "Date Promos" tab of the Discounts panel: every running or upcoming
@@ -33,6 +34,23 @@ const PromoTab = ({ cars, isDark, onCarUpdated }) => {
   const [editingCarId, setEditingCarId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [bookedRanges, setBookedRanges] = useState([]);
+  // Needed to say what a discount costs us on somebody else's vehicle. The
+  // default is the system's behaviour until admin changes it, so a failed
+  // read is not worth reporting — it just means the warning is worked out
+  // on the standard split.
+  const [ownerPercent, setOwnerPercent] = useState(DEFAULT_OWNER_PERCENT);
+
+  useEffect(() => {
+    let live = true;
+    api.get('/settings')
+      .then((res) => {
+        if (live && Number.isFinite(res.data?.revenueShare?.ownerPercent)) {
+          setOwnerPercent(res.data.revenueShare.ownerPercent);
+        }
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
   // Booked dates per car, kept so ticking a car back on doesn't refetch.
   const rangeCache = useRef({});
 
@@ -243,6 +261,16 @@ const PromoTab = ({ cars, isDark, onCarUpdated }) => {
       flex: 1, padding: '10px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
       fontSize: '13px', fontWeight: '700', background: gold, color: ON_GOLD,
     },
+    costBox: {
+      marginTop: '10px', padding: '12px 14px', borderRadius: '9px',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.45)' : '#fecaca'}`,
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      color: isDark ? '#f87171' : '#b91c1c',
+      fontSize: '12.5px', textWrap: 'pretty',
+    },
+    costLead: { fontWeight: '750', marginBottom: '6px' },
+    costRow: { marginTop: '3px', fontVariantNumeric: 'tabular-nums' },
+    costNote: { marginTop: '8px', opacity: 0.85 },
     secondaryBtn: {
       padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px',
       border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
@@ -251,6 +279,30 @@ const PromoTab = ({ cars, isDark, onCarUpdated }) => {
   };
 
   const previewPromo = { ...form, value: Number(form.value) };
+
+  // Which of the ticked vehicles this promo would cost us money on.
+  //
+  // Consigned vehicles only. We absorb discounts rather than passing them
+  // to the owner — a promotion is our decision, made on a vehicle we do not
+  // own, so it is not theirs to fund — which means our own share is the
+  // whole of the margin. Discount more deeply than that share and we are
+  // paying the owner more than the renter handed over.
+  //
+  // Worked out on one day's hire, the worst case: a fixed amount off is a
+  // third of a one-day rental and a ninth of a three-day one.
+  const costly = Number(form.value) > 0
+    ? cars
+      .filter((car) => car.owner && form.carIds.includes(String(car._id)))
+      .map((car) => ({
+        car,
+        ...afterDiscount({
+          rental: car.pricePerDay,
+          discount: worstCaseDiscount(previewPromo, car.pricePerDay),
+          percent: ownerPercent,
+        }),
+      }))
+      .filter((row) => row.weKeep < 0)
+    : [];
 
   return (
     <>
@@ -328,6 +380,26 @@ const PromoTab = ({ cars, isDark, onCarUpdated }) => {
           );
         })}
       </div>
+
+      {costly.length > 0 && (
+        <div style={s.costBox} role="status">
+          <div style={s.costLead}>
+            This would cost you money on {costly.length === 1 ? 'a consigned vehicle' : `${costly.length} consigned vehicles`}.
+          </div>
+          {costly.map(({ car, collected, owner, weKeep }) => (
+            <div key={car._id} style={s.costRow}>
+              {car.brand} {car.model}: a one-day hire brings in ₱{collected.toLocaleString()},
+              the owner is still owed ₱{owner.toLocaleString()} — you pay ₱{Math.abs(weKeep).toLocaleString()}.
+            </div>
+          ))}
+          <div style={s.costNote}>
+            Owners are paid on the price before the discount, because the promo is your decision
+            and not theirs to fund. That makes your {100 - ownerPercent}% share the whole margin,
+            so anything deeper than {100 - ownerPercent}% off comes out of your pocket. Go ahead if
+            that is the plan — this is only so it is not a surprise.
+          </div>
+        </div>
+      )}
 
       <div style={s.rangeRow}>
         <span style={s.rangeValue}>

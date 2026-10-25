@@ -96,6 +96,39 @@ export const splitFor = (booking) => {
   };
 };
 
+// What we are actually left holding on a discounted rental.
+//
+// splitFor's `operator` is our share of the UNDISCOUNTED rental — what the
+// agreement entitles us to. This is what remains of the money that really
+// came in once the owner has been paid out of it. The two differ by exactly
+// the discount, because we absorb discounts rather than passing them on: a
+// promotion is our decision, made on somebody else's vehicle, so it is not
+// theirs to fund.
+//
+// It can come out negative, and that is the point of having it. Our own
+// share is the whole of the margin, so a discount bigger than that share
+// pays the owner more than the renter handed over.
+export const afterDiscount = ({ rental, discount = 0, percent = DEFAULT_OWNER_PERCENT }) => {
+  const base = Math.max(0, Number(rental) || 0);
+  const off = Math.min(base, Math.max(0, Number(discount) || 0));
+  const owner = Math.round(base * (clampPercent(percent) / 100));
+  const collected = base - off;
+  return { base, discount: off, owner, collected, weKeep: collected - owner };
+};
+
+// The deepest a promo can cut, as money off one day's hire.
+//
+// The shortest rental is the worst case for a fixed amount: ₱500 off is a
+// third of a one-day hire at ₱1,500 and a ninth of a three-day one. A
+// percentage cuts the same fraction whatever the length, so one day stands
+// in for every length there.
+export const worstCaseDiscount = (promo, pricePerDay) => {
+  const day = Math.max(0, Number(pricePerDay) || 0);
+  const value = Math.max(0, Number(promo?.value) || 0);
+  if (promo?.type === 'percent') return Math.round((day * Math.min(100, value)) / 100);
+  return Math.min(day, value);
+};
+
 // Totals across many bookings, summed per booking rather than by applying
 // one percentage to a grand total. Bookings can carry different agreed
 // rates — an old one at 100%, a new one at 80% — and a single multiplication
