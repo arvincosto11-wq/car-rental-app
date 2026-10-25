@@ -597,10 +597,17 @@ const CarDetail = () => {
   // self-drive is what makes it matter — and because this is the last screen
   // where changing the answer is still cheap.
   const goToPlaceNext = () => {
-    // Short, because the note above already says the whole of it. Repeating
-    // the sentence in red put the same paragraph on screen twice.
+    // Short, because the note already says the whole of it. Repeating the
+    // sentence in red put the same paragraph on screen twice.
+    //
+    // It names the licence, not the vehicle. It used to say "Self-drive
+    // isn't available for this trip", which on a self-drive-only vehicle —
+    // a motorcycle, say — is the opposite of true: self-drive is the only
+    // thing it CAN be booked for. What is unavailable is this client
+    // driving, because of their licence. And the note it points at sits
+    // below this bar, not above it.
     if (licenceIssue || selfDriveBlocked) {
-      return setError("Self-drive isn't available for this trip — see the note above.");
+      return setError("You can't drive this one yourself yet — see the note below.");
     }
     setError('');
     advanceTo(3);
