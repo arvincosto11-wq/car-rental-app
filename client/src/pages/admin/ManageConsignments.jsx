@@ -11,6 +11,7 @@ import usePageTitle from '../../hooks/usePageTitle';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
 import api from '../../api';
 import ModalClose from '../../components/ModalClose';
+import ConsignmentIncome from '../../components/ConsignmentIncome';
 
 const PAGE_SIZE = 10;
 
@@ -162,6 +163,11 @@ const ManageConsignments = () => {
     <AdminLayout activePage="Manage Consignments">
       <h1 style={s.title}>Manage Consignments</h1>
       <p style={s.subtitle}>Review vehicle owner applications, verify documents, and approve or decline listings.</p>
+
+      {/* Above the applications because it answers the other question this
+          page gets opened with. The table is about letting a vehicle in;
+          this is about what happened after. */}
+      <ConsignmentIncome />
 
       <div style={s.filterRow}>
         {['pending', 'approved', 'declined', 'all'].map((f) => (

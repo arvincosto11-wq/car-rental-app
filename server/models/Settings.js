@@ -46,6 +46,16 @@ const settingsSchema = new mongoose.Schema({
     roadFactor: { type: Number, default: 1.3 },
   },
 
+  // How a rental is divided between the vehicle's owner and us.
+  //
+  // Only the default for agreements made from now on. Each booking records
+  // the percentage it was made under, so moving this number reprices future
+  // bookings and deliberately not past ones — the same way the delivery pin
+  // above leaves already-quoted fees alone. See utils/revenueShare.js.
+  revenueShare: {
+    ownerPercent: { type: Number, default: 80, min: 0, max: 100 },
+  },
+
   // When somebody can bring a vehicle in to be inspected. Slots are worked
   // out from these rather than stored — see utils/appointments.js.
   appointments: {

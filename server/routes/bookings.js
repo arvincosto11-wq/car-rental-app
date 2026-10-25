@@ -13,6 +13,7 @@ import { refundBookingPayment } from '../utils/paymongo.js';
 import Settings from '../models/Settings.js';
 import { deliveryRefusal, isPoint } from '../utils/delivery.js';
 import { quoteBooking } from '../utils/bookingQuote.js';
+import { revenueShareSettings } from '../utils/revenueShare.js';
 import { remindStalePendingBookings } from '../utils/pendingReminders.js';
 import { openAdjustOffer, acceptAdjustOffer, startTopUp, confirmTopUp, declineAdjustOffer, expireAdjustOffers } from '../utils/adjustOffer.js';
 import { cancelBookingWithRefund, refundPercentage, CANCEL_REASONS, reasonUnavailable } from '../utils/cancelBooking.js';
@@ -406,6 +407,12 @@ router.post('/', protect, async (req, res) => {
       discountAmount,
       promoLabel,
       amountPaid: computedAmountPaid,
+      // The terms this rental is divided on, fixed now. Settings can move
+      // afterwards; this booking's split cannot. See utils/revenueShare.js.
+      ownerShare: {
+        percent: revenueShareSettings(settings).ownerPercent,
+        agreedAt: new Date(),
+      },
       paymentType: validPaymentType,
       bookingType: bookingType || 'with-driver',
       pickupPlace: place(pickupPlace, pickupPoint, quote.pickup),

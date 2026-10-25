@@ -5,6 +5,8 @@ import User from '../models/User.js';
 import EmailVerification from '../models/EmailVerification.js';
 import Car from '../models/Car.js';
 import Consignment from '../models/Consignment.js';
+import Booking from '../models/Booking.js';
+import { sumSplit } from '../utils/revenueShare.js';
 import { protect, adminOnly, consignorOnly, activeAccount } from '../middleware/auth.js';
 import { sameEmail } from '../middleware/email.js';
 import { registerLimiter } from '../middleware/rateLimit.js';
@@ -140,6 +142,82 @@ router.get('/all', protect, adminOnly, async (req, res) => {
       .populate('linkedCar')
       .sort({ createdAt: -1 });
     res.json(consignments);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// What each consignor's vehicles have earned, and what we kept for running
+// them.
+//
+// Computed here rather than in the browser because the alternative is the
+// admin page pulling every booking ever made — client, vehicle and driver
+// populated — to add up a dozen rows. The split itself comes from
+// utils/revenueShare.js, the same file the consignor's own dashboard uses,
+// so the two sides cannot quote different figures at each other.
+//
+// Confirmed and completed only: a pending booking has not been agreed to
+// and a cancelled one earned nobody anything.
+router.get('/income', protect, adminOnly, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const span = {};
+    if (from && !Number.isNaN(Date.parse(from))) span.$gte = new Date(from);
+    if (to && !Number.isNaN(Date.parse(to))) span.$lte = new Date(to);
+
+    const cars = await Car.find({ owner: { $ne: null } })
+      .select('brand model plateNumber owner archived')
+      .populate('owner', 'name email')
+      .lean();
+    if (!cars.length) return res.json([]);
+
+    const bookings = await Booking.find({
+      car: { $in: cars.map((c) => c._id) },
+      status: { $in: ['confirmed', 'completed'] },
+      ...(Object.keys(span).length ? { createdAt: span } : {}),
+    })
+      .select('car subtotal totalPrice ownerShare')
+      .lean();
+
+    const byCar = new Map(cars.map((c) => [String(c._id), []]));
+    for (const b of bookings) byCar.get(String(b.car))?.push(b);
+
+    // Grouped by consignor rather than by vehicle: one of them can have
+    // several, and what they are owed is a single number across the lot.
+    const byConsignor = new Map();
+    for (const car of cars) {
+      const id = String(car.owner?._id || car.owner);
+      if (!byConsignor.has(id)) {
+        byConsignor.set(id, {
+          consignor: { id, name: car.owner?.name || 'Unknown', email: car.owner?.email || '' },
+          rental: 0,
+          ownerEarned: 0,
+          weKept: 0,
+          trips: 0,
+          vehicles: [],
+        });
+      }
+      const row = byConsignor.get(id);
+      const totals = sumSplit(byCar.get(String(car._id)) || []);
+      row.vehicles.push({
+        id: String(car._id),
+        name: `${car.brand} ${car.model}`,
+        plateNumber: car.plateNumber || '',
+        archived: !!car.archived,
+        rental: totals.base,
+        ownerEarned: totals.owner,
+        weKept: totals.operator,
+        trips: totals.count,
+      });
+      row.rental += totals.base;
+      row.ownerEarned += totals.owner;
+      row.weKept += totals.operator;
+      row.trips += totals.count;
+    }
+
+    const list = [...byConsignor.values()];
+    for (const row of list) row.vehicles.sort((a, b) => b.rental - a.rental);
+    res.json(list.sort((a, b) => b.rental - a.rental));
   } catch (err) {
     fail(res, err);
   }

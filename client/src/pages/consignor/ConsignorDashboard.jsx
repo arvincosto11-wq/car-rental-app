@@ -7,7 +7,8 @@ import { useNotifications } from '../../context/NotificationContext';
 import Skeleton, { SkeletonListCard, SkeletonTableRows } from '../../components/Skeleton';
 import PromoBadge from '../../components/PromoBadge';
 import BlockDatesPanel, { upcomingBlockCount } from '../../components/BlockDatesPanel';
-import { ownerEarningFor, adminCoveredFor, isPromoVisible } from '../../utils/promo';
+import { adminCoveredFor, isPromoVisible } from '../../utils/promo';
+import { splitFor, sumSplit } from '../../utils/revenueShare';
 import useModalA11y from '../../hooks/useModalA11y';
 import usePageTitle from '../../hooks/usePageTitle';
 import BookInspection from './BookInspection';
@@ -175,14 +176,25 @@ const ConsignorDashboard = () => {
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - 7);
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const sumEarningsSince = (cutoff) => earnedBookings
-    .filter((b) => new Date(b.createdAt) >= cutoff)
-    .reduce((sum, b) => sum + ownerEarningFor(b), 0);
-  const earnings = {
-    week: sumEarningsSince(startOfWeek),
-    month: sumEarningsSince(startOfMonth),
-    all: earnedBookings.reduce((sum, b) => sum + ownerEarningFor(b), 0),
+  // The owner's share, not the whole rental.
+  //
+  // This used to be the full amount the renter paid, because there was no
+  // split in the system at all. Showing the gross as "Earnings" overstated
+  // it by the management fee, so the breakdown below says all three numbers
+  // — what came in, what we keep for running the vehicle, and what is
+  // theirs — rather than a smaller figure appearing with no explanation.
+  const sinceCutoff = (cutoff) => earnedBookings.filter((b) => new Date(b.createdAt) >= cutoff);
+  const totals = {
+    week: sumSplit(sinceCutoff(startOfWeek)),
+    month: sumSplit(sinceCutoff(startOfMonth)),
+    all: sumSplit(earnedBookings),
   };
+  const earnings = {
+    week: totals.week.owner,
+    month: totals.month.owner,
+    all: totals.all.owner,
+  };
+  const shown = totals[earningsPeriod];
 
   // Same period window as the toggle above, broken down per vehicle so an
   // owner with multiple cars can see which one is actually earning.
@@ -193,7 +205,7 @@ const ConsignorDashboard = () => {
     const carId = b.car?._id;
     if (!carId) return;
     if (!perCarMap[carId]) perCarMap[carId] = { car: b.car, total: 0, count: 0 };
-    perCarMap[carId].total += ownerEarningFor(b);
+    perCarMap[carId].total += splitFor(b).owner;
     perCarMap[carId].count += 1;
   });
   const perCarEarnings = Object.values(perCarMap).sort((a, b) => b.total - a.total);
@@ -355,6 +367,19 @@ const ConsignorDashboard = () => {
     earningsRow: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '10px', margin: '14px 0 4px' },
     earningsNum: { fontSize: '36px', fontWeight: '800', color: ink, lineHeight: 1 },
     earningsNote: { fontSize: '12px', color: text3 },
+    // Three lines rather than a tile each: this is one sum being divided,
+    // and showing it as arithmetic reads as terms rather than as three
+    // unrelated figures.
+    breakdown: {
+      display: 'grid', gap: '6px', marginTop: '12px', paddingTop: '12px',
+      borderTop: `1px solid ${divider}`,
+    },
+    breakdownRow: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '12px' },
+    breakdownLabel: { fontSize: '12.5px', color: text3 },
+    breakdownValue: { fontSize: '13.5px', fontWeight: '700', color: text, fontVariantNumeric: 'tabular-nums' },
+    // Gold only on the line that is theirs, so the eye lands on it.
+    breakdownMine: { fontSize: '13.5px', fontWeight: '800', color: ink, fontVariantNumeric: 'tabular-nums' },
+    breakdownNote: { fontSize: '11.5px', color: text3, marginTop: '2px', textWrap: 'pretty' },
 
     pill: (tone) => ({
       display: 'inline-block', fontSize: '10.5px', fontWeight: '800', letterSpacing: '0.05em',
@@ -573,7 +598,7 @@ const ConsignorDashboard = () => {
       </div>
 
       <div style={s.histRight}>
-        <span style={s.histTotal}>₱{ownerEarningFor(b).toLocaleString()}</span>
+        <span style={s.histTotal}>₱{splitFor(b).owner.toLocaleString()}</span>
         <span style={s.histPay}>{formatPayment(b.payment)}</span>
         {adminCoveredFor(b) > 0 && (
           <span style={s.histCovered}>{b.promoLabel || 'Promo'} · ₱{adminCoveredFor(b).toLocaleString()} covered by admin</span>
@@ -712,6 +737,32 @@ const ConsignorDashboard = () => {
                     </span>
                   </div>
 
+                  {/* Where that figure comes from. The big number above is
+                      the owner's share; without these lines it is just a
+                      smaller number than it used to be. */}
+                  {shown.base > 0 && (
+                    <div style={s.breakdown}>
+                      <div style={s.breakdownRow}>
+                        <span style={s.breakdownLabel}>Rental taken</span>
+                        <span style={s.breakdownValue}>₱{shown.base.toLocaleString()}</span>
+                      </div>
+                      {shown.operator > 0 && (
+                        <div style={s.breakdownRow}>
+                          <span style={s.breakdownLabel}>Management fee</span>
+                          <span style={s.breakdownValue}>−₱{shown.operator.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div style={s.breakdownRow}>
+                        <span style={s.breakdownLabel}>Your share</span>
+                        <span style={s.breakdownMine}>₱{shown.owner.toLocaleString()}</span>
+                      </div>
+                      <p style={s.breakdownNote}>
+                        Worked out on the rental only — delivery, late, fuel and damage charges are
+                        not shared, and you are paid on the price before any promo discount.
+                      </p>
+                    </div>
+                  )}
+
                   <div style={s.perCarList}>
                     {perCarEarnings.length === 0 ? (
                       <p style={s.perCarEmpty}>No earnings from any vehicle in this period yet.</p>
@@ -844,7 +895,7 @@ const ConsignorDashboard = () => {
                         <span style={s.recentDates}>
                           {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
                         </span>
-                        <span style={s.recentTotal}>₱{ownerEarningFor(b).toLocaleString()}</span>
+                        <span style={s.recentTotal}>₱{splitFor(b).owner.toLocaleString()}</span>
                         <span style={statusPill(b.status)}>{b.status}</span>
                       </div>
                     ))}

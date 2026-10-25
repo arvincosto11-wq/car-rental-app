@@ -24,6 +24,20 @@ const bookingSchema = new mongoose.Schema({
   subtotal: { type: Number, default: 0 },
   discountAmount: { type: Number, default: 0 },
   promoLabel: { type: String, default: '' },
+  // What the vehicle's owner was promised out of this rental, as agreed
+  // when the booking was made. Copied here rather than read from settings
+  // later for the same reason the promo above is: settings are meant to be
+  // changed, and a report that applied today's rate to last year's rentals
+  // would restate payouts that have already happened.
+  //
+  // Absent on every booking made before any split existed. Those are left
+  // on the terms they were made under — the whole rental to the owner —
+  // rather than being put retrospectively onto a deal nobody had struck.
+  // See utils/revenueShare.js.
+  ownerShare: {
+    percent: { type: Number, default: null },
+    agreedAt: { type: Date, default: null },
+  },
   amountPaid: { type: Number, required: true },
   paymentType: { type: String, enum: ['downpayment', 'full'], default: 'downpayment' },
   bookingType: { type: String, enum: ['self-drive', 'with-driver'], default: 'with-driver' },

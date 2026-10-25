@@ -3,6 +3,7 @@ import Settings from '../models/Settings.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { deliverySettings, DEFAULTS } from '../utils/delivery.js';
 import { appointmentSettings } from '../utils/appointments.js';
+import { clampPercent } from '../utils/revenueShare.js';
 import { fail } from '../utils/respond.js';
 
 const router = express.Router();
@@ -65,6 +66,18 @@ router.put('/', protect, adminOnly, async (req, res) => {
       current.base.label = String(base.label ?? current.base.label).trim().slice(0, 120);
       current.base.lat = lat;
       current.base.lng = lng;
+    }
+
+    // The owner's side of a rental, for agreements made from here on.
+    // Past bookings carry their own and are not touched — see
+    // utils/revenueShare.js and the ownerShare field on Booking.
+    const { revenueShare } = req.body || {};
+    if (revenueShare && revenueShare.ownerPercent !== undefined) {
+      const asked = Number(revenueShare.ownerPercent);
+      if (!Number.isFinite(asked) || asked < 0 || asked > 100) {
+        return res.status(400).json({ message: "The owner's share has to be between 0 and 100 per cent." });
+      }
+      current.revenueShare.ownerPercent = clampPercent(asked);
     }
 
     const { appointments } = req.body || {};
