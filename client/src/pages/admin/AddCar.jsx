@@ -149,7 +149,10 @@ const AddCar = () => {
     return { url: data.url, fileId: data.fileId };
   };
 
-  const handleSubmit = async (e, status) => {
+  // `decideLater` only means anything for a consigned vehicle: the office
+  // has seen it and is not ready to say yes, or at what price. The
+  // application is filed and the decision is taken in Manage Consignments.
+  const handleSubmit = async (e, status, decideLater = false) => {
     e.preventDefault();
     setError('');
 
@@ -203,13 +206,15 @@ const AddCar = () => {
         status,
         // Present only for a consigned vehicle, and what tells the server to
         // close the appointment, file the consignment and tell the owner.
-        ...(appointmentId ? { appointmentId, inspectionChecks: checked } : {}),
+        ...(appointmentId ? { appointmentId, inspectionChecks: checked, decideLater } : {}),
       });
       // A consigned vehicle is now somebody else's property on our lot, so
       // the next thing to look at is the consignment, not another blank form.
       if (appointmentId) {
-        setSuccess('Listed, and the owner has been told. Opening Manage Consignments…');
-        setTimeout(() => navigate('/admin/manage-consignments'), 1200);
+        setSuccess(decideLater
+          ? 'Filed for a decision. The owner has been told you have everything you need. Opening Manage Consignments…'
+          : 'Listed, and the owner has been told. Opening Manage Consignments…');
+        setTimeout(() => navigate('/admin/manage-consignments'), 1400);
         return;
       }
       setSuccess(status === 'draft' ? 'Saved as draft — not visible to customers yet. Find it under Manage Cars → Drafts.' : 'Vehicle published successfully!');
@@ -730,6 +735,15 @@ const AddCar = () => {
               {!appointmentId && (
                 <button style={s.draftBtn} type="button" disabled={loading} onClick={(e) => handleSubmit(e, 'draft')}>
                   {loading ? 'Saving...' : 'Save draft'}
+                </button>
+              )}
+              {/* The vehicle was brought in and looked at, and the office
+                  is not ready to commit to listing it or to a rate. Without
+                  this the only ways out were to list it or to throw away the
+                  record of the visit. */}
+              {appointmentId && (
+                <button style={s.draftBtn} type="button" disabled={loading} onClick={(e) => handleSubmit(e, 'published', true)}>
+                  {loading ? 'Saving...' : 'Decide later'}
                 </button>
               )}
               <button style={s.publishBtn} type="button" disabled={loading} onClick={(e) => handleSubmit(e, 'published')}>

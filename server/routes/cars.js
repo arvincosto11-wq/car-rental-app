@@ -819,7 +819,7 @@ router.get('/:id/reviews', async (req, res) => {
 // Add car (admin only)
 router.post('/', protect, adminOnly, async (req, res) => {
   try {
-    const { appointmentId, inspectionChecks, ...fields } = req.body;
+    const { appointmentId, inspectionChecks, decideLater, ...fields } = req.body;
 
     // Before anything is written: a plate identifies one vehicle, and the
     // system used to let two carry the same one.
@@ -832,13 +832,19 @@ router.post('/', protect, adminOnly, async (req, res) => {
       return res.status(201).json(car);
     }
 
-    // --- a consigned vehicle, created at the counter ----------------------
+    // --- a consigned vehicle, seen at the counter -------------------------
     //
-    // This is the approval. There is no separate approve button any more,
-    // because one existed and it told owners their listing was being set up
-    // when nothing was being set up. Saving the vehicle is the only thing
-    // that can honestly say a vehicle was taken on, so everything that
-    // follows from approval happens here, together, or not at all.
+    // Two endings. Normally this IS the approval: the vehicle was looked at,
+    // the rate was agreed, and it is listed here and now — everything that
+    // follows from approval happening together, or not at all.
+    //
+    // The other ending is `decideLater`. The office has seen the vehicle but
+    // is not ready to say yes, or at what price — they want to think, or ask
+    // the owner something first. Before this, that was not a thing the
+    // system could hold: the only ways out of this form were to list the
+    // vehicle or to abandon the whole record of the visit. So the
+    // application is filed PENDING with no listing behind it, and the
+    // decision is taken afterwards in Manage Consignments.
     const appointment = await Appointment.findById(appointmentId);
     if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
     if (!['requested', 'accepted'].includes(appointment.status)) {
@@ -871,7 +877,7 @@ router.post('/', protect, adminOnly, async (req, res) => {
     // about, which is the one outcome worth going out of the way to avoid.
     const consignment = new Consignment({
       owner: appointment.owner,
-      status: 'approved',
+      status: decideLater ? 'pending' : 'approved',
       brand: fields.brand,
       model: fields.model,
       year: fields.year,
@@ -887,7 +893,9 @@ router.post('/', protect, adminOnly, async (req, res) => {
       suggestedPricePerDay: fields.pricePerDay,
       description: fields.description || '',
       vehiclePhotos: fields.photos || [],
-      adminNotes: 'Inspected in person and listed from the appointment.',
+      adminNotes: decideLater
+        ? 'Inspected in person. Held for a decision on the rate.'
+        : 'Inspected in person and listed from the appointment.',
     });
     const incomplete = consignment.validateSync();
     if (incomplete) {
@@ -896,8 +904,12 @@ router.post('/', protect, adminOnly, async (req, res) => {
       });
     }
 
-    const car = await Car.create({ ...fields, registrationExpiry: expiry, owner: appointment.owner });
-    consignment.linkedCar = car._id;
+    // No vehicle yet when the decision is being held over: a listing is
+    // the yes. The appointment still closes, because the visit happened.
+    const car = decideLater
+      ? null
+      : await Car.create({ ...fields, registrationExpiry: expiry, owner: appointment.owner });
+    if (car) consignment.linkedCar = car._id;
     await consignment.save();
 
     appointment.status = 'completed';
@@ -905,16 +917,29 @@ router.post('/', protect, adminOnly, async (req, res) => {
     appointment.inspection = { checked, registrationExpiry: expiry, at: new Date() };
     await appointment.save();
 
-    await notifyUser(
-      appointment.owner,
-      'Vehicle approved',
-      `Your ${car.brand} ${car.model} passed its check and is now listed with us. You can see it, and any `
-      + 'bookings it gets, on your dashboard.',
-      '/consignor',
-      { email: true },
-    );
+    // Told either way, and told the truth either way. Somebody who has just
+    // driven their vehicle to us should not be left wondering how it went.
+    if (car) {
+      await notifyUser(
+        appointment.owner,
+        'Vehicle approved',
+        `Your ${car.brand} ${car.model} passed its check and is now listed with us. You can see it, and any `
+        + 'bookings it gets, on your dashboard.',
+        '/consignor',
+        { email: true },
+      );
+    } else {
+      await notifyUser(
+        appointment.owner,
+        'Vehicle checked',
+        `Thanks for bringing your ${consignment.brand} ${consignment.model} in. We have everything we need `
+        + 'and will come back to you shortly about listing it.',
+        '/consignor',
+        { email: true },
+      );
+    }
 
-    res.status(201).json(car);
+    res.status(201).json(car || consignment);
   } catch (err) {
     fail(res, err);
   }
