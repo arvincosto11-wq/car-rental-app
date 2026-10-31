@@ -4,6 +4,7 @@ import { useUIFeedback } from '../context/UIFeedbackContext';
 import { invalidateLongRentalRules } from '../hooks/useLongRentalRules';
 import { findInversions, validateLongRentalRule, findRuleConflicts, conflictMessage, existingClashNote } from '../utils/longRental';
 import { GOLD, GOLD_DARK, GOLD_TINT, GOLD_TINT_DARK, ON_GOLD } from '../theme';
+import { afterDiscount, DEFAULT_OWNER_PERCENT } from '../utils/revenueShare';
 
 // The "Long-Rental" tab of the Discounts panel: "book N days or more, get
 // P% off" rules. One rule can cover every vehicle (including ones added
@@ -21,6 +22,22 @@ const LongRentalTab = ({ cars, isDark, onRulesChanged }) => {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
+  // What we keep of a rental, for working out what a rule costs us on a
+  // vehicle we do not own. The default is the system's behaviour until
+  // somebody changes it, so a failed read is not worth reporting.
+  const [ownerPercent, setOwnerPercent] = useState(DEFAULT_OWNER_PERCENT);
+
+  useEffect(() => {
+    let live = true;
+    api.get('/settings')
+      .then((res) => {
+        if (live && Number.isFinite(res.data?.revenueShare?.ownerPercent)) {
+          setOwnerPercent(res.data.revenueShare.ownerPercent);
+        }
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
 
   const load = async () => {
     try {
@@ -214,12 +231,48 @@ const LongRentalTab = ({ cars, isDark, onRulesChanged }) => {
       border: `1px solid ${isDark ? '#3a3b3c' : '#d1d5db'}`,
       background: isDark ? '#18191a' : '#f3f4f6', color: isDark ? '#e4e6eb' : '#374151',
     },
+    costBox: {
+      marginTop: '10px', padding: '12px 14px', borderRadius: '9px',
+      border: `1px solid ${isDark ? 'rgba(248,113,113,0.45)' : '#fecaca'}`,
+      background: isDark ? 'rgba(248,113,113,0.12)' : '#fef2f2',
+      color: isDark ? '#f87171' : '#b91c1c',
+      fontSize: '12.5px', textWrap: 'pretty',
+    },
+    costLead: { fontWeight: '750', marginBottom: '6px' },
+    costRow: { marginTop: '3px', fontVariantNumeric: 'tabular-nums' },
+    costNote: { marginTop: '8px', opacity: 0.85 },
   };
 
   const days = Number(form.minDays);
   const pct = Number(form.percent);
   const before = days * EXAMPLE_RATE;
   const after = before - Math.round(before * (pct / 100));
+
+  // Which consigned vehicles this rule would cost us money on.
+  //
+  // The same arithmetic as the promo warning, and it matters more here. A
+  // promo runs on one vehicle for a few days; a rule applies automatically
+  // to every qualifying booking on every vehicle it covers, until somebody
+  // changes it — so one set too deep loses money quietly and repeatedly.
+  //
+  // We absorb discounts rather than passing them to the owner, which makes
+  // our own share the whole of the margin: cut deeper than that share and
+  // we pay the owner more than the renter handed over. Worked per day,
+  // because a percentage takes the same fraction whatever the length, then
+  // shown over the shortest booking the rule can apply to.
+  const costly = pct > 0 && days > 0
+    ? cars
+      .filter((car) => car.owner && (form.appliesTo === 'all' || form.cars.includes(String(car._id))))
+      .map((car) => {
+        const day = afterDiscount({
+          rental: car.pricePerDay,
+          discount: Math.round((car.pricePerDay * pct) / 100),
+          percent: ownerPercent,
+        });
+        return { car, perDay: -day.weKeep };
+      })
+      .filter((row) => row.perDay > 0)
+    : [];
 
   return (
     <>
@@ -308,6 +361,26 @@ const LongRentalTab = ({ cars, isDark, onRulesChanged }) => {
           <div style={s.preview}>
             Example on a ₱{EXAMPLE_RATE.toLocaleString()}/day vehicle: {days} days drops from
             ₱{before.toLocaleString()} to <strong style={{ color: gold }}>₱{after.toLocaleString()}</strong>.
+          </div>
+        )}
+
+        {costly.length > 0 && (
+          <div style={s.costBox} role="status">
+            <div style={s.costLead}>
+              This would cost you money on {costly.length === 1 ? 'a consigned vehicle' : `${costly.length} consigned vehicles`}.
+            </div>
+            {costly.map(({ car, perDay }) => (
+              <div key={car._id} style={s.costRow}>
+                {car.brand} {car.model} (₱{car.pricePerDay.toLocaleString()} a day): you pay
+                {' '}₱{perDay.toLocaleString()} a day — ₱{(perDay * days).toLocaleString()} on a {days}-day
+                booking, and more on a longer one.
+              </div>
+            ))}
+            <div style={s.costNote}>
+              Owners are paid on the price before the discount, so your {100 - ownerPercent}% share is the
+              whole margin and anything deeper than {100 - ownerPercent}% off comes out of your pocket.
+              Unlike a date promo this applies by itself, to every qualifying booking, until you change it.
+            </div>
           </div>
         )}
 
