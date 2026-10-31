@@ -79,7 +79,7 @@ const ManageAvailabilityRequests = () => {
       typeLabel: 'Blocked dates',
       title: `Block ${asked(r.startDate)} – ${asked(r.endDate)} on the ${r.brand} ${r.model}`,
       owner: r.owner?.name || 'Unknown',
-      at: r.createdAt,
+      at: r.requestedAt,
       reason: [r.reason, r.note].filter(Boolean).join(' · '),
       send: (decision, adminNotes) => api.put(`/cars/${r.carId}/blocked-dates/${r._id}/decision`, { decision, adminNotes }),
     })),

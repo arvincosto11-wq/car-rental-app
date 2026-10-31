@@ -156,6 +156,14 @@ const carSchema = new mongoose.Schema({
     reason: { type: String, default: '' },
     status: { type: String, enum: ['approved', 'pending', 'declined'], default: 'approved' },
     requestedBy: { type: String, enum: ['admin', 'consignor'], default: 'admin' },
+    // When this range was asked for — not when it starts.
+    //
+    // It was never recorded, so a consignor's request reached admin with no
+    // date on it: the queue could not say "asked Oct 26" the way an
+    // on/off-platform request does, and sorting newest first put every
+    // blocked-date request last whatever its age. Absent on ranges saved
+    // before this existed, which is why the queue tolerates no date.
+    requestedAt: { type: Date },
     adminNotes: { type: String, default: '' },
   }],
 }, { timestamps: true });

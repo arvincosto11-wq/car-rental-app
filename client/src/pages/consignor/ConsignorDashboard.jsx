@@ -524,6 +524,19 @@ const ConsignorDashboard = () => {
     ? bookings.filter((b) => b.car?._id === selected.linkedCar._id)
     : bookings;
   const blockedCount = selected ? upcomingBlockCount(selected.linkedCar.blockedDates) : 0;
+  // Everything still ahead of today, declined requests included.
+  //
+  // The section used to be gated on blockedCount, which deliberately leaves
+  // declined ranges out — right for the chip in Manage Cars, where a
+  // declined range blocks nothing, and wrong here. An owner whose request
+  // had just been turned down was shown “No blocked dates” and a button to
+  // start again, with no sign they had been refused and no sign of the
+  // reason, while the admin screen that refused them promised they would
+  // see it.
+  const upcomingBlocks = selected
+    ? (selected.linkedCar.blockedDates || [])
+      .filter((b) => new Date(b.endDate) >= new Date(new Date().toDateString()))
+    : [];
 
   const menu = [
     { key: 'overview', label: 'Overview', icon: <OverviewIcon /> },
@@ -957,7 +970,7 @@ const ConsignorDashboard = () => {
 
               {!selected ? (
                 <div style={s.empty}><p>No listed vehicle yet.</p></div>
-              ) : blockedCount === 0 ? (
+              ) : upcomingBlocks.length === 0 ? (
                 <div style={s.emptyDashed}>
                   <span style={s.emptyIcon}><CalendarOffIcon /></span>
                   <div style={s.emptyTitle}>No blocked dates on {selected.brand} {selected.model}</div>
@@ -975,18 +988,23 @@ const ConsignorDashboard = () => {
               ) : (
                 <>
                   <div style={s.blockedList}>
-                    {(selected.linkedCar.blockedDates || [])
-                      .filter((b) => new Date(b.endDate) >= new Date(new Date().toDateString()))
-                      .map((b) => (
-                        <div key={b._id} style={s.blockedRow}>
-                          <span>
-                            {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
-                            {b.note && <span style={s.blockedNote}>{b.note}</span>}
-                          </span>
-                          {b.status === 'pending' && <span style={s.pill('amber')}>Pending approval</span>}
-                          {b.status === 'declined' && <span style={s.pill('neutral')}>Declined</span>}
-                        </div>
-                      ))}
+                    {upcomingBlocks.map((b) => (
+                      <div key={b._id} style={s.blockedRow}>
+                        <span>
+                          {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                          {b.note && <span style={s.blockedNote}>{b.note}</span>}
+                          {/* The reason, where the refusal is read. It was
+                              only ever rendered inside the Block dates
+                              dialog, which nobody opens after being told
+                              there is nothing here. */}
+                          {b.status === 'declined' && b.adminNotes && (
+                            <span style={s.blockedNote}>{b.adminNotes}</span>
+                          )}
+                        </span>
+                        {b.status === 'pending' && <span style={s.pill('amber')}>Pending approval</span>}
+                        {b.status === 'declined' && <span style={s.pill('neutral')}>Declined</span>}
+                      </div>
+                    ))}
                   </div>
                   {!onHold && (
                     <button type="button" style={s.goldBtn} onClick={() => setBlockPanelCarId(selected.linkedCar._id)}>

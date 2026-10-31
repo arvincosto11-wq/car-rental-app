@@ -316,6 +316,7 @@ router.post('/:id/blocked-dates', protect, activeAccount, async (req, res) => {
       note: note || '',
       status: isConsignor ? 'pending' : 'approved',
       requestedBy: isConsignor ? 'consignor' : 'admin',
+      requestedAt: new Date(),
     });
     await car.save();
 
@@ -543,6 +544,7 @@ router.get('/blocked-date-requests', protect, adminOnly, async (req, res) => {
           owner: car.owner,
           startDate: block.startDate,
           endDate: block.endDate,
+          requestedAt: block.requestedAt,
           reason: blockLabelFor(block),
           note: block.note,
         });
