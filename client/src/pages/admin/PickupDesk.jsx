@@ -44,10 +44,11 @@ const PickupDesk = () => {
   // is of the person standing in front of you, so it starts again each time.
   const [checked, setChecked] = useState({});
   const [working, setWorking] = useState('');
-  // Signed links to each waiting client's ID, keyed by client. Fetched with
-  // everything else rather than inside the card: Card is redefined on every
-  // render of this page, so a hook in there would remount and re-fetch each
-  // time somebody ticked a checkbox.
+  // There is no ID photo to show here any more, and there used not to be a
+  // comment explaining that either — just two paragraphs describing signed
+  // links to a card we no longer hold. Identity documents are presented in
+  // person, against the person, which is what the checklist below is for.
+  //
   // The gauge reading, per booking. Like the tick boxes, it is of the
   // vehicle in front of you, so it starts blank every time.
   const [fuel, setFuel] = useState({});
@@ -61,9 +62,6 @@ const PickupDesk = () => {
       const [b, c] = await Promise.all([api.get('/bookings/all'), api.get('/users')]);
       setBookings(b.data);
       setClients(c.data);
-
-      // Only the clients who actually have a card here, so a desk with two
-      // pickups does not sign every ID in the database.
     } catch (err) {
       console.error(err);
       toast.error('Could not load today’s pickups.');
