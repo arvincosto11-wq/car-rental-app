@@ -45,7 +45,13 @@ const FavoriteButton = ({ carId, canFavorite, isFavorite, onToggle, size = 32, s
         ...style,
       }}
     >
-      <AnimatedHeartIcon active={isFavorite} size={18} color="#fff" />
+      {/* No colour of its own: it takes the button's.
+          It was pinned to white, which is right on a card, where this sits
+          on a dark scrim over the photo. The vehicle page gives the button
+          a white background in light mode and a readable grey `color` to go
+          with it — but the heart ignored the grey and stayed white, so in
+          light mode it was a white heart on a white button. */}
+      <AnimatedHeartIcon active={isFavorite} size={18} />
     </button>
   );
 };
