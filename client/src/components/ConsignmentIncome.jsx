@@ -46,11 +46,16 @@ const cutoffFor = (range) => {
 
 const dayMonth = (value) => new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
+// Within one month only the second day is repeated: "Aug 24–26". Putting
+// the bare first day in front of a formatted second one read as
+// "24–Aug 26", which is not a date range in any language.
 const tripSpan = (trip) => {
   const from = new Date(trip.startDate);
   const to = new Date(trip.endedAt || trip.endDate);
   if (from.toDateString() === to.toDateString()) return dayMonth(from);
-  if (from.getMonth() === to.getMonth()) return `${from.getDate()}–${dayMonth(to)}`;
+  if (from.getMonth() === to.getMonth() && from.getFullYear() === to.getFullYear()) {
+    return `${dayMonth(from)}–${to.getDate()}`;
+  }
   return `${dayMonth(from)} – ${dayMonth(to)}`;
 };
 
