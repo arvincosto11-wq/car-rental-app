@@ -15,6 +15,7 @@ import longRentalRoutes from './routes/longRental.js';
 import driverRoutes from './routes/drivers.js';
 import settingsRoutes from './routes/settings.js';
 import appointmentRoutes from './routes/appointments.js';
+import payoutRoutes from './routes/payouts.js';
 import { normaliseEmail } from './middleware/email.js';
 import backfillCollected from './utils/backfillCollected.js';
 
@@ -57,6 +58,7 @@ app.use('/api/long-rental-discounts', longRentalRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/appointments', appointmentRoutes);
+app.use('/api/payouts', payoutRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: '🚗 Car Rental API is running!' });

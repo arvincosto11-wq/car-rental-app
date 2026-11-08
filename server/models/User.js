@@ -66,6 +66,21 @@ const userSchema = new mongoose.Schema({
     at: { type: Date, default: null },
     reason: { type: String, default: '' },
   },
+  // Where a vehicle owner's share is sent, and the name the account is
+  // registered to so it can be checked before the money leaves.
+  //
+  // Set by admin, not by the owner, and that is deliberate. Everything
+  // about a consigned vehicle is already settled face to face — the
+  // inspection, the papers, the daily rate — and this is the field that
+  // decides where money goes. An owner editing it themselves means a
+  // stolen password quietly redirects their payouts, with nobody the
+  // wiser until the real owner asks where their money went. They see what
+  // we hold and are told to ring if it is wrong, the same way a licence
+  // expiry is set by whoever had the card in their hand.
+  gcash: {
+    number: { type: String, default: '' },
+    name: { type: String, default: '' },
+  },
   avgRating: { type: Number, default: 0 },
   ratingCount: { type: Number, default: 0 },
   favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Car' }]

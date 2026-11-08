@@ -29,6 +29,7 @@ const D = {
   ok: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6',
   tick: 'M5 12l5 5 9-10',
   cal: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
   power: 'M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01',
   image: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01',
@@ -45,6 +46,7 @@ export const BikeIcon = (p) => <Line d={D.bike} {...p} />;
 export const OkIcon = (p) => <Line d={D.ok} {...p} />;
 export const TickIcon = (p) => <Line d={D.tick} stroke={2.2} {...p} />;
 export const CalIcon = (p) => <Line d={D.cal} {...p} />;
+export const ClockIcon = (p) => <Line d={D.clock} {...p} />;
 export const PowerIcon = (p) => <Line d={D.power} {...p} />;
 export const InfoIcon = (p) => <Line d={D.info} {...p} />;
 export const ImageIcon = (p) => <Line d={D.image} {...p} />;

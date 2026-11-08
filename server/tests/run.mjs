@@ -31,8 +31,9 @@ import priority from './priority.test.mjs';
 import bookingQuote from './bookingQuote.test.mjs';
 import bookingWindow from './bookingWindow.test.mjs';
 import revenueShare from './revenueShare.test.mjs';
+import payouts from './payouts.test.mjs';
 
-const suites = [phTime, availability, pricing, longRental, refunds, adjustOffer, handover, dwell, delivery, appointments, email, drivers, noShow, adminToday, analytics, expiryRisk, plates, lateness, myBookings, priority, bookingQuote, bookingWindow, revenueShare];
+const suites = [phTime, availability, pricing, longRental, refunds, adjustOffer, handover, dwell, delivery, appointments, email, drivers, noShow, adminToday, analytics, expiryRisk, plates, lateness, myBookings, priority, bookingQuote, bookingWindow, revenueShare, payouts];
 
 for (const run of suites) run();
 

@@ -6,7 +6,9 @@ import EmailVerification from '../models/EmailVerification.js';
 import Car from '../models/Car.js';
 import Consignment from '../models/Consignment.js';
 import Booking from '../models/Booking.js';
-import { sumSplit } from '../utils/revenueShare.js';
+import Payout from '../models/Payout.js';
+import { sumSplit, splitFor } from '../utils/revenueShare.js';
+import { owedSummary, isLive } from '../utils/payouts.js';
 import { plateClash, plateClashMessage } from '../utils/plates.js';
 import { protect, adminOnly, consignorOnly } from '../middleware/auth.js';
 import { sameEmail } from '../middleware/email.js';
@@ -138,8 +140,8 @@ router.get('/all', protect, adminOnly, async (req, res) => {
   }
 });
 
-// What each consignor's vehicles have earned, and what we kept for running
-// them.
+// What each consignor's vehicles have earned, what we kept for running
+// them, and what we still owe.
 //
 // Computed here rather than in the browser because the alternative is the
 // admin page pulling every booking ever made — client, vehicle and driver
@@ -149,6 +151,14 @@ router.get('/all', protect, adminOnly, async (req, res) => {
 //
 // Confirmed and completed only: a pending booking has not been agreed to
 // and a cancelled one earned nobody anything.
+//
+// EARNED AND OWED ARE NOT THE SAME FIGURE, and the difference is the
+// reason this route grew. A booking is earned when it is confirmed, which
+// is what the owner's dashboard has always counted. It is not payable
+// until the vehicle is back, because a confirmed booking can still be
+// cancelled and refunded — paying on a confirmation hands an owner a share
+// of money we may yet give back. What is confirmed but not yet travelled
+// is reported separately as `coming`, so the page can say both.
 router.get('/income', protect, adminOnly, async (req, res) => {
   try {
     const { from, to } = req.query;
@@ -161,20 +171,45 @@ router.get('/income', protect, adminOnly, async (req, res) => {
       // it needs what a card shows: what kind of vehicle, what it rents for,
       // and whether it is on the platform at all.
       .select('brand model plateNumber category pricePerDay isAvailable owner archived')
-      .populate('owner', 'name email phone')
+      .populate('owner', 'name email phone gcash')
       .lean();
     if (!cars.length) return res.json([]);
 
+    // Every trip on these vehicles, not only the ones in the period being
+    // looked at. Two different questions are answered below and they need
+    // different sets: what was EARNED is a question about a period, and
+    // what is OWED is a question about right now. Filtering in the query
+    // would answer the first and quietly get the second wrong — an unpaid
+    // trip from August is still owed in November.
     const bookings = await Booking.find({
       car: { $in: cars.map((c) => c._id) },
       status: { $in: ['confirmed', 'completed'] },
-      ...(Object.keys(span).length ? { createdAt: span } : {}),
     })
-      .select('car subtotal totalPrice ownerShare')
+      .select('car status subtotal totalPrice ownerShare startDate endDate returnedAt createdAt')
       .lean();
+
+    const inSpan = (date) => {
+      if (!date) return false;
+      const at = new Date(date);
+      if (span.$gte && at < span.$gte) return false;
+      if (span.$lte && at > span.$lte) return false;
+      return true;
+    };
+    const earnedInPeriod = (b) => (Object.keys(span).length ? inSpan(b.createdAt) : true);
 
     const byCar = new Map(cars.map((c) => [String(c._id), []]));
     for (const b of bookings) byCar.get(String(b.car))?.push(b);
+
+    // Live payouts decide what has been paid. A voided one releases its
+    // trips, so filtering rather than assuming is the whole job here.
+    const payouts = await Payout.find({ consignor: { $in: cars.map((c) => c.owner?._id || c.owner) } })
+      .select('consignor amount bookings status createdAt')
+      .lean();
+    const paidIds = new Set();
+    for (const p of payouts) {
+      if (!isLive(p)) continue;
+      for (const b of p.bookings || []) paidIds.add(String(b));
+    }
 
     // Grouped by consignor rather than by vehicle: one of them can have
     // several, and what they are owed is a single number across the lot.
@@ -189,15 +224,30 @@ router.get('/income', protect, adminOnly, async (req, res) => {
             email: car.owner?.email || '',
             phone: car.owner?.phone || '',
           },
+          // Where their share is sent, so the admin recording a payment
+          // is not hunting through chat for the number.
+          gcash: {
+            number: car.owner?.gcash?.number || '',
+            name: car.owner?.gcash?.name || '',
+          },
           rental: 0,
           ownerEarned: 0,
           weKept: 0,
           trips: 0,
           vehicles: [],
+          // Across every vehicle they own, and across all time rather
+          // than the period above.
+          owed: 0,
+          coming: 0,
+          paidInPeriod: 0,
+          paidAllTime: 0,
+          oldestUnpaidAt: null,
+          payable: [],
         });
       }
       const row = byConsignor.get(id);
-      const totals = sumSplit(byCar.get(String(car._id)) || []);
+      const carBookings = byCar.get(String(car._id)) || [];
+      const totals = sumSplit(carBookings.filter(earnedInPeriod));
       row.vehicles.push({
         id: String(car._id),
         name: `${car.brand} ${car.model}`,
@@ -218,11 +268,49 @@ router.get('/income', protect, adminOnly, async (req, res) => {
       row.ownerEarned += totals.owner;
       row.weKept += totals.operator;
       row.trips += totals.count;
+
+      // What is still owed on this vehicle, and the trips that make it up.
+      // The dialog that records a payment ticks these off one by one, so
+      // it needs them itemised rather than as a single figure.
+      const due = owedSummary({
+        bookings: carBookings,
+        share: (b) => splitFor(b).owner,
+        paidIds,
+      });
+      row.owed += due.owed;
+      row.coming += due.coming;
+      if (due.oldestUnpaidAt && (!row.oldestUnpaidAt || due.oldestUnpaidAt < row.oldestUnpaidAt)) {
+        row.oldestUnpaidAt = due.oldestUnpaidAt;
+      }
+      for (const trip of due.payable) {
+        row.payable.push({
+          id: String(trip.booking._id),
+          vehicle: `${car.brand} ${car.model}`,
+          plateNumber: car.plateNumber || '',
+          startDate: trip.booking.startDate,
+          endDate: trip.booking.endDate,
+          endedAt: trip.endedAt,
+          rental: splitFor(trip.booking).base,
+          amount: trip.amount,
+        });
+      }
+    }
+
+    for (const p of payouts) {
+      const row = byConsignor.get(String(p.consignor));
+      if (!row || !isLive(p)) continue;
+      row.paidAllTime += p.amount;
+      if (!Object.keys(span).length || inSpan(p.createdAt)) row.paidInPeriod += p.amount;
     }
 
     const list = [...byConsignor.values()];
-    for (const row of list) row.vehicles.sort((a, b) => b.rental - a.rental);
-    res.json(list.sort((a, b) => b.rental - a.rental));
+    for (const row of list) {
+      row.vehicles.sort((a, b) => b.rental - a.rental);
+      row.payable.sort((a, b) => new Date(a.endedAt || 0) - new Date(b.endedAt || 0));
+    }
+    // Whoever is owed the most, first. The page is read to decide who to
+    // pay, and nobody opens it to find out who earned least.
+    res.json(list.sort((a, b) => b.owed - a.owed || b.rental - a.rental));
   } catch (err) {
     fail(res, err);
   }

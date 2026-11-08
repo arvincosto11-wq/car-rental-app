@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ConsignmentIncome from '../../components/ConsignmentIncome';
 import ConsignmentDrawer from '../../components/ConsignmentDrawer';
-import Skeleton from '../../components/Skeleton';
+import PayoutHistory from '../../components/PayoutHistory';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { useAdminPendingCounts } from '../../context/AdminPendingCountsContext';
@@ -23,12 +23,15 @@ import { VehicleIcon, TickIcon, ArrowIcon } from '../../components/adminConsignI
 //
 // So the rare thing gets a band at the top that is impossible to miss, and
 // the common thing gets the body of the page.
+//
+// The body is organised by PERSON, not by vehicle, because the job the
+// page exists for is paying somebody. You pay a consignor, not a Honda
+// City. It used to carry a register of vehicle cards grouped by owner as
+// well as a list of owners above it, which meant two sections quoting
+// different figures about the same month — so the register is gone and
+// each owner's vehicles live inside their own row.
 
 const peso = (n) => `₱${Math.round(n || 0).toLocaleString()}`;
-const startOfMonth = () => {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-};
 
 const ManageConsignments = () => {
   usePageTitle('Manage Consignments');
@@ -37,23 +40,23 @@ const ManageConsignments = () => {
   const { refetch: refetchPendingCounts } = useAdminPendingCounts();
 
   const [applications, setApplications] = useState([]);
-  const [income, setIncome] = useState([]);
+  const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
   const [openId, setOpenId] = useState(null);
   const [ownerPercent, setOwnerPercent] = useState(DEFAULT_OWNER_PERCENT);
+  // Bumped after a payment so the panel below reloads its figures along
+  // with the history above it. They read the same money from two routes
+  // and must never be refreshed one without the other.
+  const [moneyKey, setMoneyKey] = useState(0);
 
   const fetchData = async () => {
     try {
-      // The register shows each vehicle's takings for THIS month, whatever
-      // period the income panel above is set to — the panel answers "how are
-      // we doing", a vehicle card answers "is this one working".
-      const [apps, money] = await Promise.all([
+      const [apps, paid] = await Promise.all([
         api.get('/consignments/all'),
-        api.get('/consignments/income', { params: { from: startOfMonth() } }),
+        api.get('/payouts'),
       ]);
       setApplications(apps.data || []);
-      setIncome(money.data || []);
+      setPayouts(paid.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -79,29 +82,17 @@ const ManageConsignments = () => {
   const declined = applications.filter((a) => a.status === 'declined');
   const open = pending.find((a) => a._id === openId) || null;
 
-  const vehicles = income.flatMap((row) => row.vehicles.map((v) => ({ ...v, consignor: row.consignor })));
-  const listedCount = vehicles.filter((v) => v.onPlatform).length;
-  const offCount = vehicles.length - listedCount;
-
-  const shown = filter === 'declined'
-    ? []
-    : vehicles.filter((v) => (filter === 'all' ? true : filter === 'listed' ? v.onPlatform : !v.onPlatform));
-
-  // Grouped by owner, because that is who you ring about a vehicle.
-  const owners = [];
-  for (const v of shown) {
-    let group = owners.find((g) => g.id === v.consignor.id);
-    if (!group) {
-      group = { ...v.consignor, vehicles: [] };
-      owners.push(group);
-    }
-    group.vehicles.push(v);
-  }
-
   const onDecided = async (message) => {
     setOpenId(null);
     await fetchData();
     refetchPendingCounts();
+    toast.success(message);
+  };
+
+  // A payment changes both the history and every owed figure beside it.
+  const onMoneyMoved = async (message) => {
+    await fetchData();
+    setMoneyKey((n) => n + 1);
     toast.success(message);
   };
 
@@ -153,52 +144,7 @@ const ManageConsignments = () => {
 
     sectionHead: { display: 'flex', gap: '16px', alignItems: 'center', margin: '24px 0 16px' },
     sectionTitle: { margin: 0, flex: 1, fontSize: '18px', fontWeight: '750', color: text },
-    pills: { display: 'flex', gap: '6px', flexWrap: 'wrap' },
-    pill: (on) => ({
-      minHeight: '36px', padding: '0 14px', borderRadius: '999px',
-      fontFamily: 'inherit', fontSize: '13px', fontWeight: on ? '700' : '500',
-      cursor: 'pointer', border: `1px solid ${on ? gold : line}`,
-      background: on ? gold : card, color: on ? ON_GOLD : text,
-    }),
-    pillCount: { opacity: 0.7, marginLeft: '2px' },
-
     grid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '16px', alignItems: 'start' },
-    ownerCard: { borderRadius: '14px', background: card, border: `1px solid ${line}`, overflow: 'hidden' },
-    ownerHead: {
-      display: 'flex', gap: '12px', alignItems: 'center',
-      padding: '14px 16px', borderBottom: `1px solid ${line}`,
-    },
-    ownerAvatar: {
-      width: '36px', height: '36px', borderRadius: '999px',
-      background: inset, border: `1px solid ${line}`,
-      display: 'grid', placeItems: 'center', fontWeight: '750', color: ink,
-    },
-    ownerName: { fontWeight: '700', color: text },
-    ownerMeta: { fontSize: '12px', color: text3 },
-
-    vehicleRow: {
-      display: 'flex', flexDirection: 'column', gap: '8px',
-      padding: '14px 16px', borderTop: `1px solid ${line}`,
-    },
-    vehicleTop: { display: 'flex', gap: '12px', alignItems: 'center' },
-    vehicleTile: {
-      flex: 'none', width: '40px', height: '40px', borderRadius: '10px',
-      background: inset, display: 'grid', placeItems: 'center', color: text2,
-    },
-    vehicleName: { fontWeight: '650', color: text },
-    vehicleMeta: { fontSize: '12px', color: text3 },
-    month: (earned) => ({
-      display: 'flex', gap: '8px', alignItems: 'center',
-      padding: '8px 10px', borderRadius: '8px', background: inset,
-      fontSize: '13px', fontWeight: earned ? '650' : '500',
-      color: earned ? text : text3,
-    }),
-    monthLabel: { color: text3, whiteSpace: 'nowrap' },
-
-    empty: {
-      padding: '28px', borderRadius: '14px', border: `1px dashed ${line}`,
-      textAlign: 'center', color: text2, fontSize: '13.5px',
-    },
     declinedCard: {
       borderRadius: '14px', background: card, border: `1px solid ${line}`,
       padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '6px',
@@ -210,13 +156,6 @@ const ManageConsignments = () => {
       background: inset, fontSize: '13.5px', color: text2, textWrap: 'pretty',
     },
   };
-
-  const filters = [
-    ['all', 'All', vehicles.length],
-    ['listed', 'Listed', listedCount],
-    ['off', 'Off platform', offCount],
-    ['declined', 'Declined', declined.length],
-  ];
 
   return (
     <AdminLayout activePage="Manage Consignments">
@@ -256,34 +195,18 @@ const ManageConsignments = () => {
         </div>
       ))}
 
-      <ConsignmentIncome />
+      <ConsignmentIncome refreshKey={moneyKey} onPaid={onMoneyMoved} />
 
-      <div style={s.sectionHead}>
-        <h2 style={s.sectionTitle}>Consigned vehicles</h2>
-        <div style={s.pills}>
-          {filters.map(([key, label, n]) => (
-            <button key={key} type="button" style={s.pill(filter === key)} onClick={() => setFilter(key)}>
-              {label} <span style={s.pillCount}>{n}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <PayoutHistory payouts={payouts} onChanged={onMoneyMoved} />
 
-      {loading ? (
-        <div style={s.grid}>
-          {[0, 1].map((i) => (
-            <div key={i} style={s.ownerCard}>
-              <div style={{ padding: '16px' }}>
-                <Skeleton height="36px" isDark={isDark} style={{ marginBottom: '12px' }} />
-                <Skeleton height="64px" isDark={isDark} />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : filter === 'declined' ? (
-        declined.length === 0 ? (
-          <div style={s.empty}>No declined applications. Anything you decline shows here with the reason you gave.</div>
-        ) : (
+      {/* Kept because a declined application is the one thing on this page
+          with no other home: the vehicle was never listed, so it appears
+          in no owner's row. */}
+      {declined.length > 0 && (
+        <>
+          <div style={s.sectionHead}>
+            <h2 style={s.sectionTitle}>Declined applications</h2>
+          </div>
           <div style={s.grid}>
             {declined.map((a) => (
               <div key={a._id} style={s.declinedCard}>
@@ -298,59 +221,7 @@ const ManageConsignments = () => {
               </div>
             ))}
           </div>
-        )
-      ) : owners.length === 0 ? (
-        <div style={s.empty}>
-          {vehicles.length === 0
-            ? 'No vehicles are consigned yet. They appear here once an application is approved.'
-            : filter === 'listed'
-              ? 'No consigned vehicle is on the platform right now.'
-              : 'Every consigned vehicle is on the platform.'}
-        </div>
-      ) : (
-        <div style={s.grid}>
-          {owners.map((g) => (
-            <div key={g.id} style={s.ownerCard}>
-              <div style={s.ownerHead}>
-                <span style={s.ownerAvatar}>{(g.name || '?').trim().charAt(0).toUpperCase()}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={s.ownerName}>{g.name}</div>
-                  <div style={s.ownerMeta}>
-                    {g.phone ? `${g.phone} · ` : ''}
-                    {g.vehicles.length} vehicle{g.vehicles.length === 1 ? '' : 's'}
-                  </div>
-                </div>
-              </div>
-
-              {g.vehicles.map((v) => (
-                <div key={v.id} style={s.vehicleRow}>
-                  <div style={s.vehicleTop}>
-                    <span style={s.vehicleTile}><VehicleIcon category={v.category} size={20} /></span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={s.vehicleName}>{v.name}</div>
-                      <div style={s.vehicleMeta}>
-                        {v.plateNumber || 'No plate'} · {v.category || 'Vehicle'} · {peso(v.pricePerDay)} a day
-                      </div>
-                    </div>
-                    {/* Off the platform is a state the owner asked for and we
-                        agreed to, so it is neutral. Red is kept for things
-                        that are wrong. */}
-                    <span style={chip(v.onPlatform ? 'green' : 'neutral')}>
-                      {v.onPlatform ? 'Listed' : 'Off platform'}
-                    </span>
-                  </div>
-                  <div style={s.month(v.trips > 0)}>
-                    <span style={s.monthLabel}>This month</span>
-                    <span style={{ flex: 1 }} />
-                    {v.trips > 0
-                      ? `${v.trips} trip${v.trips === 1 ? '' : 's'} · ${peso(v.rental)} taken · ${peso(v.ownerEarned)} theirs`
-                      : 'No trips'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
+        </>
       )}
 
       {open && (
