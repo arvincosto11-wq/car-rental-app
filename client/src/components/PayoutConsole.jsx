@@ -332,8 +332,10 @@ const PayoutConsole = ({ rows, onPaid }) => {
   const sendVerb = method === 'gcash'
     ? 'Open your GCash app and send exactly'
     : method === 'cash' ? 'Hand over exactly, in person' : 'Transfer exactly';
+  // An em dash rather than a full stop: plenty of account names are
+  // written "Arvin C." and a sentence after one read "Arvin C.. Check".
   const sendCheck = method === 'gcash'
-    ? (gcash.name ? `Registered to ${gcash.name}. Check the name before you send.` : 'No account name on file. Check it with them before you send.')
+    ? (gcash.name ? `Registered to ${gcash.name} — check the name before you send.` : 'No account name on file. Check it with them before you send.')
     : method === 'cash' ? 'Ask them to count it in front of you.'
       : 'Use the bank details they gave you — we do not keep them on file.';
 
