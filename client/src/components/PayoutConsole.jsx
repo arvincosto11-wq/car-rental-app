@@ -297,7 +297,7 @@ const PayoutConsole = ({ rows, onPaid }) => {
     sentLine: { display: 'flex', gap: '8px', alignItems: 'center', color: green, fontWeight: '650', fontSize: '13.5px' },
     undo: {
       border: 0, background: 'transparent', color: ink, fontFamily: 'inherit',
-      fontSize: '13px', fontWeight: '650', textDecoration: 'underline', cursor: 'pointer', padding: '6px',
+      fontSize: '13px', fontWeight: '650', cursor: 'pointer', padding: '6px',
     },
 
     label: { fontSize: '13px', fontWeight: '700', color: text },
@@ -397,7 +397,7 @@ const PayoutConsole = ({ rows, onPaid }) => {
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={s.tickBar}>
                 <span style={s.tickCount}>{picked.length} of {payable.length} trips</span>
-                <button type="button" style={s.tickAll} onClick={toggleAll}>
+                <button type="button" className="text-link-btn" style={s.tickAll} onClick={toggleAll}>
                   {allOn ? 'Untick all' : 'Tick all'}
                 </button>
               </div>
@@ -490,7 +490,7 @@ const PayoutConsole = ({ rows, onPaid }) => {
             <div style={s.sentLine}>
               <TickIcon size={16} stroke={2.2} />
               <span style={{ flex: 1 }}>Marked as sent</span>
-              <button type="button" style={s.undo} onClick={() => setSent(false)}>Undo</button>
+              <button type="button" className="text-link-btn" style={s.undo} onClick={() => setSent(false)}>Undo</button>
             </div>
           ) : (
             <>

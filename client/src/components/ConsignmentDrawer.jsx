@@ -220,7 +220,7 @@ const ConsignmentDrawer = ({ application: a, ownerPercent, onClose, onDecided })
             <h2 style={s.title}>{a.brand} {a.model} · {a.year}</h2>
             <div style={s.from}>From {a.owner?.name || 'Unknown'}</div>
           </div>
-          <button type="button" aria-label="Close" style={s.close} onClick={onClose}><CloseIcon size={18} /></button>
+          <button type="button" className="icon-toggle-btn" aria-label="Close" style={s.close} onClick={onClose}><CloseIcon size={18} /></button>
         </div>
 
         <div style={s.body}>

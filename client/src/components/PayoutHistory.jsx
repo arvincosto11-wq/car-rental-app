@@ -75,7 +75,7 @@ const PayoutHistory = ({ payouts, onChanged }) => {
     }),
     voidBtn: {
       border: 0, background: 'transparent', color: ink, fontFamily: 'inherit',
-      fontSize: '13px', fontWeight: '650', textDecoration: 'underline', cursor: 'pointer', padding: '6px',
+      fontSize: '13px', fontWeight: '650', cursor: 'pointer', padding: '6px',
     },
 
     confirm: {
@@ -164,7 +164,12 @@ const PayoutHistory = ({ payouts, onChanged }) => {
                     ? <span style={s.chip('green')}>Owner confirmed</span>
                     : <span style={s.chip('blue')}>Awaiting owner</span>}
                 {!dead && !open && (
-                  <button type="button" style={s.voidBtn} onClick={() => { setVoiding(p._id); setReason(''); }}>
+                  <button
+                    type="button"
+                    className="text-link-btn"
+                    style={s.voidBtn}
+                    onClick={() => { setVoiding(p._id); setReason(''); }}
+                  >
                     Void
                   </button>
                 )}

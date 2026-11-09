@@ -254,6 +254,7 @@ const Navbar = () => {
                   </Link>
                   <button
                     onClick={handleLogout}
+                    className="dropdown-item-btn"
                     style={{
                       display: 'block',
                       width: '100%',
@@ -365,7 +366,7 @@ const Navbar = () => {
         {user ? (
           <>
             <Link to="/profile" onClick={() => setMobileOpen(false)} style={mobileLinkStyle}>Profile</Link>
-            <button onClick={handleLogout} style={{ ...mobileLinkStyle, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', width: '100%', color: isDark ? '#fca5a5' : '#dc2626' }}>
+            <button onClick={handleLogout} className="dropdown-item-btn" style={{ ...mobileLinkStyle, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', width: '100%', color: isDark ? '#fca5a5' : '#dc2626' }}>
               Logout
             </button>
           </>
