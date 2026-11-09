@@ -404,7 +404,14 @@ const PayoutConsole = ({ rows, onPaid }) => {
               {payable.map((trip) => {
                 const on = !unticked.has(trip.id);
                 return (
-                  <button key={trip.id} type="button" style={s.tripBtn} onClick={() => toggle(trip.id)} aria-pressed={on}>
+                  <button
+                    key={trip.id}
+                    type="button"
+                    className="card-row-btn"
+                    style={s.tripBtn}
+                    onClick={() => toggle(trip.id)}
+                    aria-pressed={on}
+                  >
                     <span style={s.box(on)}><TickIcon size={12} stroke={3} /></span>
                     <span style={s.tripWhen}>
                       {tripSpan(trip)}

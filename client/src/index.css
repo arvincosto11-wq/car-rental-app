@@ -220,6 +220,30 @@ button.compact-btn:not(:disabled):active {
   button.compact-btn:not(:disabled) { transition: none; }
 }
 
+/* A full-width row inside a card that happens to be clickable — a trip
+   with a tick box, an owner that opens to show their vehicles. The
+   page-wide lift and shadow are sized for a call to action, and on a row
+   that is flush with the card they draw a floating white tile where a
+   moment ago there was a list. These answer by shading the row instead,
+   which is what a row in a list is expected to do. */
+button.card-row-btn:not(:disabled) {
+  transition: background 0.15s ease;
+}
+button.card-row-btn:not(:disabled):hover,
+button.card-row-btn:not(:disabled):active {
+  filter: none;
+  box-shadow: none;
+  transform: none;
+  background: rgba(0, 0, 0, 0.035) !important;
+}
+body.dark button.card-row-btn:not(:disabled):hover,
+body.dark button.card-row-btn:not(:disabled):active {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  button.card-row-btn:not(:disabled) { transition: none; }
+}
+
 /* The × that closes a dialog (components/ModalClose.jsx). Same reasoning
    as .compact-btn: the page-wide lift and shadow are sized for a call to
    action, and on a 34px circle pinned to a corner a 2px jump reads as the

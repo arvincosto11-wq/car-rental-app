@@ -321,6 +321,7 @@ const ConsignmentIncome = ({ rows, range, onRange, loading, failed }) => {
                   <div key={r.consignor.id}>
                     <button
                       type="button"
+                      className="card-row-btn"
                       style={s.personRow}
                       aria-expanded={open}
                       onClick={() => setOpenId(open ? null : r.consignor.id)}
