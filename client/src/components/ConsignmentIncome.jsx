@@ -6,21 +6,16 @@ import { useUIFeedback } from '../context/UIFeedbackContext';
 import { DEFAULT_OWNER_PERCENT, clampPercent } from '../utils/revenueShare';
 import { daysWaiting, WAITING_WARN_DAYS } from '../utils/payouts';
 import { VehicleIcon, ChevronIcon, ClockIcon } from './adminConsignIcons';
-import PayoutDialog from './PayoutDialog';
 
-// What each consignor's vehicles have brought in, how it divides, and what
-// we still owe them.
+// What the consigned vehicles earned over a period, and who earned it.
 //
-// This used to report earnings alone, and said so in its own subtitle:
-// "not a record of what has been paid out". There was no such record to
-// keep. Now there is, and the figure the page is actually opened for is
-// what is OWED — so that is the one on its own band, in gold, with the
-// button beside it.
-//
-// Earned and owed are different questions and both are answered. A booking
-// is earned when it is confirmed; it is payable only once the vehicle is
-// back, because a confirmed booking can still be cancelled and refunded.
-// What sits between the two is reported as "coming".
+// The period tabs govern everything in this card and nothing outside it.
+// That is why the owner table lives in here rather than in a card of its
+// own: its "earned" and "paid" columns are period figures, and a table
+// sitting under a separate heading would have left the tabs looking like
+// they applied to the whole page. The two columns that are NOT period
+// figures — owed, and how long somebody has waited — say so on their own
+// sub-lines.
 //
 // Every figure comes from GET /consignments/income, which works the split
 // out with the same shared rule the consignor's own dashboard uses. Doing
@@ -37,13 +32,6 @@ const RANGES = [
 
 const PERIOD_WORD = { month: 'this month', year: 'this year', all: 'all time' };
 
-const cutoffFor = (range) => {
-  const now = new Date();
-  if (range === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
-  if (range === 'year') return new Date(now.getFullYear(), 0, 1);
-  return null;
-};
-
 const dayMonth = (value) => new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
 // Within one month only the second day is repeated: "Aug 24–26". Putting
@@ -59,10 +47,9 @@ const tripSpan = (trip) => {
   return `${dayMonth(from)} – ${dayMonth(to)}`;
 };
 
-const ConsignmentIncome = ({ refreshKey = 0, onPaid }) => {
+const ConsignmentIncome = ({ rows, range, onRange, loading, failed }) => {
   const { isDark } = useTheme();
   const { toast } = useUIFeedback();
-  const [rows, setRows] = useState([]);
   // The split for agreements made from here on. Editable here because this
   // is where somebody is looking at what it produced; a separate settings
   // page for one number would be a nav entry nobody would find twice.
@@ -70,39 +57,7 @@ const ConsignmentIncome = ({ refreshKey = 0, onPaid }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
-  const [range, setRange] = useState('month');
   const [openId, setOpenId] = useState(null);
-  const [paying, setPaying] = useState(null);
-
-  // Bumped after a payment is recorded here. `refreshKey` is the same
-  // signal arriving from outside — a payment voided in the history below
-  // moves every owed figure above it. Both are effect dependencies rather
-  // than a remount, so reloading does not throw away which period the
-  // person was looking at.
-  const [reload, setReload] = useState(0);
-
-  useEffect(() => {
-    let live = true;
-    const load = async () => {
-      setLoading(true);
-      setFailed(false);
-      try {
-        const cutoff = cutoffFor(range);
-        const res = await api.get('/consignments/income', {
-          params: cutoff ? { from: cutoff.toISOString() } : {},
-        });
-        if (live) setRows(res.data || []);
-      } catch {
-        if (live) setFailed(true);
-      } finally {
-        if (live) setLoading(false);
-      }
-    };
-    load();
-    return () => { live = false; };
-  }, [range, reload, refreshKey]);
 
   useEffect(() => {
     let live = true;
@@ -141,12 +96,6 @@ const ConsignmentIncome = ({ refreshKey = 0, onPaid }) => {
     }
   };
 
-  const onRecorded = (message) => {
-    setPaying(null);
-    setReload((n) => n + 1);
-    onPaid?.(message);
-  };
-
   const card = isDark ? '#242526' : '#ffffff';
   const inset = isDark ? '#1e1f20' : '#f8f9fa';
   const line = isDark ? '#3a3b3c' : '#e5e7eb';
@@ -156,125 +105,86 @@ const ConsignmentIncome = ({ refreshKey = 0, onPaid }) => {
   const text3 = isDark ? '#8a8d91' : '#6b7280';
   const gold = isDark ? GOLD_DARK : GOLD;
   const ink = goldInk(isDark);
-  const goldSoft = isDark ? 'rgba(232,161,0,0.14)' : '#fbf3e2';
-  const goldLine = isDark ? '#5a4415' : '#edd693';
+  const goldSoft = isDark ? 'rgba(232,161,0,0.12)' : '#fbf3e2';
   const green = isDark ? '#6fcf8f' : '#15803d';
   const greenSoft = isDark ? 'rgba(111,207,143,0.12)' : '#eaf6ee';
 
-  const COLUMNS = '38px minmax(180px, 1.5fr) repeat(3, minmax(92px, 0.8fr)) minmax(136px, 0.9fr) auto';
+  const COLUMNS = '38px minmax(170px, 1.4fr) repeat(3, minmax(88px, 0.8fr)) minmax(130px, 0.9fr) 24px';
 
   const s = {
     wrap: {
-      background: card, border: `1px solid ${line}`, borderRadius: '12px',
+      background: card, border: `1px solid ${line}`, borderRadius: '14px',
       overflow: 'hidden', marginBottom: '20px',
     },
     head: {
       display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px 16px',
-      padding: '17px 20px 15px',
+      padding: '18px 22px 15px',
     },
-    heading: { fontSize: '15px', fontWeight: '700', color: text, margin: 0 },
-    sub: { fontSize: '12px', color: text3, margin: '2px 0 0' },
+    heading: { fontSize: '16px', fontWeight: '700', color: text, margin: 0 },
+    sub: { fontSize: '13px', color: text3, margin: '3px 0 0' },
     rangeRow: { marginLeft: 'auto', display: 'flex', gap: '6px' },
     rangeBtn: (active) => ({
-      padding: '5px 12px', fontSize: '12px', fontWeight: '600', borderRadius: '7px',
-      border: `1px solid ${active ? goldLine : line}`,
-      background: active ? goldSoft : 'transparent',
-      color: active ? ink : text2, cursor: 'pointer', fontFamily: 'inherit',
+      minHeight: '36px', padding: '0 14px', fontSize: '13px', fontWeight: active ? '700' : '600',
+      borderRadius: '9px', fontFamily: 'inherit', cursor: 'pointer',
+      border: `1.5px solid ${active ? gold : line}`,
+      background: active ? goldSoft : card,
+      color: active ? ink : text,
     }),
 
-    tiles: {
-      display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+    figures: {
+      display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
       borderTop: `1px solid ${line}`,
     },
-    tile: { padding: '15px 20px 17px', borderRight: `1px solid ${line}` },
-    tileLabel: { fontSize: '11px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: text3 },
-    tileValue: { fontSize: '24px', fontWeight: '800', color: text, marginTop: '5px', fontVariantNumeric: 'tabular-nums' },
-    tileMine: { fontSize: '24px', fontWeight: '800', color: ink, marginTop: '5px', fontVariantNumeric: 'tabular-nums' },
-    tileNote: { fontSize: '11.5px', color: text3, marginTop: '2px' },
-
-    owedBand: {
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      gap: '18px', flexWrap: 'wrap',
-      background: goldSoft, borderTop: `1px solid ${goldLine}`, padding: '14px 20px',
-    },
-    owedLeft: { display: 'flex', alignItems: 'baseline', gap: '14px', flexWrap: 'wrap' },
-    owedValue: { fontSize: '27px', fontWeight: '800', color: ink, fontVariantNumeric: 'tabular-nums' },
-    owedLabel: { fontSize: '13px', fontWeight: '700', color: ink },
-    owedNote: { fontSize: '12.5px', color: ink, opacity: 0.85 },
-
-    split: {
-      display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px',
-      padding: '14px 20px', borderTop: `1px solid ${line}`,
-    },
-    splitNow: { fontSize: '12.5px', color: text2 },
-    splitStrong: { fontWeight: '750', color: text },
-    splitBtn: {
-      padding: '5px 12px', fontSize: '12px', fontWeight: '650', borderRadius: '7px',
-      border: `1px solid ${line}`, background: 'transparent', color: ink,
-      cursor: 'pointer', fontFamily: 'inherit',
-    },
-    splitSave: {
-      padding: '6px 14px', fontSize: '12px', fontWeight: '750', borderRadius: '7px',
-      border: 'none', background: gold, color: ON_GOLD,
-      cursor: 'pointer', fontFamily: 'inherit',
-    },
-    splitInput: {
-      width: '72px', minHeight: '32px', padding: '0 8px', borderRadius: '7px',
-      border: `1px solid ${line}`, background: isDark ? '#18191a' : '#fff',
-      color: text, fontFamily: 'inherit', fontSize: '13px',
-      fontVariantNumeric: 'tabular-nums',
-    },
-    splitHint: { flexBasis: '100%', fontSize: '11.5px', color: text3, textWrap: 'pretty' },
-    foot: { fontSize: '11.5px', color: text3, padding: '0 20px 16px', textWrap: 'pretty' },
+    figure: { padding: '15px 22px 17px', borderRight: `1px solid ${line}` },
+    figureLast: { padding: '15px 22px 17px' },
+    figureLabel: { fontSize: '12px', fontWeight: '700', letterSpacing: '0.06em', color: text3 },
+    figureValue: { fontSize: '22px', fontWeight: '800', color: text, marginTop: '2px', fontVariantNumeric: 'tabular-nums' },
+    figureMine: { fontSize: '22px', fontWeight: '800', color: ink, marginTop: '2px', fontVariantNumeric: 'tabular-nums' },
+    figureNote: { fontSize: '12px', color: text3 },
 
     colHead: {
       display: 'grid', gridTemplateColumns: COLUMNS, gap: '14px',
-      padding: '9px 20px', background: inset,
+      padding: '9px 22px', background: inset,
       borderTop: `1px solid ${line}`, borderBottom: `1px solid ${line}`,
       fontSize: '10.5px', fontWeight: '700', letterSpacing: '0.07em',
       textTransform: 'uppercase', color: text3,
     },
     personRow: {
       display: 'grid', gridTemplateColumns: COLUMNS, gap: '14px', alignItems: 'center',
-      width: '100%', padding: '14px 20px', background: 'none', border: 0,
+      width: '100%', padding: '13px 22px', background: 'none', border: 0,
       borderTop: `1px solid ${divider}`, textAlign: 'left', color: text,
       fontFamily: 'inherit', cursor: 'pointer',
     },
     avatar: {
       width: '38px', height: '38px', borderRadius: '999px',
-      background: goldSoft, border: `1px solid ${goldLine}`, color: ink,
+      background: goldSoft, border: `1px solid ${isDark ? '#5a4415' : '#edd693'}`, color: ink,
       display: 'grid', placeItems: 'center', fontWeight: '750', fontSize: '15px',
     },
     name: { fontSize: '14.5px', fontWeight: '700', color: text },
     meta: { display: 'block', fontSize: '12px', color: text3, marginTop: '1px' },
-    figure: (tone) => ({
+    cell: (tone) => ({
       fontSize: '14px', fontWeight: tone === 'owed' ? '800' : '650',
       color: tone === 'owed' ? ink : tone === 'zero' ? text3 : text,
       fontVariantNumeric: 'tabular-nums',
     }),
-    figureSub: { display: 'block', fontSize: '11.5px', color: text3, marginTop: '1px', fontWeight: '500' },
+    cellSub: { display: 'block', fontSize: '11.5px', color: text3, marginTop: '1px', fontWeight: '500' },
     waiting: (warn) => ({
       display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px',
       color: warn ? ink : text3, fontWeight: warn ? '650' : '500',
     }),
-    payBtn: {
-      minHeight: '36px', padding: '0 14px', borderRadius: '8px', border: 0,
-      background: gold, color: ON_GOLD, fontFamily: 'inherit',
-      fontSize: '12.5px', fontWeight: '750', cursor: 'pointer', whiteSpace: 'nowrap',
-    },
     settled: {
-      display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: '999px',
-      background: greenSoft, color: green, fontSize: '12px', fontWeight: '700', whiteSpace: 'nowrap',
+      display: 'inline-flex', alignItems: 'center', padding: '3px 10px', borderRadius: '999px',
+      background: greenSoft, color: green, fontSize: '11.5px', fontWeight: '700', whiteSpace: 'nowrap',
     },
     caret: (open) => ({
-      display: 'inline-flex', color: text3,
+      display: 'inline-flex', color: text3, justifySelf: 'end',
       transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms ease',
     }),
 
-    detail: { padding: '2px 20px 18px 72px', borderTop: `1px solid ${divider}` },
-    vehicles: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px', marginTop: '14px' },
+    detail: { padding: '2px 22px 18px 74px', borderTop: `1px solid ${divider}` },
+    vehicles: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: '12px', marginTop: '14px' },
     vehicle: {
-      background: inset, border: `1px solid ${line}`, borderRadius: '10px',
+      background: inset, border: `1px solid ${line}`, borderRadius: '12px',
       padding: '12px 14px', display: 'flex', gap: '11px', alignItems: 'flex-start',
     },
     vIcon: { flex: 'none', color: text3, marginTop: '1px' },
@@ -302,7 +212,31 @@ const ConsignmentIncome = ({ refreshKey = 0, onPaid }) => {
     dueCar: { flex: 1, minWidth: 0, color: text3 },
     dueAmt: { fontWeight: '700', color: text, fontVariantNumeric: 'tabular-nums' },
 
-    empty: { fontSize: '13px', color: text3, padding: '18px 20px' },
+    split: {
+      display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px',
+      padding: '15px 22px', borderTop: `1px solid ${line}`,
+    },
+    splitNow: { fontSize: '13px', color: text2 },
+    splitStrong: { fontWeight: '750', color: text },
+    splitBtn: {
+      minHeight: '34px', padding: '0 12px', fontSize: '12.5px', fontWeight: '650', borderRadius: '8px',
+      border: `1px solid ${line}`, background: card, color: ink,
+      cursor: 'pointer', fontFamily: 'inherit',
+    },
+    splitSave: {
+      minHeight: '34px', padding: '0 14px', fontSize: '12.5px', fontWeight: '750', borderRadius: '8px',
+      border: 'none', background: gold, color: ON_GOLD,
+      cursor: 'pointer', fontFamily: 'inherit',
+    },
+    splitInput: {
+      width: '72px', minHeight: '34px', padding: '0 8px', borderRadius: '8px',
+      border: `1px solid ${line}`, background: isDark ? '#18191a' : '#fff',
+      color: text, fontFamily: 'inherit', fontSize: '13px',
+      fontVariantNumeric: 'tabular-nums',
+    },
+    splitHint: { flexBasis: '100%', fontSize: '12px', color: text3, textWrap: 'pretty' },
+
+    empty: { fontSize: '13px', color: text3, padding: '20px 22px' },
   };
 
   const totals = rows.reduce((acc, r) => ({
@@ -310,297 +244,221 @@ const ConsignmentIncome = ({ refreshKey = 0, onPaid }) => {
     ownerEarned: acc.ownerEarned + r.ownerEarned,
     weKept: acc.weKept + r.weKept,
     trips: acc.trips + r.trips,
-    owed: acc.owed + r.owed,
-    coming: acc.coming + r.coming,
-    paid: acc.paid + r.paidInPeriod,
-  }), { rental: 0, ownerEarned: 0, weKept: 0, trips: 0, owed: 0, coming: 0, paid: 0 });
-
-  const owing = rows.filter((r) => r.owed > 0).length;
+  }), { rental: 0, ownerEarned: 0, weKept: 0, trips: 0 });
 
   return (
-    <>
-      <section style={s.wrap} aria-label="Money from consigned vehicles">
-        <div style={s.head}>
-          <div>
-            <h2 style={s.heading}>Money from consigned vehicles</h2>
-            <p style={s.sub}>Rental only. Delivery, late, fuel and damage charges are not shared.</p>
-          </div>
-          <div style={s.rangeRow} role="tablist" aria-label="Period">
-            {RANGES.map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={range === key}
-                style={s.rangeBtn(range === key)}
-                onClick={() => setRange(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {failed ? (
-          <p style={s.empty}>Could not load the figures just now. Nothing below is affected.</p>
-        ) : loading ? (
-          <p style={s.empty}>Adding it up…</p>
-        ) : (
-          <>
-            <div style={s.tiles}>
-              <div style={s.tile}>
-                <div style={s.tileLabel}>Rental taken</div>
-                <div style={s.tileValue}>{peso(totals.rental)}</div>
-                <div style={s.tileNote}>
-                  {totals.trips} trip{totals.trips === 1 ? '' : 's'} {PERIOD_WORD[range]}
-                </div>
-              </div>
-              <div style={s.tile}>
-                <div style={s.tileLabel}>Owners earned</div>
-                <div style={s.tileValue}>{peso(totals.ownerEarned)}</div>
-                <div style={s.tileNote}>across {rows.length} consignor{rows.length === 1 ? '' : 's'}</div>
-              </div>
-              <div style={s.tile}>
-                <div style={s.tileLabel}>We kept</div>
-                <div style={s.tileMine}>{peso(totals.weKept)}</div>
-                <div style={s.tileNote}>for running the vehicles</div>
-              </div>
-              <div style={{ ...s.tile, borderRight: 0 }}>
-                <div style={s.tileLabel}>Paid out</div>
-                <div style={s.tileValue}>{peso(totals.paid)}</div>
-                <div style={s.tileNote}>
-                  {totals.paid === 0 ? `nothing settled ${PERIOD_WORD[range]}` : `handed over ${PERIOD_WORD[range]}`}
-                </div>
-              </div>
-            </div>
-
-            {/* Owed does not move when the period does, and that is not a
-                bug in the tabs above it. What we owe is what we owe, and an
-                unpaid trip from August is still owed in November. */}
-            <div style={s.owedBand}>
-              <div style={s.owedLeft}>
-                <span style={s.owedValue}>{peso(totals.owed)}</span>
-                <span style={s.owedLabel}>owed right now</span>
-                <span style={s.owedNote}>
-                  {totals.owed === 0
-                    ? 'everyone is settled'
-                    : `to ${owing} consignor${owing === 1 ? '' : 's'}, for finished trips`}
-                </span>
-              </div>
-              <span style={s.owedNote}>
-                {totals.coming > 0
-                  ? `${peso(totals.coming)} coming — booked but not yet travelled, so not payable`
-                  : 'no upcoming trips'}
-              </span>
-            </div>
-
-            <div style={s.split}>
-              {editing ? (
-                <>
-                  <label style={s.splitNow} htmlFor="owner-share">Owner keeps</label>
-                  <input
-                    id="owner-share"
-                    style={s.splitInput}
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={draft}
-                    disabled={saving}
-                    onChange={(e) => setDraft(e.target.value)}
-                  />
-                  <span style={s.splitNow}>
-                    % · we keep {Number.isFinite(asPercent(draft)) ? 100 - asPercent(draft) : '—'}%
-                  </span>
-                  <button type="button" style={s.splitSave} disabled={saving} onClick={saveSplit}>
-                    {saving ? 'Saving…' : 'Save split'}
-                  </button>
-                  <button type="button" style={s.splitBtn} disabled={saving} onClick={() => setEditing(false)}>
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span style={s.splitNow}>
-                    New agreements split{' '}
-                    <span style={s.splitStrong}>{ownerPercent}% owner / {100 - ownerPercent}% us</span>
-                  </span>
-                  <button
-                    type="button"
-                    style={s.splitBtn}
-                    onClick={() => { setDraft(String(ownerPercent)); setEditing(true); }}
-                  >
-                    Change
-                  </button>
-                </>
-              )}
-              <span style={s.splitHint}>
-                Applies to bookings made after you save it. Every booking already taken keeps the
-                split it was agreed on, so nothing above moves.
-              </span>
-            </div>
-
-            <p style={s.foot}>
-              Owners are paid on the price before any promo discount, and each booking is divided on
-              the split agreed when it was made.
-            </p>
-          </>
-        )}
-      </section>
-
-      <section style={s.wrap} aria-label="Consignors">
-        <div style={s.head}>
-          <div>
-            <h2 style={s.heading}>Consignors</h2>
-            <p style={s.sub}>Who we owe, how long they have been waiting, and what each vehicle brought in.</p>
-          </div>
-        </div>
-
-        {loading || failed ? (
-          <p style={s.empty}>{failed ? 'Could not load the consignors just now.' : 'Loading…'}</p>
-        ) : rows.length === 0 ? (
-          <p style={s.empty}>
-            No vehicles are consigned yet. An owner appears here once their application is approved.
+    <section style={s.wrap} aria-label="Earnings from consigned vehicles">
+      <div style={s.head}>
+        <div>
+          <h2 style={s.heading}>Earnings and owners</h2>
+          <p style={s.sub}>
+            Rental only — delivery, late, fuel and damage charges are not shared, and owners are
+            paid on the price before any promo discount.
           </p>
-        ) : (
-          <>
-            <div style={s.colHead} aria-hidden="true">
-              <span />
-              <span>Owner</span>
-              <span>Earned</span>
-              <span>Paid</span>
-              <span>Owed</span>
-              <span>Waiting since</span>
-              <span />
+        </div>
+        <div style={s.rangeRow} role="tablist" aria-label="Period">
+          {RANGES.map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={range === key}
+              style={s.rangeBtn(range === key)}
+              onClick={() => onRange(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {failed ? (
+        <p style={s.empty}>Could not load the figures just now. Nothing above is affected.</p>
+      ) : loading ? (
+        <p style={s.empty}>Adding it up…</p>
+      ) : (
+        <>
+          <div style={s.figures}>
+            <div style={s.figure}>
+              <div style={s.figureLabel}>RENTAL TAKEN</div>
+              <div style={s.figureValue}>{peso(totals.rental)}</div>
+              <div style={s.figureNote}>
+                {totals.trips} trip{totals.trips === 1 ? '' : 's'} {PERIOD_WORD[range]}
+              </div>
             </div>
+            <div style={s.figure}>
+              <div style={s.figureLabel}>OWNERS EARNED</div>
+              <div style={s.figureValue}>{peso(totals.ownerEarned)}</div>
+              <div style={s.figureNote}>across {rows.length} consignor{rows.length === 1 ? '' : 's'}</div>
+            </div>
+            <div style={s.figureLast}>
+              <div style={s.figureLabel}>WE KEPT</div>
+              <div style={s.figureMine}>{peso(totals.weKept)}</div>
+              <div style={s.figureNote}>for running the vehicles</div>
+            </div>
+          </div>
 
-            {rows.map((r) => {
-              const open = openId === r.consignor.id;
-              const waited = daysWaiting(r.oldestUnpaidAt);
-              return (
-                <div key={r.consignor.id}>
-                  <button
-                    type="button"
-                    style={s.personRow}
-                    aria-expanded={open}
-                    onClick={() => setOpenId(open ? null : r.consignor.id)}
-                  >
-                    <span style={s.avatar} aria-hidden="true">
-                      {(r.consignor.name || '?').trim().charAt(0).toUpperCase()}
-                    </span>
-                    <span>
-                      <span style={s.name}>{r.consignor.name}</span>
-                      <span style={s.meta}>
-                        {r.consignor.phone ? `${r.consignor.phone} · ` : ''}
-                        {r.vehicles.length} vehicle{r.vehicles.length === 1 ? '' : 's'}
+          {rows.length === 0 ? (
+            <p style={s.empty}>
+              No vehicles are consigned yet. An owner appears here once their application is approved.
+            </p>
+          ) : (
+            <>
+              <div style={s.colHead} aria-hidden="true">
+                <span />
+                <span>Owner</span>
+                <span>Earned</span>
+                <span>Paid</span>
+                <span>Owed</span>
+                <span>Waiting since</span>
+                <span />
+              </div>
+
+              {rows.map((r) => {
+                const open = openId === r.consignor.id;
+                const waited = daysWaiting(r.oldestUnpaidAt);
+                return (
+                  <div key={r.consignor.id}>
+                    <button
+                      type="button"
+                      style={s.personRow}
+                      aria-expanded={open}
+                      onClick={() => setOpenId(open ? null : r.consignor.id)}
+                    >
+                      <span style={s.avatar} aria-hidden="true">
+                        {(r.consignor.name || '?').trim().charAt(0).toUpperCase()}
                       </span>
-                    </span>
-                    <span>
-                      <span style={s.figure(r.ownerEarned ? '' : 'zero')}>{peso(r.ownerEarned)}</span>
-                      <span style={s.figureSub}>{PERIOD_WORD[range]}</span>
-                    </span>
-                    <span>
-                      <span style={s.figure(r.paidInPeriod ? '' : 'zero')}>{peso(r.paidInPeriod)}</span>
-                      <span style={s.figureSub}>{PERIOD_WORD[range]}</span>
-                    </span>
-                    <span>
-                      <span style={s.figure(r.owed ? 'owed' : 'zero')}>{peso(r.owed)}</span>
-                      <span style={s.figureSub}>
-                        {r.coming ? `${peso(r.coming)} coming` : 'nothing coming'}
+                      <span>
+                        <span style={s.name}>{r.consignor.name}</span>
+                        <span style={s.meta}>
+                          {r.consignor.phone ? `${r.consignor.phone} · ` : ''}
+                          {r.vehicles.length} vehicle{r.vehicles.length === 1 ? '' : 's'}
+                        </span>
                       </span>
-                    </span>
-                    <span>
-                      {r.owed === 0 ? (
-                        <span style={s.waiting(false)}>nothing waiting</span>
-                      ) : (
-                        <span style={s.waiting(waited >= WAITING_WARN_DAYS)}>
-                          <ClockIcon size={14} />
-                          {dayMonth(r.oldestUnpaidAt)} · {waited} day{waited === 1 ? '' : 's'}
+                      <span>
+                        <span style={s.cell(r.ownerEarned ? '' : 'zero')}>{peso(r.ownerEarned)}</span>
+                        <span style={s.cellSub}>{PERIOD_WORD[range]}</span>
+                      </span>
+                      <span>
+                        <span style={s.cell(r.paidInPeriod ? '' : 'zero')}>{peso(r.paidInPeriod)}</span>
+                        <span style={s.cellSub}>{PERIOD_WORD[range]}</span>
+                      </span>
+                      <span>
+                        <span style={s.cell(r.owed ? 'owed' : 'zero')}>{peso(r.owed)}</span>
+                        <span style={s.cellSub}>
+                          {r.coming ? `${peso(r.coming)} coming` : 'nothing coming'}
                         </span>
-                      )}
-                    </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {r.owed > 0 ? (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          style={s.payBtn}
-                          onClick={(e) => { e.stopPropagation(); setPaying(r); }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setPaying(r);
-                            }
-                          }}
-                        >
-                          Pay {peso(r.owed)}
-                        </span>
-                      ) : (
-                        <span style={s.settled}>Settled</span>
-                      )}
+                      </span>
+                      <span>
+                        {r.owed === 0 ? (
+                          <span style={s.settled}>Settled</span>
+                        ) : (
+                          <span style={s.waiting(waited >= WAITING_WARN_DAYS)}>
+                            <ClockIcon size={14} />
+                            {dayMonth(r.oldestUnpaidAt)} · {waited} day{waited === 1 ? '' : 's'}
+                          </span>
+                        )}
+                      </span>
                       <span style={s.caret(open)}><ChevronIcon size={16} /></span>
-                    </span>
-                  </button>
+                    </button>
 
-                  {open && (
-                    <div style={s.detail}>
-                      <div style={s.vehicles}>
-                        {r.vehicles.map((v) => (
-                          <div key={v.id} style={s.vehicle}>
-                            <span style={s.vIcon}><VehicleIcon category={v.category} size={20} /></span>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={s.vName}>{v.name}</div>
-                              <div style={s.vMeta}>
-                                {v.plateNumber || 'No plate'} · {peso(v.pricePerDay)} a day
+                    {open && (
+                      <div style={s.detail}>
+                        <div style={s.vehicles}>
+                          {r.vehicles.map((v) => (
+                            <div key={v.id} style={s.vehicle}>
+                              <span style={s.vIcon}><VehicleIcon category={v.category} size={20} /></span>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={s.vName}>{v.name}</div>
+                                <div style={s.vMeta}>
+                                  {v.plateNumber || 'No plate'} · {peso(v.pricePerDay)} a day
+                                </div>
+                                <span style={s.chip(v.onPlatform)}>
+                                  {v.onPlatform ? 'Listed' : 'Off platform'}
+                                </span>
                               </div>
-                              <span style={s.chip(v.onPlatform)}>
-                                {v.onPlatform ? 'Listed' : 'Off platform'}
-                              </span>
-                            </div>
-                            <div style={s.vFig}>
-                              {v.trips > 0 ? peso(v.rental) : 'No trips'}
-                              <span style={s.vFigSub}>
-                                {v.trips > 0
-                                  ? `${peso(v.ownerEarned)} theirs · ${v.trips} trip${v.trips === 1 ? '' : 's'}`
-                                  : PERIOD_WORD[range]}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {r.payable.length > 0 && (
-                        <>
-                          <div style={s.dueLabel}>What is owed, trip by trip</div>
-                          {r.payable.map((trip) => (
-                            <div key={trip.id} style={s.dueRow}>
-                              <span style={s.dueWhen}>{tripSpan(trip)}</span>
-                              <span style={s.dueCar}>
-                                {trip.vehicle}{trip.plateNumber ? ` · ${trip.plateNumber}` : ''}
-                              </span>
-                              <span style={{ color: text3 }}>{peso(trip.rental)} taken</span>
-                              <span style={s.dueAmt}>{peso(trip.amount)}</span>
+                              <div style={s.vFig}>
+                                {v.trips > 0 ? peso(v.rental) : 'No trips'}
+                                <span style={s.vFigSub}>
+                                  {v.trips > 0
+                                    ? `${peso(v.ownerEarned)} theirs · ${v.trips} trip${v.trips === 1 ? '' : 's'}`
+                                    : PERIOD_WORD[range]}
+                                </span>
+                              </div>
                             </div>
                           ))}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </>
-        )}
-      </section>
+                        </div>
 
-      {paying && (
-        <PayoutDialog
-          row={paying}
-          onClose={() => setPaying(null)}
-          onRecorded={onRecorded}
-        />
+                        {r.payable.length > 0 && (
+                          <>
+                            <div style={s.dueLabel}>What is owed, trip by trip</div>
+                            {r.payable.map((trip) => (
+                              <div key={trip.id} style={s.dueRow}>
+                                <span style={s.dueWhen}>{tripSpan(trip)}</span>
+                                <span style={s.dueCar}>
+                                  {trip.vehicle}{trip.plateNumber ? ` · ${trip.plateNumber}` : ''}
+                                </span>
+                                <span style={{ color: text3 }}>{peso(trip.rental)} taken</span>
+                                <span style={s.dueAmt}>{peso(trip.amount)}</span>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          <div style={s.split}>
+            {editing ? (
+              <>
+                <label style={s.splitNow} htmlFor="owner-share">Owner keeps</label>
+                <input
+                  id="owner-share"
+                  style={s.splitInput}
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={draft}
+                  disabled={saving}
+                  onChange={(e) => setDraft(e.target.value)}
+                />
+                <span style={s.splitNow}>
+                  % · we keep {Number.isFinite(asPercent(draft)) ? 100 - asPercent(draft) : '—'}%
+                </span>
+                <button type="button" style={s.splitSave} disabled={saving} onClick={saveSplit}>
+                  {saving ? 'Saving…' : 'Save split'}
+                </button>
+                <button type="button" style={s.splitBtn} disabled={saving} onClick={() => setEditing(false)}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <span style={s.splitNow}>
+                  New agreements split{' '}
+                  <span style={s.splitStrong}>{ownerPercent}% owner / {100 - ownerPercent}% us</span>
+                </span>
+                <button
+                  type="button"
+                  style={s.splitBtn}
+                  onClick={() => { setDraft(String(ownerPercent)); setEditing(true); }}
+                >
+                  Change
+                </button>
+              </>
+            )}
+            <span style={s.splitHint}>
+              Applies to bookings made after you save it. Every booking already taken keeps the
+              split it was agreed on, so nothing above moves.
+            </span>
+          </div>
+        </>
       )}
-    </>
+    </section>
   );
 };
 

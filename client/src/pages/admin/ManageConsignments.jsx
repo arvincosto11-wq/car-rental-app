@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import ConsignmentIncome from '../../components/ConsignmentIncome';
 import ConsignmentDrawer from '../../components/ConsignmentDrawer';
+import PayoutSummary from '../../components/PayoutSummary';
+import PayoutConsole from '../../components/PayoutConsole';
 import PayoutHistory from '../../components/PayoutHistory';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
@@ -30,8 +32,23 @@ import { VehicleIcon, TickIcon, ArrowIcon } from '../../components/adminConsignI
 // well as a list of owners above it, which meant two sections quoting
 // different figures about the same month — so the register is gone and
 // each owner's vehicles live inside their own row.
+//
+// The page owns the data rather than each panel fetching its own. Three
+// sections read the same money from two routes — the summary, the payout
+// console and the history — and a payment moves all of them at once. When
+// each fetched for itself they could be refreshed one without the other,
+// which showed an owner as owed and settled at the same moment.
 
 const peso = (n) => `₱${Math.round(n || 0).toLocaleString()}`;
+
+// The period the earnings figures are read over. Owed and coming ignore
+// it — see PayoutSummary — so only this one read is scoped.
+const cutoffFor = (range) => {
+  const now = new Date();
+  if (range === 'month') return { from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString() };
+  if (range === 'year') return { from: new Date(now.getFullYear(), 0, 1).toISOString() };
+  return {};
+};
 
 const ManageConsignments = () => {
   usePageTitle('Manage Consignments');
@@ -41,12 +58,15 @@ const ManageConsignments = () => {
 
   const [applications, setApplications] = useState([]);
   const [payouts, setPayouts] = useState([]);
+  const [income, setIncome] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [moneyLoading, setMoneyLoading] = useState(true);
+  const [moneyFailed, setMoneyFailed] = useState(false);
   const [openId, setOpenId] = useState(null);
   const [ownerPercent, setOwnerPercent] = useState(DEFAULT_OWNER_PERCENT);
-  // Bumped after a payment so the panel below reloads its figures along
-  // with the history above it. They read the same money from two routes
-  // and must never be refreshed one without the other.
+  const [range, setRange] = useState('month');
+  // Bumped whenever money moves, so the income read below runs again
+  // alongside the applications and payouts.
   const [moneyKey, setMoneyKey] = useState(0);
 
   const fetchData = async () => {
@@ -65,6 +85,24 @@ const ManageConsignments = () => {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    let live = true;
+    const load = async () => {
+      setMoneyLoading(true);
+      setMoneyFailed(false);
+      try {
+        const res = await api.get('/consignments/income', { params: cutoffFor(range) });
+        if (live) setIncome(res.data || []);
+      } catch {
+        if (live) setMoneyFailed(true);
+      } finally {
+        if (live) setMoneyLoading(false);
+      }
+    };
+    load();
+    return () => { live = false; };
+  }, [range, moneyKey]);
 
   useEffect(() => {
     let live = true;
@@ -89,7 +127,7 @@ const ManageConsignments = () => {
     toast.success(message);
   };
 
-  // A payment changes both the history and every owed figure beside it.
+  // A payment changes the history, the summary and every owed figure.
   const onMoneyMoved = async (message) => {
     await fetchData();
     setMoneyKey((n) => n + 1);
@@ -195,9 +233,19 @@ const ManageConsignments = () => {
         </div>
       ))}
 
-      <ConsignmentIncome refreshKey={moneyKey} onPaid={onMoneyMoved} />
+      <PayoutSummary rows={income} />
+
+      <PayoutConsole rows={income} onPaid={onMoneyMoved} />
 
       <PayoutHistory payouts={payouts} onChanged={onMoneyMoved} />
+
+      <ConsignmentIncome
+        rows={income}
+        range={range}
+        onRange={setRange}
+        loading={moneyLoading}
+        failed={moneyFailed}
+      />
 
       {/* Kept because a declined application is the one thing on this page
           with no other home: the vehicle was never listed, so it appears
